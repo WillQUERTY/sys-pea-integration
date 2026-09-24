@@ -1,0 +1,7 @@
+# FastAPI backend for PEA‑i
+
+fastapi>=0.110.0
+uvicorn[standard]>=0.30.0
+pydantic>=2.7.0
+pybind11>=2.12.0
+# (SQLAlchemy, databases, etc. can be added later)
