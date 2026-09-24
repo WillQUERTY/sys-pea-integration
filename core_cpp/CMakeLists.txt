@@ -5,13 +5,21 @@ project(PEAiCore LANGUAGES CXX)
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
-# ---- Core static library ----
+# ---- Core static library (includes DB persistence) ----
 add_library(abpoxx STATIC
     src/abpoxx.cpp
+    src/db_persistence.cpp
 )
 target_include_directories(abpoxx PUBLIC
     $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
 )
+
+# Link ODBC (native on Windows, requires unixODBC on Linux)
+if(WIN32)
+    target_link_libraries(abpoxx PUBLIC odbc32)
+else()
+    target_link_libraries(abpoxx PUBLIC odbc)
+endif()
 
 # ---- CLI executable ----
 add_executable(pea_cli src/pea_cli.cpp)
