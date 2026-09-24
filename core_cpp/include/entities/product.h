@@ -31,4 +31,10 @@ struct GroupProductNode {
     GroupProductNode* nextForProduct = nullptr;  // cross-chain across products
 };
 
+struct ProductNode {
+    Product       data;
+    ProductNode*  nextProduct = nullptr;
+    // For later: pointers to cross-chains (e.g., links from groups) could be anchored here
+};
+
 #endif // PEAI_ENTITIES_PRODUCT_H

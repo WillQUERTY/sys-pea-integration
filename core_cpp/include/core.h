@@ -13,6 +13,8 @@
 
 // ---- Services ----
 #include "services/group_service.h"
+#include "services/researcher_service.h"
+#include "services/product_service.h"
 #include "services/undo_stack.h"
 #include "services/validation_queue.h"
 

@@ -12,6 +12,8 @@ namespace peai {
 bool load_from_db(const std::string& connection_string);
 bool save_to_db(const std::string& connection_string);
 bool sync_group_to_db(const std::string& connection_string, int group_id);
+bool sync_researcher_to_db(const std::string& connection_string, int res_id);
+bool sync_product_to_db(const std::string& connection_string, int prod_id);
 
 // ---- Initialization modes (spec section 33.3) ----
 enum class InitMode { Database, File, Empty };

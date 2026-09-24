@@ -21,4 +21,10 @@ struct Researcher {
     std::string status = "active";
 };
 
+struct ResearcherNode {
+    Researcher      data;
+    ResearcherNode* nextResearcher = nullptr;
+    // For later: pointers to cross-chains (e.g., memberships) could be added here
+};
+
 #endif // PEAI_ENTITIES_RESEARCHER_H

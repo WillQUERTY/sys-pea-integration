@@ -8,6 +8,8 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 # ---- Core static library (modular sources) ----
 add_library(abpoxx STATIC
     src/services/group_service.cpp
+    src/services/researcher_service.cpp
+    src/services/product_service.cpp
     src/services/undo_stack.cpp
     src/services/validation_queue.cpp
     src/persistence/json_persistence.cpp
