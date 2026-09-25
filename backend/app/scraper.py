@@ -155,6 +155,15 @@ class GruplacNormalizer:
         val = re.sub(r"[^A-Z0-9 ]", " ", val)
         return " ".join(val.split())
 
+    @classmethod
+    def match_key(cls, text: Any) -> str:
+        """
+        Llave de comparación insensible a tildes/puntuación para reconocer
+        encabezados y etiquetas de la página ("Datos básicos" == "datos basicos").
+        El almacenamiento conserva tildes; esto solo se usa para hacer match.
+        """
+        return cls.normalized_name_key(str(text or "")).lower()
+
     @staticmethod
     def extract_year(text: str) -> Optional[int]:
         if not text:
@@ -183,10 +192,14 @@ class GruplacNormalizer:
             digest = hashlib.sha256(canonical.encode("utf-8")).hexdigest()[:20]
             return f"PRD_DOI_{digest}"
         
-        canon_title = cls.normalize(title).upper()
-        canon_title = " ".join(canon_title.split())
-        canon_authors = "|".join(sorted(cls.normalized_name_key(a) for a in (authors or []) if a))
-        canonical = f"{canon_title}|{year or ''}|{canon_authors}"
+        # Revisión dedupe: los autores NO entran al hash. La página GrupLAC lista
+        # el mismo producto varias veces con extracción de autores distinta, lo que
+        # generaba códigos distintos y ~11% de duplicados. Título+año es estable.
+        # `authors` se mantiene en la firma por compatibilidad pero no afecta el código.
+        # El título canónico usa normalized_name_key: sin tildes ni puntuación,
+        # así "THERM-BREAST" y "THERM BREAST" producen el mismo código.
+        canon_title = cls.normalized_name_key(title)
+        canonical = f"{canon_title}|{year or ''}"
         digest = hashlib.sha256(canonical.encode("utf-8")).hexdigest()[:20]
         return f"PRD_{digest}"
 
@@ -290,6 +303,50 @@ class GruplacHtmlParser:
         return []
 
     @classmethod
+    def _dedupe_products(cls, products: List[ScrapedProduct]) -> tuple:
+        """
+        Fusiona productos repetidos dentro de la misma página GrupLAC.
+        La llave es título canónico + año (independiente del DOI): la página lista
+        el mismo artículo a veces con DOI y a veces sin él (o con DOI distinto por
+        error tipográfico), lo que generaba códigos externos diferentes y filas
+        duplicadas. Al fusionar se prefiere el registro CON DOI y, en empate, el de
+        texto crudo más largo; los autores se unen. Devuelve (lista, n_fusionados).
+        """
+        merged: Dict[str, ScrapedProduct] = {}
+        order: List[str] = []
+        merged_count = 0
+        for p in products:
+            key = f"{GruplacNormalizer.normalized_name_key(p.title)}|{p.year or ''}"
+            existing = merged.get(key)
+            if existing is None:
+                merged[key] = p
+                order.append(key)
+                continue
+            merged_count += 1
+            # Preferir el registro con DOI; en empate, el de texto crudo más largo
+            if (p.doi and not existing.doi) or (bool(p.doi) == bool(existing.doi) and len(p.raw_text) > len(existing.raw_text)):
+                base, existing = p, existing
+                merged[key] = base
+            else:
+                base = existing
+            # Unión de autores por nombre normalizado, preservando orden de llegada
+            seen = {GruplacNormalizer.normalized_name_key(a.display_name) for a in base.authors}
+            for a in existing.authors:
+                k = GruplacNormalizer.normalized_name_key(a.display_name)
+                if k and k not in seen:
+                    base.authors.append(a)
+                    seen.add(k)
+            # Rellenar identificadores faltantes con los del duplicado
+            base.doi = base.doi or existing.doi
+            base.issn = base.issn or existing.issn
+            base.isbn = base.isbn or existing.isbn
+            base.year = base.year or existing.year
+            # Recalcular el código canónico: si la fusión aportó un DOI, el código
+            # pasa a ser PRD_DOI_* y así reconcilia con la fuente CvLAC.
+            base.external_code = GruplacNormalizer.product_external_code(base.title, base.year, base.doi or "")
+        return [merged[k] for k in order], merged_count
+
+    @classmethod
     def parse(cls, html: str, source_url: str = "") -> ScrapedGroupData:
         soup = BeautifulSoup(html, "lxml")
         tables = soup.find_all("table")
@@ -302,12 +359,12 @@ class GruplacHtmlParser:
         for table in tables:
             rows = table.find_all("tr")
             if not rows: continue
-            header = GruplacNormalizer.normalize(rows[0].get_text(strip=True)).lower()
+            header = GruplacNormalizer.match_key(rows[0].get_text(strip=True))
             if "datos basicos" in header:
                 for row in rows[1:]:
                     cols = row.find_all("td")
                     if len(cols) == 2:
-                        k = GruplacNormalizer.normalize(cols[0].get_text(strip=True)).replace(":", "")
+                        k = GruplacNormalizer.match_key(cols[0].get_text(strip=True))
                         v = GruplacNormalizer.normalize(cols[1].get_text(strip=True))
                         basic_data[k] = v
                 break
@@ -315,12 +372,12 @@ class GruplacHtmlParser:
         group_header = soup.find("span", class_="celdaEncabezado")
         group_name = (
             GruplacNormalizer.normalize(group_header.get_text(strip=True))
-            if group_header else basic_data.get("Nombre del grupo", "Grupo Sin Nombre")
+            if group_header else basic_data.get("nombre del grupo", "Grupo Sin Nombre")
         )
 
         group_code = "COL0000000"
         for k, v in basic_data.items():
-            if "codigo" in k.lower():
+            if "codigo" in k:
                 group_code = v.strip()
                 break
 
@@ -330,7 +387,7 @@ class GruplacHtmlParser:
                 nro_clean = m_nro.group(1).lstrip("0")
                 group_code = f"COL{nro_clean.zfill(7)}"
 
-        leader_name = basic_data.get("Lider", basic_data.get("Lider del grupo", ""))
+        leader_name = basic_data.get("lider", basic_data.get("lider del grupo", ""))
 
         # -------------------------------------------------------------
         # 2. Instituciones que avalan
@@ -339,7 +396,7 @@ class GruplacHtmlParser:
         for table in tables:
             rows = table.find_all("tr")
             if not rows: continue
-            header = GruplacNormalizer.normalize(rows[0].get_text(strip=True)).lower()
+            header = GruplacNormalizer.match_key(rows[0].get_text(strip=True))
             if "instituciones" in header:
                 for row in rows[1:]:
                     txt = GruplacNormalizer.normalize(row.get_text(strip=True))
@@ -356,7 +413,7 @@ class GruplacHtmlParser:
         for table in tables:
             rows = table.find_all("tr")
             if not rows: continue
-            header = GruplacNormalizer.normalize(rows[0].get_text(strip=True)).lower()
+            header = GruplacNormalizer.match_key(rows[0].get_text(strip=True))
             if "plan estrat" in header:
                 for row in rows[1:]:
                     plan_text += " " + GruplacNormalizer.normalize(row.get_text(strip=True))
@@ -370,7 +427,7 @@ class GruplacHtmlParser:
         for table in tables:
             rows = table.find_all("tr")
             if not rows: continue
-            header = GruplacNormalizer.normalize(rows[0].get_text(strip=True)).lower()
+            header = GruplacNormalizer.match_key(rows[0].get_text(strip=True))
             if "lineas de investigacion" in header:
                 for row in rows[1:]:
                     txt = GruplacNormalizer.normalize(row.get_text(strip=True))
@@ -389,7 +446,7 @@ class GruplacHtmlParser:
         for table in tables:
             rows = table.find_all("tr")
             if not rows: continue
-            header = GruplacNormalizer.normalize(rows[0].get_text(strip=True)).lower()
+            header = GruplacNormalizer.match_key(rows[0].get_text(strip=True))
             if "integrantes del grupo" in header:
                 for row in rows[2:]:
                     cols = row.find_all("td")
@@ -455,7 +512,7 @@ class GruplacHtmlParser:
         for table in tables:
             rows = table.find_all("tr")
             if not rows: continue
-            header = GruplacNormalizer.normalize(rows[0].get_text(strip=True)).lower()
+            header = GruplacNormalizer.match_key(rows[0].get_text(strip=True))
 
             subtype_name = None
             section_label = ""
@@ -549,7 +606,7 @@ class GruplacHtmlParser:
         for table in tables:
             rows = table.find_all("tr")
             if not rows: continue
-            header = GruplacNormalizer.normalize(rows[0].get_text(strip=True)).lower()
+            header = GruplacNormalizer.match_key(rows[0].get_text(strip=True))
             if header == "proyectos":
                 for row in rows[1:]:
                     txt = GruplacNormalizer.normalize(row.get_text(strip=True))
@@ -564,18 +621,28 @@ class GruplacHtmlParser:
                         ))
                 break
 
+        # -------------------------------------------------------------
+        # 6b. Dedupe intra-página: la página GrupLAC lista el mismo
+        # producto varias veces (distinto bloque/sección). Como el código
+        # canónico es título+año, aquí fusionamos las apariciones:
+        # unión de autores y conservación del registro más completo.
+        # -------------------------------------------------------------
+        products, merged_count = cls._dedupe_products(products)
+        if merged_count:
+            warnings.append(f"{merged_count} productos repetidos en la página fueron fusionados por título+año")
+
         return ScrapedGroupData(
             group={
                 "external_code": group_code,
                 "name": group_name,
                 "leader_name": leader_name,
-                "classification": basic_data.get("Clasificacion", basic_data.get("Estado", "")),
-                "email": basic_data.get("E-mail", ""),
-                "website": basic_data.get("Pagina web", ""),
-                "city": basic_data.get("Ciudad", basic_data.get("Departamento - Ciudad", "")),
-                "department": basic_data.get("Departamento", ""),
-                "declared_creation_date": basic_data.get("Ano y mes de formacion", ""),
-                "knowledge_area": basic_data.get("Area de conocimiento", ""),
+                "classification": basic_data.get("clasificacion", basic_data.get("estado", "")),
+                "email": basic_data.get("e mail", ""),
+                "website": basic_data.get("pagina web", ""),
+                "city": basic_data.get("ciudad", basic_data.get("departamento ciudad", "")),
+                "department": basic_data.get("departamento", ""),
+                "declared_creation_date": basic_data.get("ano y mes de formacion", ""),
+                "knowledge_area": basic_data.get("area de conocimiento", ""),
             },
             institutions=institutions,
             members=members,

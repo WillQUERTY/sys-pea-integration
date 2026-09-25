@@ -24,8 +24,8 @@ import {
   Clock,
   XCircle,
 } from 'lucide-react'
-import { listGroups, listProducts, listResearchers, listValidationQueue } from '@/lib/api'
-import type { Group, Product } from '@/lib/types'
+import { getDashboardStats, listValidationQueue } from '@/lib/api'
+import type { Product } from '@/lib/types'
 import { Badge } from '@/components/ui/badge'
 import {
   Card,
@@ -103,23 +103,38 @@ const STAT_CONFIGS: StatConfig[] = [
 
 // ─── Dashboard ─────────────────────────────────────────────────────────────────
 export function Dashboard() {
-  const groups = useQuery({ queryKey: ['groups'], queryFn: () => listGroups() })
-  const researchers = useQuery({ queryKey: ['researchers'], queryFn: () => listResearchers() })
-  const products = useQuery({ queryKey: ['products'], queryFn: () => listProducts() })
+  const statsQuery = useQuery({ queryKey: ['dashboard-stats'], queryFn: getDashboardStats })
   const queue = useQuery({ queryKey: ['validation-queue'], queryFn: listValidationQueue })
 
-  const prodData: Product[] = products.data ?? []
-  const byYear = aggregateByYear(prodData)
-  const byStatus = aggregateByStatus(prodData)
+  const stats = statsQuery.data
+  const byYear = stats?.by_year ?? []
+  
+  const labels: Record<string, string> = {
+    valid: 'Validados',
+    pending: 'Pendientes',
+    rejected: 'Rechazados',
+    none: 'Sin estado',
+  }
+  const byStatus = Object.entries(stats?.validation ?? {}).map(([key, value]) => ({
+    key,
+    name: labels[key] ?? key,
+    value,
+  }))
+
+  const byClassification = Object.entries(stats?.groups_by_classification ?? {}).sort((a, b) => b[1] - a[1])
+
   const pendingInQueue = (queue.data ?? []).filter((i) => i.status === 'pending').length
-  const validCount = prodData.filter((p) => p.validation_status === 'valid').length
-  const rejectedCount = prodData.filter((p) => p.validation_status === 'rejected').length
-  const isLoading = groups.isLoading || researchers.isLoading || products.isLoading || queue.isLoading
+  const validCount = stats?.validation?.['valid'] ?? 0
+  const rejectedCount = stats?.validation?.['rejected'] ?? 0
+  const totalProducts = stats?.total_products ?? 0
+  const pendingCount = stats?.validation?.['pending'] ?? 0
+  
+  const isLoading = statsQuery.isLoading || queue.isLoading
 
   const statValues = [
-    groups.data?.length,
-    researchers.data?.length,
-    products.data?.length,
+    stats?.total_groups,
+    stats?.total_researchers,
+    stats?.total_products,
     queue.isLoading ? undefined : pendingInQueue,
   ]
 
@@ -158,9 +173,9 @@ export function Dashboard() {
 
         {/* Quick stats pills */}
         <div className='mt-4 grid gap-3 sm:grid-cols-3'>
-          <QuickStat icon={<CheckCircle2 className='h-4 w-4 text-emerald-500' />} label='Validados' value={validCount} loading={products.isLoading} color='text-emerald-600' />
+          <QuickStat icon={<CheckCircle2 className='h-4 w-4 text-emerald-500' />} label='Validados' value={validCount} loading={statsQuery.isLoading} color='text-emerald-600' />
           <QuickStat icon={<Clock className='h-4 w-4 text-amber-500' />} label='Pendientes en cola' value={pendingInQueue} loading={queue.isLoading} color='text-amber-600' />
-          <QuickStat icon={<XCircle className='h-4 w-4 text-rose-500' />} label='Rechazados' value={rejectedCount} loading={products.isLoading} color='text-rose-600' />
+          <QuickStat icon={<XCircle className='h-4 w-4 text-rose-500' />} label='Rechazados' value={rejectedCount} loading={statsQuery.isLoading} color='text-rose-600' />
         </div>
 
         {/* Charts */}
@@ -177,12 +192,12 @@ export function Dashboard() {
                 </div>
                 <div className='flex items-center gap-1 text-xs text-muted-foreground'>
                   <BookOpen className='h-3.5 w-3.5' />
-                  {prodData.length.toLocaleString()} total
+                  {totalProducts.toLocaleString()} total
                 </div>
               </div>
             </CardHeader>
             <CardContent className='ps-2'>
-              {products.isLoading ? (
+              {statsQuery.isLoading ? (
                 <Skeleton className='h-[300px] w-full' />
               ) : (
                 <ResponsiveContainer width='100%' height={300}>
@@ -216,7 +231,7 @@ export function Dashboard() {
               </CardDescription>
             </CardHeader>
             <CardContent>
-              {products.isLoading ? (
+              {statsQuery.isLoading ? (
                 <Skeleton className='h-[300px] w-full' />
               ) : (
                 <ResponsiveContainer width='100%' height={300}>
@@ -237,36 +252,41 @@ export function Dashboard() {
 
         {/* Bottom row */}
         <div className='mt-4 grid grid-cols-1 gap-4 lg:grid-cols-2'>
-          {/* Recent groups */}
+          {/* Group Classification */}
           <Card>
             <CardHeader className='pb-3'>
               <div className='flex items-center justify-between'>
                 <div>
-                  <CardTitle className='text-base'>Grupos recientes</CardTitle>
-                  <CardDescription className='text-xs'>Últimos grupos disponibles en el repositorio.</CardDescription>
+                  <CardTitle className='text-base'>Clasificación de Grupos</CardTitle>
+                  <CardDescription className='text-xs'>Distribución de grupos por categoría Minciencias.</CardDescription>
                 </div>
                 <ArrowUpRight className='h-4 w-4 text-muted-foreground' />
               </div>
             </CardHeader>
             <Separator />
             <CardContent className='pt-3'>
-              {groups.isLoading ? (
+              {statsQuery.isLoading ? (
                 <div className='space-y-3'>
                   {Array.from({ length: 5 }).map((_, i) => (
-                    <div key={i} className='flex items-center gap-3'>
-                      <Skeleton className='h-9 w-9 rounded-full' />
-                      <div className='flex-1 space-y-1.5'>
-                        <Skeleton className='h-3.5 w-3/4' />
-                        <Skeleton className='h-3 w-1/2' />
-                      </div>
-                    </div>
+                    <Skeleton key={i} className='h-9 w-full' />
                   ))}
                 </div>
               ) : (
-                <div className='space-y-3'>
-                  {(groups.data ?? []).slice(0, 6).map((g) => (
-                    <GroupRow key={g.id} group={g} />
-                  ))}
+                <div className='space-y-4 pt-2'>
+                  {byClassification.length === 0 ? (
+                    <div className='text-sm text-muted-foreground text-center py-4'>Sin datos de grupos</div>
+                  ) : (
+                    byClassification.map(([classification, count]) => (
+                      <ValidationBar 
+                        key={classification} 
+                        label={classification === 'Sin clasificar' ? 'No reconocidos' : `Categoría ${classification}`} 
+                        count={count} 
+                        total={stats?.total_groups ?? 1} 
+                        color='bg-blue-500' 
+                        lightColor='bg-blue-100 dark:bg-blue-950' 
+                      />
+                    ))
+                  )}
                 </div>
               )}
             </CardContent>
@@ -285,13 +305,13 @@ export function Dashboard() {
             </CardHeader>
             <Separator />
             <CardContent className='pt-4 space-y-4'>
-              {products.isLoading ? (
+              {statsQuery.isLoading ? (
                 <Skeleton className='h-40 w-full' />
               ) : (
                 <>
-                  <ValidationBar label='Validados' count={validCount} total={prodData.length} color='bg-emerald-500' lightColor='bg-emerald-100 dark:bg-emerald-950' />
-                  <ValidationBar label='Pendientes' count={prodData.filter((p) => !p.validation_status || p.validation_status === 'pending').length} total={prodData.length} color='bg-amber-500' lightColor='bg-amber-100 dark:bg-amber-950' />
-                  <ValidationBar label='Rechazados' count={rejectedCount} total={prodData.length} color='bg-rose-500' lightColor='bg-rose-100 dark:bg-rose-950' />
+                  <ValidationBar label='Validados' count={validCount} total={totalProducts} color='bg-emerald-500' lightColor='bg-emerald-100 dark:bg-emerald-950' />
+                  <ValidationBar label='Pendientes' count={pendingCount} total={totalProducts} color='bg-amber-500' lightColor='bg-amber-100 dark:bg-amber-950' />
+                  <ValidationBar label='Rechazados' count={rejectedCount} total={totalProducts} color='bg-rose-500' lightColor='bg-rose-100 dark:bg-rose-950' />
                   <Separator />
                   <div className='flex items-center justify-between text-sm'>
                     <span className='text-muted-foreground'>Cola de validación activa</span>
@@ -302,7 +322,7 @@ export function Dashboard() {
                   <div className='flex items-center justify-between text-sm'>
                     <span className='text-muted-foreground'>Tasa de validación</span>
                     <span className='font-semibold text-emerald-600 dark:text-emerald-400'>
-                      {prodData.length > 0 ? `${((validCount / prodData.length) * 100).toFixed(1)}%` : '—'}
+                      {totalProducts > 0 ? `${((validCount / totalProducts) * 100).toFixed(1)}%` : '—'}
                     </span>
                   </div>
                 </>
@@ -378,27 +398,7 @@ function QuickStat({ icon, label, value, loading, color }: { icon: React.ReactNo
   )
 }
 
-function GroupRow({ group }: { group: Group }) {
-  const initial = group.name?.[0]?.toUpperCase() ?? '?'
-  const hue = (group.name?.charCodeAt(0) ?? 0) * 17 % 360
-  return (
-    <div className='flex items-center gap-3'>
-      <div
-        className='flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-sm font-bold text-white'
-        style={{ background: `hsl(${hue} 55% 50%)` }}
-      >
-        {initial}
-      </div>
-      <div className='min-w-0 flex-1'>
-        <p className='truncate text-sm font-medium leading-tight'>{group.name}</p>
-        <p className='truncate text-xs text-muted-foreground'>{group.institution ?? group.external_code}</p>
-      </div>
-      {group.classification && (
-        <Badge variant='outline' className='shrink-0 text-xs'>{group.classification}</Badge>
-      )}
-    </div>
-  )
-}
+
 
 function ValidationBar({ label, count, total, color, lightColor }: { label: string; count: number; total: number; color: string; lightColor: string }) {
   const pct = total > 0 ? (count / total) * 100 : 0

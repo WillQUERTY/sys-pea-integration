@@ -45,7 +45,14 @@ export async function deleteGroup(id: number, soft: boolean = true) {
 }
 
 // --- Researchers ---
-export async function listResearchers(params?: { skip?: number; limit?: number; search?: string; status?: string }) {
+export async function listResearchers(params?: { 
+  skip?: number; 
+  limit?: number; 
+  search?: string; 
+  status?: string;
+  educational_level?: string;
+  category?: string;
+}) {
   const { data } = await api.get<Researcher[]>('/researchers', { params: { limit: 1000, ...params } })
   return data
 }
@@ -180,5 +187,20 @@ export async function performUndo() {
 }
 export async function clearUndoStack() {
   const { data } = await api.delete('/system/undo')
+  return data
+}
+
+// --- Dashboard ---
+export interface DashboardStats {
+  total_groups: number
+  total_researchers: number
+  total_products: number
+  validation: Record<string, number>
+  by_year: Array<{ year: string; count: number }>
+  groups_by_classification: Record<string, number>
+}
+
+export async function getDashboardStats() {
+  const { data } = await api.get<DashboardStats>('/dashboard/stats')
   return data
 }

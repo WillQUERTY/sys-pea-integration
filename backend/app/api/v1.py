@@ -22,6 +22,11 @@ def _reload_ram_from_db(conn_str: str) -> None:
 # System Initialization and Export
 # -------------------------------------------------------------------
 
+@router.get("/dashboard/stats", tags=["System"])
+async def get_dashboard_stats():
+    """Retrieve aggregated dashboard stats using SQL directly."""
+    return repository.get_dashboard_stats()
+
 class InitDatabaseRequest(BaseModel):
     connection_string: str
     replace_existing: bool = False
@@ -268,11 +273,22 @@ async def unlink_product_endpoint(group_id: int, product_id: int):
 # -------------------------------------------------------------------
 
 @router.get("/researchers", response_model=List[Researcher], tags=["Researchers"])
-async def list_researchers_endpoint(skip: int = 0, limit: int = 100, search: Optional[str] = None, status: Optional[str] = None):
+async def list_researchers_endpoint(
+    skip: int = 0, 
+    limit: int = 500, 
+    search: Optional[str] = None, 
+    status: Optional[str] = None,
+    educational_level: Optional[str] = None,
+    category: Optional[str] = None
+):
     """Return researchers with pagination, search and filtering."""
     all_res = repository.list_researchers()
-    if status:
+    if status and status != 'all':
         all_res = [r for r in all_res if r.status == status]
+    if educational_level and educational_level != 'all':
+        all_res = [r for r in all_res if r.highest_education_level == educational_level]
+    if category and category != 'all':
+        all_res = [r for r in all_res if r.classification_records == category]
     if search:
         s = search.lower()
         all_res = [r for r in all_res if s in r.first_names.lower() or s in r.last_names.lower() or s in r.external_code.lower()]

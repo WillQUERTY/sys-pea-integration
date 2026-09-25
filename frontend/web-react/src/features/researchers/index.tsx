@@ -1,4 +1,5 @@
 import { useState, useMemo } from 'react'
+import { Link } from '@tanstack/react-router'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { toast } from 'sonner'
 import { Sparkles, Plus, MoreHorizontal, Pencil, Trash2, DownloadCloud } from 'lucide-react'
@@ -135,9 +136,9 @@ export function Researchers() {
               {initial}
             </div>
             <div className='min-w-0'>
-              <p className='truncate text-sm font-medium'>
+              <Link to={`/researchers/${r.id}`} className='truncate text-sm font-medium hover:underline text-primary'>
                 {r.first_names} {r.last_names}
-              </p>
+              </Link>
               {r.institutional_email && (
                 <p className='truncate text-xs text-muted-foreground'>{r.institutional_email}</p>
               )}
@@ -196,9 +197,11 @@ export function Researchers() {
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align='end'>
-              <DropdownMenuItem onClick={() => handleEdit(r)}>
-                <Pencil className='mr-2 h-4 w-4' />
-                Editar
+              <DropdownMenuItem asChild>
+                <Link to={`/researchers/${r.id}`} className='cursor-pointer w-full'>
+                  <Pencil className='mr-2 h-4 w-4' />
+                  Ver / Editar Perfil
+                </Link>
               </DropdownMenuItem>
               <DropdownMenuSeparator />
               <DropdownMenuItem
@@ -245,6 +248,45 @@ export function Researchers() {
           searchPlaceholder='Buscar por nombre o código…'
           emptyMessage='No hay investigadores activos registrados.'
           defaultPageSize={10}
+          filters={[
+            {
+              key: 'status',
+              label: 'Estado',
+              options: [
+                { value: 'all', label: 'Todos' },
+                { value: 'active', label: 'Activos' },
+                { value: 'inactive', label: 'Inactivos' },
+              ]
+            },
+            {
+              key: 'educational_level',
+              label: 'Formación',
+              options: [
+                { value: 'all', label: 'Cualquiera' },
+                { value: 'Pregrado', label: 'Pregrado' },
+                { value: 'Especialización', label: 'Especialización' },
+                { value: 'Maestría', label: 'Maestría' },
+                { value: 'Doctorado', label: 'Doctorado' },
+              ]
+            },
+            {
+              key: 'category',
+              label: 'Categoría',
+              options: [
+                { value: 'all', label: 'Cualquiera' },
+                { value: 'Investigador Emérito', label: 'Emérito' },
+                { value: 'Investigador Senior', label: 'Senior' },
+                { value: 'Investigador Asociado', label: 'Asociado' },
+                { value: 'Investigador Junior', label: 'Junior' },
+              ]
+            }
+          ]}
+          filterFn={(r, filterValues) => {
+            if (filterValues.status && filterValues.status !== 'all' && r.status !== filterValues.status) return false
+            if (filterValues.educational_level && filterValues.educational_level !== 'all' && r.highest_education_level !== filterValues.educational_level) return false
+            if (filterValues.category && filterValues.category !== 'all' && r.classification_records !== filterValues.category) return false
+            return true
+          }}
           toolbarActions={
             <>
               <Button variant='outline' onClick={() => enrichAll.mutate()} disabled={enrichAll.isPending}>

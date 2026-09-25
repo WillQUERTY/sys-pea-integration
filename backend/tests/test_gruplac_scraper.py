@@ -79,6 +79,34 @@ class TestExternalCodes(unittest.TestCase):
         c2 = GruplacNormalizer.product_external_code("T", 2025, authors=["B Dos", "A Uno"])
         self.assertEqual(c1, c2)
 
+    def test_codigo_no_depende_del_contenido_de_autores(self):
+        """Dedupe: el mismo título+año con autores extraídos distinto da el mismo código."""
+        c1 = GruplacNormalizer.product_external_code("THERM-BREAST", 2020, authors=["A Uno"])
+        c2 = GruplacNormalizer.product_external_code("THERM-BREAST", 2020, authors=["A Uno", "B Dos"])
+        self.assertEqual(c1, c2)
+        c3 = GruplacNormalizer.product_external_code("THERM-BREAST", 2021, authors=["A Uno"])
+        self.assertNotEqual(c1, c3, "Años distintos deben producir códigos distintos")
+
+    def test_dedupe_products_fusiona_y_une_autores(self):
+        from backend.app.scraper import ScrapedAuthor, ScrapedProduct
+        code = GruplacNormalizer.product_external_code("Evento X", 2020)
+        p1 = ScrapedProduct(
+            title="Evento X", raw_text="corto", section="s", subtype_name="st",
+            year=2020, authors=[ScrapedAuthor(display_name="A Uno")], external_code=code,
+        )
+        p2 = ScrapedProduct(
+            title="Evento X", raw_text="texto mucho mas largo con detalle", section="s",
+            subtype_name="st", year=2020, doi="10.1/xyz",
+            authors=[ScrapedAuthor(display_name="A Uno"), ScrapedAuthor(display_name="B Dos")],
+            external_code=code,
+        )
+        merged, merged_count = GruplacHtmlParser._dedupe_products([p1, p2])
+        self.assertEqual(merged_count, 1)
+        self.assertEqual(len(merged), 1)
+        self.assertEqual([a.display_name for a in merged[0].authors], ["A Uno", "B Dos"])
+        self.assertEqual(merged[0].doi, "10.1/xyz")
+        self.assertEqual(merged[0].raw_text, "texto mucho mas largo con detalle")
+
 
 class TestParseFixture(unittest.TestCase):
     """§27.2/§27.3: extracción estructural sobre fixture HTML controlado."""
@@ -90,14 +118,16 @@ class TestParseFixture(unittest.TestCase):
     def test_datos_basicos_grupo(self):
         g = self.data.group
         self.assertEqual(g["external_code"], FIXTURE_GROUP_CODE)
-        self.assertIn("OPTICA", g["name"].upper())
+        # El almacenamiento conserva tildes; comparamos sin ellas
+        self.assertIn("OPTICA", GruplacNormalizer.normalized_name_key(g["name"]))
         self.assertEqual(g["leader_name"], "Juan Perez Garcia")
         self.assertEqual(g["department"], "Cesar")
 
     def test_instituciones_y_lineas(self):
         self.assertIn("UNIVERSIDAD POPULAR DEL CESAR", self.data.institutions)
         self.assertEqual(len(self.data.research_lines), 2)
-        self.assertIn("Optica e informatica", self.data.research_lines)
+        line_keys = [GruplacNormalizer.normalized_name_key(l) for l in self.data.research_lines]
+        self.assertIn("OPTICA E INFORMATICA", line_keys)
 
     def test_miembros_cod_rh_y_lider(self):
         self.assertEqual(len(self.data.members), 2)
@@ -158,7 +188,7 @@ class TestParseFixture(unittest.TestCase):
         self.assertEqual(len(self.data.projects), 1)
         proj = self.data.projects[0]
         self.assertEqual(proj.year, 2022)
-        self.assertIn("SENSORES OPTICOS", proj.title)
+        self.assertIn("SENSORES OPTICOS", GruplacNormalizer.normalized_name_key(proj.title))
         self.assertTrue(proj.raw_text, "Debe conservarse el texto original sin estructurar (§22)")
 
 

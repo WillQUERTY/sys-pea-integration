@@ -38,30 +38,42 @@ def initialize(mode: InitMode, source: str = "") -> bool:
         abpoxx_pybind.initialize(InitMode.Empty, "")
     return abpoxx_pybind.initialize(mode, source)
 
+def safe_get_str(obj, attr_name: str) -> Optional[str]:
+    try:
+        val = getattr(obj, attr_name)
+        return val
+    except UnicodeDecodeError:
+        return "[Error de Codificación]"
+
 def list_groups() -> List[Group]:
     core_groups = abpoxx_pybind.list_groups()
-    return [
-        Group(
-            id=g.id,
-            external_code=g.external_code,
-            name=g.name,
-            acronym=g.acronym,
-            institution=g.institution,
-            classification=g.classification,
-            description=g.description,
-            mission=g.mission,
-            vision=g.vision,
-            declared_creation_date=g.declared_creation_date,
-            knowledge_area=g.knowledge_area,
-            knowledge_subarea=g.knowledge_subarea,
-            city=g.city,
-            department=g.department,
-            website=g.website,
-            email=g.email,
-            leader_id=g.leader_id,
-            status=g.status
-        ) for g in core_groups
-    ]
+    groups_list = []
+    for g in core_groups:
+        try:
+            groups_list.append(Group(
+                id=g.id,
+                external_code=safe_get_str(g, 'external_code'),
+                name=safe_get_str(g, 'name'),
+                acronym=safe_get_str(g, 'acronym'),
+                institution=safe_get_str(g, 'institution'),
+                classification=safe_get_str(g, 'classification'),
+                description=safe_get_str(g, 'description'),
+                mission=safe_get_str(g, 'mission'),
+                vision=safe_get_str(g, 'vision'),
+                declared_creation_date=safe_get_str(g, 'declared_creation_date'),
+                knowledge_area=safe_get_str(g, 'knowledge_area'),
+                knowledge_subarea=safe_get_str(g, 'knowledge_subarea'),
+                city=safe_get_str(g, 'city'),
+                department=safe_get_str(g, 'department'),
+                website=safe_get_str(g, 'website'),
+                email=safe_get_str(g, 'email'),
+                leader_id=g.leader_id,
+                status=safe_get_str(g, 'status')
+            ))
+        except Exception as e:
+            logger.error(f"Error parseando grupo: {e}")
+            continue
+    return groups_list
 
 def get_group(group_id: int) -> Group:
     g = abpoxx_pybind.get_group(group_id)
@@ -69,23 +81,23 @@ def get_group(group_id: int) -> Group:
         raise KeyError(f"Group {group_id} not found")
     return Group(
         id=g.id,
-        external_code=g.external_code,
-        name=g.name,
-        acronym=g.acronym,
-        institution=g.institution,
-        classification=g.classification,
-        description=g.description,
-        mission=g.mission,
-        vision=g.vision,
-        declared_creation_date=g.declared_creation_date,
-        knowledge_area=g.knowledge_area,
-        knowledge_subarea=g.knowledge_subarea,
-        city=g.city,
-        department=g.department,
-        website=g.website,
-        email=g.email,
+        external_code=safe_get_str(g, 'external_code'),
+        name=safe_get_str(g, 'name'),
+        acronym=safe_get_str(g, 'acronym'),
+        institution=safe_get_str(g, 'institution'),
+        classification=safe_get_str(g, 'classification'),
+        description=safe_get_str(g, 'description'),
+        mission=safe_get_str(g, 'mission'),
+        vision=safe_get_str(g, 'vision'),
+        declared_creation_date=safe_get_str(g, 'declared_creation_date'),
+        knowledge_area=safe_get_str(g, 'knowledge_area'),
+        knowledge_subarea=safe_get_str(g, 'knowledge_subarea'),
+        city=safe_get_str(g, 'city'),
+        department=safe_get_str(g, 'department'),
+        website=safe_get_str(g, 'website'),
+        email=safe_get_str(g, 'email'),
         leader_id=g.leader_id,
-        status=g.status
+        status=safe_get_str(g, 'status')
     )
 
 def create_group(group: Group) -> Group:
@@ -190,24 +202,29 @@ def delete_group(group_id: int, soft: bool = True, skip_undo: bool = False) -> b
 
 def list_researchers() -> List[Researcher]:
     core_items = abpoxx_pybind.list_researchers()
-    return [
-        Researcher(
-            id=r.id,
-            external_code=r.external_code,
-            identification_type=r.identification_type,
-            identification_number=r.identification_number,
-            first_names=r.first_names,
-            last_names=r.last_names,
-            nationality=r.nationality,
-            country_of_residence=r.country_of_residence,
-            institutional_email=r.institutional_email,
-            orcid=r.orcid,
-            highest_education_level=r.highest_education_level,
-            education_records=r.education_records,
-            classification_records=r.classification_records,
-            status=r.status
-        ) for r in core_items
-    ]
+    res_list = []
+    for r in core_items:
+        try:
+            res_list.append(Researcher(
+                id=r.id,
+                external_code=safe_get_str(r, 'external_code'),
+                identification_type=safe_get_str(r, 'identification_type'),
+                identification_number=safe_get_str(r, 'identification_number'),
+                first_names=safe_get_str(r, 'first_names'),
+                last_names=safe_get_str(r, 'last_names'),
+                nationality=safe_get_str(r, 'nationality'),
+                country_of_residence=safe_get_str(r, 'country_of_residence'),
+                institutional_email=safe_get_str(r, 'institutional_email'),
+                orcid=safe_get_str(r, 'orcid'),
+                highest_education_level=safe_get_str(r, 'highest_education_level'),
+                education_records=safe_get_str(r, 'education_records'),
+                classification_records=safe_get_str(r, 'classification_records'),
+                status=safe_get_str(r, 'status')
+            ))
+        except Exception as e:
+            logger.error(f"Error parseando investigador: {e}")
+            continue
+    return res_list
 
 def get_researcher(res_id: int) -> Researcher:
     r = abpoxx_pybind.get_researcher(res_id)
@@ -215,19 +232,19 @@ def get_researcher(res_id: int) -> Researcher:
         raise KeyError(f"Researcher {res_id} not found")
     return Researcher(
         id=r.id,
-        external_code=r.external_code,
-        identification_type=r.identification_type,
-        identification_number=r.identification_number,
-        first_names=r.first_names,
-        last_names=r.last_names,
-        nationality=r.nationality,
-        country_of_residence=r.country_of_residence,
-        institutional_email=r.institutional_email,
-        orcid=r.orcid,
-        highest_education_level=r.highest_education_level,
-        education_records=r.education_records,
-        classification_records=r.classification_records,
-        status=r.status
+        external_code=safe_get_str(r, 'external_code'),
+        identification_type=safe_get_str(r, 'identification_type'),
+        identification_number=safe_get_str(r, 'identification_number'),
+        first_names=safe_get_str(r, 'first_names'),
+        last_names=safe_get_str(r, 'last_names'),
+        nationality=safe_get_str(r, 'nationality'),
+        country_of_residence=safe_get_str(r, 'country_of_residence'),
+        institutional_email=safe_get_str(r, 'institutional_email'),
+        orcid=safe_get_str(r, 'orcid'),
+        highest_education_level=safe_get_str(r, 'highest_education_level'),
+        education_records=safe_get_str(r, 'education_records'),
+        classification_records=safe_get_str(r, 'classification_records'),
+        status=safe_get_str(r, 'status')
     )
 
 def create_researcher(res: Researcher) -> Researcher:
@@ -324,56 +341,69 @@ def delete_researcher(res_id: int, soft: bool = True, skip_undo: bool = False) -
 
 def list_products() -> List[Product]:
     core_items = abpoxx_pybind.list_products()
-    return [
-        Product(
-            id=p.id,
-            external_code=p.external_code,
-            title=p.title,
-            description=p.description,
-            family_id=p.family_id,
-            subtype_id=p.subtype_id,
-            quality_category_id=p.quality_category_id,
-            obtained_date=p.obtained_date,
-            publication_date=p.publication_date,
-            validation_status=p.validation_status,
-            language=p.language,
-            country=p.country,
-            doi=p.doi,
-            isbn=p.isbn,
-            issn=p.issn,
-            url=p.url,
-            evidence=p.evidence,
-            specialized_attributes=p.specialized_attributes,
-            status=p.status,
-            year=p.year or (int(p.obtained_date[:4]) if p.obtained_date and p.obtained_date[:4].isdigit() else (int(p.publication_date[:4]) if p.publication_date and p.publication_date[:4].isdigit() else 0))
-        ) for p in core_items
-    ]
+    products_list = []
+    for p in core_items:
+        try:
+            obt_date = safe_get_str(p, 'obtained_date')
+            pub_date = safe_get_str(p, 'publication_date')
+            y = p.year or (int(obt_date[:4]) if obt_date and obt_date[:4].isdigit() else (int(pub_date[:4]) if pub_date and pub_date[:4].isdigit() else 0))
+            
+            products_list.append(Product(
+                id=p.id,
+                external_code=safe_get_str(p, 'external_code'),
+                title=safe_get_str(p, 'title'),
+                description=safe_get_str(p, 'description'),
+                family_id=p.family_id,
+                subtype_id=p.subtype_id,
+                quality_category_id=p.quality_category_id,
+                obtained_date=obt_date,
+                publication_date=pub_date,
+                validation_status=safe_get_str(p, 'validation_status'),
+                language=safe_get_str(p, 'language'),
+                country=safe_get_str(p, 'country'),
+                doi=safe_get_str(p, 'doi'),
+                isbn=safe_get_str(p, 'isbn'),
+                issn=safe_get_str(p, 'issn'),
+                url=safe_get_str(p, 'url'),
+                evidence=safe_get_str(p, 'evidence'),
+                specialized_attributes=safe_get_str(p, 'specialized_attributes'),
+                status=safe_get_str(p, 'status'),
+                year=y
+            ))
+        except Exception as e:
+            logger.error(f"Error parseando producto: {e}")
+            continue
+    return products_list
 
 def get_product(prod_id: int) -> Product:
     p = abpoxx_pybind.get_product(prod_id)
     if p is None:
         raise KeyError(f"Product {prod_id} not found")
+    obt_date = safe_get_str(p, 'obtained_date')
+    pub_date = safe_get_str(p, 'publication_date')
+    y = p.year or (int(obt_date[:4]) if obt_date and obt_date[:4].isdigit() else (int(pub_date[:4]) if pub_date and pub_date[:4].isdigit() else 0))
+
     return Product(
         id=p.id,
-        external_code=p.external_code,
-        title=p.title,
-        description=p.description,
+        external_code=safe_get_str(p, 'external_code'),
+        title=safe_get_str(p, 'title'),
+        description=safe_get_str(p, 'description'),
         family_id=p.family_id,
         subtype_id=p.subtype_id,
         quality_category_id=p.quality_category_id,
-        obtained_date=p.obtained_date,
-        publication_date=p.publication_date,
-        validation_status=p.validation_status,
-        language=p.language,
-        country=p.country,
-        doi=p.doi,
-        isbn=p.isbn,
-        issn=p.issn,
-        url=p.url,
-        evidence=p.evidence,
-        specialized_attributes=p.specialized_attributes,
-        status=p.status,
-        year=p.year or (int(p.obtained_date[:4]) if p.obtained_date and p.obtained_date[:4].isdigit() else (int(p.publication_date[:4]) if p.publication_date and p.publication_date[:4].isdigit() else 0))
+        obtained_date=obt_date,
+        publication_date=pub_date,
+        validation_status=safe_get_str(p, 'validation_status'),
+        language=safe_get_str(p, 'language'),
+        country=safe_get_str(p, 'country'),
+        doi=safe_get_str(p, 'doi'),
+        isbn=safe_get_str(p, 'isbn'),
+        issn=safe_get_str(p, 'issn'),
+        url=safe_get_str(p, 'url'),
+        evidence=safe_get_str(p, 'evidence'),
+        specialized_attributes=safe_get_str(p, 'specialized_attributes'),
+        status=safe_get_str(p, 'status'),
+        year=y
     )
 
 def create_product(prod: Product) -> Product:
@@ -843,4 +873,45 @@ def vq_pending_count() -> int:
 
 def vq_clear():
     abpoxx_pybind.vq_clear()
+
+def get_dashboard_stats() -> dict:
+    import pyodbc
+    if not _active_connection_string:
+        return {}
+    
+    with pyodbc.connect(_active_connection_string) as conn:
+        cur = conn.cursor()
+        
+        cur.execute("SELECT COUNT(*) FROM ResearchGroup WHERE status != 'inactive'")
+        total_groups = cur.fetchone()[0]
+        
+        cur.execute("SELECT COUNT(*) FROM Researcher WHERE status != 'inactive'")
+        total_researchers = cur.fetchone()[0]
+        
+        cur.execute("SELECT COUNT(*) FROM Product WHERE status != 'inactive'")
+        total_products = cur.fetchone()[0]
+        
+        cur.execute("SELECT ISNULL(validation_status, 'pending'), COUNT(*) FROM Product WHERE status != 'inactive' GROUP BY ISNULL(validation_status, 'pending')")
+        validation_counts = {row[0]: row[1] for row in cur.fetchall()}
+        
+        cur.execute("SELECT ISNULL(YEAR(publication_date), YEAR(obtained_date)) as yr, COUNT(*) FROM Product WHERE status != 'inactive' GROUP BY ISNULL(YEAR(publication_date), YEAR(obtained_date))")
+        year_counts = []
+        for row in cur.fetchall():
+            yr = row[0]
+            if yr is not None:
+                year_counts.append({'year': str(yr), 'count': row[1]})
+        
+        year_counts.sort(key=lambda x: int(x['year']))
+        
+        cur.execute("SELECT ISNULL(NULLIF(LTRIM(RTRIM(classification)), ''), 'Sin clasificar'), COUNT(*) FROM ResearchGroup WHERE status != 'inactive' GROUP BY ISNULL(NULLIF(LTRIM(RTRIM(classification)), ''), 'Sin clasificar')")
+        classification_counts = {row[0]: row[1] for row in cur.fetchall()}
+        
+        return {
+            'total_groups': total_groups,
+            'total_researchers': total_researchers,
+            'total_products': total_products,
+            'validation': validation_counts,
+            'by_year': year_counts,
+            'groups_by_classification': classification_counts,
+        }
 

@@ -15,6 +15,17 @@
   }
   body {
     @apply min-h-svh w-full bg-background text-foreground has-[div[data-variant='inset']]:bg-sidebar;
+    font-family: 'Public Sans', 'Inter', sans-serif;
+  }
+
+  /* Minimal Template Card Shadows */
+  [data-slot='card'] {
+    box-shadow: rgba(145, 158, 171, 0.2) 0px 0px 2px 0px, rgba(145, 158, 171, 0.12) 0px 12px 24px -4px;
+    border-radius: var(--radius);
+  }
+  
+  .dark [data-slot='card'] {
+    box-shadow: rgba(0, 0, 0, 0.4) 0px 0px 2px 0px, rgba(0, 0, 0, 0.4) 0px 12px 24px -4px;
   }
 
   /* Override Radix scroll locking for sticky headers */

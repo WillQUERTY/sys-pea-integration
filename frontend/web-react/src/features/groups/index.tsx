@@ -62,8 +62,8 @@ export function Groups() {
       searchable: (g) => `${g.name} ${g.acronym ?? ''}`,
       cell: (g) => (
         <Link
-          to='/groups/$groupId'
-          params={{ groupId: String(g.id) }}
+          to='/groups/$id'
+          params={{ id: String(g.id) }}
           className='flex items-center gap-3 hover:underline'
         >
           <div
@@ -115,9 +115,11 @@ export function Groups() {
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align='end'>
-            <DropdownMenuItem onClick={() => handleEdit(g)}>
-              <Pencil className='mr-2 h-4 w-4' />
-              Editar
+            <DropdownMenuItem asChild>
+              <Link to='/groups/$id' params={{ id: String(g.id) }} className='cursor-pointer w-full'>
+                <Pencil className='mr-2 h-4 w-4' />
+                Ver / Editar Perfil
+              </Link>
             </DropdownMenuItem>
             <DropdownMenuSeparator />
             <DropdownMenuItem
@@ -133,8 +135,7 @@ export function Groups() {
     },
   ], [delMutation])
 
-  // Filters to exclude inactive groups
-  const activeGroups = (groups.data ?? []).filter(g => g.status !== 'inactive')
+  // Filtering is now handled by DataTable
 
   return (
     <>
@@ -162,12 +163,41 @@ export function Groups() {
 
         <DataTable
           columns={columns}
-          data={activeGroups}
+          data={groups.data ?? []}
           loading={groups.isLoading}
           rowKey={(g) => g.id ?? g.external_code}
           searchPlaceholder='Buscar por nombre, sigla o código…'
-          emptyMessage='No hay grupos activos.'
+          emptyMessage='No hay grupos que coincidan.'
           defaultPageSize={10}
+          filters={[
+            {
+              key: 'status',
+              label: 'Estado',
+              options: [
+                { value: 'all', label: 'Todos' },
+                { value: 'active', label: 'Activos' },
+                { value: 'inactive', label: 'Inactivos' },
+              ],
+              defaultValue: 'active',
+            },
+            {
+              key: 'classification',
+              label: 'Clasificación',
+              options: [
+                { value: 'all', label: 'Cualquiera' },
+                { value: 'A1', label: 'A1' },
+                { value: 'A', label: 'A' },
+                { value: 'B', label: 'B' },
+                { value: 'C', label: 'C' },
+                { value: 'Reconocido', label: 'Reconocido' },
+              ]
+            }
+          ]}
+          filterFn={(g, filterValues) => {
+            if (filterValues.status && filterValues.status !== 'all' && g.status !== filterValues.status) return false
+            if (filterValues.classification && filterValues.classification !== 'all' && g.classification !== filterValues.classification) return false
+            return true
+          }}
         />
       </Main>
 

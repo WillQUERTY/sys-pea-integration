@@ -12,6 +12,7 @@ from dataclasses import dataclass, field
 from typing import Optional, List, Dict, Any
 import pyodbc
 from . import repository
+from .scraper import GruplacNormalizer
 
 logger = logging.getLogger("peai.cvlac")
 
@@ -316,6 +317,44 @@ class CvCommitService:
             quality_map = {row[1]: row[0] for row in cur.fetchall()}
             default_cat_id = quality_map.get("Sin Clasificar", 1)
 
+            # Mapa canónico título+año -> product_id de lo ya existente en el grupo.
+            # Reconciliación cross-source: si el GrupLAC ya trajo el producto sin DOI
+            # (o con DOI distinto por typo), el CvLAC lo reutiliza en vez de duplicar.
+            canon_map: Dict[str, int] = {}
+            if db_group_id:
+                cur.execute("""
+                    SELECT p.id, p.title, p.year FROM Product p
+                    JOIN GroupProductLink g ON g.product_id = p.id
+                    WHERE g.group_id = ?
+                """, db_group_id)
+                for row in cur.fetchall():
+                    canon_map[f"{GruplacNormalizer.normalized_name_key(row[1])}|{row[2] or ''}"] = row[0]
+
+            def _find_or_insert_product(p_code: str, title: str, year, doi, subtype_id: int, family_id: int = 1) -> int:
+                nonlocal new_products
+                cur.execute("SELECT id, doi FROM Product WHERE external_code = ?", p_code)
+                row = cur.fetchone()
+                if row:
+                    # Backfill de DOI si el registro previo no lo tenía
+                    if doi and not row[1]:
+                        cur.execute("UPDATE Product SET doi = ? WHERE id = ?", doi, row[0])
+                    return row[0]
+                canon_key = f"{GruplacNormalizer.normalized_name_key(title)}|{year or ''}"
+                existing_id = canon_map.get(canon_key)
+                if existing_id:
+                    if doi:
+                        cur.execute("UPDATE Product SET doi = COALESCE(doi, ?) WHERE id = ?", doi, existing_id)
+                    return existing_id
+                cur.execute("""
+                    INSERT INTO Product (external_code, title, family_id, subtype_id, year, doi, validation_status, quality_category_id, created_at)
+                    OUTPUT INSERTED.id
+                    VALUES (?, ?, ?, ?, ?, ?, 'pending', ?, GETDATE());
+                """, p_code, title[:500], family_id, subtype_id, year, doi or None, default_cat_id)
+                new_id = cur.fetchone()[0]
+                canon_map[canon_key] = new_id
+                new_products += 1
+                return new_id
+
             # Subtipos
             # Subtipo 1 = Articulos de investigacion (family 1)
             # Subtipo 3 = Capitulos de libro resultado de investigacion (family 1)
@@ -328,21 +367,11 @@ class CvCommitService:
             for art in cv.articles:
                 total_records += 1
                 subtype_id = 1  # Articulos de investigacion
-                p_code = f"DOI:{art.doi}" if art.doi else f"ART-{hashlib.md5(art.title.encode()).hexdigest()[:8]}"
+                # Código canónico compartido con GrupLAC: mismo producto detectado
+                # en ambas fuentes reconcilia en una sola fila (dedupe cross-source).
+                p_code = GruplacNormalizer.product_external_code(art.title, art.year, art.doi)
                 clean_title = art.title[:500]
-
-                cur.execute("SELECT id FROM Product WHERE external_code = ?", p_code)
-                p_row = cur.fetchone()
-                if p_row:
-                    p_id = p_row[0]
-                else:
-                    cur.execute("""
-                        INSERT INTO Product (external_code, title, family_id, subtype_id, year, doi, validation_status, quality_category_id, created_at)
-                        OUTPUT INSERTED.id
-                        VALUES (?, ?, 1, ?, ?, ?, 'pending', ?, GETDATE());
-                    """, p_code, clean_title, subtype_id, art.year, art.doi or None, default_cat_id)
-                    p_id = cur.fetchone()[0]
-                    new_products += 1
+                p_id = _find_or_insert_product(p_code, art.title, art.year, art.doi, subtype_id)
 
                 # Autores: Camila es institucional, los demás son externos
                 for idx, auth_name in enumerate(art.authors, start=1):
@@ -383,21 +412,9 @@ class CvCommitService:
             for cap in cv.book_chapters:
                 total_records += 1
                 subtype_id = 3  # Capitulos de libro
-                p_code = f"ISBN:{cap.isbn}" if cap.isbn else f"CAP-{hashlib.md5(cap.title.encode()).hexdigest()[:8]}"
+                p_code = GruplacNormalizer.product_external_code(cap.title, cap.year)
                 clean_title = cap.title[:500]
-
-                cur.execute("SELECT id FROM Product WHERE external_code = ?", p_code)
-                p_row = cur.fetchone()
-                if p_row:
-                    p_id = p_row[0]
-                else:
-                    cur.execute("""
-                        INSERT INTO Product (external_code, title, family_id, subtype_id, year, validation_status, quality_category_id, created_at)
-                        OUTPUT INSERTED.id
-                        VALUES (?, ?, 1, ?, ?, 'pending', ?, GETDATE());
-                    """, p_code, clean_title, subtype_id, cap.year, default_cat_id)
-                    p_id = cur.fetchone()[0]
-                    new_products += 1
+                p_id = _find_or_insert_product(p_code, cap.title, cap.year, None, subtype_id)
 
                 # Autor Camila
                 cur.execute("""
@@ -426,21 +443,9 @@ class CvCommitService:
             for ev in cv.events:
                 total_records += 1
                 subtype_id = 9  # Eventos cientificos con memorias (family 3)
-                p_code = f"EV-{hashlib.md5(ev.product_title.encode()).hexdigest()[:8]}"
+                p_code = GruplacNormalizer.product_external_code(ev.product_title, ev.year)
                 clean_title = ev.product_title[:500]
-
-                cur.execute("SELECT id FROM Product WHERE external_code = ?", p_code)
-                p_row = cur.fetchone()
-                if p_row:
-                    p_id = p_row[0]
-                else:
-                    cur.execute("""
-                        INSERT INTO Product (external_code, title, family_id, subtype_id, year, validation_status, quality_category_id, created_at)
-                        OUTPUT INSERTED.id
-                        VALUES (?, ?, 3, ?, ?, 'pending', ?, GETDATE());
-                    """, p_code, clean_title, subtype_id, ev.year, default_cat_id)
-                    p_id = cur.fetchone()[0]
-                    new_products += 1
+                p_id = _find_or_insert_product(p_code, ev.product_title, ev.year, None, subtype_id, family_id=3)
 
                 cur.execute("""
                     IF NOT EXISTS (SELECT 1 FROM ProductAuthor WHERE product_id = ? AND researcher_id = ?)

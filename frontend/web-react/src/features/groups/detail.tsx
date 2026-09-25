@@ -1,43 +1,148 @@
-import { useQuery } from '@tanstack/react-query'
-import { useParams } from '@tanstack/react-router'
-import { getGroup, getGroupMembers, getGroupProducts } from '@/lib/api'
-import { Badge } from '@/components/ui/badge'
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from '@/components/ui/card'
-import { Skeleton } from '@/components/ui/skeleton'
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from '@/components/ui/table'
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
-import { ConfigDrawer } from '@/components/config-drawer'
+import { useEffect, useState } from 'react'
+import { useParams, Link } from '@tanstack/react-router'
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
+import { toast } from 'sonner'
+import { 
+  ArrowLeft, 
+  Users as GroupIcon, 
+  BookOpen, 
+  UserCircle2, 
+  Save,
+  Building2,
+  Trophy,
+  Info
+} from 'lucide-react'
+
+import { getGroup, updateGroup, getGroupMembers, getGroupProducts } from '@/lib/api'
+import type { Group } from '@/lib/types'
+
 import { Header } from '@/components/layout/header'
 import { Main } from '@/components/layout/main'
 import { ProfileDropdown } from '@/components/profile-dropdown'
-import { Search } from '@/components/search'
 import { ThemeSwitch } from '@/components/theme-switch'
+import { ConfigDrawer } from '@/components/config-drawer'
+
+import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
+import { Textarea } from '@/components/ui/textarea'
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
+import { Skeleton } from '@/components/ui/skeleton'
+import { Badge } from '@/components/ui/badge'
+
+import { DataTable } from '@/components/data-table'
+
+export function ValidationBadge({ status }: { status?: string | null }) {
+  if (status === 'valid') return <Badge className='bg-green-600 text-white hover:bg-green-700'>Validado</Badge>
+  if (status === 'rejected') return <Badge variant='destructive'>Rechazado</Badge>
+  return <Badge variant='secondary'>Pendiente</Badge>
+}
 
 export function GroupDetail() {
-  const { groupId } = useParams({ from: '/_authenticated/groups/$groupId' })
-  const id = Number(groupId)
+  const { id } = useParams({ from: '/_authenticated/groups/$id' })
+  const queryClient = useQueryClient()
+  
+  const groupId = Number(id)
 
-  const group = useQuery({ queryKey: ['groups', id], queryFn: () => getGroup(id) })
-  const members = useQuery({ queryKey: ['groups', id, 'members'], queryFn: () => getGroupMembers(id) })
-  const products = useQuery({ queryKey: ['groups', id, 'products'], queryFn: () => getGroupProducts(id) })
+  const { data: group, isLoading } = useQuery({
+    queryKey: ['groups', groupId],
+    queryFn: () => getGroup(groupId),
+  })
+
+  const { data: members, isLoading: isLoadingMembers } = useQuery({
+    queryKey: ['groups', groupId, 'members'],
+    queryFn: () => getGroupMembers(groupId),
+  })
+
+  const { data: products, isLoading: isLoadingProducts } = useQuery({
+    queryKey: ['groups', groupId, 'products'],
+    queryFn: () => getGroupProducts(groupId),
+  })
+
+  const [formData, setFormData] = useState<Partial<Group>>({})
+
+  // Sync state when group loads
+  useEffect(() => {
+    if (group) {
+      setFormData({
+        name: group.name,
+        external_code: group.external_code,
+        acronym: group.acronym ?? '',
+        institution: group.institution ?? '',
+        classification: group.classification ?? '',
+        description: group.description ?? '',
+        mission: group.mission ?? '',
+        vision: group.vision ?? '',
+        knowledge_area: group.knowledge_area ?? '',
+        city: group.city ?? '',
+      })
+    }
+  }, [group])
+
+  const mutation = useMutation({
+    mutationFn: (data: Partial<Group>) => updateGroup(groupId, data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['groups', groupId] })
+      queryClient.invalidateQueries({ queryKey: ['groups'] })
+      toast.success('Información del grupo actualizada correctamente')
+    },
+    onError: (e) => {
+      toast.error(e instanceof Error ? e.message : 'Error al guardar el grupo')
+    },
+  })
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault()
+    mutation.mutate(formData)
+  }
+
+  if (isLoading) {
+    return (
+      <>
+        <Header>
+          <div className='ms-auto flex items-center space-x-4'>
+            <ThemeSwitch />
+            <ConfigDrawer />
+            <ProfileDropdown />
+          </div>
+        </Header>
+        <Main>
+          <div className="space-y-6">
+            <Skeleton className="h-40 w-full rounded-xl" />
+            <Skeleton className="h-[400px] w-full rounded-xl" />
+          </div>
+        </Main>
+      </>
+    )
+  }
+
+  if (!group) {
+    return (
+      <Main>
+        <div className="text-center py-20">
+          <h2 className="text-2xl font-bold">Grupo no encontrado</h2>
+          <Button asChild className="mt-4">
+            <Link to="/groups">Volver a Grupos</Link>
+          </Button>
+        </div>
+      </Main>
+    )
+  }
+
+  const hue = (group.name?.charCodeAt(0) ?? 0) * 45 % 360
+  const initial = group.name?.[0]?.toUpperCase() ?? 'G'
 
   return (
     <>
       <Header>
-        <Search />
+        <div className='flex items-center gap-4'>
+          <Button variant='ghost' size='icon' asChild className='h-8 w-8 rounded-full'>
+            <Link to="/groups">
+              <ArrowLeft className='h-4 w-4' />
+            </Link>
+          </Button>
+          <h1 className='text-sm font-medium'>Perfil del Grupo</h1>
+        </div>
         <div className='ms-auto flex items-center space-x-4'>
           <ThemeSwitch />
           <ConfigDrawer />
@@ -45,108 +150,259 @@ export function GroupDetail() {
         </div>
       </Header>
 
-      <Main>
-        {group.isLoading ? (
-          <Skeleton className='mb-4 h-20 w-full' />
-        ) : group.data ? (
-          <div className='mb-4'>
-            <h1 className='text-2xl font-bold tracking-tight'>{group.data.name}</h1>
-            <p className='text-muted-foreground'>
-              {group.data.institution ?? '—'} · <span className='font-mono text-xs'>{group.data.external_code}</span>
-              {group.data.classification && <> · <Badge variant='outline'>{group.data.classification}</Badge></>}
-            </p>
+      <Main className='p-0 sm:p-6'>
+        {/* Cover & Profile Header */}
+        <div className='relative mb-8 rounded-b-none sm:rounded-2xl overflow-hidden border border-border/50 bg-card shadow-sm'>
+          <div className='h-32 bg-gradient-to-r from-blue-500/20 to-purple-500/20 relative'>
+            <div className='absolute inset-0 bg-[url("https://www.transparenttextures.com/patterns/cubes.png")] opacity-10' />
           </div>
-        ) : (
-          <p className='text-muted-foreground'>Grupo no encontrado.</p>
-        )}
+          
+          <div className='px-6 pb-6 pt-0 relative'>
+            <div className='flex flex-col sm:flex-row gap-6 items-start sm:items-end -mt-12'>
+              <div 
+                className='h-24 w-24 rounded-2xl border-4 border-card flex items-center justify-center text-4xl font-bold text-white shadow-lg shrink-0'
+                style={{ background: `hsl(${hue} 60% 50%)` }}
+              >
+                {initial}
+              </div>
+              
+              <div className='flex-1 pb-1'>
+                <h1 className='text-2xl font-bold line-clamp-1'>{group.name}</h1>
+                <div className='flex flex-wrap items-center gap-2 mt-2'>
+                  {group.classification && (
+                    <Badge variant='secondary' className='text-xs font-semibold bg-primary/10 text-primary'>
+                      Categoría {group.classification}
+                    </Badge>
+                  )}
+                  {group.institution && (
+                    <span className='text-sm text-muted-foreground font-medium flex items-center gap-1'>
+                      <Building2 className="h-3 w-3" />
+                      {group.institution}
+                    </span>
+                  )}
+                  <Badge variant='outline' className='text-xs font-mono text-muted-foreground ml-auto sm:ml-2'>
+                    {group.external_code}
+                  </Badge>
+                </div>
+              </div>
+              
+              <div className='pb-1 w-full sm:w-auto'>
+                <Button 
+                  onClick={handleSubmit} 
+                  disabled={mutation.isPending}
+                  className='w-full sm:w-auto rounded-xl shadow-md'
+                >
+                  <Save className='mr-2 h-4 w-4' />
+                  {mutation.isPending ? 'Guardando...' : 'Guardar Cambios'}
+                </Button>
+              </div>
+            </div>
+          </div>
+        </div>
 
-        <Tabs defaultValue='members' className='space-y-4'>
-          <TabsList>
-            <TabsTrigger value='members'>Integrantes ({members.data?.length ?? 0})</TabsTrigger>
-            <TabsTrigger value='products'>Productos ({products.data?.length ?? 0})</TabsTrigger>
+        {/* Tabs */}
+        <Tabs defaultValue="perfil" className="space-y-6">
+          <TabsList className="bg-transparent h-12 p-0 border-b border-border/50 w-full justify-start rounded-none overflow-x-auto">
+            <TabsTrigger 
+              value="perfil" 
+              className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:shadow-none px-6 h-full"
+            >
+              <Info className='mr-2 h-4 w-4' /> Información General
+            </TabsTrigger>
+            <TabsTrigger 
+              value="integrantes" 
+              className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:shadow-none px-6 h-full"
+            >
+              <UserCircle2 className='mr-2 h-4 w-4' /> Integrantes ({members?.length ?? 0})
+            </TabsTrigger>
+            <TabsTrigger 
+              value="productos" 
+              className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:shadow-none px-6 h-full"
+            >
+              <BookOpen className='mr-2 h-4 w-4' /> Productos ({products?.length ?? 0})
+            </TabsTrigger>
           </TabsList>
 
-          <TabsContent value='members'>
-            <Card>
-              <CardHeader>
-                <CardTitle>Integrantes</CardTitle>
-                <CardDescription>Multilista grupo ↔ investigadores.</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Nombre</TableHead>
-                      <TableHead>Apellidos</TableHead>
-                      <TableHead>ORCID</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {members.isLoading && (
-                      <TableRow>
-                        <TableCell colSpan={3}>
-                          <Skeleton className='h-5 w-full' />
-                        </TableCell>
-                      </TableRow>
-                    )}
-                    {(members.data ?? []).map((r) => (
-                      <TableRow key={r.id}>
-                        <TableCell className='font-medium'>{r.first_names}</TableCell>
-                        <TableCell>{r.last_names}</TableCell>
-                        <TableCell className='font-mono text-xs'>{r.orcid ?? '—'}</TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-              </CardContent>
-            </Card>
+          <TabsContent value="perfil" className="focus-visible:outline-none">
+            <form onSubmit={handleSubmit} className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              
+              {/* Información Básica */}
+              <div className="space-y-6">
+                <div className="bg-card border border-border/50 rounded-2xl p-6 shadow-sm">
+                  <div className='flex items-center gap-2 mb-6'>
+                    <div className='p-2 bg-blue-500/10 rounded-lg'>
+                      <GroupIcon className='h-4 w-4 text-blue-500' />
+                    </div>
+                    <h3 className="font-semibold text-lg">Información Básica</h3>
+                  </div>
+                  
+                  <div className="space-y-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="name">Nombre del Grupo</Label>
+                      <Input
+                        id="name"
+                        value={formData.name}
+                        onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                        required
+                        className='bg-muted/30 focus-visible:bg-transparent rounded-xl'
+                      />
+                    </div>
+                    <div className="grid grid-cols-2 gap-4">
+                      <div className="space-y-2">
+                        <Label htmlFor="acronym">Sigla</Label>
+                        <Input
+                          id="acronym"
+                          value={formData.acronym}
+                          onChange={(e) => setFormData({ ...formData, acronym: e.target.value })}
+                          className='bg-muted/30 focus-visible:bg-transparent rounded-xl'
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="external_code">Código GrupLAC</Label>
+                        <Input
+                          id="external_code"
+                          value={formData.external_code}
+                          onChange={(e) => setFormData({ ...formData, external_code: e.target.value })}
+                          required
+                          className='bg-muted/30 focus-visible:bg-transparent rounded-xl font-mono text-sm'
+                        />
+                      </div>
+                    </div>
+                    <div className="grid grid-cols-2 gap-4">
+                      <div className="space-y-2">
+                        <Label htmlFor="institution">Institución</Label>
+                        <Input
+                          id="institution"
+                          value={formData.institution}
+                          onChange={(e) => setFormData({ ...formData, institution: e.target.value })}
+                          className='bg-muted/30 focus-visible:bg-transparent rounded-xl'
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="city">Ciudad</Label>
+                        <Input
+                          id="city"
+                          value={formData.city}
+                          onChange={(e) => setFormData({ ...formData, city: e.target.value })}
+                          className='bg-muted/30 focus-visible:bg-transparent rounded-xl'
+                        />
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Misión y Visión */}
+              <div className="bg-card border border-border/50 rounded-2xl p-6 shadow-sm">
+                <div className='flex items-center gap-2 mb-6'>
+                  <div className='p-2 bg-purple-500/10 rounded-lg'>
+                    <Trophy className='h-4 w-4 text-purple-500' />
+                  </div>
+                  <h3 className="font-semibold text-lg">Misión y Visión</h3>
+                </div>
+                
+                <div className="space-y-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="mission">Misión</Label>
+                    <Textarea
+                      id="mission"
+                      value={formData.mission}
+                      onChange={(e) => setFormData({ ...formData, mission: e.target.value })}
+                      rows={4}
+                      className='bg-muted/30 focus-visible:bg-transparent rounded-xl resize-none'
+                      placeholder="Misión del grupo..."
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="vision">Visión</Label>
+                    <Textarea
+                      id="vision"
+                      value={formData.vision}
+                      onChange={(e) => setFormData({ ...formData, vision: e.target.value })}
+                      rows={4}
+                      className='bg-muted/30 focus-visible:bg-transparent rounded-xl resize-none'
+                      placeholder="Visión del grupo..."
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="knowledge_area">Área de Conocimiento</Label>
+                    <Input
+                      id="knowledge_area"
+                      value={formData.knowledge_area}
+                      onChange={(e) => setFormData({ ...formData, knowledge_area: e.target.value })}
+                      className='bg-muted/30 focus-visible:bg-transparent rounded-xl'
+                    />
+                  </div>
+                </div>
+              </div>
+              
+            </form>
           </TabsContent>
 
-          <TabsContent value='products'>
-            <Card>
-              <CardHeader>
-                <CardTitle>Productos</CardTitle>
-                <CardDescription>Multilista grupo ↔ productos.</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Título</TableHead>
-                      <TableHead>Año</TableHead>
-                      <TableHead>Validación</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {products.isLoading && (
-                      <TableRow>
-                        <TableCell colSpan={3}>
-                          <Skeleton className='h-5 w-full' />
-                        </TableCell>
-                      </TableRow>
-                    )}
-                    {(products.data ?? []).slice(0, 100).map((p) => (
-                      <TableRow key={p.id}>
-                        <TableCell className='max-w-[520px] truncate font-medium'>{p.title}</TableCell>
-                        <TableCell>{p.year ?? (String(p.publication_date ?? '').slice(0, 4) || '—')}</TableCell>
-                        <TableCell>
-                          <ValidationBadge status={p.validation_status} />
-                        </TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-              </CardContent>
-            </Card>
+          <TabsContent value="integrantes" className="focus-visible:outline-none bg-card border border-border/50 rounded-2xl p-6 shadow-sm">
+            <h3 className="font-semibold text-lg mb-4">Investigadores vinculados</h3>
+            <DataTable
+              columns={[
+                {
+                  key: 'name',
+                  header: 'Nombre',
+                  searchable: (r) => `${r.first_names} ${r.last_names}`,
+                  cell: (r) => (
+                    <Link to={`/researchers/${r.id}`} className="font-medium text-primary hover:underline">
+                      {r.first_names} {r.last_names}
+                    </Link>
+                  )
+                },
+                {
+                  key: 'orcid',
+                  header: 'ORCID',
+                  cell: (r) => <span className='text-muted-foreground font-mono text-xs'>{r.orcid || '-'}</span>
+                },
+                {
+                  key: 'education',
+                  header: 'Formación',
+                  cell: (r) => r.highest_education_level ? <Badge variant="outline">{r.highest_education_level}</Badge> : '-'
+                }
+              ]}
+              data={members ?? []}
+              loading={isLoadingMembers}
+              rowKey={(r) => r.id!}
+              emptyMessage="No hay integrantes vinculados a este grupo."
+              searchPlaceholder="Buscar por nombre..."
+            />
+          </TabsContent>
+
+          <TabsContent value="productos" className="focus-visible:outline-none bg-card border border-border/50 rounded-2xl p-6 shadow-sm">
+            <h3 className="font-semibold text-lg mb-4">Productos del Grupo</h3>
+            <DataTable
+              columns={[
+                {
+                  key: 'title',
+                  header: 'Título del Producto',
+                  searchable: (p) => p.title,
+                  className: 'max-w-[400px]',
+                  cell: (p) => <span className='block truncate font-medium text-sm'>{p.title}</span>
+                },
+                {
+                  key: 'year',
+                  header: 'Año',
+                  cell: (p) => <span className='text-muted-foreground'>{p.year ?? (String(p.publication_date ?? '').slice(0, 4) || '-')}</span>
+                },
+                {
+                  key: 'status',
+                  header: 'Estado',
+                  cell: (p) => <ValidationBadge status={p.validation_status} />
+                }
+              ]}
+              data={products ?? []}
+              loading={isLoadingProducts}
+              rowKey={(p) => p.id!}
+              emptyMessage="Este grupo no tiene productos asociados."
+              searchPlaceholder="Buscar por título del producto..."
+            />
           </TabsContent>
         </Tabs>
       </Main>
     </>
   )
-}
-
-export function ValidationBadge({ status }: { status?: string | null }) {
-  if (status === 'valid') return <Badge className='bg-green-600'>Validado</Badge>
-  if (status === 'rejected') return <Badge variant='destructive'>Rechazado</Badge>
-  return <Badge variant='secondary'>Pendiente</Badge>
 }

@@ -5,7 +5,10 @@ import {
   ChevronsLeft,
   ChevronsRight,
   Search as SearchIcon,
+  Filter as FilterIcon,
+  X as XIcon,
 } from 'lucide-react'
+import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import {
@@ -24,6 +27,14 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table'
+import {
+  Sheet,
+  SheetContent,
+  SheetDescription,
+  SheetHeader,
+  SheetTitle,
+  SheetTrigger,
+} from '@/components/ui/sheet'
 
 // ─── Column definition ─────────────────────────────────────────────────────────
 export interface DataColumn<T> {
@@ -136,6 +147,16 @@ export function DataTable<T>({
     setPage(0)
   }
 
+  // Count active filters (not default)
+  const activeFiltersCount = Object.keys(filterValues).filter(k => filterValues[k] !== 'all').length
+
+  const clearFilters = () => {
+    const reset: Record<string, string> = {}
+    for (const f of filters) reset[f.key] = f.defaultValue ?? 'all'
+    setFilterValues(reset)
+    setPage(0)
+  }
+
   return (
     <div className='space-y-4'>
       {/* ── Toolbar ── */}
@@ -151,25 +172,65 @@ export function DataTable<T>({
           />
         </div>
 
-        {/* Filters */}
-        {filters.map((f) => (
-          <Select
-            key={f.key}
-            value={filterValues[f.key]}
-            onValueChange={(v) => updateFilter(f.key, v)}
-          >
-            <SelectTrigger className='w-[200px]'>
-              <SelectValue placeholder={f.label} />
-            </SelectTrigger>
-            <SelectContent>
-              {f.options.map((opt) => (
-                <SelectItem key={opt.value} value={opt.value}>
-                  {opt.label}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        ))}
+        {/* Filters Drawer */}
+        {filters.length > 0 && (
+          <Sheet>
+            <SheetTrigger asChild>
+              <Button variant='outline' className='relative'>
+                <FilterIcon className='mr-2 h-4 w-4' />
+                Filtros
+                {activeFiltersCount > 0 && (
+                  <Badge variant='default' className='absolute -right-2 -top-2 h-5 w-5 rounded-full p-0 flex items-center justify-center text-[10px]'>
+                    {activeFiltersCount}
+                  </Badge>
+                )}
+              </Button>
+            </SheetTrigger>
+            <SheetContent className='flex flex-col border-l-0 shadow-2xl sm:max-w-sm'>
+              <SheetHeader className='pb-4 border-b border-border/50'>
+                <div className='flex items-center gap-2'>
+                  <FilterIcon className='h-5 w-5 text-primary' />
+                  <SheetTitle className='text-lg'>Filtros avanzados</SheetTitle>
+                </div>
+                <SheetDescription className='text-xs'>
+                  Refina los resultados de la tabla.
+                </SheetDescription>
+              </SheetHeader>
+              
+              <div className='flex-1 overflow-y-auto px-6 py-5 space-y-6'>
+                {filters.map((f) => (
+                  <div key={f.key} className='space-y-1.5'>
+                    <label className='text-sm font-semibold text-foreground/80'>{f.label}</label>
+                    <Select
+                      value={filterValues[f.key]}
+                      onValueChange={(v) => updateFilter(f.key, v)}
+                    >
+                      <SelectTrigger className='w-full bg-muted/30 border-transparent hover:border-border transition-colors h-10 px-3.5 rounded-lg'>
+                        <SelectValue placeholder={f.label} />
+                      </SelectTrigger>
+                      <SelectContent className='rounded-lg shadow-lg'>
+                        {f.options.map((opt) => (
+                          <SelectItem key={opt.value} value={opt.value} className='rounded-md my-0.5 cursor-pointer'>
+                            {opt.label}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                ))}
+              </div>
+              
+              {activeFiltersCount > 0 && (
+                <div className='p-6 border-t border-border/50'>
+                  <Button variant='destructive' className='w-full rounded-xl h-11 font-semibold bg-rose-500/10 text-rose-600 hover:bg-rose-500/20 hover:text-rose-700 dark:bg-rose-500/20 dark:text-rose-400 dark:hover:bg-rose-500/30' onClick={clearFilters}>
+                    <XIcon className='mr-2 h-4 w-4' />
+                    Limpiar filtros ({activeFiltersCount})
+                  </Button>
+                </div>
+              )}
+            </SheetContent>
+          </Sheet>
+        )}
 
         {/* Spacer + toolbar actions */}
         {toolbarActions && <div className='ms-auto flex items-center gap-2'>{toolbarActions}</div>}
