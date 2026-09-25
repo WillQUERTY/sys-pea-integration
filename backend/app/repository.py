@@ -32,6 +32,9 @@ def initialize(mode: InitMode, source: str = "") -> bool:
     global _active_connection_string
     if mode == InitMode.Database:
         _active_connection_string = source
+        # Reset RAM antes de recargar: load_from_db inserta sin limpiar y
+        # duplicaria las estructuras si ya habia datos en memoria.
+        abpoxx_pybind.initialize(InitMode.Empty, "")
     return abpoxx_pybind.initialize(mode, source)
 
 def list_groups() -> List[Group]:
@@ -639,6 +642,9 @@ def save_to_db(connection_string: str) -> bool:
     return abpoxx_pybind.save_to_db(connection_string)
 
 def load_from_db(connection_string: str) -> bool:
+    # Reset RAM antes de recargar: el core C++ inserta sin limpiar y una
+    # recarga posterior a un commit duplicaria grupos/investigadores/productos.
+    abpoxx_pybind.initialize(InitMode.Empty, "")
     return abpoxx_pybind.load_from_db(connection_string)
 
 def load_from_file(path: str) -> bool:

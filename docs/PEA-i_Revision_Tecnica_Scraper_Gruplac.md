@@ -1265,23 +1265,48 @@ Las pruebas no deben depender siempre del sitio en vivo.
 
 El scraper podrá considerarse confiable cuando:
 
-- [ ] Los autores se extraigan desde estructura HTML.
-- [ ] No exista contaminación entre productos.
-- [ ] Las importaciones sean idempotentes.
-- [ ] Los productos entren como pendientes de validación.
-- [ ] Las relaciones producto-grupo se propongan antes de aprobarse.
-- [ ] Los periodos se normalicen y conserven su precisión.
-- [ ] No se oculten excepciones.
-- [ ] La confirmación use una transacción.
-- [ ] Exista vista previa.
-- [ ] Los códigos de producto sean estables.
-- [ ] Las categorías se resuelvan por código.
-- [ ] La importación conserve el HTML o dato original.
-- [ ] Existan pruebas con fixtures.
-- [ ] Se registre el ciclo completo de `ImportJob`.
-- [ ] Solo se recolecten datos públicos necesarios.
+- [x] Los autores se extraigan desde estructura HTML. *(líneas por `separator="\n"` + etiquetas; prueba `test_producto_con_doi`)*
+- [x] No exista contaminación entre productos. *(prueba `test_sin_contaminacion_entre_productos`)*
+- [x] Las importaciones sean idempotentes. *(prueba `test_doble_importacion_no_duplica` contra SQL Server: 2ª pasada, 0 registros nuevos)*
+- [x] Los productos entren como pendientes de validación. *(`validation_status='pending'`; prueba `test_productos_entran_pendientes_de_validacion`)*
+- [x] Las relaciones producto-grupo se propongan antes de aprobarse. *(`GroupProductLink status='pending_validation'`)*
+- [x] Los periodos se normalicen y conserven su precisión. *(`parse_membership_period`; `Actual` → `end_date=NULL`; pruebas `TestPeriodParsing`)*
+- [x] No se oculten excepciones. *(rollback + `ImportJob.status='failed'` + log estructurado; sin `except: pass`)*
+- [x] La confirmación use una transacción. *(`autocommit=False`, commit/rollback únicos)*
+- [x] Exista vista previa. *(`scrape_gruplac(url, preview=True)`, CLI `--preview`, endpoint `POST /api/v1/groups/import/gruplac/preview`)*
+- [x] Los códigos de producto sean estables. *(DOI o SHA-256 de título+año+autores; pruebas `TestExternalCodes`)*
+- [x] Las categorías se resuelvan por código. *(subtipos y categoría de calidad resueltos por nombre desde BD en commit; sin IDs mágicos)*
+- [x] La importación conserve el HTML o dato original. *(`raw_text` por producto en `Product.description` + `source_url` + `ImportRecord`)*
+- [x] Existan pruebas con fixtures. *(`backend/tests/fixtures/gruplac_group_basic.html` + 19 pruebas en `backend/tests/test_gruplac_scraper.py`)*
+- [x] Se registre el ciclo completo de `ImportJob`. *(`processing` al inicio de la transacción → `completed`/`failed`; `ImportRecord` por entidad)*
+- [x] Solo se recolecten datos públicos necesarios. *(`cod_rh`, nombre visible, rol, horas, periodos, productos; sin documentos personales)*
 
 ---
+
+## 29.1 Acta de cierre (24 de septiembre de 2026)
+
+Todos los criterios de la sección 29 fueron verificados contra el código y con pruebas ejecutables:
+
+```text
+Suite:    backend/tests/test_gruplac_scraper.py (unittest, sin dependencias nuevas)
+Fixture:  backend/tests/fixtures/gruplac_group_basic.html
+Ejecución (desde la raíz del repo):
+  backend/venv/Scripts/python.exe -m unittest discover -s backend/tests -v
+  PEAI_TEST_DB=1 ... -m unittest backend.tests.test_gruplac_scraper   # pruebas transaccionales reales
+Resultado: 19/19 OK (2 de BD verificadas contra SQL Server local con limpieza automática del fixture)
+```
+
+Cambios aplicados en el cierre:
+
+1. `SECTION_MAP` migrado de IDs mágicos a nombres de subtipo; `GruplacCommitService` resuelve
+   `family_id`/`subtype_id` desde `ProductSubtype` y la categoría por defecto desde
+   `QualityCategory` (`'No reconocido'`) por nombre, con advertencia `SUBTYPE_NOT_FOUND` si falta.
+2. Vista previa formal de dos fases: `build_preview()` + `preview=True` + CLI `--preview` +
+   endpoint `POST /api/v1/groups/import/gruplac/preview` (fase 1) vs `POST /api/v1/groups/import/gruplac` (fase 2, confirmación).
+3. **Defecto encontrado y corregido durante el cierre (fuera del scraper):** `load_from_db` del núcleo
+   C++ insertaba sin limpiar la RAM, duplicando grupos/investigadores/productos en cada recarga
+   post-commit (62 → 124 → 186 grupos en una misma sesión). Se corrigió en `backend/app/repository.py`
+   reinicializando con `InitMode.Empty` antes de recargar. Verificado: recargas repetidas estables.
 
 ## 30. Conclusión
 

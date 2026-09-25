@@ -69,8 +69,7 @@ class ScrapedProduct:
     title: str
     raw_text: str
     section: str
-    family_id: int
-    subtype_id: int
+    subtype_name: str  # Se resuelve a family_id/subtype_id desde BD en commit (Revision §20)
     doi: Optional[str] = None
     issn: Optional[str] = None
     isbn: Optional[str] = None
@@ -435,15 +434,17 @@ class GruplacHtmlParser:
         # -------------------------------------------------------------
         products: List[ScrapedProduct] = []
 
+        # Mapeo seccion GrupLAC -> nombre de subtipo del catalogo Minciencias.
+        # Los IDs se resuelven desde la BD en commit (Revision §20: sin numeros magicos).
         SECTION_MAP = [
-            ("articulos", 1, 1),
-            ("libros publicados", 1, 2),
-            ("capitulos", 1, 3),
-            ("software", 2, 6),
-            ("prototipo", 2, 7),
-            ("eventos", 3, 9),
-            ("trabajos dirigidos", 4, 12),
-            ("tesis", 4, 12),
+            ("articulos", "Articulos de investigacion"),
+            ("libros publicados", "Libros resultado de investigacion"),
+            ("capitulos", "Capitulos de libro resultado de investigacion"),
+            ("software", "Software con registro de soporte logico"),
+            ("prototipo", "Prototipos industriales y plantas piloto"),
+            ("eventos", "Eventos cientificos con memorias"),
+            ("trabajos dirigidos", "Tesis de doctorado dirigidas y aprobadas"),
+            ("tesis", "Tesis de doctorado dirigidas y aprobadas"),
         ]
 
         for table in tables:
@@ -451,17 +452,15 @@ class GruplacHtmlParser:
             if not rows: continue
             header = GruplacNormalizer.normalize(rows[0].get_text(strip=True)).lower()
 
-            fam_id = None
-            sub_id = None
+            subtype_name = None
             section_label = ""
-            for pattern, f_id, s_id in SECTION_MAP:
+            for pattern, sub_name in SECTION_MAP:
                 if pattern in header:
-                    fam_id = f_id
-                    sub_id = s_id
+                    subtype_name = sub_name
                     section_label = pattern
                     break
-            
-            if fam_id is None:
+
+            if subtype_name is None:
                 continue
 
             for row in rows[2:]:
@@ -528,8 +527,7 @@ class GruplacHtmlParser:
                     title=title,
                     raw_text=full_text,
                     section=section_label,
-                    family_id=fam_id,
-                    subtype_id=sub_id,
+                    subtype_name=subtype_name,
                     doi=doi or None,
                     issn=issn or None,
                     isbn=isbn or None,
@@ -645,6 +643,17 @@ class GruplacCommitService:
             cur.execute("SELECT id FROM ResearchGroup WHERE external_code = ?", data.group["external_code"])
             db_group_id = cur.fetchone()[0]
 
+            # 2.1 Resolver catalogos desde BD por nombre (Revision §20: sin IDs magicos)
+            cur.execute("SELECT s.id, s.family_id, s.name FROM ProductSubtype s")
+            subtype_lookup: Dict[str, Any] = {}
+            for s_row in cur.fetchall():
+                s_key = " ".join(GruplacNormalizer.normalize(s_row[2]).lower().split())
+                subtype_lookup[s_key] = (s_row[1], s_row[0])  # (family_id, subtype_id)
+
+            cur.execute("SELECT id FROM QualityCategory WHERE name = N'No reconocido'")
+            qc_row = cur.fetchone()
+            default_quality_category_id = qc_row[0] if qc_row else None
+
             # 3. Persistir Miembros y GroupMembership de forma idempotente
             members_by_key: Dict[str, int] = {}
             leader_found_cod_rh = None
@@ -709,6 +718,17 @@ class GruplacCommitService:
                 prod_id = None
                 p_action = "matched"
 
+                # Resolver subtipo por nombre contra catalogo BD
+                sub_key = " ".join(GruplacNormalizer.normalize(p.subtype_name).lower().split())
+                resolved = subtype_lookup.get(sub_key)
+                if resolved:
+                    fam_id, sub_id = resolved
+                else:
+                    fam_id, sub_id = None, None
+                    warn_msg = f"SUBTYPE_NOT_FOUND: '{p.subtype_name}' no existe en ProductSubtype; producto '{p.title[:80]}' queda sin clasificar."
+                    logger.warning(warn_msg)
+                    p.warnings.append(warn_msg)
+
                 cur.execute("SELECT id FROM Product WHERE external_code = ?", p.external_code)
                 p_row = cur.fetchone()
                 if p_row:
@@ -718,8 +738,8 @@ class GruplacCommitService:
                     cur.execute("""
                         INSERT INTO Product (external_code, title, description, family_id, subtype_id, quality_category_id, obtained_date, publication_date, validation_status, doi, issn, isbn, year, status)
                         OUTPUT INSERTED.id
-                        VALUES (?, ?, ?, ?, ?, 1, ?, ?, 'pending', ?, ?, ?, ?, 'active');
-                    """, p.external_code, GruplacNormalizer.normalize(p.title)[:490], GruplacNormalizer.normalize(p.raw_text)[:2000], p.family_id, p.subtype_id, str(p.year) if p.year else "", str(p.year) if p.year else "", p.doi, p.issn, p.isbn, p.year)
+                        VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'pending', ?, ?, ?, ?, 'active');
+                    """, p.external_code, GruplacNormalizer.normalize(p.title)[:490], GruplacNormalizer.normalize(p.raw_text)[:2000], fam_id, sub_id, default_quality_category_id, str(p.year) if p.year else "", str(p.year) if p.year else "", p.doi, p.issn, p.isbn, p.year)
                     prod_id = cur.fetchone()[0]
                     new_records += 1
                     created_products += 1
@@ -747,7 +767,7 @@ class GruplacCommitService:
                     cur.execute("""
                         INSERT INTO ImportRecord (job_id, entity_type, external_identifier, action_taken, source_data_summary, resolution_details, created_at)
                         VALUES (?, 'Product', ?, ?, ?, ?, GETDATE());
-                    """, job_id, p.external_code, p_action, p.title[:200], f"Subtipo: {p.subtype_id} | Año: {p.year} | DOI: {p.doi or 'N/A'}")
+                    """, job_id, p.external_code, p_action, p.title[:200], f"Subtipo: {p.subtype_name} (id={sub_id}) | Año: {p.year} | DOI: {p.doi or 'N/A'}")
 
                 # 5.1 Persistir Autores (ProductAuthor) sin crear Researchers fantasma
                 for a_idx, author in enumerate(p.authors, start=1):
@@ -911,7 +931,51 @@ class GruplacCommitService:
 # 6. Punto de Entrada Principal (Pipeline Completo)
 # =====================================================================
 
-def scrape_gruplac(url: str, db_conn_str: str = "") -> Dict[str, Any]:
+def build_preview(scraped_data: ScrapedGroupData) -> Dict[str, Any]:
+    """Vista previa de la extracción SIN persistir nada (Revisión §16/§29: preview antes de confirmar)."""
+    return {
+        "status": "preview",
+        "group": scraped_data.group,
+        "institutions": scraped_data.institutions,
+        "research_lines": scraped_data.research_lines,
+        "work_plan_text": scraped_data.work_plan_text[:500],
+        "members": [
+            {
+                "display_name": m.display_name,
+                "cod_rh": m.cod_rh,
+                "role": m.role,
+                "period_raw": m.period_raw,
+                "start_date": m.start_date,
+                "end_date": m.end_date,
+                "is_current": m.is_current,
+                "is_leader_candidate": m.is_leader_candidate,
+            } for m in scraped_data.members
+        ],
+        "products": [
+            {
+                "title": p.title,
+                "section": p.section,
+                "subtype_name": p.subtype_name,
+                "year": p.year,
+                "doi": p.doi,
+                "external_code": p.external_code,
+                "authors": [a.display_name for a in p.authors],
+            } for p in scraped_data.products
+        ],
+        "projects": [
+            {"title": pr.title, "year": pr.year} for pr in scraped_data.projects
+        ],
+        "warnings": scraped_data.warnings,
+        "counts": {
+            "members": len(scraped_data.members),
+            "products": len(scraped_data.products),
+            "projects": len(scraped_data.projects),
+            "research_lines": len(scraped_data.research_lines),
+        }
+    }
+
+
+def scrape_gruplac(url: str, db_conn_str: str = "", preview: bool = False) -> Dict[str, Any]:
     print("=" * 65)
     print(f"PEA-i Importador GrupLAC (Estructural e Idempotente en SQL)")
     print(f"URL: {url}")
@@ -929,6 +993,11 @@ def scrape_gruplac(url: str, db_conn_str: str = "") -> Dict[str, Any]:
     print(f"     - Proyectos: {len(scraped_data.projects)}")
     print(f"     - Lineas de investigacion: {len(scraped_data.research_lines)}")
 
+    # 2.5 Modo vista previa: NO persiste nada, solo retorna el DTO para revision humana
+    if preview:
+        print("[PREVIEW] Modo vista previa: no se escribio nada en la base de datos.")
+        return build_preview(scraped_data)
+
     # 3. Compromiso transaccional idempotente
     result = GruplacCommitService.commit(scraped_data, db_conn_str=db_conn_str)
     print("=" * 65)
@@ -939,17 +1008,23 @@ def scrape_gruplac(url: str, db_conn_str: str = "") -> Dict[str, Any]:
 
 
 if __name__ == "__main__":
-    if len(sys.argv) < 2:
-        print("Uso: python -m backend.app.scraper <URL_GRUPLAC>")
+    args = [a for a in sys.argv[1:] if not a.startswith("--")]
+    preview_mode = "--preview" in sys.argv
+
+    if not args:
+        print("Uso: python -m backend.app.scraper <URL_GRUPLAC> [--preview]")
+        print("     --preview : solo extrae y muestra la vista previa, sin escribir en BD.")
         sys.exit(1)
 
-    url_arg = sys.argv[1]
+    url_arg = args[0]
     conn_str = os.environ.get(
         "PEAI_SQLSERVER_CONNECTION",
         "Driver={ODBC Driver 17 for SQL Server};Server=localhost;Database=peai;Trusted_Connection=yes;"
     )
 
-    repository.initialize(repository.InitMode.Database, conn_str)
-    repository._active_connection_string = conn_str
-
-    scrape_gruplac(url_arg, conn_str)
+    if preview_mode:
+        scrape_gruplac(url_arg, preview=True)
+    else:
+        repository.initialize(repository.InitMode.Database, conn_str)
+        repository._active_connection_string = conn_str
+        scrape_gruplac(url_arg, conn_str)

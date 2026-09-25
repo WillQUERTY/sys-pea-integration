@@ -438,10 +438,28 @@ async def import_cvlac_endpoint(req: CvlacImportRequest):
     result = CvCommitService.commit_cvlac(cv, conn_str)
     return result
 
+@router.post("/groups/import/gruplac/preview", tags=["Ingestion"])
+async def preview_gruplac_endpoint(req: GruplacImportRequest):
+    """
+    Phase 1 of GrupLAC import: download and parse the public page, returning the
+    extracted DTO for human review WITHOUT persisting anything (Revisión §16/§29).
+    """
+    from ..scraper import scrape_gruplac
+    try:
+        return scrape_gruplac(req.url, preview=True)
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
 @router.post("/groups/import/gruplac", tags=["Ingestion"])
 async def import_gruplac_endpoint(req: GruplacImportRequest):
-    """Import a research group and its full catalog atomically from Minciencias GrupLAC URL."""
+    """
+    Phase 2 of GrupLAC import (confirm): import a research group and its full
+    catalog atomically from Minciencias GrupLAC URL after reviewing the preview.
+    """
     from ..scraper import scrape_gruplac
     conn_str = repository._active_connection_string or "Driver={ODBC Driver 17 for SQL Server};Server=localhost;Database=peai;Trusted_Connection=yes;"
-    result = scrape_gruplac(req.url, conn_str)
+    try:
+        result = scrape_gruplac(req.url, conn_str)
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
     return result
