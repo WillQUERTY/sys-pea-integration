@@ -1,6 +1,22 @@
+from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from .api import v1
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    db_conn = "Driver={ODBC Driver 17 for SQL Server};Server=localhost;Database=peai;Trusted_Connection=yes;"
+    try:
+        from . import repository
+        ok = repository.initialize(repository.InitMode.Database, db_conn)
+        repository._active_connection_string = db_conn
+        if ok:
+            print("[PEA-i Startup] Memoria C++ reconstruida exitosamente desde SQL Server.")
+        else:
+            print("[PEA-i Startup] repository.initialize retorno False.")
+    except Exception as e:
+        print(f"[PEA-i Startup] Aviso: No se pudo auto-inicializar BD ({e}).")
+    yield
 
 tags_metadata = [
     {
@@ -22,7 +38,8 @@ tags_metadata = [
 ]
 
 app = FastAPI(
-    title="PEA‑i Backend Core API",
+    lifespan=lifespan,
+    title="PEA-i Backend Core API",
     version="1.0.0",
     description="""
 **PEA-i (Proyecto Estratégico de Arquitectura)** 🚀

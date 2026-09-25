@@ -30,7 +30,12 @@ ResearcherNode* get_researcher_head() { return _researcherHead; }
 Researcher create_researcher(const Researcher& prototype) {
     auto* node = new ResearcherNode();
     node->data = prototype;
-    node->data.id = _nextResearcherId++;
+    if (prototype.id > 0) {
+        node->data.id = prototype.id;
+        if (prototype.id >= _nextResearcherId) _nextResearcherId = prototype.id + 1;
+    } else {
+        node->data.id = _nextResearcherId++;
+    }
 
     if (!_researcherHead) {
         _researcherHead = node;

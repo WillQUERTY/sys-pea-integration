@@ -30,7 +30,12 @@ ProductNode* get_product_head() { return _productHead; }
 Product create_product(const Product& prototype) {
     auto* node = new ProductNode();
     node->data = prototype;
-    node->data.id = _nextProductId++;
+    if (prototype.id > 0) {
+        node->data.id = prototype.id;
+        if (prototype.id >= _nextProductId) _nextProductId = prototype.id + 1;
+    } else {
+        node->data.id = _nextProductId++;
+    }
 
     if (!_productHead) {
         _productHead = node;

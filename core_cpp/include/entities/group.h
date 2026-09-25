@@ -20,6 +20,19 @@ struct Group {
     std::string name;
     std::string acronym;
     std::string description;
+    std::string mission;
+    std::string vision;
+    std::string declared_creation_date;
+    std::string knowledge_area;
+    std::string knowledge_subarea;
+    std::string city;
+    std::string department;
+    std::string website;
+    std::string email;
+    std::string institution;
+    std::string classification;
+    int         leader_id = 0;
+    std::string status = "active";
 };
 
 // ---- Multilista nodes ----

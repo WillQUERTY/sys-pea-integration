@@ -21,14 +21,24 @@ struct Project {
 
 // Placeholder nodes for the multilista (Group <-> Project)
 struct GroupProjectNode {
-    int               projectId = 0;
-    GroupProjectNode*  nextInGroup   = nullptr;
-    GroupProjectNode*  nextForProject = nullptr;
+    int               projectId      = 0;
+    GroupProjectNode* nextInGroup    = nullptr;
+    GroupProjectNode* nextForProject = nullptr;
 };
 
 struct PlanNode {
-    int        planId = 0;
-    PlanNode*  next   = nullptr;
+    int       planId = 0;
+    PlanNode* next   = nullptr;
+};
+
+struct WorkPlan {
+    int         id       = 0;
+    int         group_id = 0;
+    std::string title;
+    std::string description;
+    std::string start_date;
+    std::string end_date;
+    std::string status   = "active";
 };
 
 #endif // PEAI_ENTITIES_PROJECT_H

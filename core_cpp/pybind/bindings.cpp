@@ -19,6 +19,19 @@ PYBIND11_MODULE(abpoxx_pybind, m) {
         .def_readwrite("name",          &Group::name)
         .def_readwrite("acronym",       &Group::acronym)
         .def_readwrite("description",   &Group::description)
+        .def_readwrite("mission",       &Group::mission)
+        .def_readwrite("vision",        &Group::vision)
+        .def_readwrite("declared_creation_date", &Group::declared_creation_date)
+        .def_readwrite("knowledge_area", &Group::knowledge_area)
+        .def_readwrite("knowledge_subarea", &Group::knowledge_subarea)
+        .def_readwrite("city",          &Group::city)
+        .def_readwrite("department",    &Group::department)
+        .def_readwrite("website",       &Group::website)
+        .def_readwrite("email",         &Group::email)
+        .def_readwrite("institution",   &Group::institution)
+        .def_readwrite("classification",&Group::classification)
+        .def_readwrite("leader_id",     &Group::leader_id)
+        .def_readwrite("status",        &Group::status)
         .def("__repr__", [](const Group& g) {
             return "<Group id=" + std::to_string(g.id) +
                    " code='" + g.external_code +
@@ -46,6 +59,8 @@ PYBIND11_MODULE(abpoxx_pybind, m) {
         .def_readwrite("institutional_email",     &Researcher::institutional_email)
         .def_readwrite("orcid",                   &Researcher::orcid)
         .def_readwrite("highest_education_level", &Researcher::highest_education_level)
+        .def_readwrite("education_records",       &Researcher::education_records)
+        .def_readwrite("classification_records",  &Researcher::classification_records)
         .def_readwrite("status",                  &Researcher::status);
 
     // ---- Researcher CRUD ----
@@ -68,7 +83,16 @@ PYBIND11_MODULE(abpoxx_pybind, m) {
         .def_readwrite("obtained_date",       &Product::obtained_date)
         .def_readwrite("publication_date",    &Product::publication_date)
         .def_readwrite("validation_status",   &Product::validation_status)
-        .def_readwrite("status",              &Product::status);
+        .def_readwrite("language",            &Product::language)
+        .def_readwrite("country",             &Product::country)
+        .def_readwrite("doi",                 &Product::doi)
+        .def_readwrite("isbn",                &Product::isbn)
+        .def_readwrite("issn",                &Product::issn)
+        .def_readwrite("url",                 &Product::url)
+        .def_readwrite("evidence",            &Product::evidence)
+        .def_readwrite("specialized_attributes", &Product::specialized_attributes)
+        .def_readwrite("status",              &Product::status)
+        .def_readwrite("year",                &Product::year);
 
     // ---- Product CRUD ----
     m.def("create_product", &peai::create_product);
@@ -77,9 +101,75 @@ PYBIND11_MODULE(abpoxx_pybind, m) {
     m.def("update_product", &peai::update_product);
     m.def("delete_product", &peai::delete_product);
 
+    // ---- Struct: Project ----
+    py::class_<Project>(m, "Project")
+        .def(py::init<>())
+        .def_readwrite("id",                        &Project::id)
+        .def_readwrite("title",                     &Project::title)
+        .def_readwrite("summary",                   &Project::summary)
+        .def_readwrite("project_type",              &Project::project_type)
+        .def_readwrite("start_date",                &Project::start_date)
+        .def_readwrite("end_date",                  &Project::end_date)
+        .def_readwrite("status",                    &Project::status)
+        .def_readwrite("funding_type",              &Project::funding_type)
+        .def_readwrite("budget",                    &Project::budget)
+        .def_readwrite("principal_investigator_id", &Project::principal_investigator_id);
+
+    // ---- Struct: WorkPlan ----
+    py::class_<WorkPlan>(m, "WorkPlan")
+        .def(py::init<>())
+        .def_readwrite("id",          &WorkPlan::id)
+        .def_readwrite("group_id",    &WorkPlan::group_id)
+        .def_readwrite("title",       &WorkPlan::title)
+        .def_readwrite("description", &WorkPlan::description)
+        .def_readwrite("start_date",  &WorkPlan::start_date)
+        .def_readwrite("end_date",    &WorkPlan::end_date)
+        .def_readwrite("status",      &WorkPlan::status);
+
+    // ---- Struct: UndoOperation (Stack) ----
+    py::class_<peai::UndoOperation>(m, "UndoOperation")
+        .def(py::init<>())
+        .def_readwrite("id",             &peai::UndoOperation::id)
+        .def_readwrite("operation_type", &peai::UndoOperation::operation_type)
+        .def_readwrite("entity_type",    &peai::UndoOperation::entity_type)
+        .def_readwrite("entity_id",      &peai::UndoOperation::entity_id)
+        .def_readwrite("previous_state", &peai::UndoOperation::previous_state)
+        .def_readwrite("performed_at",   &peai::UndoOperation::performed_at)
+        .def_readwrite("undone_at",      &peai::UndoOperation::undone_at);
+
+    // ---- Undo Stack Operations ----
+    m.def("undo_push",    &peai::undo_push,    "Push operation to undo stack");
+    m.def("undo_top",     &peai::undo_top,     "Inspect top operation without popping");
+    m.def("undo_pop",     &peai::undo_pop,     "Pop top operation");
+    m.def("undo_perform", &peai::undo_perform, "Revert the last operation");
+    m.def("undo_list",    &peai::undo_list,    "List all undo operations in stack");
+    m.def("undo_size",    &peai::undo_size,    "Get size of undo stack");
+    m.def("undo_clear",   &peai::undo_clear,   "Clear undo stack");
+
+    // ---- Struct: ValidationQueueItem (Queue FIFO) ----
+    py::class_<peai::ValidationQueueItem>(m, "ValidationQueueItem")
+        .def(py::init<>())
+        .def_readwrite("id",           &peai::ValidationQueueItem::id)
+        .def_readwrite("product_id",   &peai::ValidationQueueItem::product_id)
+        .def_readwrite("enqueued_at",  &peai::ValidationQueueItem::enqueued_at)
+        .def_readwrite("status",       &peai::ValidationQueueItem::status)
+        .def_readwrite("attempts",     &peai::ValidationQueueItem::attempts)
+        .def_readwrite("assigned_to",  &peai::ValidationQueueItem::assigned_to)
+        .def_readwrite("result",       &peai::ValidationQueueItem::result)
+        .def_readwrite("processed_at", &peai::ValidationQueueItem::processed_at);
+
+    // ---- Validation Queue Operations ----
+    m.def("vq_enqueue",       &peai::vq_enqueue,       "Enqueue product for validation (FIFO)");
+    m.def("vq_front",         &peai::vq_front,         "Inspect front element of queue");
+    m.def("vq_dequeue",       &peai::vq_dequeue,       "Dequeue front item");
+    m.def("vq_process_next",  &peai::vq_process_next,  "Process and validate next product in queue");
+    m.def("vq_list",          &peai::vq_list,          "List all items in queue");
+    m.def("vq_size",          &peai::vq_size,          "Get size of validation queue");
+    m.def("vq_pending_count", &peai::vq_pending_count, "Get count of pending queue items");
+    m.def("vq_clear",         &peai::vq_clear,         "Clear validation queue");
+
     // ---- Multilista: membership ----
-    m.def("add_member_to_group",      &peai::add_member_to_group,
-          py::return_value_policy::reference,
+    m.def("add_member_to_group",      [](int g, int r){peai::add_member_to_group(g, r);},
           "Link a researcher to a group");
     m.def("members_of_group",         &peai::members_of_group,
           "List researcher ids in a group");
@@ -89,8 +179,7 @@ PYBIND11_MODULE(abpoxx_pybind, m) {
           "Unlink a researcher from a group");
 
     // ---- Multilista: product links ----
-    m.def("link_product_to_group",    &peai::link_product_to_group,
-          py::return_value_policy::reference,
+    m.def("link_product_to_group",    [](int g, int p){peai::link_product_to_group(g, p);},
           "Link a product to a group");
     m.def("products_of_group",        &peai::products_of_group,
           "List product ids linked to a group");
@@ -112,7 +201,12 @@ PYBIND11_MODULE(abpoxx_pybind, m) {
     m.def("save_to_db",       &peai::save_to_db,       "Save entire state to SQL Server");
     m.def("sync_group_to_db", &peai::sync_group_to_db, "Sync a specific group to DB");
     m.def("sync_researcher_to_db", &peai::sync_researcher_to_db, "Sync a specific researcher to DB");
-    m.def("sync_product_to_db", &peai::sync_product_to_db, "Sync a specific product to DB");
+    m.def("sync_product_to_db",    &peai::sync_product_to_db,    "Sync a specific product to DB");
+    m.def("sync_membership_to_db", &peai::sync_membership_to_db, "Sync a group membership link to DB");
+    m.def("sync_membership_details_to_db", &peai::sync_membership_details_to_db, "Sync group membership with role and dates to DB");
+    m.def("sync_product_link_to_db",       &peai::sync_product_link_to_db,       "Sync a group product link to DB");
+    m.def("sync_product_author_to_db",     &peai::sync_product_author_to_db,     "Sync a product author link to DB");
+
 
     // ---- Summary ----
     m.def("total_groups",        &peai::total_groups);
@@ -121,3 +215,4 @@ PYBIND11_MODULE(abpoxx_pybind, m) {
     m.def("print_summary",       &peai::print_summary,
           "Print summary table to stdout");
 }
+

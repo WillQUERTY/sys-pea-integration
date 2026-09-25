@@ -18,6 +18,8 @@ struct Researcher {
     std::string institutional_email;
     std::string orcid;
     std::string highest_education_level;
+    std::string education_records;
+    std::string classification_records;
     std::string status = "active";
 };
 

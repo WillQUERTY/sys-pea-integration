@@ -1,0 +1,955 @@
+"""
+backend/app/scraper.py
+Extractor Estructural, Normalizador y Servicio de Persistencia Transaccional para GrupLAC (PEA-i).
+Conforme a la especificacion en docs/PEA-i_Revision_Tecnica_Scraper_Gruplac.md.
+"""
+
+import os
+import sys
+import re
+import hashlib
+import logging
+import unicodedata
+from datetime import datetime
+from urllib.parse import urlparse
+from dataclasses import dataclass, field
+from typing import Optional, List, Dict, Any
+
+import requests
+import pyodbc
+from bs4 import BeautifulSoup
+
+from . import repository
+from .models import Group, Researcher, Product
+
+# Configuración de Logging Estructurado
+logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(name)s: %(message)s")
+logger = logging.getLogger("peai.scraper")
+
+# Constantes de Negocio y Validación
+MIN_YEAR = 1900
+MAX_YEAR = datetime.now().year + 1
+ALLOWED_HOSTS = {
+    "scienti.minciencias.gov.co",
+    "minciencias.gov.co",
+    "www.minciencias.gov.co",
+    "localhost",
+    "127.0.0.1"
+}
+
+
+# =====================================================================
+# 1. Modelos de Transferencia de Datos Intermedios (DTOs)
+# =====================================================================
+
+@dataclass
+class ScrapedMember:
+    display_name: str
+    cod_rh: Optional[str] = None
+    role: Optional[str] = "Investigador"
+    hours: Optional[int] = None
+    period_raw: str = ""
+    start_date: Optional[str] = None
+    end_date: Optional[str] = None
+    is_current: bool = False
+    is_leader_candidate: bool = False
+    warnings: List[str] = field(default_factory=list)
+
+
+@dataclass
+class ScrapedAuthor:
+    display_name: str
+    cod_rh: Optional[str] = None
+    matched_researcher_id: Optional[int] = None
+    match_status: str = "unverified"  # exact, candidate, unverified
+
+
+@dataclass
+class ScrapedProduct:
+    title: str
+    raw_text: str
+    section: str
+    family_id: int
+    subtype_id: int
+    doi: Optional[str] = None
+    issn: Optional[str] = None
+    isbn: Optional[str] = None
+    year: Optional[int] = None
+    authors: List[ScrapedAuthor] = field(default_factory=list)
+    source_url: str = ""
+    external_code: str = ""
+    warnings: List[str] = field(default_factory=list)
+
+
+@dataclass
+class ScrapedProject:
+    title: str
+    summary: str = ""
+    year: Optional[int] = None
+    raw_text: str = ""
+
+
+@dataclass
+class ScrapedGroupData:
+    group: Dict[str, Any]
+    institutions: List[str] = field(default_factory=list)
+    members: List[ScrapedMember] = field(default_factory=list)
+    products: List[ScrapedProduct] = field(default_factory=list)
+    projects: List[ScrapedProject] = field(default_factory=list)
+    research_lines: List[str] = field(default_factory=list)
+    work_plan_text: str = ""
+    warnings: List[str] = field(default_factory=list)
+
+
+# =====================================================================
+# 2. Cliente HTTP Robusto
+# =====================================================================
+
+class GruplacHttpClient:
+    @staticmethod
+    def validate_source_url(url: str):
+        parsed = urlparse(url)
+        if parsed.hostname not in ALLOWED_HOSTS:
+            raise ValueError(f"Dominio no permitido para importacion: '{parsed.hostname}'.")
+        is_local = parsed.hostname in {"localhost", "127.0.0.1"}
+        allow_insecure_local = os.environ.get("PEAI_ALLOW_INSECURE_LOCAL", "false").lower() == "true"
+        if parsed.scheme != "https" and not (is_local and allow_insecure_local):
+            raise ValueError("HTTPS es obligatorio. HTTP local requiere PEAI_ALLOW_INSECURE_LOCAL=true.")
+
+    @classmethod
+    def fetch(cls, url: str) -> str:
+        cls.validate_source_url(url)
+        headers = {
+            "User-Agent": "PEA-i Academic Research Importer/1.0 (Universidad Popular del Cesar; contact: vicerrectoria.investigacion@unicesar.edu.co)"
+        }
+        logger.info(f"Descargando fuente GrupLAC desde: {url}")
+        resp = requests.get(url, headers=headers, timeout=(10, 30))
+        resp.raise_for_status()
+        
+        # Minciencias generalmente usa ISO-8859-1 en JSP
+        resp.encoding = resp.apparent_encoding or resp.encoding or "ISO-8859-1"
+        return resp.text
+
+
+# =====================================================================
+# 3. Normalizador de Tipos y Claves
+# =====================================================================
+
+class GruplacNormalizer:
+    @staticmethod
+    def normalize(text: Any) -> str:
+        if not text:
+            return ""
+        s = str(text).strip()
+        nfkd = unicodedata.normalize("NFD", s)
+        no_accents = "".join(c for c in nfkd if unicodedata.category(c) != "Mn")
+        return no_accents.encode("ascii", "ignore").decode("ascii")
+
+    @classmethod
+    def normalized_name_key(cls, value: str) -> str:
+        val = cls.normalize(value).upper()
+        val = re.sub(r"[^A-Z0-9 ]", " ", val)
+        return " ".join(val.split())
+
+    @staticmethod
+    def extract_year(text: str) -> Optional[int]:
+        if not text:
+            return None
+        matches = re.findall(r"\b(18\d{2}|19\d{2}|20\d{2}|21\d{2})\b", text)
+        for m in matches:
+            y = int(m)
+            if MIN_YEAR <= y <= MAX_YEAR:
+                return y
+        return None
+
+    @staticmethod
+    def normalize_doi(doi: str) -> str:
+        if not doi:
+            return ""
+        d = doi.strip()
+        d = re.sub(r"^https?://(dx\.)?doi\.org/", "", d, flags=re.IGNORECASE)
+        d = re.sub(r"^doi:\s*", "", d, flags=re.IGNORECASE)
+        return d.strip().lower()
+
+    @classmethod
+    def product_external_code(cls, title: str, year: Optional[int], doi: str = "", authors: Optional[List[str]] = None) -> str:
+        norm_doi = cls.normalize_doi(doi)
+        if norm_doi:
+            canonical = f"DOI:{norm_doi}"
+            digest = hashlib.sha256(canonical.encode("utf-8")).hexdigest()[:20]
+            return f"PRD_DOI_{digest}"
+        
+        canon_title = cls.normalize(title).upper()
+        canon_title = " ".join(canon_title.split())
+        canon_authors = "|".join(sorted(cls.normalized_name_key(a) for a in (authors or []) if a))
+        canonical = f"{canon_title}|{year or ''}|{canon_authors}"
+        digest = hashlib.sha256(canonical.encode("utf-8")).hexdigest()[:20]
+        return f"PRD_{digest}"
+
+    @classmethod
+    def collaborator_external_code(cls, name: str) -> str:
+        key = cls.normalized_name_key(name)
+        digest = hashlib.sha256(key.encode("utf-8")).hexdigest()[:16]
+        return f"EXT_{digest}"
+
+    @classmethod
+    def parse_membership_period(cls, value: str) -> Dict[str, Any]:
+        norm = cls.normalize(value).strip()
+        match = re.match(
+            r"^(\d{4})(?:/(\d{1,2}))?\s*-\s*(Actual|\d{4}(?:/\d{1,2})?)$",
+            norm,
+            re.IGNORECASE
+        )
+        if not match:
+            # Fallback simple
+            parts = [p.strip() for p in norm.split("-") if p.strip()]
+            end_raw = parts[1] if len(parts) > 1 else None
+            is_curr = bool(end_raw and end_raw.lower() == "actual")
+            return {
+                "start_date": None,
+                "end_date": None,
+                "is_current": is_curr,
+                "raw_value": norm,
+                "valid": False
+            }
+
+        start_yr = match.group(1)
+        start_mo = match.group(2)
+        start_date = f"{start_yr}-{int(start_mo):02d}-01" if start_mo else f"{start_yr}-01-01"
+
+        end_raw = match.group(3)
+        if end_raw.lower() == "actual":
+            end_date = None
+            is_current = True
+        else:
+            p_end = end_raw.split("/")
+            end_date = f"{p_end[0]}-{int(p_end[1]):02d}-01" if len(p_end) == 2 else f"{p_end[0]}-01-01"
+            is_current = False
+
+        return {
+            "start_date": start_date,
+            "end_date": end_date,
+            "is_current": is_current,
+            "raw_value": norm,
+            "valid": True
+        }
+
+
+# =====================================================================
+# 4. Parser Estructural Basado en DOM y Líneas Aisladas
+# =====================================================================
+
+class GruplacHtmlParser:
+    @staticmethod
+    def extract_labeled_value(lines: List[str], label: str) -> str:
+        norm_label = GruplacNormalizer.normalize(label).lower().strip(" :")
+        for idx, line in enumerate(lines):
+            clean = line.strip()
+            norm_l = GruplacNormalizer.normalize(clean).lower().strip(" :")
+            if norm_l == norm_label or clean.lower().startswith(norm_label + ":"):
+                if ":" in clean:
+                    val = clean.split(":", 1)[1].strip()
+                    if val:
+                        return val
+                if idx + 1 < len(lines):
+                    next_l = lines[idx + 1].strip()
+                    if not next_l.endswith(":") and len(next_l) < 200:
+                        return next_l
+        return ""
+
+    @staticmethod
+    def extract_authors(lines: List[str]) -> List[ScrapedAuthor]:
+        """Extract only the author/tutor field from one product block.
+
+        GrupLAC articles use comma-separated full names. If a future section uses
+        a different representation, the raw field is kept as one author candidate
+        rather than guessing an identity.
+        """
+        labels = ("autores:", "tutor(es):", "tutor:")
+        stop_labels = ("doi:", "issn:", "isbn:", "vol:", "fasc:", "pags:", "paginas:")
+        for idx, line in enumerate(lines):
+            normalized = GruplacNormalizer.normalize(line).lower().strip()
+            if not normalized.startswith(labels):
+                continue
+            value = line.split(":", 1)[1].strip() if ":" in line else ""
+            if not value and idx + 1 < len(lines):
+                candidate = lines[idx + 1].strip()
+                candidate_norm = GruplacNormalizer.normalize(candidate).lower()
+                if not candidate_norm.startswith(stop_labels):
+                    value = candidate
+            if not value:
+                return []
+            # This delimiter is verified for public GrupLAC article rows. Keep
+            # section-specific tests to detect if Minciencias changes the format.
+            names = [name.strip() for name in value.split(",") if name.strip()]
+            return [ScrapedAuthor(display_name=name) for name in names]
+        return []
+
+    @classmethod
+    def parse(cls, html: str, source_url: str = "") -> ScrapedGroupData:
+        soup = BeautifulSoup(html, "lxml")
+        tables = soup.find_all("table")
+        warnings: List[str] = []
+
+        # -------------------------------------------------------------
+        # 1. Datos básicos del grupo
+        # -------------------------------------------------------------
+        basic_data: Dict[str, str] = {}
+        for table in tables:
+            rows = table.find_all("tr")
+            if not rows: continue
+            header = GruplacNormalizer.normalize(rows[0].get_text(strip=True)).lower()
+            if "datos basicos" in header:
+                for row in rows[1:]:
+                    cols = row.find_all("td")
+                    if len(cols) == 2:
+                        k = GruplacNormalizer.normalize(cols[0].get_text(strip=True)).replace(":", "")
+                        v = GruplacNormalizer.normalize(cols[1].get_text(strip=True))
+                        basic_data[k] = v
+                break
+
+        group_header = soup.find("span", class_="celdaEncabezado")
+        group_name = (
+            GruplacNormalizer.normalize(group_header.get_text(strip=True))
+            if group_header else basic_data.get("Nombre del grupo", "Grupo Sin Nombre")
+        )
+
+        group_code = "COL0000000"
+        for k, v in basic_data.items():
+            if "codigo" in k.lower():
+                group_code = v.strip()
+                break
+
+        if group_code == "COL0000000" and source_url:
+            m_nro = re.search(r"nro=([0-9]+)", source_url)
+            if m_nro:
+                nro_clean = m_nro.group(1).lstrip("0")
+                group_code = f"COL{nro_clean.zfill(7)}"
+
+        leader_name = basic_data.get("Lider", basic_data.get("Lider del grupo", ""))
+
+        # -------------------------------------------------------------
+        # 2. Instituciones que avalan
+        # -------------------------------------------------------------
+        institutions: List[str] = []
+        for table in tables:
+            rows = table.find_all("tr")
+            if not rows: continue
+            header = GruplacNormalizer.normalize(rows[0].get_text(strip=True)).lower()
+            if "instituciones" in header:
+                for row in rows[1:]:
+                    txt = GruplacNormalizer.normalize(row.get_text(strip=True))
+                    if txt:
+                        clean_inst = txt.split(".-")[-1].split(" - ")[0].strip()
+                        if clean_inst:
+                            institutions.append(clean_inst)
+                break
+
+        # -------------------------------------------------------------
+        # 3. Plan estratégico
+        # -------------------------------------------------------------
+        plan_text = ""
+        for table in tables:
+            rows = table.find_all("tr")
+            if not rows: continue
+            header = GruplacNormalizer.normalize(rows[0].get_text(strip=True)).lower()
+            if "plan estrat" in header:
+                for row in rows[1:]:
+                    plan_text += " " + GruplacNormalizer.normalize(row.get_text(strip=True))
+                break
+        plan_text = plan_text.strip()
+
+        # -------------------------------------------------------------
+        # 4. Líneas de investigación
+        # -------------------------------------------------------------
+        research_lines: List[str] = []
+        for table in tables:
+            rows = table.find_all("tr")
+            if not rows: continue
+            header = GruplacNormalizer.normalize(rows[0].get_text(strip=True)).lower()
+            if "lineas de investigacion" in header:
+                for row in rows[1:]:
+                    txt = GruplacNormalizer.normalize(row.get_text(strip=True))
+                    if txt:
+                        clean_line = txt.split(".-")[-1].strip()
+                        if clean_line:
+                            research_lines.append(clean_line)
+                break
+
+        # -------------------------------------------------------------
+        # 5. Integrantes del grupo y detección de líder
+        # -------------------------------------------------------------
+        members: List[ScrapedMember] = []
+        leader_key = GruplacNormalizer.normalized_name_key(leader_name)
+
+        for table in tables:
+            rows = table.find_all("tr")
+            if not rows: continue
+            header = GruplacNormalizer.normalize(rows[0].get_text(strip=True)).lower()
+            if "integrantes del grupo" in header:
+                for row in rows[2:]:
+                    cols = row.find_all("td")
+                    if len(cols) >= 3:
+                        raw_name = GruplacNormalizer.normalize(cols[0].get_text(strip=True))
+                        clean_name = re.sub(r"^\d+\.-\s*", "", raw_name).strip()
+                        vinculacion = GruplacNormalizer.normalize(cols[1].get_text(strip=True))
+                        
+                        raw_hours = cols[2].get_text(strip=True) if len(cols) >= 4 else ""
+                        m_h = re.search(r"\b(\d+)\b", raw_hours)
+                        hours = int(m_h.group(1)) if m_h else None
+
+                        period_raw = cols[3].get_text(strip=True) if len(cols) >= 4 else cols[2].get_text(strip=True)
+                        parsed_period = GruplacNormalizer.parse_membership_period(period_raw)
+
+                        # Extraer cod_rh real de CvLAC
+                        cod_rh = None
+                        a_tag = row.find("a", href=True)
+                        if a_tag and "cod_rh=" in a_tag["href"]:
+                            m_rh = re.search(r"cod_rh=([^&]+)", a_tag["href"])
+                            if m_rh:
+                                cod_rh = m_rh.group(1).strip()
+
+                        if not cod_rh:
+                            name_hash = hashlib.sha256(clean_name.encode("utf-8")).hexdigest()[:12]
+                            cod_rh = f"RH_{group_code}_{name_hash}"
+
+                        # Matching de líder exacto sin falsos positivos de subcadena
+                        member_key = GruplacNormalizer.normalized_name_key(clean_name)
+                        is_leader = (leader_key and leader_key == member_key)
+
+                        members.append(ScrapedMember(
+                            display_name=clean_name,
+                            cod_rh=cod_rh,
+                            role=vinculacion or "Investigador",
+                            hours=hours,
+                            period_raw=period_raw,
+                            start_date=parsed_period["start_date"],
+                            end_date=parsed_period["end_date"],
+                            is_current=parsed_period["is_current"],
+                            is_leader_candidate=is_leader
+                        ))
+                break
+
+        # -------------------------------------------------------------
+        # 6. Extracción Estructural de Productos
+        # -------------------------------------------------------------
+        products: List[ScrapedProduct] = []
+
+        SECTION_MAP = [
+            ("articulos", 1, 1),
+            ("libros publicados", 1, 2),
+            ("capitulos", 1, 3),
+            ("software", 2, 6),
+            ("prototipo", 2, 7),
+            ("eventos", 3, 9),
+            ("trabajos dirigidos", 4, 12),
+            ("tesis", 4, 12),
+        ]
+
+        for table in tables:
+            rows = table.find_all("tr")
+            if not rows: continue
+            header = GruplacNormalizer.normalize(rows[0].get_text(strip=True)).lower()
+
+            fam_id = None
+            sub_id = None
+            section_label = ""
+            for pattern, f_id, s_id in SECTION_MAP:
+                if pattern in header:
+                    fam_id = f_id
+                    sub_id = s_id
+                    section_label = pattern
+                    break
+            
+            if fam_id is None:
+                continue
+
+            for row in rows[2:]:
+                cols = row.find_all("td")
+                if len(cols) < 2:
+                    continue
+
+                # Preservar estructura de líneas explícitas sin aplanar espacios
+                lines = [
+                    line.strip() for line in cols[1].get_text(separator="\n", strip=True).splitlines()
+                    if line.strip()
+                ]
+                if not lines:
+                    continue
+
+                full_text = " ".join(lines)
+
+                # Extracción estructurada de Título
+                title = ""
+                idx = 0
+                if idx < len(lines) and re.match(r"^\d+\.-\s*$", lines[idx]):
+                    idx += 1
+                
+                if idx < len(lines):
+                    first_line = lines[idx]
+                    if ":" in first_line and len(first_line.split(":", 1)[1].strip()) > 3:
+                        title = first_line.split(":", 1)[1].strip()
+                        idx += 1
+                    else:
+                        idx += 1
+                        if idx < len(lines):
+                            title = lines[idx].lstrip(": ").strip()
+                            idx += 1
+
+                title = re.sub(r"^\d+\.-\s*", "", title).strip()
+                if not title:
+                    title = re.sub(r"^\d+\.-\s*", "", lines[0])[:200]
+
+                # Extracción estructurada de DOI, ISSN, ISBN
+                doi = cls.extract_labeled_value(lines, "DOI")
+                if not doi:
+                    m_doi = re.search(r"DOI:\s*([^\s,]+)", full_text, re.IGNORECASE)
+                    if m_doi: doi = m_doi.group(1).strip()
+
+                issn = cls.extract_labeled_value(lines, "ISSN")
+                if not issn:
+                    m_issn = re.search(r"ISSN:\s*([^\s,]+)", full_text, re.IGNORECASE)
+                    if m_issn: issn = m_issn.group(1).strip()
+
+                isbn = cls.extract_labeled_value(lines, "ISBN")
+                if not isbn:
+                    m_isbn = re.search(r"ISBN:\s*([^\s,]+)", full_text, re.IGNORECASE)
+                    if m_isbn: isbn = m_isbn.group(1).strip()
+
+                year = GruplacNormalizer.extract_year(full_text)
+
+                # Extracción estructurada de Autores / Tutores
+                scraped_authors = cls.extract_authors(lines)
+                author_names = [a.display_name for a in scraped_authors]
+
+                p_ext_code = GruplacNormalizer.product_external_code(title, year, doi, authors=author_names)
+
+                products.append(ScrapedProduct(
+                    title=title,
+                    raw_text=full_text,
+                    section=section_label,
+                    family_id=fam_id,
+                    subtype_id=sub_id,
+                    doi=doi or None,
+                    issn=issn or None,
+                    isbn=isbn or None,
+                    year=year,
+                    authors=scraped_authors,
+                    source_url=source_url,
+                    external_code=p_ext_code
+                ))
+
+        # -------------------------------------------------------------
+        # 7. Extracción de Proyectos
+        # -------------------------------------------------------------
+        projects: List[ScrapedProject] = []
+        for table in tables:
+            rows = table.find_all("tr")
+            if not rows: continue
+            header = GruplacNormalizer.normalize(rows[0].get_text(strip=True)).lower()
+            if header == "proyectos":
+                for row in rows[1:]:
+                    txt = GruplacNormalizer.normalize(row.get_text(strip=True))
+                    if txt:
+                        clean_proj = txt.split(".-")[-1].strip()
+                        proj_year = GruplacNormalizer.extract_year(clean_proj)
+                        projects.append(ScrapedProject(
+                            title=clean_proj[:500],
+                            summary=clean_proj,
+                            year=proj_year,
+                            raw_text=txt
+                        ))
+                break
+
+        return ScrapedGroupData(
+            group={
+                "external_code": group_code,
+                "name": group_name,
+                "leader_name": leader_name,
+                "classification": basic_data.get("Clasificacion", basic_data.get("Estado", "")),
+                "email": basic_data.get("E-mail", ""),
+                "website": basic_data.get("Pagina web", ""),
+                "city": basic_data.get("Ciudad", basic_data.get("Departamento - Ciudad", "")),
+                "department": basic_data.get("Departamento", ""),
+                "declared_creation_date": basic_data.get("Ano y mes de formacion", ""),
+                "knowledge_area": basic_data.get("Area de conocimiento", ""),
+            },
+            institutions=institutions,
+            members=members,
+            products=products,
+            projects=projects,
+            research_lines=research_lines,
+            work_plan_text=plan_text,
+            warnings=warnings
+        )
+
+
+# =====================================================================
+# 5. Servicio de Persistencia Transaccional e Idempotente
+# =====================================================================
+
+class GruplacCommitService:
+    @classmethod
+    def commit(cls, data: ScrapedGroupData, db_conn_str: str = "") -> Dict[str, Any]:
+        logger.info(f"Iniciando compromiso transaccional atómico para el grupo: {data.group['name']} ({data.group['external_code']})")
+        
+        job_id = None
+        conn = None
+        
+        # Contadores de conciliación contable por registro
+        extracted_products = len(data.products)
+        matched_products = 0
+        created_products = 0
+        total_records = 0
+        new_records = 0
+        member_authors_count = 0
+        external_authors_count = 0
+
+        try:
+            if not db_conn_str:
+                return {
+                    "status": "dry_run",
+                    "group": data.group["name"],
+                    "products_count": extracted_products,
+                    "members_count": len(data.members)
+                }
+
+            conn = pyodbc.connect(db_conn_str, autocommit=False)
+            cur = conn.cursor()
+            # 1. Registrar ImportJob en estado 'processing' dentro de la transacción
+            cur.execute("""
+                INSERT INTO ImportJob (source_type, source_url, status, total_records, new_records, error_count, created_at)
+                OUTPUT INSERTED.id
+                VALUES ('url', ?, 'processing', 0, 0, 0, GETDATE())
+            """, data.products[0].source_url if data.products else "https://scienti.minciencias.gov.co/gruplac")
+            row = cur.fetchone()
+            if row:
+                job_id = row[0]
+            # 2. Persistir / Actualizar ResearchGroup
+            cur.execute("""
+                IF NOT EXISTS (SELECT 1 FROM ResearchGroup WHERE external_code = ?)
+                BEGIN
+                    INSERT INTO ResearchGroup (external_code, name, institution, classification, email, website, city, department, declared_creation_date, knowledge_area, status)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'active');
+                END
+                ELSE
+                BEGIN
+                    UPDATE ResearchGroup
+                    SET name = ?, institution = ?, classification = ?, email = ?, website = ?, city = ?, department = ?, declared_creation_date = ?, knowledge_area = ?
+                    WHERE external_code = ?;
+                END
+            """, data.group["external_code"],
+                 data.group["external_code"], data.group["name"], " | ".join(data.institutions), data.group.get("classification", ""), data.group.get("email", ""), data.group.get("website", ""), data.group.get("city", ""), data.group.get("department", ""), data.group.get("declared_creation_date", ""), data.group.get("knowledge_area", ""),
+                 data.group["name"], " | ".join(data.institutions), data.group.get("classification", ""), data.group.get("email", ""), data.group.get("website", ""), data.group.get("city", ""), data.group.get("department", ""), data.group.get("declared_creation_date", ""), data.group.get("knowledge_area", ""), data.group["external_code"])
+            
+            cur.execute("SELECT id FROM ResearchGroup WHERE external_code = ?", data.group["external_code"])
+            db_group_id = cur.fetchone()[0]
+
+            # 3. Persistir Miembros y GroupMembership de forma idempotente
+            members_by_key: Dict[str, int] = {}
+            leader_found_cod_rh = None
+
+            for m in data.members:
+                total_records += 1
+                norm_key = GruplacNormalizer.normalized_name_key(m.display_name)
+                
+                # Comprobar si el investigador ya existe por external_code
+                cur.execute("SELECT id FROM Researcher WHERE external_code = ?", m.cod_rh)
+                r_row = cur.fetchone()
+                if r_row:
+                    existing_res_id = r_row[0]
+                    action = "matched"
+                else:
+                    cur.execute("""
+                        INSERT INTO Researcher (external_code, first_names, last_names, highest_education_level, status)
+                        OUTPUT INSERTED.id
+                        VALUES (?, ?, '', '', 'active');
+                    """, m.cod_rh or f"RH_{norm_key[:20]}", m.display_name[:150])
+                    existing_res_id = cur.fetchone()[0]
+                    new_records += 1
+                    action = "created"
+
+                members_by_key[norm_key] = existing_res_id
+
+                # Vincular a GroupMembership con periodo normalizado
+                cur.execute("""
+                    IF NOT EXISTS (SELECT 1 FROM GroupMembership WHERE group_id = ? AND researcher_id = ?)
+                    BEGIN
+                        INSERT INTO GroupMembership (group_id, researcher_id, role, start_date, end_date, status)
+                        VALUES (?, ?, ?, ?, ?, 'active');
+                    END
+                    ELSE
+                    BEGIN
+                        UPDATE GroupMembership SET role = ?, start_date = ?, end_date = ?
+                        WHERE group_id = ? AND researcher_id = ?;
+                    END
+                """, db_group_id, existing_res_id, db_group_id, existing_res_id, m.role or "Investigador", m.start_date or "", m.end_date or "", m.role or "Investigador", m.start_date or "", m.end_date or "", db_group_id, existing_res_id)
+
+                if job_id:
+                    cur.execute("""
+                        INSERT INTO ImportRecord (job_id, entity_type, external_identifier, action_taken, source_data_summary, resolution_details, created_at)
+                        VALUES (?, 'Member', ?, ?, ?, ?, GETDATE());
+                    """, job_id, m.cod_rh or "", action, m.display_name[:200], f"Rol: {m.role} | Periodo: {m.start_date} a {m.end_date or 'Actual'}")
+
+                if m.is_leader_candidate:
+                    leader_found_cod_rh = m.cod_rh
+
+            # 4. Asignar líder al grupo si fue identificado
+            if leader_found_cod_rh and conn:
+                cur.execute("""
+                    UPDATE ResearchGroup
+                    SET leader_id = (SELECT TOP 1 id FROM Researcher WHERE external_code = ?)
+                    WHERE id = ?
+                """, leader_found_cod_rh, db_group_id)
+                logger.info(f"Lider asignado al grupo con cod_rh: {leader_found_cod_rh}")
+
+            # 5. Persistir Productos con validation_status='pending' e Idempotencia
+            for p in data.products:
+                total_records += 1
+                prod_id = None
+                p_action = "matched"
+
+                cur.execute("SELECT id FROM Product WHERE external_code = ?", p.external_code)
+                p_row = cur.fetchone()
+                if p_row:
+                    prod_id = p_row[0]
+                    matched_products += 1
+                else:
+                    cur.execute("""
+                        INSERT INTO Product (external_code, title, description, family_id, subtype_id, quality_category_id, obtained_date, publication_date, validation_status, doi, issn, isbn, year, status)
+                        OUTPUT INSERTED.id
+                        VALUES (?, ?, ?, ?, ?, 1, ?, ?, 'pending', ?, ?, ?, ?, 'active');
+                    """, p.external_code, GruplacNormalizer.normalize(p.title)[:490], GruplacNormalizer.normalize(p.raw_text)[:2000], p.family_id, p.subtype_id, str(p.year) if p.year else "", str(p.year) if p.year else "", p.doi, p.issn, p.isbn, p.year)
+                    prod_id = cur.fetchone()[0]
+                    new_records += 1
+                    created_products += 1
+                    p_action = "created"
+
+                # Encolar en la cola de validación institucional (idempotente en SQL Server)
+                cur.execute("""
+                    IF NOT EXISTS (SELECT 1 FROM ValidationQueueItem WHERE product_id = ? AND status = 'pending')
+                    BEGIN
+                        INSERT INTO ValidationQueueItem (product_id, status, assigned_to, enqueued_at)
+                        VALUES (?, 'pending', '', GETDATE());
+                    END
+                """, prod_id, prod_id)
+
+                # Proponer enlace producto-grupo (status='pending_validation')
+                cur.execute("""
+                    IF NOT EXISTS (SELECT 1 FROM GroupProductLink WHERE group_id = ? AND product_id = ?)
+                    BEGIN
+                        INSERT INTO GroupProductLink (group_id, product_id, status, source, requested_at, validation_reason)
+                        VALUES (?, ?, 'pending_validation', 'gruplac_public', GETDATE(), 'Importado automáticamente desde GrupLAC; pendiente de validación institucional UPC.');
+                    END
+                """, db_group_id, prod_id, db_group_id, prod_id)
+
+                if job_id:
+                    cur.execute("""
+                        INSERT INTO ImportRecord (job_id, entity_type, external_identifier, action_taken, source_data_summary, resolution_details, created_at)
+                        VALUES (?, 'Product', ?, ?, ?, ?, GETDATE());
+                    """, job_id, p.external_code, p_action, p.title[:200], f"Subtipo: {p.subtype_id} | Año: {p.year} | DOI: {p.doi or 'N/A'}")
+
+                # 5.1 Persistir Autores (ProductAuthor) sin crear Researchers fantasma
+                for a_idx, author in enumerate(p.authors, start=1):
+                    total_records += 1
+                    a_key = GruplacNormalizer.normalized_name_key(author.display_name)
+                    
+                    # Verificar si el autor es integrante institucional del grupo
+                    author_res_id = members_by_key.get(a_key)
+                    if author_res_id:
+                        # Autor institucional registrado
+                        cur.execute("""
+                            IF NOT EXISTS (SELECT 1 FROM ProductAuthor WHERE product_id = ? AND researcher_id = ?)
+                            BEGIN
+                                INSERT INTO ProductAuthor (product_id, researcher_id, author_order, match_status)
+                                VALUES (?, ?, ?, 'exact');
+                            END
+                        """, prod_id, author_res_id, prod_id, author_res_id, a_idx)
+                        member_authors_count += 1
+                    else:
+                        # Autor colaborador externo: NO se crea Researcher artificial
+                        ext_code = GruplacNormalizer.collaborator_external_code(author.display_name)
+                        cur.execute("""
+                            IF NOT EXISTS (SELECT 1 FROM ProductAuthor WHERE product_id = ? AND external_author_name = ?)
+                            BEGIN
+                                INSERT INTO ProductAuthor (product_id, researcher_id, author_order, external_author_name, external_author_identifier, match_status)
+                                VALUES (?, NULL, ?, ?, ?, 'unverified');
+                            END
+                        """, prod_id, author.display_name[:250], prod_id, a_idx, author.display_name[:250], ext_code)
+                        external_authors_count += 1
+
+            # 6. Persistir Proyectos
+            if conn and data.projects:
+                for proj in data.projects:
+                    total_records += 1
+                    clean_proj_title = proj.title[:490]
+                    # Verificar existencia de proyecto
+                    cur.execute("SELECT id FROM Project WHERE title = ?", clean_proj_title)
+                    pr_row = cur.fetchone()
+                    if pr_row:
+                        proj_id = pr_row[0]
+                        proj_action = "matched"
+                    else:
+                        cur.execute("""
+                            INSERT INTO Project (title, summary, start_date, status)
+                            OUTPUT INSERTED.id
+                            VALUES (?, ?, ?, 'active');
+                        """, clean_proj_title, proj.summary[:2000], str(proj.year) if proj.year else None)
+                        proj_id = cur.fetchone()[0]
+                        new_records += 1
+                        proj_action = "created"
+
+                    cur.execute("""
+                        IF NOT EXISTS (SELECT 1 FROM GroupProject WHERE group_id = ? AND project_id = ?)
+                        BEGIN
+                            INSERT INTO GroupProject (group_id, project_id) VALUES (?, ?);
+                        END
+                    """, db_group_id, proj_id, db_group_id, proj_id)
+
+                    if job_id:
+                        cur.execute("""
+                            INSERT INTO ImportRecord (job_id, entity_type, external_identifier, action_taken, source_data_summary, resolution_details, created_at)
+                            VALUES (?, 'Project', ?, ?, ?, ?, GETDATE());
+                        """, job_id, str(proj.year or ""), proj_action, clean_proj_title[:200], f"Año: {proj.year}")
+
+            # 7. Persistir Plan Estratégico y Líneas de Investigación
+            if conn:
+                cur = conn.cursor()
+                if data.work_plan_text:
+                    cur.execute("""
+                        IF NOT EXISTS (SELECT 1 FROM WorkPlan WHERE group_id = ?)
+                        BEGIN
+                            INSERT INTO WorkPlan (group_id, title, description, status)
+                            VALUES (?, 'Plan Estratégico Gruplac', ?, 'active');
+                        END
+                    """, db_group_id, db_group_id, data.work_plan_text[:2000])
+
+                for linea in data.research_lines:
+                    cur.execute("""
+                        IF NOT EXISTS (SELECT 1 FROM ResearchLine WHERE name = ?)
+                        BEGIN
+                            INSERT INTO ResearchLine (name) VALUES (?);
+                        END
+                        INSERT INTO GroupResearchLine (group_id, line_id)
+                        SELECT ?, id FROM ResearchLine WHERE name = ?
+                          AND NOT EXISTS (SELECT 1 FROM GroupResearchLine WHERE group_id = ? AND line_id = ResearchLine.id);
+                    """, linea, linea, db_group_id, linea, db_group_id)
+
+            # 8. Conciliación final y Auditoría
+            reconciliation_summary = (
+                f"Conciliación: {extracted_products} productos extraídos "
+                f"({matched_products} encontrados en BD, {created_products} nuevos en pending). "
+                f"{len(data.members)} miembros. {len(data.projects)} proyectos. "
+                f"{member_authors_count} autorías institucionales, {external_authors_count} coautores externos (sin investigadores ficticios)."
+            )
+
+            if conn and job_id:
+                cur = conn.cursor()
+                cur.execute("""
+                    UPDATE ImportJob
+                    SET status = 'completed',
+                        total_records = ?,
+                        new_records = ?,
+                        error_count = 0,
+                        details = ?,
+                        completed_at = GETDATE()
+                    WHERE id = ?
+                """, total_records, new_records, reconciliation_summary, job_id)
+
+                cur.execute("""
+                    INSERT INTO AuditLog (entity_type, entity_id, action, changed_by, change_details)
+                    VALUES ('ResearchGroup', ?, 'IMPORT_GRUPLAC_TRANSACTIONAL', 'system_scraper', ?)
+                """, db_group_id, reconciliation_summary)
+                
+                # Confirmar la transacción atómica
+                conn.commit()
+
+            # SQL Server remains the source of truth. Reload the native core to
+            # prevent RAM/SQL identifier divergence after idempotent upserts.
+            if db_conn_str:
+                repository.load_from_db(db_conn_str)
+
+            logger.info(f"Compromiso transaccional finalizado exitosamente. {reconciliation_summary}")
+            return {
+                "status": "success",
+                "job_id": job_id,
+                "group_id": db_group_id,
+                "group_name": data.group["name"],
+                "total_records": total_records,
+                "new_records": new_records,
+                "extracted_products": extracted_products,
+                "matched_products": matched_products,
+                "created_products": created_products,
+                "members_count": len(data.members),
+                "projects_count": len(data.projects),
+                "reconciliation_summary": reconciliation_summary
+            }
+
+        except Exception as e:
+            logger.error(f"Error critico en commit transaccional: {e}", exc_info=True)
+            if conn and job_id:
+                try:
+                    conn.rollback()
+                    conn.cursor().execute("""
+                        UPDATE ImportJob
+                        SET status = 'failed',
+                            error_count = 1,
+                            details = ?,
+                            completed_at = GETDATE()
+                        WHERE id = ?
+                    """, str(e)[:2000], job_id)
+                    conn.commit()
+                except Exception as ex_inner:
+                    logger.error(f"No fue posible actualizar ImportJob fallido: {ex_inner}")
+            raise
+        finally:
+            if conn:
+                conn.close()
+
+
+# =====================================================================
+# 6. Punto de Entrada Principal (Pipeline Completo)
+# =====================================================================
+
+def scrape_gruplac(url: str, db_conn_str: str = "") -> Dict[str, Any]:
+    print("=" * 65)
+    print(f"PEA-i Importador GrupLAC (Estructural e Idempotente en SQL)")
+    print(f"URL: {url}")
+    print("=" * 65)
+
+    # 1. Descarga con validación de host y codificación
+    html_content = GruplacHttpClient.fetch(url)
+
+    # 2. Parseo estructural en DTO
+    scraped_data = GruplacHtmlParser.parse(html_content, source_url=url)
+    print(f"[OK] Extraccion estructural finalizada:")
+    print(f"     - Grupo: {scraped_data.group['name']} ({scraped_data.group['external_code']})")
+    print(f"     - Miembros detectados: {len(scraped_data.members)}")
+    print(f"     - Productos cientificos: {len(scraped_data.products)}")
+    print(f"     - Proyectos: {len(scraped_data.projects)}")
+    print(f"     - Lineas de investigacion: {len(scraped_data.research_lines)}")
+
+    # 3. Compromiso transaccional idempotente
+    result = GruplacCommitService.commit(scraped_data, db_conn_str=db_conn_str)
+    print("=" * 65)
+    print(f"[SUCCESS] Importacion completada. Job ID: {result.get('job_id')}")
+    print(f"          Total procesados: {result.get('total_records')} | Nuevos: {result.get('new_records')}")
+    print("=" * 65)
+    return result
+
+
+if __name__ == "__main__":
+    if len(sys.argv) < 2:
+        print("Uso: python -m backend.app.scraper <URL_GRUPLAC>")
+        sys.exit(1)
+
+    url_arg = sys.argv[1]
+    conn_str = os.environ.get(
+        "PEAI_SQLSERVER_CONNECTION",
+        "Driver={ODBC Driver 17 for SQL Server};Server=localhost;Database=peai;Trusted_Connection=yes;"
+    )
+
+    repository.initialize(repository.InitMode.Database, conn_str)
+    repository._active_connection_string = conn_str
+
+    scrape_gruplac(url_arg, conn_str)

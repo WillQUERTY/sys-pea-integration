@@ -17,7 +17,16 @@ struct Product {
     std::string obtained_date;
     std::string publication_date;
     std::string validation_status = "pending";
+    std::string language;
+    std::string country;
+    std::string doi;
+    std::string isbn;
+    std::string issn;
+    std::string url;
+    std::string evidence;
+    std::string specialized_attributes;
     std::string status            = "active";
+    int         year              = 0;
 };
 
 struct GroupProductLink {
@@ -35,6 +44,19 @@ struct ProductNode {
     Product       data;
     ProductNode*  nextProduct = nullptr;
     // For later: pointers to cross-chains (e.g., links from groups) could be anchored here
+};
+
+struct ProductAuthor {
+    int id           = 0;
+    int productId    = 0;
+    int researcherId = 0;
+    int authorOrder  = 1;
+};
+
+struct ProductAuthorNode {
+    ProductAuthor      data;
+    ProductAuthorNode* nextInProduct     = nullptr;
+    ProductAuthorNode* nextForResearcher = nullptr;
 };
 
 #endif // PEAI_ENTITIES_PRODUCT_H

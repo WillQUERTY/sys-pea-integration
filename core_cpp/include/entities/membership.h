@@ -4,9 +4,16 @@
 #ifndef PEAI_ENTITIES_MEMBERSHIP_H
 #define PEAI_ENTITIES_MEMBERSHIP_H
 
+#include <string>
+
 struct Membership {
-    int membershipId = 0;
-    int researcherId = 0;
+    int         membershipId = 0;
+    int         groupId      = 0;
+    int         researcherId = 0;
+    std::string role         = "Investigador";
+    std::string start_date;
+    std::string end_date;
+    std::string status       = "active";
 };
 
 struct MembershipNode {

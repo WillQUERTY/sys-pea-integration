@@ -40,7 +40,12 @@ GroupNode* get_group_head() { return _groupHead; }
 Group create_group(const Group& prototype) {
     GroupNode* node  = new GroupNode();
     node->data       = prototype;
-    node->data.id    = _nextGroupId++;
+    if (prototype.id > 0) {
+        node->data.id = prototype.id;
+        if (prototype.id >= _nextGroupId) _nextGroupId = prototype.id + 1;
+    } else {
+        node->data.id = _nextGroupId++;
+    }
 
     // Append at end of linked list
     if (!_groupHead) {
