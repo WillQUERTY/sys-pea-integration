@@ -706,24 +706,37 @@ class GruplacCommitService:
             if row:
                 job_id = row[0]
             # 2. Persistir / Actualizar ResearchGroup
-            cur.execute("""
-                IF NOT EXISTS (SELECT 1 FROM ResearchGroup WHERE external_code = ?)
-                BEGIN
+            #    Conciliación: primero por external_code; si no existe, por nombre
+            #    normalizado (el cod_grupo_gr de datos abiertos y el código de la
+            #    página GrupLAC difieren para el mismo grupo, p.ej. BIAT:
+            #    COL0034862 vs COL0001727).
+            cur.execute("SELECT id FROM ResearchGroup WHERE external_code = ?", data.group["external_code"])
+            row = cur.fetchone()
+            if row is None:
+                wanted = GruplacNormalizer.normalized_name_key(data.group["name"])
+                cur.execute("SELECT id, external_code, name FROM ResearchGroup WHERE status <> 'deleted'")
+                for g_row in cur.fetchall():
+                    if GruplacNormalizer.normalized_name_key(g_row[2]) == wanted:
+                        row = (g_row[0],)
+                        logger.info(
+                            f"Conciliación de grupo por nombre: '{data.group['name']}' "
+                            f"({data.group['external_code']}) → existente {g_row[1]} (id={g_row[0]})"
+                        )
+                        break
+            if row is None:
+                cur.execute("""
                     INSERT INTO ResearchGroup (external_code, name, institution, classification, email, website, city, department, declared_creation_date, knowledge_area, status)
+                    OUTPUT INSERTED.id
                     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'active');
-                END
-                ELSE
-                BEGIN
+                """, data.group["external_code"], data.group["name"], " | ".join(data.institutions), data.group.get("classification", ""), data.group.get("email", ""), data.group.get("website", ""), data.group.get("city", ""), data.group.get("department", ""), data.group.get("declared_creation_date", ""), data.group.get("knowledge_area", ""))
+                db_group_id = cur.fetchone()[0]
+            else:
+                db_group_id = row[0]
+                cur.execute("""
                     UPDATE ResearchGroup
                     SET name = ?, institution = ?, classification = ?, email = ?, website = ?, city = ?, department = ?, declared_creation_date = ?, knowledge_area = ?
-                    WHERE external_code = ?;
-                END
-            """, data.group["external_code"],
-                 data.group["external_code"], data.group["name"], " | ".join(data.institutions), data.group.get("classification", ""), data.group.get("email", ""), data.group.get("website", ""), data.group.get("city", ""), data.group.get("department", ""), data.group.get("declared_creation_date", ""), data.group.get("knowledge_area", ""),
-                 data.group["name"], " | ".join(data.institutions), data.group.get("classification", ""), data.group.get("email", ""), data.group.get("website", ""), data.group.get("city", ""), data.group.get("department", ""), data.group.get("declared_creation_date", ""), data.group.get("knowledge_area", ""), data.group["external_code"])
-            
-            cur.execute("SELECT id FROM ResearchGroup WHERE external_code = ?", data.group["external_code"])
-            db_group_id = cur.fetchone()[0]
+                    WHERE id = ?;
+                """, data.group["name"], " | ".join(data.institutions), data.group.get("classification", ""), data.group.get("email", ""), data.group.get("website", ""), data.group.get("city", ""), data.group.get("department", ""), data.group.get("declared_creation_date", ""), data.group.get("knowledge_area", ""), db_group_id)
 
             # 2.1 Resolver catalogos desde BD por nombre (Revision §20: sin IDs magicos)
             cur.execute("SELECT s.id, s.family_id, s.name FROM ProductSubtype s")
