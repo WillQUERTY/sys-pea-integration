@@ -507,7 +507,7 @@ class GruplacImportRequest(BaseModel):
     group_code: Optional[str] = None  # "COL0016283" o nro crudo de GrupLAC
     enrich_cvlac: bool = False
 
-@router.get("/groups/search/datos-abiertos", tags=["Ingestion"])
+@router.get("/groups/search/scienti", tags=["Ingestion"])
 async def search_groups_endpoint(
     q: str = "",
     departamento: Optional[str] = None,
@@ -516,14 +516,15 @@ async def search_groups_endpoint(
     limit: int = 50,
 ):
     """
-    Busca grupos RECONOCIDOS en el dataset oficial «Grupos de Investigación»
-    (datos.gov.co / Socrata hrhc-c4wu) y devuelve cada candidato con su URL
-    GrupLAC lista para vista previa/importación. Los grupos no reconocidos no
-    aparecen: para esos, usar el import por URL manual.
+    Busca grupos en el buscador oficial de Scienti (busquedaAvanzadaGrupos.do)
+    por nombre, institución y departamento. Devuelve cada candidato con el nro
+    REAL de GrupLAC y su URL lista para vista previa/importación.
+    Scienti es la única fuente de verdad para identidad de grupos.
     """
-    from .. import datos_abiertos_grupos
-    return datos_abiertos_grupos.search_grupos(
-        q, departamento, institucion, clasificacion, min(limit, 200)
+    from ..scraper import buscar_grupos_scienti
+    return buscar_grupos_scienti(
+        nombre=q, institucion=institucion or "", departamento=departamento or "",
+        clasificacion=clasificacion or "", limit=min(limit, 200),
     )
 
 @router.post("/researchers/import/cvlac", tags=["Ingestion"])

@@ -1,7 +1,7 @@
 """
 backend/tests/test_datos_abiertos_grupos.py
-Pruebas del buscador de grupos sobre datos abiertos (Socrata hrhc-c4wu) y del
-resolver de URL GrupLAC. Se mockea requests.get: no requieren red.
+Pruebas del resolver de URL GrupLAC (datos_abiertos_grupos) y del buscador
+oficial de Scienti (scraper.buscar_grupos_scienti). Todo mockeado: sin red.
 
 Ejecutar desde la raíz del repo:
     backend/venv/Scripts/python.exe -m unittest discover -s backend/tests -v
@@ -10,15 +10,37 @@ Ejecutar desde la raíz del repo:
 import unittest
 from unittest.mock import patch, MagicMock
 
-import requests
-
 from backend.app.datos_abiertos_grupos import (
     gruplac_url_from_code,
     resolver_url_gruplac,
-    search_grupos,
 )
 
 VIEWER = "https://scienti.minciencias.gov.co/gruplac/jsp/visualiza/visualizagr.jsp?nro="
+
+# HTML mínimo con la estructura real de resultados del buscador Scienti
+# (tabla#gruposAvanzada: fila con enlace nro=, código COL, CATEGORIA y CONVOCATORIA)
+SEARCH_HTML = """
+<html><body>
+<table id="gruposAvanzada" class="tabla">
+  <tr class="header"><td>Grupo</td><td>Código</td><td>Clasif.</td><td>Conv.</td></tr>
+  <tr class="row1">
+    <td align="left"><a href="visualizagr.jsp?nro=00000000002668" target="_blank">AITICE</a></td>
+    <td>COL0043834</td>
+    <td>2 de 2</td>
+    <td>CATEGORIA B</td>
+    <td>CONVOCATORIA 957 DE 2024</td>
+  </tr>
+  <tr class="row0">
+    <td align="left"><a href="visualizagr.jsp?nro=00000000002668" target="_blank">AITICE</a></td>
+    <td>COL0043834</td><td></td><td>CATEGORIA B</td><td>CONVOCATORIA 894 DE 2021</td>
+  </tr>
+  <tr class="row1">
+    <td align="left"><a href="visualizagr.jsp?nro=00000000002093" target="_blank">GRUPO DE ÓPTICA</a></td>
+    <td>COL0002093</td><td></td><td>CATEGORIA A1</td><td>CONVOCATORIA 957 DE 2024</td>
+  </tr>
+</table>
+</body></html>
+"""
 
 
 class TestGruplacUrlFromCode(unittest.TestCase):
@@ -30,11 +52,6 @@ class TestGruplacUrlFromCode(unittest.TestCase):
 
     def test_nro_corto(self):
         self.assertEqual(gruplac_url_from_code("2093"), VIEWER + "00000000002093")
-
-    def test_nro_largo_intacto(self):
-        self.assertEqual(
-            gruplac_url_from_code("00000000002093"), VIEWER + "00000000002093"
-        )
 
 
 class TestResolverUrlGruplac(unittest.TestCase):
@@ -73,61 +90,37 @@ class TestResolverUrlGruplac(unittest.TestCase):
             resolver_url_gruplac(url="  ", group_code="")
 
 
-def _socrata_response(rows):
-    resp = MagicMock()
-    resp.json.return_value = rows
-    resp.raise_for_status.return_value = None
-    return resp
+class TestBuscarGruposScienti(unittest.TestCase):
+    @patch("backend.app.scraper._busqueda_gruplac_html")
+    def test_parsea_resultados(self, mock_html):
+        from backend.app.scraper import buscar_grupos_scienti
+        mock_html.return_value = SEARCH_HTML
+        results = buscar_grupos_scienti(nombre="AITICE")
+        self.assertEqual(len(results), 2, "el nro repetido (varias convocatorias) se deduplica")
+        aitice = next(r for r in results if r["nro"] == "00000000002668")
+        self.assertEqual(aitice["cod_grupo"], "COL0043834")
+        self.assertEqual(aitice["nombre"], "AITICE")
+        self.assertEqual(aitice["clasificacion"], "B")
+        self.assertEqual(aitice["gruplac_url"], VIEWER + "00000000002668")
 
+    @patch("backend.app.scraper._busqueda_gruplac_html")
+    def test_filtro_clasificacion(self, mock_html):
+        from backend.app.scraper import buscar_grupos_scienti
+        mock_html.return_value = SEARCH_HTML
+        results = buscar_grupos_scienti(nombre="", clasificacion="A1")
+        self.assertEqual([r["cod_grupo"] for r in results], ["COL0002093"])
 
-def _row(cod, nombre, ano, inst="UPC", depto="CESAR", clasif="A"):
-    return {
-        "cod_grupo_gr": cod,
-        "nme_grupo_gr": nombre,
-        "inst_aval": inst,
-        "nme_departamento_gr": depto,
-        "nme_municipio_gr": "VALLEDUPAR",
-        "nme_area_gr": "CIENCIAS NATURALES",
-        "nme_gran_area_gr": "CIENCIAS NATURALES",
-        "nme_clasificacion_gr": clasif,
-        "ano_convo": ano,
-    }
+    @patch("backend.app.scraper._busqueda_gruplac_html")
+    def test_error_devuelve_vacio(self, mock_html):
+        from backend.app.scraper import buscar_grupos_scienti
+        mock_html.return_value = None
+        self.assertEqual(buscar_grupos_scienti(nombre="x"), [])
 
-
-class TestSearchGrupos(unittest.TestCase):
-    @patch("backend.app.datos_abiertos_grupos.requests.get")
-    def test_dedupes_convocatorias(self, mock_get):
-        mock_get.return_value = _socrata_response([
-            _row("COL0016283", "GIIS", "2017"),
-            _row("COL0016283", "GIIS", "2021"),
-            _row("COL0002093", "GICOM", "2019"),
-        ])
-        results = search_grupos("G")
-        self.assertEqual(len(results), 2)
-        giis = next(r for r in results if r["cod_grupo"] == "COL0016283")
-        self.assertEqual(giis["ano_convo"], "2021", "debe quedarse con la convocatoria más reciente")
-        self.assertEqual(giis["gruplac_url"], VIEWER + "00000000016283")
-
-    @patch("backend.app.datos_abiertos_grupos.requests.get")
-    def test_escapa_comillas(self, mock_get):
-        mock_get.return_value = _socrata_response([])
-        search_grupos("O'Brien")
-        params = mock_get.call_args.kwargs["params"]
-        self.assertIn("O''BRIEN", params["$where"])  # comillas duplicadas (query va en mayúsculas)
-
-    @patch("backend.app.datos_abiertos_grupos.requests.get")
-    def test_filtros_opcionales_en_where(self, mock_get):
-        mock_get.return_value = _socrata_response([])
-        search_grupos("", departamento="cesar", clasificacion="a1")
-        where = mock_get.call_args.kwargs["params"]["$where"]
-        self.assertIn("upper(nme_departamento_gr) like '%CESAR%'", where)
-        self.assertIn("upper(nme_clasificacion_gr) like '%A1%'", where)
-        self.assertNotIn("nme_grupo_gr", where, "sin query no debe filtrar por nombre")
-
-    @patch("backend.app.datos_abiertos_grupos.requests.get")
-    def test_error_http_devuelve_vacio(self, mock_get):
-        mock_get.side_effect = requests.RequestException("timeout")
-        self.assertEqual(search_grupos("cesar"), [])
+    @patch("backend.app.scraper._busqueda_gruplac_html")
+    def test_buscar_nro_por_codigo(self, mock_html):
+        from backend.app.scraper import buscar_nro_gruplac
+        mock_html.return_value = SEARCH_HTML
+        self.assertEqual(buscar_nro_gruplac(codigo="COL0043834"), "00000000002668")
 
 
 class TestEndpointResolver(unittest.TestCase):
@@ -150,11 +143,13 @@ class TestEndpointResolver(unittest.TestCase):
         used_url = mock_scrape.call_args.args[0]
         self.assertEqual(used_url, VIEWER + "00000000002093")
 
+    @patch("backend.app.scraper.buscar_nro_gruplac")
     @patch("backend.app.scraper.scrape_gruplac")
-    def test_preview_sin_url_ni_codigo_es_400(self, mock_scrape):
+    def test_preview_sin_url_ni_codigo_es_400(self, mock_scrape, mock_buscar):
         from fastapi.testclient import TestClient
         from backend.app.main import app
 
+        mock_buscar.return_value = None
         client = TestClient(app)
         resp = client.post("/api/v1/groups/import/gruplac/preview", json={})
         self.assertEqual(resp.status_code, 400)

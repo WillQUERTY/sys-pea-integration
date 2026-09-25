@@ -108,13 +108,11 @@ export interface GruplacPreview {
 export interface GroupSearchResult {
   cod_grupo: string
   nombre: string | null
+  nro: string
+  clasificacion: string | null
+  convocatoria: string | null
   institucion: string | null
   departamento: string | null
-  municipio: string | null
-  area: string | null
-  gran_area: string | null
-  clasificacion: string | null
-  ano_convo: string | null
   gruplac_url: string
 }
 

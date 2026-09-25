@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { toast } from 'sonner'
 import { DownloadCloud, Eye, Search as SearchIcon } from 'lucide-react'
-import { importGruplac, previewGruplac, searchGroupsDatosAbiertos } from '@/lib/api'
+import { importGruplac, previewGruplac, searchGroupsScienti } from '@/lib/api'
 import type { GroupSearchResult, GruplacPreview } from '@/lib/types'
 import { Button } from '@/components/ui/button'
 import {
@@ -26,9 +26,8 @@ import { ConfirmDialog } from '@/components/confirm-dialog'
 import { GruplacPreviewCard } from './gruplac-preview-card'
 
 /**
- * Buscador de grupos sobre el dataset oficial de Minciencias (datos abiertos),
+ * Buscador de grupos sobre el buscador oficial de Scienti (fuente de verdad),
  * con flujo de vista previa/importación reutilizando el de la pestaña URL.
- * Solo aparecen grupos RECONOCIDOS por Minciencias.
  */
 export function GroupSearchImport() {
   const queryClient = useQueryClient()
@@ -44,7 +43,7 @@ export function GroupSearchImport() {
 
   const doSearch = useMutation({
     mutationFn: () =>
-      searchGroupsDatosAbiertos({
+      searchGroupsScienti({
         q,
         departamento: departamento || undefined,
         institucion: institucion || undefined,
@@ -54,7 +53,7 @@ export function GroupSearchImport() {
       setResults(data)
       setPreview(null)
       if (data.length === 0) {
-        toast.info('Sin resultados. Solo aparecen grupos reconocidos por Minciencias.')
+        toast.info('Sin resultados en el buscador de Scienti. Prueba otra subcadena del nombre.')
       } else {
         toast.success(`${data.length} grupo(s) encontrados`)
       }
@@ -97,12 +96,11 @@ export function GroupSearchImport() {
     <div className='space-y-4'>
       <Card>
         <CardHeader>
-          <CardTitle>Buscar grupo en datos abiertos (Minciencias)</CardTitle>
+          <CardTitle>Buscar grupo en Scienti (Minciencias)</CardTitle>
           <CardDescription>
-            Solo aparecen grupos <strong>reconocidos</strong> por convocatoria Minciencias
-            y la URL GrupLAC se valida contra la página real al previsualizar/importar: si el
-            grupo no tiene página pública resoluble, pega la URL exacta en la pestaña
-            «GrupLAC (URL)». La búsqueda no distingue acentos: prueba una subcadena distintiva.
+            Búsqueda directa en el buscador oficial de GrupLAC: cada resultado trae su
+            página real lista para vista previa e importación. Si no encuentras el grupo,
+            pega su URL exacta en la pestaña «GrupLAC (URL)».
           </CardDescription>
         </CardHeader>
         <CardContent className='space-y-3'>
@@ -181,7 +179,7 @@ export function GroupSearchImport() {
                       ) : (
                         '—'
                       )}
-                      {g.ano_convo ? <span className='ms-1 text-xs text-muted-foreground'>({g.ano_convo})</span> : null}
+                      {g.convocatoria ? <span className='ms-1 text-xs text-muted-foreground'>({g.convocatoria})</span> : null}
                     </TableCell>
                     <TableCell className='text-end'>
                       <div className='flex justify-end gap-1'>

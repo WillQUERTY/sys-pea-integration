@@ -150,14 +150,14 @@ export async function importCvlacByCodRh(codRh: string, targetGroupCode?: string
   return data
 }
 
-export async function searchGroupsDatosAbiertos(params: {
+export async function searchGroupsScienti(params: {
   q?: string
   departamento?: string
   institucion?: string
   clasificacion?: string
   limit?: number
 }) {
-  const { data } = await api.get<GroupSearchResult[]>('/groups/search/datos-abiertos', { params })
+  const { data } = await api.get<GroupSearchResult[]>('/groups/search/scienti', { params })
   return data
 }
 
