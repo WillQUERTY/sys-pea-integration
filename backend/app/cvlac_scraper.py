@@ -254,7 +254,10 @@ class CvParser:
 
 class CvCommitService:
     @classmethod
-    def commit_cvlac(cls, cv: CvData, db_conn_str: str) -> Dict[str, Any]:
+    def commit_cvlac(cls, cv: CvData, db_conn_str: str, reload_ram: bool = True) -> Dict[str, Any]:
+        # reload_ram=False en la cascada paralela: recargar la RAM nativa C++ por
+        # cada CvLAC desde varios hilos bloqueaba/corrompía el núcleo compartido;
+        # el orquestador recarga una sola vez al final.
         logger.info(f"Iniciando ingesta transaccional CvLAC para: {cv.name} ({cv.external_code})")
         conn = pyodbc.connect(db_conn_str, autocommit=False)
         cur = conn.cursor()
@@ -345,12 +348,18 @@ class CvCommitService:
                     if doi:
                         cur.execute("UPDATE Product SET doi = COALESCE(doi, ?) WHERE id = ?", doi, existing_id)
                     return existing_id
-                cur.execute("""
-                    INSERT INTO Product (external_code, title, family_id, subtype_id, year, doi, validation_status, quality_category_id, created_at)
-                    OUTPUT INSERTED.id
-                    VALUES (?, ?, ?, ?, ?, ?, 'pending', ?, GETDATE());
-                """, p_code, title[:500], family_id, subtype_id, year, doi or None, default_cat_id)
-                new_id = cur.fetchone()[0]
+                try:
+                    cur.execute("""
+                        INSERT INTO Product (external_code, title, family_id, subtype_id, year, doi, validation_status, quality_category_id, created_at)
+                        OUTPUT INSERTED.id
+                        VALUES (?, ?, ?, ?, ?, ?, 'pending', ?, GETDATE());
+                    """, p_code, title[:500], family_id, subtype_id, year, doi or None, default_cat_id)
+                    new_id = cur.fetchone()[0]
+                except pyodbc.IntegrityError:
+                    # Carrera entre workers paralelos: otro hilo insertó el mismo
+                    # producto entre nuestro SELECT y el INSERT. Releer y reutilizar.
+                    cur.execute("SELECT id FROM Product WHERE external_code = ?", p_code)
+                    new_id = cur.fetchone()[0]
                 canon_map[canon_key] = new_id
                 new_products += 1
                 return new_id
@@ -519,7 +528,8 @@ class CvCommitService:
             logger.info(summary)
 
             # Recargar memoria nativa C++
-            repository.load_from_db(db_conn_str)
+            if reload_ram:
+                repository.load_from_db(db_conn_str)
 
             return {
                 "status": "success",

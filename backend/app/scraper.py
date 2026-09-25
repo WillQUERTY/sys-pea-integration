@@ -1047,60 +1047,67 @@ def build_preview(scraped_data: ScrapedGroupData) -> Dict[str, Any]:
     }
 
 
-def enrich_members_with_cvlac(scraped_data: ScrapedGroupData, db_conn_str: str, group_code: str, delay_seconds: float = 0.5) -> Dict[str, Any]:
+def enrich_members_with_cvlac(scraped_data: ScrapedGroupData, db_conn_str: str, group_code: str, delay_seconds: float = 0.0, max_workers: int = 1) -> Dict[str, Any]:
     """
     Enriquecimiento CvLAC en cascada (opcional): tras importar el grupo, descarga
     automáticamente el CvLAC de cada integrante con cod_rh y lo persiste con sus
     productos. Los errores individuales se reportan como warnings sin abortar la
     importación del grupo (el commit principal ya se completó).
 
-    `delay_seconds` es una cortesía configurable con Scienti (no es un límite
-    documentado): si una petición falla se aplica backoff adaptativo x4.
+    Corre en paralelo con `max_workers` hilos (cada commit abre su propia conexión
+    pyodbc, así que es seguro). `delay_seconds` es una cortesía por hilo con
+    Scienti (no es un límite documentado): si una petición falla se aplica backoff
+    adaptativo x4 en ese hilo.
     """
     import time
+    from concurrent.futures import ThreadPoolExecutor
     from .cvlac_scraper import CvParser, CvCommitService, fetch_cvlac_text
 
     report: Dict[str, Any] = {"attempted": 0, "enriched": 0, "failed": 0, "details": []}
     members_with_rh = [m for m in scraped_data.members if m.cod_rh]
-    current_delay = delay_seconds
 
-    for member in members_with_rh:
-        report["attempted"] += 1
+    def _enrich_one(member) -> Dict[str, Any]:
         try:
             text = fetch_cvlac_text(member.cod_rh)
             cv = CvParser.parse_text(text)
             cv.external_code = "".join(c for c in member.cod_rh if c.isdigit()).zfill(10)
             cv.target_group_code = group_code
-            res = CvCommitService.commit_cvlac(cv, db_conn_str)
-            report["enriched"] += 1
-            report["details"].append({
+            res = CvCommitService.commit_cvlac(cv, db_conn_str, reload_ram=False)
+            return {
                 "cod_rh": member.cod_rh,
                 "name": res.get("researcher_name", member.display_name),
                 "status": "enriched",
                 "articles": res.get("articles", 0),
                 "events": res.get("events", 0),
                 "projects": res.get("projects", 0),
-            })
+            }
         except Exception as e:
             logger.warning(f"[CvLAC] No se pudo enriquecer {member.cod_rh}: {e}")
-            report["failed"] += 1
-            report["details"].append({
+            return {
                 "cod_rh": member.cod_rh,
                 "name": member.display_name,
                 "status": "failed",
                 "error": str(e),
-            })
-            # Backoff adaptativo: si el servidor se queja, bajamos el ritmo
-            current_delay = min(current_delay * 4, 10.0)
-            time.sleep(current_delay)
-            continue
-        current_delay = delay_seconds
-        time.sleep(current_delay)
+            }
+
+    with ThreadPoolExecutor(max_workers=max_workers) as pool:
+        for detail in pool.map(_enrich_one, members_with_rh):
+            report["attempted"] += 1
+            report["details"].append(detail)
+            report["enriched" if detail["status"] == "enriched" else "failed"] += 1
+
+    # Recarga única de la RAM nativa al final (los commits individuales la omiten
+    # con reload_ram=False: recargar el núcleo C++ compartido desde varios hilos
+    # bloqueaba la corrida).
+    try:
+        repository.load_from_db(db_conn_str)
+    except Exception as e:
+        logger.warning(f"[CvLAC] No se pudo recargar la RAM nativa tras la cascada: {e}")
 
     return report
 
 
-def scrape_gruplac(url: str, db_conn_str: str = "", preview: bool = False, enrich_cvlac: bool = False) -> Dict[str, Any]:
+def scrape_gruplac(url: str, db_conn_str: str = "", preview: bool = False, enrich_cvlac: bool = False, cvlac_workers: int = 8) -> Dict[str, Any]:
     print("=" * 65)
     print(f"PEA-i Importador GrupLAC (Estructural e Idempotente en SQL)")
     print(f"URL: {url}")
@@ -1130,7 +1137,7 @@ def scrape_gruplac(url: str, db_conn_str: str = "", preview: bool = False, enric
     if enrich_cvlac:
         group_code = scraped_data.group.get("external_code", "")
         print(f"[CvLAC] Enriqueciendo {len([m for m in scraped_data.members if m.cod_rh])} integrantes con cod_rh...")
-        result["cvlac_enrichment"] = enrich_members_with_cvlac(scraped_data, db_conn_str, group_code)
+        result["cvlac_enrichment"] = enrich_members_with_cvlac(scraped_data, db_conn_str, group_code, max_workers=cvlac_workers)
         print(f"[CvLAC] Enriquecidos: {result['cvlac_enrichment']['enriched']} | Fallidos: {result['cvlac_enrichment']['failed']}")
 
     print("=" * 65)
@@ -1145,13 +1152,18 @@ if __name__ == "__main__":
     preview_mode = "--preview" in sys.argv
 
     if not args:
-        print("Uso: python -m backend.app.scraper <URL_GRUPLAC> [--preview] [--enrich-cvlac]")
+        print("Uso: python -m backend.app.scraper <URL_GRUPLAC> [--preview] [--enrich-cvlac] [--cvlac-workers N]")
         print("     --preview      : solo extrae y muestra la vista previa, sin escribir en BD.")
         print("     --enrich-cvlac : tras importar, descarga el CvLAC de cada integrante con cod_rh.")
+        print("     --cvlac-workers N : hilos paralelos para la cascada CvLAC (default 8).")
         sys.exit(1)
 
     url_arg = args[0]
     enrich_mode = "--enrich-cvlac" in sys.argv
+    workers = 8
+    for a in sys.argv:
+        if a.startswith("--cvlac-workers="):
+            workers = max(1, int(a.split("=", 1)[1]))
     conn_str = os.environ.get(
         "PEAI_SQLSERVER_CONNECTION",
         "Driver={ODBC Driver 17 for SQL Server};Server=localhost;Database=peai;Trusted_Connection=yes;"
@@ -1162,4 +1174,4 @@ if __name__ == "__main__":
     else:
         repository.initialize(repository.InitMode.Database, conn_str)
         repository._active_connection_string = conn_str
-        scrape_gruplac(url_arg, conn_str, enrich_cvlac=enrich_mode)
+        scrape_gruplac(url_arg, conn_str, enrich_cvlac=enrich_mode, cvlac_workers=workers)
