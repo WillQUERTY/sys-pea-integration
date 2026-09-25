@@ -55,6 +55,49 @@ struct OdbcConnection {
     ~OdbcConnection() { disconnect(); }
 };
 
+
+#ifdef _WIN32
+#include <windows.h>
+#endif
+
+static std::string cp1252_to_utf8(const char* str) {
+    if (!str || !*str) return "";
+#ifdef _WIN32
+    int wlen = MultiByteToWideChar(1252, 0, str, -1, NULL, 0);
+    if (wlen <= 0) return str;
+    std::wstring wstr(wlen, 0);
+    MultiByteToWideChar(1252, 0, str, -1, &wstr[0], wlen);
+    
+    int ulen = WideCharToMultiByte(CP_UTF8, 0, wstr.c_str(), -1, NULL, 0, NULL, NULL);
+    if (ulen <= 0) return str;
+    std::string ustr(ulen, 0);
+    WideCharToMultiByte(CP_UTF8, 0, wstr.c_str(), -1, &ustr[0], ulen, NULL, NULL);
+    if (!ustr.empty() && ustr.back() == '\0') ustr.pop_back();
+    return ustr;
+#else
+    return str;
+#endif
+}
+
+static std::string utf8_to_cp1252(const std::string& utf8_str) {
+    if (utf8_str.empty()) return "";
+#ifdef _WIN32
+    int wlen = MultiByteToWideChar(CP_UTF8, 0, utf8_str.c_str(), -1, NULL, 0);
+    if (wlen <= 0) return utf8_str;
+    std::wstring wstr(wlen, 0);
+    MultiByteToWideChar(CP_UTF8, 0, utf8_str.c_str(), -1, &wstr[0], wlen);
+    
+    int len = WideCharToMultiByte(1252, 0, wstr.c_str(), -1, NULL, 0, NULL, NULL);
+    if (len <= 0) return utf8_str;
+    std::string cp(len, 0);
+    WideCharToMultiByte(1252, 0, wstr.c_str(), -1, &cp[0], len, NULL, NULL);
+    if (!cp.empty() && cp.back() == '\0') cp.pop_back();
+    return cp;
+#else
+    return utf8_str;
+#endif
+}
+
 static OdbcConnection _activeDbConn;
 static std::string    _lastConnStr;
 
@@ -340,19 +383,19 @@ bool load_from_db(const std::string& connection_string) {
         while (SQL_SUCCEEDED(SQLFetch(stmt))) {
             Researcher r;
             r.id = (i1 != SQL_NULL_DATA) ? db_id : 0;
-            r.external_code = (i2 != SQL_NULL_DATA) ? (char*)ext : "";
-            r.identification_type = (i3 != SQL_NULL_DATA) ? (char*)idt : "";
-            r.identification_number = (i4 != SQL_NULL_DATA) ? (char*)idn : "";
-            r.first_names = (i5 != SQL_NULL_DATA) ? (char*)fname : "";
-            r.last_names = (i6 != SQL_NULL_DATA) ? (char*)lname : "";
-            r.nationality = (i7 != SQL_NULL_DATA) ? (char*)nat : "";
-            r.country_of_residence = (i8 != SQL_NULL_DATA) ? (char*)c_res : "";
-            r.institutional_email = (i9 != SQL_NULL_DATA) ? (char*)email : "";
-            r.orcid = (i10 != SQL_NULL_DATA) ? (char*)orcid : "";
-            r.highest_education_level = (i11 != SQL_NULL_DATA) ? (char*)edu : "";
-            r.education_records = (i12 != SQL_NULL_DATA) ? (char*)edur : "";
-            r.classification_records = (i13 != SQL_NULL_DATA) ? (char*)clasr : "";
-            r.status = (i14 != SQL_NULL_DATA) ? (char*)status : "active";
+            r.external_code = (i2 != SQL_NULL_DATA) ? cp1252_to_utf8((char*)ext) : "";
+            r.identification_type = (i3 != SQL_NULL_DATA) ? cp1252_to_utf8((char*)idt) : "";
+            r.identification_number = (i4 != SQL_NULL_DATA) ? cp1252_to_utf8((char*)idn) : "";
+            r.first_names = (i5 != SQL_NULL_DATA) ? cp1252_to_utf8((char*)fname) : "";
+            r.last_names = (i6 != SQL_NULL_DATA) ? cp1252_to_utf8((char*)lname) : "";
+            r.nationality = (i7 != SQL_NULL_DATA) ? cp1252_to_utf8((char*)nat) : "";
+            r.country_of_residence = (i8 != SQL_NULL_DATA) ? cp1252_to_utf8((char*)c_res) : "";
+            r.institutional_email = (i9 != SQL_NULL_DATA) ? cp1252_to_utf8((char*)email) : "";
+            r.orcid = (i10 != SQL_NULL_DATA) ? cp1252_to_utf8((char*)orcid) : "";
+            r.highest_education_level = (i11 != SQL_NULL_DATA) ? cp1252_to_utf8((char*)edu) : "";
+            r.education_records = (i12 != SQL_NULL_DATA) ? cp1252_to_utf8((char*)edur) : "";
+            r.classification_records = (i13 != SQL_NULL_DATA) ? cp1252_to_utf8((char*)clasr) : "";
+            r.status = (i14 != SQL_NULL_DATA) ? cp1252_to_utf8((char*)status) : "active";
             create_researcher(r);
         }
         SQLFreeHandle(SQL_HANDLE_STMT, stmt);
@@ -392,24 +435,24 @@ bool load_from_db(const std::string& connection_string) {
         while (SQL_SUCCEEDED(SQLFetch(stmt))) {
             Product p;
             p.id = (i1 != SQL_NULL_DATA) ? db_id : 0;
-            p.external_code = (i2 != SQL_NULL_DATA) ? (char*)ext : "";
-            p.title = (i3 != SQL_NULL_DATA) ? (char*)title : "";
-            p.description = (i4 != SQL_NULL_DATA) ? (char*)desc : "";
+            p.external_code = (i2 != SQL_NULL_DATA) ? cp1252_to_utf8((char*)ext) : "";
+            p.title = (i3 != SQL_NULL_DATA) ? cp1252_to_utf8((char*)title) : "";
+            p.description = (i4 != SQL_NULL_DATA) ? cp1252_to_utf8((char*)desc) : "";
             p.family_id = (i5 != SQL_NULL_DATA) ? fam_id : 0;
             p.subtype_id = (i6 != SQL_NULL_DATA) ? sub_id : 0;
             p.quality_category_id = (i7 != SQL_NULL_DATA) ? qc_id : 0;
-            p.obtained_date = (i8 != SQL_NULL_DATA) ? (char*)o_date : "";
-            p.publication_date = (i9 != SQL_NULL_DATA) ? (char*)p_date : "";
-            p.validation_status = (i10 != SQL_NULL_DATA) ? (char*)v_status : "pending";
-            p.language = (i11 != SQL_NULL_DATA) ? (char*)lang : "";
-            p.country = (i12 != SQL_NULL_DATA) ? (char*)ctry : "";
-            p.doi = (i13 != SQL_NULL_DATA) ? (char*)doi : "";
-            p.isbn = (i14 != SQL_NULL_DATA) ? (char*)isbn : "";
-            p.issn = (i15 != SQL_NULL_DATA) ? (char*)issn : "";
-            p.url = (i16 != SQL_NULL_DATA) ? (char*)url : "";
-            p.evidence = (i17 != SQL_NULL_DATA) ? (char*)evid : "";
-            p.specialized_attributes = (i18 != SQL_NULL_DATA) ? (char*)spec : "";
-            p.status = (i19 != SQL_NULL_DATA) ? (char*)status : "active";
+            p.obtained_date = (i8 != SQL_NULL_DATA) ? cp1252_to_utf8((char*)o_date) : "";
+            p.publication_date = (i9 != SQL_NULL_DATA) ? cp1252_to_utf8((char*)p_date) : "";
+            p.validation_status = (i10 != SQL_NULL_DATA) ? cp1252_to_utf8((char*)v_status) : "pending";
+            p.language = (i11 != SQL_NULL_DATA) ? cp1252_to_utf8((char*)lang) : "";
+            p.country = (i12 != SQL_NULL_DATA) ? cp1252_to_utf8((char*)ctry) : "";
+            p.doi = (i13 != SQL_NULL_DATA) ? cp1252_to_utf8((char*)doi) : "";
+            p.isbn = (i14 != SQL_NULL_DATA) ? cp1252_to_utf8((char*)isbn) : "";
+            p.issn = (i15 != SQL_NULL_DATA) ? cp1252_to_utf8((char*)issn) : "";
+            p.url = (i16 != SQL_NULL_DATA) ? cp1252_to_utf8((char*)url) : "";
+            p.evidence = (i17 != SQL_NULL_DATA) ? cp1252_to_utf8((char*)evid) : "";
+            p.specialized_attributes = (i18 != SQL_NULL_DATA) ? cp1252_to_utf8((char*)spec) : "";
+            p.status = (i19 != SQL_NULL_DATA) ? cp1252_to_utf8((char*)status) : "active";
             create_product(p);
         }
         SQLFreeHandle(SQL_HANDLE_STMT, stmt);
@@ -448,20 +491,20 @@ bool load_from_db(const std::string& connection_string) {
         while (SQL_SUCCEEDED(SQLFetch(stmt))) {
             Group g;
             g.id = (i1 != SQL_NULL_DATA) ? db_id : 0;
-            g.external_code = (i2 != SQL_NULL_DATA) ? (char*)ext   : "";
-            g.name          = (i3 != SQL_NULL_DATA) ? (char*)gname : "";
-            g.acronym       = (i4 != SQL_NULL_DATA) ? (char*)acr   : "";
-            g.institution   = (i5 != SQL_NULL_DATA) ? (char*)inst  : "";
-            g.classification= (i6 != SQL_NULL_DATA) ? (char*)clas  : "";
-            g.description   = (i7 != SQL_NULL_DATA) ? (char*)desc  : "";
-            g.mission       = (i8 != SQL_NULL_DATA) ? (char*)miss  : "";
-            g.vision        = (i9 != SQL_NULL_DATA) ? (char*)vis   : "";
-            g.declared_creation_date = (i10 != SQL_NULL_DATA) ? (char*)cdate : "";
+            g.external_code = (i2 != SQL_NULL_DATA) ? cp1252_to_utf8((char*)ext  ) : "";
+            g.name          = (i3 != SQL_NULL_DATA) ? cp1252_to_utf8((char*)gname) : "";
+            g.acronym       = (i4 != SQL_NULL_DATA) ? cp1252_to_utf8((char*)acr  ) : "";
+            g.institution   = (i5 != SQL_NULL_DATA) ? cp1252_to_utf8((char*)inst ) : "";
+            g.classification= (i6 != SQL_NULL_DATA) ? cp1252_to_utf8((char*)clas ) : "";
+            g.description   = (i7 != SQL_NULL_DATA) ? cp1252_to_utf8((char*)desc ) : "";
+            g.mission       = (i8 != SQL_NULL_DATA) ? cp1252_to_utf8((char*)miss ) : "";
+            g.vision        = (i9 != SQL_NULL_DATA) ? cp1252_to_utf8((char*)vis  ) : "";
+            g.declared_creation_date = (i10 != SQL_NULL_DATA) ? cp1252_to_utf8((char*)cdate) : "";
             g.knowledge_area = (i11 != SQL_NULL_DATA) ? (char*)karea: "";
-            g.knowledge_subarea = (i12 != SQL_NULL_DATA) ? (char*)ksub : "";
-            g.city          = (i13 != SQL_NULL_DATA) ? (char*)city : "";
-            g.department    = (i14 != SQL_NULL_DATA) ? (char*)dep  : "";
-            g.website       = (i15 != SQL_NULL_DATA) ? (char*)web  : "";
+            g.knowledge_subarea = (i12 != SQL_NULL_DATA) ? cp1252_to_utf8((char*)ksub) : "";
+            g.city          = (i13 != SQL_NULL_DATA) ? cp1252_to_utf8((char*)city) : "";
+            g.department    = (i14 != SQL_NULL_DATA) ? cp1252_to_utf8((char*)dep ) : "";
+            g.website       = (i15 != SQL_NULL_DATA) ? cp1252_to_utf8((char*)web ) : "";
             g.email         = (i16 != SQL_NULL_DATA) ? (char*)email: "";
             g.leader_id     = (i17 != SQL_NULL_DATA) ? leader_id   : 0;
             g.status        = (i18 != SQL_NULL_DATA) ? (char*)status: "active";
@@ -526,7 +569,7 @@ bool sync_group_to_db(const std::string& connection_string, int group_id) {
 
     std::string sql = 
         "MERGE ResearchGroup AS target "
-        "USING (SELECT '" + escape_sql(g.external_code) + "' AS ext, '" + escape_sql(g.name) + "' AS name, '" + escape_sql(g.acronym) + "' AS acr, '" + escape_sql(g.institution) + "' AS inst, '" + escape_sql(g.classification) + "' AS clas, '" + escape_sql(g.description) + "' AS descr, '" + escape_sql(g.mission) + "' AS miss, '" + escape_sql(g.vision) + "' AS vis, '" + escape_sql(g.declared_creation_date) + "' AS cdate, '" + escape_sql(g.knowledge_area) + "' AS karea, '" + escape_sql(g.knowledge_subarea) + "' AS ksub, '" + escape_sql(g.city) + "' AS city, '" + escape_sql(g.department) + "' AS dep, '" + escape_sql(g.website) + "' AS web, '" + escape_sql(g.email) + "' AS email, " + std::to_string(g.leader_id) + " AS lid, '" + escape_sql(g.status) + "' AS sts) AS source "
+        "USING (SELECT '" + escape_sql(utf8_to_cp1252(g.external_code)) + "' AS ext, '" + escape_sql(utf8_to_cp1252(g.name)) + "' AS name, '" + escape_sql(utf8_to_cp1252(g.acronym)) + "' AS acr, '" + escape_sql(utf8_to_cp1252(g.institution)) + "' AS inst, '" + escape_sql(utf8_to_cp1252(g.classification)) + "' AS clas, '" + escape_sql(utf8_to_cp1252(g.description)) + "' AS descr, '" + escape_sql(utf8_to_cp1252(g.mission)) + "' AS miss, '" + escape_sql(utf8_to_cp1252(g.vision)) + "' AS vis, '" + escape_sql(utf8_to_cp1252(g.declared_creation_date)) + "' AS cdate, '" + escape_sql(utf8_to_cp1252(g.knowledge_area)) + "' AS karea, '" + escape_sql(utf8_to_cp1252(g.knowledge_subarea)) + "' AS ksub, '" + escape_sql(utf8_to_cp1252(g.city)) + "' AS city, '" + escape_sql(utf8_to_cp1252(g.department)) + "' AS dep, '" + escape_sql(utf8_to_cp1252(g.website)) + "' AS web, '" + escape_sql(utf8_to_cp1252(g.email)) + "' AS email, " + std::to_string(g.leader_id) + " AS lid, '" + escape_sql(utf8_to_cp1252(g.status)) + "' AS sts) AS source "
         "ON (target.external_code = source.ext) "
         "WHEN MATCHED THEN "
         "  UPDATE SET name = source.name, acronym = source.acr, institution = source.inst, classification = source.clas, description = source.descr, mission = source.miss, vision = source.vis, declared_creation_date = source.cdate, knowledge_area = source.karea, knowledge_subarea = source.ksub, city = source.city, department = source.dep, website = source.web, email = source.email, leader_id = source.lid, status = source.sts, updated_at = GETDATE() "
@@ -545,7 +588,7 @@ bool sync_researcher_to_db(const std::string& connection_string, int res_id) {
 
     std::string sql = 
         "MERGE Researcher AS target "
-        "USING (SELECT '" + escape_sql(r.external_code) + "' AS ext, '" + escape_sql(r.identification_type) + "' AS idt, '" + escape_sql(r.identification_number) + "' AS idn, '" + escape_sql(r.first_names) + "' AS fname, '" + escape_sql(r.last_names) + "' AS lname, '" + escape_sql(r.nationality) + "' AS nat, '" + escape_sql(r.country_of_residence) + "' AS cres, '" + escape_sql(r.institutional_email) + "' AS email, '" + escape_sql(r.orcid) + "' AS orcid, '" + escape_sql(r.highest_education_level) + "' AS edu, '" + escape_sql(r.education_records) + "' AS edur, '" + escape_sql(r.classification_records) + "' AS clasr, '" + escape_sql(r.status) + "' AS sts) AS source "
+        "USING (SELECT '" + escape_sql(utf8_to_cp1252(r.external_code)) + "' AS ext, '" + escape_sql(utf8_to_cp1252(r.identification_type)) + "' AS idt, '" + escape_sql(utf8_to_cp1252(r.identification_number)) + "' AS idn, '" + escape_sql(utf8_to_cp1252(r.first_names)) + "' AS fname, '" + escape_sql(utf8_to_cp1252(r.last_names)) + "' AS lname, '" + escape_sql(utf8_to_cp1252(r.nationality)) + "' AS nat, '" + escape_sql(utf8_to_cp1252(r.country_of_residence)) + "' AS cres, '" + escape_sql(utf8_to_cp1252(r.institutional_email)) + "' AS email, '" + escape_sql(utf8_to_cp1252(r.orcid)) + "' AS orcid, '" + escape_sql(utf8_to_cp1252(r.highest_education_level)) + "' AS edu, '" + escape_sql(utf8_to_cp1252(r.education_records)) + "' AS edur, '" + escape_sql(utf8_to_cp1252(r.classification_records)) + "' AS clasr, '" + escape_sql(utf8_to_cp1252(r.status)) + "' AS sts) AS source "
         "ON (target.external_code = source.ext) "
         "WHEN MATCHED THEN "
         "  UPDATE SET identification_type = source.idt, identification_number = source.idn, first_names = source.fname, last_names = source.lname, nationality = source.nat, country_of_residence = source.cres, institutional_email = source.email, orcid = source.orcid, highest_education_level = source.edu, education_records = source.edur, classification_records = source.clasr, status = source.sts, updated_at = GETDATE() "
@@ -564,7 +607,7 @@ bool sync_product_to_db(const std::string& connection_string, int prod_id) {
 
     std::string sql = 
         "MERGE Product AS target "
-        "USING (SELECT '" + escape_sql(p.external_code) + "' AS ext, '" + escape_sql(p.title) + "' AS title, '" + escape_sql(p.description) + "' AS descr, " + std::to_string(p.family_id) + " AS fam, " + std::to_string(p.subtype_id) + " AS sub, " + std::to_string(p.quality_category_id) + " AS qc, '" + escape_sql(p.obtained_date) + "' AS odate, '" + escape_sql(p.publication_date) + "' AS pdate, '" + escape_sql(p.validation_status) + "' AS vsts, '" + escape_sql(p.language) + "' AS lang, '" + escape_sql(p.country) + "' AS ctry, '" + escape_sql(p.doi) + "' AS doi, '" + escape_sql(p.isbn) + "' AS isbn, '" + escape_sql(p.issn) + "' AS issn, '" + escape_sql(p.url) + "' AS url, '" + escape_sql(p.evidence) + "' AS evid, '" + escape_sql(p.specialized_attributes) + "' AS spec, '" + escape_sql(p.status) + "' AS sts, " + std::to_string(p.year) + " AS yr) AS source "
+        "USING (SELECT '" + escape_sql(utf8_to_cp1252(p.external_code)) + "' AS ext, '" + escape_sql(utf8_to_cp1252(p.title)) + "' AS title, '" + escape_sql(utf8_to_cp1252(p.description)) + "' AS descr, " + std::to_string(p.family_id) + " AS fam, " + std::to_string(p.subtype_id) + " AS sub, " + std::to_string(p.quality_category_id) + " AS qc, '" + escape_sql(utf8_to_cp1252(p.obtained_date)) + "' AS odate, '" + escape_sql(utf8_to_cp1252(p.publication_date)) + "' AS pdate, '" + escape_sql(utf8_to_cp1252(p.validation_status)) + "' AS vsts, '" + escape_sql(utf8_to_cp1252(p.language)) + "' AS lang, '" + escape_sql(utf8_to_cp1252(p.country)) + "' AS ctry, '" + escape_sql(utf8_to_cp1252(p.doi)) + "' AS doi, '" + escape_sql(utf8_to_cp1252(p.isbn)) + "' AS isbn, '" + escape_sql(utf8_to_cp1252(p.issn)) + "' AS issn, '" + escape_sql(utf8_to_cp1252(p.url)) + "' AS url, '" + escape_sql(utf8_to_cp1252(p.evidence)) + "' AS evid, '" + escape_sql(utf8_to_cp1252(p.specialized_attributes)) + "' AS spec, '" + escape_sql(utf8_to_cp1252(p.status)) + "' AS sts, " + std::to_string(p.year) + " AS yr) AS source "
         "ON (target.external_code = source.ext) "
         "WHEN MATCHED THEN "
         "  UPDATE SET title = source.title, description = source.descr, family_id = source.fam, subtype_id = source.sub, quality_category_id = source.qc, obtained_date = source.odate, publication_date = source.pdate, validation_status = source.vsts, language = source.lang, country = source.ctry, doi = source.doi, isbn = source.isbn, issn = source.issn, url = source.url, evidence = source.evid, specialized_attributes = source.spec, status = source.sts, year = source.yr, updated_at = GETDATE() "
@@ -579,20 +622,20 @@ bool sync_membership_details_to_db(const std::string& connection_string, int gro
     if (!dbc) return false;
     auto g_opt = get_group(group_id);
     auto r_opt = get_researcher(researcher_id);
-    std::string g_ext = g_opt ? escape_sql(g_opt->external_code) : "";
-    std::string r_ext = r_opt ? escape_sql(r_opt->external_code) : "";
+    std::string g_ext = g_opt ? escape_sql(utf8_to_cp1252(g_opt->external_code)) : "";
+    std::string r_ext = r_opt ? escape_sql(utf8_to_cp1252(r_opt->external_code)) : "";
 
     std::string g_clause = g_ext.empty() ? ("g.id = " + std::to_string(group_id)) : ("g.external_code = '" + g_ext + "'");
     std::string r_clause = r_ext.empty() ? ("r.id = " + std::to_string(researcher_id)) : ("r.external_code = '" + r_ext + "'");
 
     std::string sql = 
         "IF EXISTS (SELECT 1 FROM GroupMembership m, ResearchGroup g, Researcher r WHERE m.group_id = g.id AND m.researcher_id = r.id AND " + g_clause + " AND " + r_clause + ") "
-        "  UPDATE m SET role = '" + escape_sql(role) + "', start_date = '" + escape_sql(start_date) + "', end_date = '" + escape_sql(end_date) + "' "
+        "  UPDATE m SET role = '" + escape_sql(utf8_to_cp1252(role)) + "', start_date = '" + escape_sql(utf8_to_cp1252(start_date)) + "', end_date = '" + escape_sql(utf8_to_cp1252(end_date)) + "' "
         "  FROM GroupMembership m, ResearchGroup g, Researcher r "
         "  WHERE m.group_id = g.id AND m.researcher_id = r.id AND " + g_clause + " AND " + r_clause + " "
         "ELSE "
         "  INSERT INTO GroupMembership (group_id, researcher_id, role, start_date, end_date, status) "
-        "  SELECT g.id, r.id, '" + escape_sql(role) + "', '" + escape_sql(start_date) + "', '" + escape_sql(end_date) + "', 'active' "
+        "  SELECT g.id, r.id, '" + escape_sql(utf8_to_cp1252(role)) + "', '" + escape_sql(utf8_to_cp1252(start_date)) + "', '" + escape_sql(utf8_to_cp1252(end_date)) + "', 'active' "
         "  FROM ResearchGroup g, Researcher r "
         "  WHERE (" + g_clause + ") AND (" + r_clause + ");";
     return exec_sql(dbc, sql);
@@ -607,8 +650,8 @@ bool sync_product_link_to_db(const std::string& connection_string, int group_id,
     if (!dbc) return false;
     auto g_opt = get_group(group_id);
     auto p_opt = get_product(product_id);
-    std::string g_ext = g_opt ? escape_sql(g_opt->external_code) : "";
-    std::string p_ext = p_opt ? escape_sql(p_opt->external_code) : "";
+    std::string g_ext = g_opt ? escape_sql(utf8_to_cp1252(g_opt->external_code)) : "";
+    std::string p_ext = p_opt ? escape_sql(utf8_to_cp1252(p_opt->external_code)) : "";
 
     std::string g_clause = g_ext.empty() ? ("g.id = " + std::to_string(group_id)) : ("g.external_code = '" + g_ext + "'");
     std::string p_clause = p_ext.empty() ? ("p.id = " + std::to_string(product_id)) : ("p.external_code = '" + p_ext + "'");
@@ -628,8 +671,8 @@ bool sync_product_author_to_db(const std::string& connection_string, int product
     if (!dbc) return false;
     auto p_opt = get_product(product_id);
     auto r_opt = get_researcher(researcher_id);
-    std::string p_ext = p_opt ? escape_sql(p_opt->external_code) : "";
-    std::string r_ext = r_opt ? escape_sql(r_opt->external_code) : "";
+    std::string p_ext = p_opt ? escape_sql(utf8_to_cp1252(p_opt->external_code)) : "";
+    std::string r_ext = r_opt ? escape_sql(utf8_to_cp1252(r_opt->external_code)) : "";
 
     std::string p_clause = p_ext.empty() ? ("p.id = " + std::to_string(product_id)) : ("p.external_code = '" + p_ext + "'");
     std::string r_clause = r_ext.empty() ? ("r.id = " + std::to_string(researcher_id)) : ("r.external_code = '" + r_ext + "'");

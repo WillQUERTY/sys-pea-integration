@@ -19,9 +19,10 @@ def sanitize_str(text: Any) -> str:
         return ""
     if not isinstance(text, str):
         text = str(text)
-    # Strip combining diacritics and convert to pure ASCII to avoid Windows ANSI/CP1252 pybind11 decode errors
-    normalized = unicodedata.normalize('NFKD', text)
-    return normalized.encode('ascii', 'ignore').decode('ascii').strip()
+    # The C++ core now safely handles UTF-8 natively via CP1252 transcoding.
+    # Return the clean text while preserving all international characters (ñ, á, etc)
+    return text.strip()
+
 
 # Expose InitMode
 InitMode = abpoxx_pybind.InitMode

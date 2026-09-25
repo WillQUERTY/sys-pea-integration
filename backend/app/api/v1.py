@@ -6,6 +6,18 @@ from ..models import Group, Researcher, Product
 
 router = APIRouter()
 
+def _reload_ram_from_db(conn_str: str) -> None:
+    """
+    Los servicios de ingesta (GrupLAC/CvLAC) escriben directo a SQL Server con
+    pyodbc, sin pasar por la RAM del núcleo C++. Tras cada commit recargamos la
+    RAM desde la BD para que la API sirva inmediatamente los datos nuevos.
+    (repository.load_from_db limpia antes de cargar: no duplica).
+    """
+    try:
+        repository.load_from_db(conn_str)
+    except Exception as e:
+        print(f"[WARN] No se pudo recargar la RAM desde la BD tras la ingesta: {e}")
+
 # -------------------------------------------------------------------
 # System Initialization and Export
 # -------------------------------------------------------------------
@@ -420,12 +432,63 @@ async def validate_product_endpoint(prod_id: int, req: ProductValidationRequest)
 # Scraping & Ingestion endpoints (Taller 2 - Requerimiento 7)
 # -------------------------------------------------------------------
 
+class EnrichRequest(BaseModel):
+    only_missing: bool = True
+    limit: int = 0  # 0 = sin límite
+
+@router.post("/researchers/enrich/datos-abiertos", tags=["Ingestion"])
+async def enrich_researchers_endpoint(req: EnrichRequest):
+    """
+    Enriquece investigadores desde el dataset oficial «Investigadores Reconocidos
+    por convocatoria» (datos.gov.co / Socrata) usando su cod_rh — sin scraping.
+    Rellena nivel de formación, nacionalidad, residencia y clasificación Minciencias.
+    """
+    from .. import datos_abiertos
+    return datos_abiertos.enrich_all(only_missing=req.only_missing, limit=req.limit)
+
+@router.post("/researchers/{res_id}/enrich/datos-abiertos", tags=["Ingestion"])
+async def enrich_single_researcher_endpoint(res_id: int):
+    """Enriquece un único investigador por su cod_rh contra datos abiertos."""
+    from .. import datos_abiertos
+    try:
+        return datos_abiertos.enrich_researcher(res_id)
+    except KeyError:
+        raise HTTPException(status_code=404, detail="Researcher not found")
+
 class CvlacImportRequest(BaseModel):
     text: str
     target_group_code: Optional[str] = "COL0011545"
 
+class CvlacFetchRequest(BaseModel):
+    cod_rh: str
+    target_group_code: Optional[str] = None
+
+@router.post("/researchers/import/cvlac/by-cod-rh", tags=["Ingestion"])
+async def import_cvlac_by_cod_rh_endpoint(req: CvlacFetchRequest):
+    """
+    Descarga automáticamente el CvLAC público de un investigador por su cod_rh
+    (Scienti/Minciencias), lo parsea y lo persiste con sus productos.
+    Alternativa automatizada al pegado manual de texto.
+    """
+    from ..cvlac_scraper import CvParser, CvCommitService, fetch_cvlac_text
+    conn_str = repository._active_connection_string or "Driver={ODBC Driver 17 for SQL Server};Server=localhost;Database=peai;Trusted_Connection=yes;"
+    try:
+        text = fetch_cvlac_text(req.cod_rh)
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    cv = CvParser.parse_text(text)
+    # Reconciliación: usar el cod_rh como external_code para ACTUALIZAR al
+    # investigador que GrupLAC ya creó, en lugar de duplicarlo.
+    cv.external_code = "".join(c for c in req.cod_rh if c.isdigit()).zfill(10)
+    if req.target_group_code:
+        cv.target_group_code = req.target_group_code
+    result = CvCommitService.commit_cvlac(cv, conn_str)
+    _reload_ram_from_db(conn_str)
+    return result
+
 class GruplacImportRequest(BaseModel):
     url: str
+    enrich_cvlac: bool = False
 
 @router.post("/researchers/import/cvlac", tags=["Ingestion"])
 async def import_cvlac_endpoint(req: CvlacImportRequest):
@@ -436,6 +499,7 @@ async def import_cvlac_endpoint(req: CvlacImportRequest):
     if req.target_group_code:
         cv.target_group_code = req.target_group_code
     result = CvCommitService.commit_cvlac(cv, conn_str)
+    _reload_ram_from_db(conn_str)
     return result
 
 @router.post("/groups/import/gruplac/preview", tags=["Ingestion"])
@@ -459,7 +523,8 @@ async def import_gruplac_endpoint(req: GruplacImportRequest):
     from ..scraper import scrape_gruplac
     conn_str = repository._active_connection_string or "Driver={ODBC Driver 17 for SQL Server};Server=localhost;Database=peai;Trusted_Connection=yes;"
     try:
-        result = scrape_gruplac(req.url, conn_str)
+        result = scrape_gruplac(req.url, conn_str, enrich_cvlac=req.enrich_cvlac)
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
+    _reload_ram_from_db(conn_str)
     return result

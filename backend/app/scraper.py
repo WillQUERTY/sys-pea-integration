@@ -139,14 +139,19 @@ class GruplacNormalizer:
     def normalize(text: Any) -> str:
         if not text:
             return ""
+        # Keep accents for storage, just normalize spacing
         s = str(text).strip()
-        nfkd = unicodedata.normalize("NFD", s)
-        no_accents = "".join(c for c in nfkd if unicodedata.category(c) != "Mn")
-        return no_accents.encode("ascii", "ignore").decode("ascii")
+        s = re.sub(r'[\r\n\t\xa0]+', ' ', s)
+        return " ".join(s.split())
 
     @classmethod
     def normalized_name_key(cls, value: str) -> str:
-        val = cls.normalize(value).upper()
+        if not value:
+            return ""
+        # For deduplication, we DO strip accents so NORENA matches NOREÑA
+        nfkd = unicodedata.normalize("NFD", value)
+        no_accents = "".join(c for c in nfkd if unicodedata.category(c) != "Mn")
+        val = no_accents.encode("ascii", "ignore").decode("ascii").upper()
         val = re.sub(r"[^A-Z0-9 ]", " ", val)
         return " ".join(val.split())
 
@@ -975,7 +980,60 @@ def build_preview(scraped_data: ScrapedGroupData) -> Dict[str, Any]:
     }
 
 
-def scrape_gruplac(url: str, db_conn_str: str = "", preview: bool = False) -> Dict[str, Any]:
+def enrich_members_with_cvlac(scraped_data: ScrapedGroupData, db_conn_str: str, group_code: str, delay_seconds: float = 0.5) -> Dict[str, Any]:
+    """
+    Enriquecimiento CvLAC en cascada (opcional): tras importar el grupo, descarga
+    automáticamente el CvLAC de cada integrante con cod_rh y lo persiste con sus
+    productos. Los errores individuales se reportan como warnings sin abortar la
+    importación del grupo (el commit principal ya se completó).
+
+    `delay_seconds` es una cortesía configurable con Scienti (no es un límite
+    documentado): si una petición falla se aplica backoff adaptativo x4.
+    """
+    import time
+    from .cvlac_scraper import CvParser, CvCommitService, fetch_cvlac_text
+
+    report: Dict[str, Any] = {"attempted": 0, "enriched": 0, "failed": 0, "details": []}
+    members_with_rh = [m for m in scraped_data.members if m.cod_rh]
+    current_delay = delay_seconds
+
+    for member in members_with_rh:
+        report["attempted"] += 1
+        try:
+            text = fetch_cvlac_text(member.cod_rh)
+            cv = CvParser.parse_text(text)
+            cv.external_code = "".join(c for c in member.cod_rh if c.isdigit()).zfill(10)
+            cv.target_group_code = group_code
+            res = CvCommitService.commit_cvlac(cv, db_conn_str)
+            report["enriched"] += 1
+            report["details"].append({
+                "cod_rh": member.cod_rh,
+                "name": res.get("researcher_name", member.display_name),
+                "status": "enriched",
+                "articles": res.get("articles", 0),
+                "events": res.get("events", 0),
+                "projects": res.get("projects", 0),
+            })
+        except Exception as e:
+            logger.warning(f"[CvLAC] No se pudo enriquecer {member.cod_rh}: {e}")
+            report["failed"] += 1
+            report["details"].append({
+                "cod_rh": member.cod_rh,
+                "name": member.display_name,
+                "status": "failed",
+                "error": str(e),
+            })
+            # Backoff adaptativo: si el servidor se queja, bajamos el ritmo
+            current_delay = min(current_delay * 4, 10.0)
+            time.sleep(current_delay)
+            continue
+        current_delay = delay_seconds
+        time.sleep(current_delay)
+
+    return report
+
+
+def scrape_gruplac(url: str, db_conn_str: str = "", preview: bool = False, enrich_cvlac: bool = False) -> Dict[str, Any]:
     print("=" * 65)
     print(f"PEA-i Importador GrupLAC (Estructural e Idempotente en SQL)")
     print(f"URL: {url}")
@@ -1000,6 +1058,14 @@ def scrape_gruplac(url: str, db_conn_str: str = "", preview: bool = False) -> Di
 
     # 3. Compromiso transaccional idempotente
     result = GruplacCommitService.commit(scraped_data, db_conn_str=db_conn_str)
+
+    # 3.5 Enriquecimiento CvLAC en cascada (opcional, post-commit)
+    if enrich_cvlac:
+        group_code = scraped_data.group.get("external_code", "")
+        print(f"[CvLAC] Enriqueciendo {len([m for m in scraped_data.members if m.cod_rh])} integrantes con cod_rh...")
+        result["cvlac_enrichment"] = enrich_members_with_cvlac(scraped_data, db_conn_str, group_code)
+        print(f"[CvLAC] Enriquecidos: {result['cvlac_enrichment']['enriched']} | Fallidos: {result['cvlac_enrichment']['failed']}")
+
     print("=" * 65)
     print(f"[SUCCESS] Importacion completada. Job ID: {result.get('job_id')}")
     print(f"          Total procesados: {result.get('total_records')} | Nuevos: {result.get('new_records')}")
@@ -1012,11 +1078,13 @@ if __name__ == "__main__":
     preview_mode = "--preview" in sys.argv
 
     if not args:
-        print("Uso: python -m backend.app.scraper <URL_GRUPLAC> [--preview]")
-        print("     --preview : solo extrae y muestra la vista previa, sin escribir en BD.")
+        print("Uso: python -m backend.app.scraper <URL_GRUPLAC> [--preview] [--enrich-cvlac]")
+        print("     --preview      : solo extrae y muestra la vista previa, sin escribir en BD.")
+        print("     --enrich-cvlac : tras importar, descarga el CvLAC de cada integrante con cod_rh.")
         sys.exit(1)
 
     url_arg = args[0]
+    enrich_mode = "--enrich-cvlac" in sys.argv
     conn_str = os.environ.get(
         "PEAI_SQLSERVER_CONNECTION",
         "Driver={ODBC Driver 17 for SQL Server};Server=localhost;Database=peai;Trusted_Connection=yes;"
@@ -1027,4 +1095,4 @@ if __name__ == "__main__":
     else:
         repository.initialize(repository.InitMode.Database, conn_str)
         repository._active_connection_string = conn_str
-        scrape_gruplac(url_arg, conn_str)
+        scrape_gruplac(url_arg, conn_str, enrich_cvlac=enrich_mode)

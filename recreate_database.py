@@ -9,7 +9,7 @@ import os
 import sys
 import re
 import pyodbc
-from backend.app import repository
+from backend.app import repository, datos_abiertos
 from backend.app.scraper import scrape_gruplac
 
 MASTER_CONN_STR = "Driver={ODBC Driver 17 for SQL Server};Server=localhost;Database=master;Trusted_Connection=yes;"
@@ -31,8 +31,12 @@ def recreate_sql_database():
             print("  -> Forzando cierre de conexiones y eliminando base de datos peai...")
             cur.execute("ALTER DATABASE peai SET SINGLE_USER WITH ROLLBACK IMMEDIATE;")
             cur.execute("DROP DATABASE peai;")
-        print("  -> Creando base de datos peai limpia...")
-        cur.execute("CREATE DATABASE peai;")
+        print("  -> Creando base de datos peai limpia con Collation UTF-8...")
+        try:
+            cur.execute("CREATE DATABASE peai COLLATE Latin1_General_100_CI_AS_SC_UTF8;")
+        except pyodbc.Error as e:
+            print(f"Advertencia: No se pudo usar Collation UTF-8 ({e}), creando por defecto...")
+            cur.execute("CREATE DATABASE peai;")
     print("  [OK] Base de datos peai recreada exitosamente.")
 
 
@@ -82,11 +86,27 @@ def run_ingestion():
     repository.initialize(repository.InitMode.Database, PEAI_CONN_STR)
     repository._active_connection_string = PEAI_CONN_STR
 
-    result = scrape_gruplac(GRUPLAC_URL, PEAI_CONN_STR)
+    # Enriquecimiento en cascada: tras importar el grupo, se descarga el CvLAC
+    # de cada integrante con cod_rh (1 req/seg; los fallos quedan como warnings).
+    result = scrape_gruplac(GRUPLAC_URL, PEAI_CONN_STR, enrich_cvlac=True)
     print(f"  [OK] Ingesta finalizada con éxito:")
     print(f"       Total procesados: {result.get('total_records')}")
     print(f"       Nuevos: {result.get('new_records')}")
     print(f"       {result.get('reconciliation_summary')}")
+    enr = result.get("cvlac_enrichment")
+    if enr:
+        print(f"       CvLAC: {enr['enriched']} integrantes enriquecidos, {enr['failed']} fallidos")
+
+
+def enrich_from_open_data():
+    print("=================================================================")
+    print("PASO 4b: Enriquecimiento desde datos abiertos (datos.gov.co / Socrata)")
+    print("=================================================================")
+    # Rellena formación, clasificación Minciencias, nacionalidad y residencia
+    # de los investigadores reconocidos en convocatorias, usando su cod_rh.
+    summary = datos_abiertos.enrich_all(only_missing=True)
+    print(f"  [OK] Procesados: {summary['processed']} | Enriquecidos: {summary['enriched']} | "
+          f"Sin registro: {summary['not_found']} | Ya al día: {summary['up_to_date']}")
 
 
 def verify_report():
@@ -121,9 +141,26 @@ def verify_report():
             print(f"  - Conciliación ImportRecord [{r[0]} / {r[1]}]: {r[2]}")
 
 
+def notify_running_api():
+    """Si la API FastAPI está corriendo, le ordena recargar su RAM desde la BD recién creada."""
+    print("PASO 6: Sincronizando RAM de la API en ejecución (si aplica)")
+    try:
+        import requests
+        resp = requests.post(
+            "http://localhost:8000/api/v1/system/initialize/database",
+            json={"connection_string": PEAI_CONN_STR},
+            timeout=120,
+        )
+        print(f"  [OK] API recargada desde la BD nueva (HTTP {resp.status_code}).")
+    except Exception:
+        print("  -> API no está corriendo (o no responde); al iniciarla tomará la BD nueva.")
+
+
 if __name__ == "__main__":
     recreate_sql_database()
     apply_schema()
     seed_upc_groups()
     run_ingestion()
+    enrich_from_open_data()
     verify_report()
+    notify_running_api()
