@@ -105,6 +105,19 @@ export interface GruplacPreview {
   counts: { members: number; products: number; projects: number; research_lines: number }
 }
 
+export interface GroupSearchResult {
+  cod_grupo: string
+  nombre: string | null
+  institucion: string | null
+  departamento: string | null
+  municipio: string | null
+  area: string | null
+  gran_area: string | null
+  clasificacion: string | null
+  ano_convo: string | null
+  gruplac_url: string
+}
+
 export interface ImportResult {
   status: string
   job_id?: number

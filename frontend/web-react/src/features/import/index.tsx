@@ -4,8 +4,6 @@ import { toast } from 'sonner'
 import { DownloadCloud, Eye } from 'lucide-react'
 import { importCvlac, importGruplac, previewGruplac } from '@/lib/api'
 import type { GruplacPreview } from '@/lib/types'
-import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
-import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import {
   Card,
@@ -16,14 +14,6 @@ import {
 } from '@/components/ui/card'
 import { Checkbox } from '@/components/ui/checkbox'
 import { Input } from '@/components/ui/input'
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from '@/components/ui/table'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Textarea } from '@/components/ui/textarea'
 import { ConfigDrawer } from '@/components/config-drawer'
@@ -32,6 +22,8 @@ import { Main } from '@/components/layout/main'
 import { ProfileDropdown } from '@/components/profile-dropdown'
 import { Search } from '@/components/search'
 import { ThemeSwitch } from '@/components/theme-switch'
+import { GroupSearchImport } from './group-search'
+import { GruplacPreviewCard } from './gruplac-preview-card'
 
 export function ImportPage() {
   return (
@@ -49,15 +41,20 @@ export function ImportPage() {
         <div className='mb-4'>
           <h1 className='text-2xl font-bold tracking-tight'>Importación de datos</h1>
           <p className='text-muted-foreground'>
-            Requerimiento 7: ingestión desde URL pública de GrupLAC o texto CvLAC.
+            Requerimiento 7: búsqueda en datos abiertos, ingestión desde URL pública de
+            GrupLAC o texto CvLAC.
           </p>
         </div>
 
-        <Tabs defaultValue='gruplac' className='space-y-4'>
+        <Tabs defaultValue='buscar' className='space-y-4'>
           <TabsList>
-            <TabsTrigger value='gruplac'>GrupLAC (grupo)</TabsTrigger>
+            <TabsTrigger value='buscar'>Buscar grupo</TabsTrigger>
+            <TabsTrigger value='gruplac'>GrupLAC (URL)</TabsTrigger>
             <TabsTrigger value='cvlac'>CvLAC (investigador)</TabsTrigger>
           </TabsList>
+          <TabsContent value='buscar'>
+            <GroupSearchImport />
+          </TabsContent>
           <TabsContent value='gruplac'>
             <GruplacImport />
           </TabsContent>
@@ -108,8 +105,9 @@ function GruplacImport() {
         <CardHeader>
           <CardTitle>Importar grupo desde GrupLAC</CardTitle>
           <CardDescription>
-            Flujo en dos fases: primero revisa la vista previa (no persiste nada) y luego confirma
-            la importación atómica.
+            Flujo en dos fases: primero revisa la vista previa (no persiste nada) y luego
+            confirma la importación atómica. También acepta el código del grupo
+            (ej. COL0016283) o el nro de GrupLAC.
           </CardDescription>
         </CardHeader>
         <CardContent className='space-y-3'>
@@ -145,77 +143,7 @@ function GruplacImport() {
         </CardContent>
       </Card>
 
-      {preview && (
-        <Card>
-          <CardHeader>
-            <CardTitle>Vista previa — {preview.group.nombre ?? preview.group.name ?? 'Grupo'}</CardTitle>
-            <CardDescription className='flex flex-wrap gap-2 pt-1'>
-              <Badge variant='secondary'>{preview.counts.members} integrantes</Badge>
-              <Badge variant='secondary'>{preview.counts.products} productos</Badge>
-              <Badge variant='secondary'>{preview.counts.projects} proyectos</Badge>
-              <Badge variant='secondary'>{preview.counts.research_lines} líneas</Badge>
-            </CardDescription>
-          </CardHeader>
-          <CardContent className='space-y-4'>
-            {preview.warnings.length > 0 && (
-              <Alert variant='destructive'>
-                <AlertTitle>Advertencias del análisis</AlertTitle>
-                <AlertDescription>
-                  <ul className='list-disc ps-4'>
-                    {preview.warnings.slice(0, 10).map((w, i) => (
-                      <li key={i}>{w}</li>
-                    ))}
-                  </ul>
-                </AlertDescription>
-              </Alert>
-            )}
-
-            <div>
-              <h3 className='mb-2 text-sm font-semibold'>Integrantes</h3>
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Nombre</TableHead>
-                    <TableHead>Código RH</TableHead>
-                    <TableHead>Periodo</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {preview.members.slice(0, 15).map((m, i) => (
-                    <TableRow key={i}>
-                      <TableCell className='font-medium'>{m.display_name}</TableCell>
-                      <TableCell className='font-mono text-xs'>{m.cod_rh ?? '—'}</TableCell>
-                      <TableCell className='text-xs'>{m.period_raw ?? '—'}</TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            </div>
-
-            <div>
-              <h3 className='mb-2 text-sm font-semibold'>Productos</h3>
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Título</TableHead>
-                    <TableHead>Tipo</TableHead>
-                    <TableHead>Año</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {preview.products.slice(0, 15).map((p, i) => (
-                    <TableRow key={i}>
-                      <TableCell className='max-w-[420px] truncate font-medium'>{p.title}</TableCell>
-                      <TableCell className='text-xs'>{p.subtype_name}</TableCell>
-                      <TableCell>{p.year ?? '—'}</TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            </div>
-          </CardContent>
-        </Card>
-      )}
+      {preview && <GruplacPreviewCard preview={preview} />}
     </div>
   )
 }

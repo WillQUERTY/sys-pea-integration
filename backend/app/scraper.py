@@ -370,16 +370,26 @@ class GruplacHtmlParser:
                 break
 
         group_header = soup.find("span", class_="celdaEncabezado")
-        group_name = (
-            GruplacNormalizer.normalize(group_header.get_text(strip=True))
-            if group_header else basic_data.get("nombre del grupo", "Grupo Sin Nombre")
-        )
 
         group_code = "COL0000000"
         for k, v in basic_data.items():
             if "codigo" in k:
                 group_code = v.strip()
                 break
+
+        # Página sin encabezado de grupo ni código en datos básicos = el nro no
+        # corresponde a un grupo público (Scienti devuelve una plantilla vacía).
+        # Rechazar en lugar de crear un "Grupo Sin Nombre" fantasma.
+        if group_header is None and group_code == "COL0000000":
+            raise ValueError(
+                "La página no corresponde a un grupo GrupLAC válido (sin nombre ni código). "
+                "Verifica que el nro de la URL sea el correcto en el buscador de Scienti."
+            )
+
+        group_name = (
+            GruplacNormalizer.normalize(group_header.get_text(strip=True))
+            if group_header else basic_data.get("nombre del grupo", "Grupo Sin Nombre")
+        )
 
         if group_code == "COL0000000" and source_url:
             m_nro = re.search(r"nro=([0-9]+)", source_url)
@@ -1107,7 +1117,48 @@ def enrich_members_with_cvlac(scraped_data: ScrapedGroupData, db_conn_str: str, 
     return report
 
 
-def scrape_gruplac(url: str, db_conn_str: str = "", preview: bool = False, enrich_cvlac: bool = False, cvlac_workers: int = 8) -> Dict[str, Any]:
+GRUPLAC_SEARCH_URL = "https://scienti.minciencias.gov.co/ciencia-war/busquedaAvanzadaGrupos.do"
+
+
+def buscar_nro_gruplac(nombre: str = "", codigo: str = "") -> Optional[str]:
+    """
+    Resuelve el nro interno de GrupLAC de un grupo usando el buscador oficial
+    de Scienti (busquedaAvanzadaGrupos.do). El nro NO se deriva del cod_grupo_gr
+    (p.ej. AITICE es COL0043834 pero su nro es 2668), así que hay que buscarlo.
+    Devuelve los dígitos del nro o None si el buscador no arroja resultados.
+    """
+    base_fields = {
+        "codIdGrupo": "", "nmeGrupo": "", "nmeLider": "", "genLider": "",
+        "areaConocimiento": "", "annoCreacion": "", "status": "",
+        "nmeInstitucion": "", "ciuInst": "", "depInst": "",
+        "progNacional": "", "progNacionalSec": "", "integrantes": "",
+        "proyectos": "", "productos": "",
+    }
+    digits = "".join(c for c in (codigo or "") if c.isdigit())
+    attempts = []
+    if codigo:
+        attempts.append({**base_fields, "codIdGrupo": codigo})
+        if digits and digits != codigo:
+            attempts.append({**base_fields, "codIdGrupo": digits})
+    if nombre:
+        attempts.append({**base_fields, "nmeGrupo": nombre})
+    try:
+        session = requests.Session()
+        # El buscador exige la sesión del GET inicial (cookies JSESSIONID/ADC)
+        session.get(GRUPLAC_SEARCH_URL, params={"buscar": "sinBuscar"}, timeout=20)
+        for fields in attempts:
+            resp = session.post(GRUPLAC_SEARCH_URL, params={"buscar": "buscar"}, data=fields, timeout=30)
+            resp.raise_for_status()
+            resp.encoding = resp.apparent_encoding or "latin1"
+            m = re.search(r"nro=(\d+)", resp.text)
+            if m:
+                return m.group(1)
+    except Exception as e:
+        logger.warning(f"[GrupLAC] Buscador Scienti falló ({codigo or nombre}): {e}")
+    return None
+
+
+def scrape_gruplac(url: str, db_conn_str: str = "", preview: bool = False, enrich_cvlac: bool = False, cvlac_workers: int = 8, expected_group_code: str = "") -> Dict[str, Any]:
     print("=" * 65)
     print(f"PEA-i Importador GrupLAC (Estructural e Idempotente en SQL)")
     print(f"URL: {url}")
@@ -1118,6 +1169,19 @@ def scrape_gruplac(url: str, db_conn_str: str = "", preview: bool = False, enric
 
     # 2. Parseo estructural en DTO
     scraped_data = GruplacHtmlParser.parse(html_content, source_url=url)
+
+    # 2.2 Si el caller pidió un grupo específico (código COL o nro), validar que
+    # la página corresponda: el nro de GrupLAC NO se deriva del cod_grupo_gr, y una
+    # URL equivocada puede abrir la página de OTRO grupo.
+    if expected_group_code:
+        expected = "".join(c for c in expected_group_code if c.isdigit()).lstrip("0")
+        found = "".join(c for c in scraped_data.group.get("external_code", "") if c.isdigit()).lstrip("0")
+        if expected and found and expected != found:
+            raise ValueError(
+                f"La URL no corresponde al grupo {expected_group_code}: la página muestra "
+                f"'{scraped_data.group.get('name')}' ({scraped_data.group.get('external_code')}). "
+                "Pega la URL exacta desde el buscador de Scienti/GrupLAC."
+            )
     print(f"[OK] Extraccion estructural finalizada:")
     print(f"     - Grupo: {scraped_data.group['name']} ({scraped_data.group['external_code']})")
     print(f"     - Miembros detectados: {len(scraped_data.members)}")
@@ -1155,7 +1219,7 @@ if __name__ == "__main__":
         print("Uso: python -m backend.app.scraper <URL_GRUPLAC> [--preview] [--enrich-cvlac] [--cvlac-workers N]")
         print("     --preview      : solo extrae y muestra la vista previa, sin escribir en BD.")
         print("     --enrich-cvlac : tras importar, descarga el CvLAC de cada integrante con cod_rh.")
-        print("     --cvlac-workers N : hilos paralelos para la cascada CvLAC (default 8).")
+        print("     --cvlac-workers N : hilos paralelos para la cascada CvLAC (default 8, optimo medido).")
         sys.exit(1)
 
     url_arg = args[0]

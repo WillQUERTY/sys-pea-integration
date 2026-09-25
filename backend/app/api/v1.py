@@ -503,8 +503,28 @@ async def import_cvlac_by_cod_rh_endpoint(req: CvlacFetchRequest):
     return result
 
 class GruplacImportRequest(BaseModel):
-    url: str
+    url: Optional[str] = None
+    group_code: Optional[str] = None  # "COL0016283" o nro crudo de GrupLAC
     enrich_cvlac: bool = False
+
+@router.get("/groups/search/datos-abiertos", tags=["Ingestion"])
+async def search_groups_endpoint(
+    q: str = "",
+    departamento: Optional[str] = None,
+    institucion: Optional[str] = None,
+    clasificacion: Optional[str] = None,
+    limit: int = 50,
+):
+    """
+    Busca grupos RECONOCIDOS en el dataset oficial «Grupos de Investigación»
+    (datos.gov.co / Socrata hrhc-c4wu) y devuelve cada candidato con su URL
+    GrupLAC lista para vista previa/importación. Los grupos no reconocidos no
+    aparecen: para esos, usar el import por URL manual.
+    """
+    from .. import datos_abiertos_grupos
+    return datos_abiertos_grupos.search_grupos(
+        q, departamento, institucion, clasificacion, min(limit, 200)
+    )
 
 @router.post("/researchers/import/cvlac", tags=["Ingestion"])
 async def import_cvlac_endpoint(req: CvlacImportRequest):
@@ -525,8 +545,14 @@ async def preview_gruplac_endpoint(req: GruplacImportRequest):
     extracted DTO for human review WITHOUT persisting anything (Revisión §16/§29).
     """
     from ..scraper import scrape_gruplac
+    from ..datos_abiertos_grupos import resolver_url_gruplac_ex
     try:
-        return scrape_gruplac(req.url, preview=True)
+        url, via = resolver_url_gruplac_ex(req.url, req.group_code)
+        # La validación de código solo aplica al intento débil por dígitos:
+        # el buscador oficial ya resolvió autoritativamente (los esquemas de
+        # código de la página GrupLAC y de datos abiertos difieren).
+        expected = (req.group_code or "") if via == "digitos" else ""
+        return scrape_gruplac(url, preview=True, expected_group_code=expected)
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
 
@@ -537,9 +563,12 @@ async def import_gruplac_endpoint(req: GruplacImportRequest):
     catalog atomically from Minciencias GrupLAC URL after reviewing the preview.
     """
     from ..scraper import scrape_gruplac
+    from ..datos_abiertos_grupos import resolver_url_gruplac_ex
     conn_str = repository._active_connection_string or "Driver={ODBC Driver 17 for SQL Server};Server=localhost;Database=peai;Trusted_Connection=yes;"
     try:
-        result = scrape_gruplac(req.url, conn_str, enrich_cvlac=req.enrich_cvlac)
+        url, via = resolver_url_gruplac_ex(req.url, req.group_code)
+        expected = (req.group_code or "") if via == "digitos" else ""
+        result = scrape_gruplac(url, conn_str, enrich_cvlac=req.enrich_cvlac, expected_group_code=expected)
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
     _reload_ram_from_db(conn_str)

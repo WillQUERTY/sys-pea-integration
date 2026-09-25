@@ -7,6 +7,7 @@ import type {
   ValidationQueueItem,
   GruplacPreview,
   ImportResult,
+  GroupSearchResult,
   UndoOperation,
 } from './types'
 
@@ -119,14 +120,18 @@ export async function processNextValidation() {
 }
 
 // --- Ingestion (GrupLAC two-phase, CvLAC) ---
-export async function previewGruplac(url: string) {
-  const { data } = await api.post<GruplacPreview>('/groups/import/gruplac/preview', { url })
+export async function previewGruplac(url: string, groupCode?: string) {
+  const { data } = await api.post<GruplacPreview>('/groups/import/gruplac/preview', {
+    url,
+    group_code: groupCode,
+  })
   return data
 }
-export async function importGruplac(url: string, enrichCvlac: boolean = false) {
+export async function importGruplac(url: string, enrichCvlac: boolean = false, groupCode?: string) {
   const { data } = await api.post<ImportResult>('/groups/import/gruplac', {
     url,
     enrich_cvlac: enrichCvlac,
+    group_code: groupCode,
   })
   return data
 }
@@ -142,6 +147,17 @@ export async function importCvlacByCodRh(codRh: string, targetGroupCode?: string
     cod_rh: codRh,
     target_group_code: targetGroupCode,
   })
+  return data
+}
+
+export async function searchGroupsDatosAbiertos(params: {
+  q?: string
+  departamento?: string
+  institucion?: string
+  clasificacion?: string
+  limit?: number
+}) {
+  const { data } = await api.get<GroupSearchResult[]>('/groups/search/datos-abiertos', { params })
   return data
 }
 
