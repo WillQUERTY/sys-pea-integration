@@ -79,6 +79,9 @@ export function GroupSearchImport() {
         `Importación completa: ${r.group_name ?? ''} (${r.new_records ?? 0} registros nuevos)` +
           (enr ? ` · CvLAC: ${enr.enriched} enriquecidos, ${enr.failed} fallidos` : '')
       )
+      if (r.ram_reloaded === false) {
+        toast.warning('La importación se guardó en la BD, pero la vista no se pudo refrescar. Recarga la página.')
+      }
       setPreview(null)
       setPreviewTarget(null)
       setImportTarget(null)

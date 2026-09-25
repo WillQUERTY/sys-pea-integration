@@ -21,6 +21,19 @@ export interface Group {
   status?: string | null
 }
 
+export interface Project {
+  id?: number
+  title: string
+  summary?: string | null
+  project_type?: string | null
+  start_date?: string | null
+  end_date?: string | null
+  status?: string | null
+  funding_type?: string | null
+  budget?: number | null
+  principal_investigator_id?: number | null
+}
+
 export interface Researcher {
   id?: number
   external_code: string
@@ -119,6 +132,7 @@ export interface GroupSearchResult {
 export interface ImportResult {
   status: string
   job_id?: number
+  ram_reloaded?: boolean
   group_name?: string
   total_records?: number
   new_records?: number

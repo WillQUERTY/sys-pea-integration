@@ -2,21 +2,26 @@ from fastapi import APIRouter, HTTPException, Query
 from pydantic import BaseModel
 from typing import Any, Dict, List, Optional
 from .. import repository
-from ..models import Group, Researcher, Product
+from ..models import Group, Researcher, Product, Project
 
 router = APIRouter()
 
-def _reload_ram_from_db(conn_str: str) -> None:
+def _reload_ram_from_db(conn_str: str) -> bool:
     """
-    Los servicios de ingesta (GrupLAC/CvLAC) escriben directo a SQL Server con
-    pyodbc, sin pasar por la RAM del núcleo C++. Tras cada commit recargamos la
-    RAM desde la BD para que la API sirva inmediatamente los datos nuevos.
-    (repository.load_from_db limpia antes de cargar: no duplica).
+    Decisión de arquitectura (excepción documentada): SOLO los servicios de
+    ingesta (GruplacCommitService, CvCommitService) escriben directo a SQL
+    Server con pyodbc, porque la ingesta masiva exige transacción atómica y
+    conciliación/dedupe canónico que el CRUD del núcleo C++ no expone.
+    Todo lo demás pasa por repository.py. Tras cada commit recargamos la RAM
+    desde la BD (repository.load_from_db limpia antes de cargar: no duplica).
+    Devuelve True si la RAM quedó sincronizada.
     """
     try:
         repository.load_from_db(conn_str)
+        return True
     except Exception as e:
         print(f"[WARN] No se pudo recargar la RAM desde la BD tras la ingesta: {e}")
+        return False
 
 # -------------------------------------------------------------------
 # System Initialization and Export
@@ -250,6 +255,22 @@ async def list_group_products(group_id: int):
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
+@router.get("/groups/{group_id}/projects", response_model=List[Project], tags=["Groups"])
+async def list_group_projects(group_id: int):
+    """Retrieve all projects linked to this research group."""
+    try:
+        return repository.get_group_projects(group_id)
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@router.get("/groups/{group_id}/research-lines", response_model=List[str], tags=["Groups"])
+async def list_group_research_lines(group_id: int):
+    """Retrieve all research lines linked to this research group."""
+    try:
+        return repository.get_group_research_lines(group_id)
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
 @router.post("/groups/{group_id}/products/{product_id}", tags=["Groups"])
 async def link_product_endpoint(group_id: int, product_id: int):
     """Link a scientific product to a research group."""
@@ -265,6 +286,45 @@ async def unlink_product_endpoint(group_id: int, product_id: int):
     try:
         repository.unlink_product_from_group(group_id, product_id)
         return {"status": "success", "group_id": group_id, "product_id": product_id}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@router.post("/groups/{group_id}/projects", tags=["Groups"])
+async def link_project_endpoint(group_id: int, project: Project):
+    """Link (and create if not exists) a project to a research group."""
+    try:
+        pid = repository.link_project_to_group(group_id, project)
+        return {"status": "success", "group_id": group_id, "project_id": pid}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@router.delete("/groups/{group_id}/projects/{project_id}", tags=["Groups"])
+async def unlink_project_endpoint(group_id: int, project_id: int):
+    """Unlink a project from a research group."""
+    try:
+        repository.unlink_project_from_group(group_id, project_id)
+        return {"status": "success", "group_id": group_id, "project_id": project_id}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+class ResearchLineRequest(BaseModel):
+    name: str
+
+@router.post("/groups/{group_id}/research-lines", tags=["Groups"])
+async def link_research_line_endpoint(group_id: int, req: ResearchLineRequest):
+    """Link a research line to a group."""
+    try:
+        line_id = repository.link_research_line_to_group(group_id, req.name)
+        return {"status": "success", "group_id": group_id, "line_id": line_id}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@router.delete("/groups/{group_id}/research-lines/{line_name}", tags=["Groups"])
+async def unlink_research_line_endpoint(group_id: int, line_name: str):
+    """Unlink a research line from a group."""
+    try:
+        repository.unlink_research_line_from_group(group_id, line_name)
+        return {"status": "success", "group_id": group_id, "line_name": line_name}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
@@ -499,7 +559,7 @@ async def import_cvlac_by_cod_rh_endpoint(req: CvlacFetchRequest):
     if req.target_group_code:
         cv.target_group_code = req.target_group_code
     result = CvCommitService.commit_cvlac(cv, conn_str)
-    _reload_ram_from_db(conn_str)
+    result["ram_reloaded"] = _reload_ram_from_db(conn_str)
     return result
 
 class GruplacImportRequest(BaseModel):
@@ -536,7 +596,7 @@ async def import_cvlac_endpoint(req: CvlacImportRequest):
     if req.target_group_code:
         cv.target_group_code = req.target_group_code
     result = CvCommitService.commit_cvlac(cv, conn_str)
-    _reload_ram_from_db(conn_str)
+    result["ram_reloaded"] = _reload_ram_from_db(conn_str)
     return result
 
 @router.post("/groups/import/gruplac/preview", tags=["Ingestion"])
@@ -572,5 +632,5 @@ async def import_gruplac_endpoint(req: GruplacImportRequest):
         result = scrape_gruplac(url, conn_str, enrich_cvlac=req.enrich_cvlac, expected_group_code=expected)
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
-    _reload_ram_from_db(conn_str)
+    result["ram_reloaded"] = _reload_ram_from_db(conn_str)
     return result

@@ -11,6 +11,8 @@ El proyecto opera bajo un modelo de "Memoria como Caché Activa + Auto-Guardado 
 3. **FastAPI (Backend):** Expone las funcionalidades a través de Endpoints HTTP.
 4. **SQL Server (Persistencia):** Guarda la información para que no se pierda al apagar el servidor. Al arrancar, los datos se cargan desde aquí a la memoria. Al hacer un POST/PUT, los datos se actualizan en memoria y en BD al instante.
 
+> **Excepción documentada — ingesta masiva:** únicamente `GruplacCommitService` (`backend/app/scraper.py`) y `CvCommitService` (`backend/app/cvlac_scraper.py`) escriben directo a SQL Server con pyodbc, sin pasar por la RAM del núcleo. Razón: la importación masiva exige una transacción atómica con rollback y conciliación/dedupe canónico (por `external_code` y nombre normalizado) que el CRUD del núcleo no expone. Tras cada commit, la API recarga la RAM con `repository.load_from_db` y reporta `ram_reloaded` en la respuesta. **Toda otra escritura/lectura pasa por `repository.py`**; la conciliación y el dedupe son responsabilidad exclusiva de estos dos servicios (no duplicar esa lógica en el repositorio). Las importaciones no participan de la pila de deshacer (limitación conocida: se revierten borrando el grupo).
+
 ---
 
 ## 🛠️ Requisitos Previos
