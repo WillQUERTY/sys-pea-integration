@@ -19,7 +19,8 @@ import {
 import {
   getGroup, updateGroup, getGroupMembers, getGroupProducts, getGroupProjects, getGroupResearchLines,
   linkProject, unlinkProject, linkResearchLine, unlinkResearchLine,
-  linkMember, unlinkMember, listResearchers
+  linkMember, unlinkMember, listResearchers,
+  linkProduct, unlinkProduct, listProducts
 } from '@/lib/api'
 import type { Group } from '@/lib/types'
 
@@ -97,6 +98,20 @@ export function GroupDetail() {
   })
   const linkableResearchers = (researcherResults ?? []).filter(
     (r) => !(members ?? []).some((m) => m.id === r.id)
+  )
+
+  // Vinculación de productos (multilista — Req. 6-7)
+  const [productOpen, setProductOpen] = useState(false)
+  const [productSearch, setProductSearch] = useState('')
+  const [selectedProductId, setSelectedProductId] = useState<number | null>(null)
+
+  const { data: productResults, isFetching: isSearchingProducts } = useQuery({
+    queryKey: ['products', 'picker', productSearch],
+    queryFn: () => listProducts({ search: productSearch, limit: 8 }),
+    enabled: productOpen,
+  })
+  const linkableProducts = (productResults ?? []).filter(
+    (p) => !(products ?? []).some((gp) => gp.id === p.id)
   )
 
   // Sync state when group loads
@@ -196,6 +211,27 @@ export function GroupDetail() {
       queryClient.invalidateQueries({ queryKey: ['groups', groupId, 'members'] })
       queryClient.invalidateQueries({ queryKey: ['researcher-groups'] })
       toast.success('Investigador desvinculado del grupo')
+    },
+    onError: (e) => toast.error(e instanceof Error ? e.message : 'Error al desvincular')
+  })
+
+  const linkProductMutation = useMutation({
+    mutationFn: () => linkProduct(groupId, selectedProductId!),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['groups', groupId, 'products'] })
+      toast.success('Producto vinculado al grupo')
+      setProductOpen(false)
+      setSelectedProductId(null)
+      setProductSearch('')
+    },
+    onError: (e) => toast.error(e instanceof Error ? e.message : 'Error al vincular')
+  })
+
+  const unlinkProductMutation = useMutation({
+    mutationFn: (pid: number) => unlinkProduct(groupId, pid),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['groups', groupId, 'products'] })
+      toast.success('Producto desvinculado del grupo')
     },
     onError: (e) => toast.error(e instanceof Error ? e.message : 'Error al desvincular')
   })
@@ -615,7 +651,61 @@ export function GroupDetail() {
           </TabsContent>
 
           <TabsContent value="productos" className="focus-visible:outline-none bg-card border border-border/50 rounded-2xl p-6 shadow-sm">
-            <h3 className="font-semibold text-lg mb-4">Productos del Grupo</h3>
+            <div className="flex justify-between items-center mb-4">
+              <h3 className="font-semibold text-lg">Productos del Grupo</h3>
+              <Dialog open={productOpen} onOpenChange={setProductOpen}>
+                <DialogTrigger asChild>
+                  <Button size="sm"><Plus className="w-4 h-4 mr-2"/> Vincular Producto</Button>
+                </DialogTrigger>
+                <DialogContent>
+                  <DialogHeader>
+                    <DialogTitle>Vincular Producto al Grupo</DialogTitle>
+                  </DialogHeader>
+                  <div className="space-y-4 py-4">
+                    <div className="space-y-2">
+                      <Label>Buscar producto</Label>
+                      <Input
+                        value={productSearch}
+                        onChange={e => { setProductSearch(e.target.value); setSelectedProductId(null) }}
+                        placeholder="Título del producto..."
+                      />
+                    </div>
+                    <div className="max-h-48 overflow-y-auto space-y-1 rounded-lg border border-border/50 p-1">
+                      {isSearchingProducts ? (
+                        <p className="text-sm text-muted-foreground p-2">Buscando...</p>
+                      ) : linkableProducts.length === 0 ? (
+                        <p className="text-sm text-muted-foreground p-2">Sin resultados.</p>
+                      ) : (
+                        linkableProducts.map((p) => (
+                          <button
+                            key={p.id}
+                            type="button"
+                            onClick={() => setSelectedProductId(p.id!)}
+                            className={`w-full text-left px-3 py-2 rounded-md text-sm transition-colors ${
+                              selectedProductId === p.id
+                                ? 'bg-primary/10 text-primary font-medium'
+                                : 'hover:bg-muted/60'
+                            }`}
+                          >
+                            <span className="block truncate">{p.title}</span>
+                            <span className="text-xs text-muted-foreground">
+                              {p.year ?? String(p.publication_date ?? '').slice(0, 4) || 's/f'}
+                            </span>
+                          </button>
+                        ))
+                      )}
+                    </div>
+                    <Button
+                      className="w-full"
+                      onClick={() => linkProductMutation.mutate()}
+                      disabled={!selectedProductId || linkProductMutation.isPending}
+                    >
+                      Vincular
+                    </Button>
+                  </div>
+                </DialogContent>
+              </Dialog>
+            </div>
             <DataTable
               columns={[
                 {
@@ -634,6 +724,15 @@ export function GroupDetail() {
                   key: 'status',
                   header: 'Estado',
                   cell: (p) => <ValidationBadge status={p.validation_status} />
+                },
+                {
+                  key: 'actions',
+                  header: '',
+                  cell: (p) => (
+                    <Button variant="ghost" size="icon" onClick={() => unlinkProductMutation.mutate(p.id!)}>
+                      <Trash2 className="w-4 h-4 text-red-500" />
+                    </Button>
+                  )
                 }
               ]}
               data={products ?? []}
