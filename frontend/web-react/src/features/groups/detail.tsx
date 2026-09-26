@@ -12,12 +12,14 @@ import {
   Trophy,
   Info,
   Trash2,
-  Plus
+  Plus,
+  UserPlus
 } from 'lucide-react'
 
-import { 
+import {
   getGroup, updateGroup, getGroupMembers, getGroupProducts, getGroupProjects, getGroupResearchLines,
-  linkProject, unlinkProject, linkResearchLine, unlinkResearchLine
+  linkProject, unlinkProject, linkResearchLine, unlinkResearchLine,
+  linkMember, unlinkMember, listResearchers
 } from '@/lib/api'
 import type { Group } from '@/lib/types'
 
@@ -80,6 +82,22 @@ export function GroupDetail() {
   const [newLine, setNewLine] = useState('')
   const [projectOpen, setProjectOpen] = useState(false)
   const [lineOpen, setLineOpen] = useState(false)
+
+  // Vinculación de investigadores (multilista — Req. 5)
+  const [memberOpen, setMemberOpen] = useState(false)
+  const [memberSearch, setMemberSearch] = useState('')
+  const [selectedResearcherId, setSelectedResearcherId] = useState<number | null>(null)
+  const [memberRole, setMemberRole] = useState('Investigador')
+  const [memberStartDate, setMemberStartDate] = useState('')
+
+  const { data: researcherResults, isFetching: isSearchingResearchers } = useQuery({
+    queryKey: ['researchers', 'picker', memberSearch],
+    queryFn: () => listResearchers({ search: memberSearch, limit: 8 }),
+    enabled: memberOpen,
+  })
+  const linkableResearchers = (researcherResults ?? []).filter(
+    (r) => !(members ?? []).some((m) => m.id === r.id)
+  )
 
   // Sync state when group loads
   useEffect(() => {
@@ -151,6 +169,35 @@ export function GroupDetail() {
       queryClient.invalidateQueries({ queryKey: ['groups', groupId, 'researchLines'] })
       toast.success('Línea desvinculada')
     }
+  })
+
+  const linkMemberMutation = useMutation({
+    mutationFn: () =>
+      linkMember(groupId, selectedResearcherId!, {
+        role: memberRole,
+        start_date: memberStartDate,
+      }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['groups', groupId, 'members'] })
+      queryClient.invalidateQueries({ queryKey: ['researcher-groups'] })
+      toast.success('Investigador vinculado al grupo')
+      setMemberOpen(false)
+      setSelectedResearcherId(null)
+      setMemberSearch('')
+      setMemberRole('Investigador')
+      setMemberStartDate('')
+    },
+    onError: (e) => toast.error(e instanceof Error ? e.message : 'Error al vincular')
+  })
+
+  const unlinkMemberMutation = useMutation({
+    mutationFn: (rid: number) => unlinkMember(groupId, rid),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['groups', groupId, 'members'] })
+      queryClient.invalidateQueries({ queryKey: ['researcher-groups'] })
+      toast.success('Investigador desvinculado del grupo')
+    },
+    onError: (e) => toast.error(e instanceof Error ? e.message : 'Error al desvincular')
   })
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -464,7 +511,69 @@ export function GroupDetail() {
           </TabsContent>
 
           <TabsContent value="integrantes" className="focus-visible:outline-none bg-card border border-border/50 rounded-2xl p-6 shadow-sm">
-            <h3 className="font-semibold text-lg mb-4">Investigadores vinculados</h3>
+            <div className="flex justify-between items-center mb-4">
+              <h3 className="font-semibold text-lg">Investigadores vinculados</h3>
+              <Dialog open={memberOpen} onOpenChange={setMemberOpen}>
+                <DialogTrigger asChild>
+                  <Button size="sm"><UserPlus className="w-4 h-4 mr-2"/> Vincular Investigador</Button>
+                </DialogTrigger>
+                <DialogContent>
+                  <DialogHeader>
+                    <DialogTitle>Vincular Investigador al Grupo</DialogTitle>
+                  </DialogHeader>
+                  <div className="space-y-4 py-4">
+                    <div className="space-y-2">
+                      <Label>Buscar investigador</Label>
+                      <Input
+                        value={memberSearch}
+                        onChange={e => { setMemberSearch(e.target.value); setSelectedResearcherId(null) }}
+                        placeholder="Nombre, apellido u ORCID..."
+                      />
+                    </div>
+                    <div className="max-h-48 overflow-y-auto space-y-1 rounded-lg border border-border/50 p-1">
+                      {isSearchingResearchers ? (
+                        <p className="text-sm text-muted-foreground p-2">Buscando...</p>
+                      ) : linkableResearchers.length === 0 ? (
+                        <p className="text-sm text-muted-foreground p-2">Sin resultados.</p>
+                      ) : (
+                        linkableResearchers.map((r) => (
+                          <button
+                            key={r.id}
+                            type="button"
+                            onClick={() => setSelectedResearcherId(r.id!)}
+                            className={`w-full text-left px-3 py-2 rounded-md text-sm transition-colors ${
+                              selectedResearcherId === r.id
+                                ? 'bg-primary/10 text-primary font-medium'
+                                : 'hover:bg-muted/60'
+                            }`}
+                          >
+                            {r.first_names} {r.last_names}
+                            {r.orcid && <span className="ml-2 text-xs text-muted-foreground font-mono">{r.orcid}</span>}
+                          </button>
+                        ))
+                      )}
+                    </div>
+                    <div className="grid grid-cols-2 gap-4">
+                      <div className="space-y-2">
+                        <Label>Rol en el grupo</Label>
+                        <Input value={memberRole} onChange={e => setMemberRole(e.target.value)} placeholder="Ej: Investigador" />
+                      </div>
+                      <div className="space-y-2">
+                        <Label>Fecha de vinculación</Label>
+                        <Input value={memberStartDate} onChange={e => setMemberStartDate(e.target.value)} placeholder="Ej: 2024-01" />
+                      </div>
+                    </div>
+                    <Button
+                      className="w-full"
+                      onClick={() => linkMemberMutation.mutate()}
+                      disabled={!selectedResearcherId || linkMemberMutation.isPending}
+                    >
+                      Vincular
+                    </Button>
+                  </div>
+                </DialogContent>
+              </Dialog>
+            </div>
             <DataTable
               columns={[
                 {
@@ -486,6 +595,15 @@ export function GroupDetail() {
                   key: 'education',
                   header: 'Formación',
                   cell: (r) => r.highest_education_level ? <Badge variant="outline">{r.highest_education_level}</Badge> : '-'
+                },
+                {
+                  key: 'actions',
+                  header: '',
+                  cell: (r) => (
+                    <Button variant="ghost" size="icon" onClick={() => unlinkMemberMutation.mutate(r.id!)}>
+                      <Trash2 className="w-4 h-4 text-red-500" />
+                    </Button>
+                  )
                 }
               ]}
               data={members ?? []}
