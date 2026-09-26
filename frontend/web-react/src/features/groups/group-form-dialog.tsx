@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
-import { useMutation, useQueryClient } from '@tanstack/react-query'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { toast } from 'sonner'
-import { createGroup, updateGroup } from '@/lib/api'
+import { createGroup, updateGroup, getGroupMembers } from '@/lib/api'
 import type { Group } from '@/lib/types'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -22,7 +22,7 @@ interface Props {
   group?: Group | null
 }
 
-// Entidad completa del grupo (leader_id se gestiona desde los integrantes).
+// Entidad completa del grupo; el líder se elige entre los integrantes vinculados.
 const EMPTY: Partial<Group> = {
   name: '',
   external_code: '',
@@ -39,6 +39,7 @@ const EMPTY: Partial<Group> = {
   description: '',
   mission: '',
   vision: '',
+  leader_id: undefined,
 }
 
 function fromGroup(g: Group): Partial<Group> {
@@ -58,6 +59,7 @@ function fromGroup(g: Group): Partial<Group> {
     description: g.description ?? '',
     mission: g.mission ?? '',
     vision: g.vision ?? '',
+    leader_id: g.leader_id ?? undefined,
   }
 }
 
@@ -66,6 +68,18 @@ export function GroupFormDialog({ open, onOpenChange, group }: Props) {
   const isEditing = !!group
 
   const [formData, setFormData] = useState<Partial<Group>>(EMPTY)
+  const [leaderSearch, setLeaderSearch] = useState('')
+
+  // El líder debe ser un integrante del grupo: se lista desde la multilista.
+  const { data: members } = useQuery({
+    queryKey: ['groups', group?.id, 'members'],
+    queryFn: () => getGroupMembers(group!.id!),
+    enabled: open && !!group?.id,
+  })
+  const filteredMembers = (members ?? []).filter((r) =>
+    `${r.first_names} ${r.last_names}`.toLowerCase().includes(leaderSearch.toLowerCase())
+  )
+  const selectedLeader = (members ?? []).find((r) => r.id === formData.leader_id)
 
   // Sync state when editing
   useEffect(() => {
@@ -228,6 +242,55 @@ export function GroupFormDialog({ open, onOpenChange, group }: Props) {
                 />
               </div>
             </div>
+
+            {isEditing && (
+              <div className='grid gap-2'>
+                <Label>Líder del Grupo</Label>
+                {selectedLeader ? (
+                  <div className='flex items-center justify-between rounded-lg border border-border/50 bg-muted/30 px-3 py-2 text-sm'>
+                    <span className='font-medium'>
+                      {selectedLeader.first_names} {selectedLeader.last_names}
+                    </span>
+                    <Button
+                      type='button'
+                      variant='ghost'
+                      size='sm'
+                      onClick={() => set({ leader_id: undefined })}
+                    >
+                      Quitar
+                    </Button>
+                  </div>
+                ) : (
+                  <>
+                    <Input
+                      value={leaderSearch}
+                      onChange={(e) => setLeaderSearch(e.target.value)}
+                      placeholder='Buscar entre los integrantes...'
+                    />
+                    <div className='max-h-36 space-y-1 overflow-y-auto rounded-lg border border-border/50 p-1'>
+                      {filteredMembers.length === 0 ? (
+                        <p className='p-2 text-sm text-muted-foreground'>
+                          {(members ?? []).length === 0
+                            ? 'El grupo aún no tiene integrantes.'
+                            : 'Sin resultados.'}
+                        </p>
+                      ) : (
+                        filteredMembers.slice(0, 8).map((r) => (
+                          <button
+                            key={r.id}
+                            type='button'
+                            onClick={() => { set({ leader_id: r.id }); setLeaderSearch('') }}
+                            className='w-full rounded-md px-3 py-2 text-left text-sm transition-colors hover:bg-muted/60'
+                          >
+                            {r.first_names} {r.last_names}
+                          </button>
+                        ))
+                      )}
+                    </div>
+                  </>
+                )}
+              </div>
+            )}
 
             <div className='grid gap-2'>
               <Label htmlFor='description'>Descripción</Label>
