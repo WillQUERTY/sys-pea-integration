@@ -25,6 +25,7 @@ import {
   XCircle,
 } from 'lucide-react'
 import { getDashboardStats, listValidationQueue } from '@/lib/api'
+import { SystemCard } from './system-card'
 import { Badge } from '@/components/ui/badge'
 import {
   Card,
@@ -329,6 +330,8 @@ export function Dashboard() {
             </CardContent>
           </Card>
         </div>
+
+        <SystemCard />
       </Main>
     </>
   )

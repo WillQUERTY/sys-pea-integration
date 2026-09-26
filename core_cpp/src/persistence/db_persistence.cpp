@@ -7,6 +7,8 @@
 #include "services/group_service.h"
 #include "services/researcher_service.h"
 #include "services/product_service.h"
+#include "services/validation_queue.h"
+#include "services/undo_stack.h"
 
 #ifdef _WIN32
 #include <windows.h>
@@ -747,6 +749,8 @@ bool initialize(InitMode mode, const std::string& source) {
     while (!list_groups().empty()) delete_group(list_groups()[0].id);
     while (!list_researchers().empty()) delete_researcher(list_researchers()[0].id);
     while (!list_products().empty()) delete_product(list_products()[0].id);
+    vq_clear();
+    undo_clear();
     return true;
 }
 
