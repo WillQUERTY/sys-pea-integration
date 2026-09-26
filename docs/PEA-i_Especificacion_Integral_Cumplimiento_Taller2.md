@@ -4,7 +4,7 @@
 > Universidad Popular del Cesar  
 > Asignatura: Estructura de Datos  
 > Documento maestro de análisis, diseño y trazabilidad  
-> Versión 2.0 - 24 de septiembre de 2026
+> Versión 2.1 - 25 de septiembre de 2026
 
 ---
 
@@ -24,6 +24,7 @@ Este archivo sustituye la versión anterior y consolida en un solo lugar:
 - La persistencia en SQL Server y en archivo JSON.
 - Los entregables académicos y administrativos.
 - La matriz de cumplimiento requisito por requisito.
+- Las decisiones de alcance del equipo y su justificación (sección 26.1).
 - Las pruebas y evidencias necesarias para afirmar cumplimiento total.
 
 > **Nota de alcance:** este documento distingue entre diseño, implementación y evidencia. Que una función esté diseñada no significa que ya esté implementada o probada.
@@ -40,7 +41,7 @@ Este archivo sustituye la versión anterior y consolida en un solo lugar:
 6. CRUD y persistencia por estructura
 7. Dos soluciones ejecutables e integración
 8. Persistencia dual e inicialización
-9. Dashboard Python y resumen C++
+9. Dashboard estadístico integrado y resumen C++
 10. Entregables obligatorios
 11. Diagramas y documentación pendientes
 12. Matriz de trazabilidad y pruebas
@@ -60,7 +61,7 @@ Este archivo sustituye la versión anterior y consolida en un solo lugar:
 
 ## 26. Declaración de cumplimiento
 
-La solución se diseñará para cumplir todos los requisitos obligatorios del Taller 2 y, de forma separada, varios complementos. El cumplimiento se evaluará en tres niveles:
+La solución se diseñó para cumplir los requisitos obligatorios del Taller 2 — bajo las decisiones de alcance registradas en la sección 26.1 — y, de forma separada, varios complementos. El cumplimiento se evaluará en tres niveles:
 
 ```text
 DISEÑADO      La función está especificada en este documento.
@@ -70,22 +71,70 @@ EVIDENCIADO   La función tiene prueba, captura, salida o demostración reproduc
 
 Solo podrá afirmarse cumplimiento total cuando cada requisito obligatorio esté **diseñado, implementado y evidenciado**.
 
-## 27. Interpretación de las dos soluciones
+### 26.1 Decisiones de alcance del equipo (25 de septiembre de 2026)
 
-El taller solicita una solución en C/C++ y otra en Python. Para cumplirlo sin duplicar toda la lógica, el proyecto tendrá tres modos de ejecución:
+El equipo adopta tres decisiones de alcance derivadas del enfoque de solución integrada. Cada una queda registrada con su justificación y el riesgo residual aceptado, para sustentarla en el documento Word y en el video de entrega.
 
-### 27.1 Solución C++ independiente
+#### D-01 — Las dos soluciones se entregan integradas en una sola aplicación
 
-Punto de entrada:
+**Decisión.** No se entregan archivos independientes `ABPOXX.cpp` y `ABPOXX.py` (notas 1 y 8 del taller). Las dos soluciones exigidas existen y son ejecutables por separado, pero conviven en un único proyecto:
 
 ```text
-ABPOXX.cpp
+Solución C/C++   núcleo C++ (core_cpp) y CLI pea_cli, ejecutable autónomo.
+Solución Python  backend FastAPI (backend/app), ejecutable autónomo.
+Integración      pybind11 conecta ambas sin duplicar lógica.
+```
+
+**Justificación.** El taller pide dos soluciones, una en C/C++ y otra en Python; no exige que sean aplicaciones aisladas ni que la lógica se duplique. La arquitectura entregada contiene ambas — el núcleo C++ con las estructuras de datos manuales y su CLI, y el backend Python con la API REST y la ingesta — comunicadas por interoperabilidad nativa, que además es el complemento (d) del punto 14 del taller. Integrarlas en una sola aplicación demuestra más capacidad, no menos: en el video se prueban las dos soluciones operando de forma independiente y también integradas.
+
+**Cobertura.** T-01 y T-02 se cumplen con `pea_cli.exe` y con el backend FastAPI respectivamente. La desviación se limita a la forma de entrega: proyecto modular en lugar de archivo único con iniciales.
+
+**Riesgo residual aceptado.** Las notas de entrega piden explícitamente dos archivos de texto con las iniciales de los integrantes. El equipo argumentará que el repositorio modular sustituye ventajosamente al archivo único y que renombrarlo sería un cambio cosmético; el riesgo es que el docente exija el literal, y se acepta.
+
+#### D-02 — El dashboard estadístico se entrega en la aplicación integrada (React)
+
+**Decisión.** No se genera un dashboard matplotlib autónomo (`dashboard_report.html` con PNGs). El dashboard con la información estadística, el histograma y los diagramas de barras vive en la aplicación web React, servida por la solución Python (FastAPI), con las agregaciones calculadas por el núcleo C++.
+
+**Justificación.** El punto 12 del taller pide que en Python el programa muestre un DASHBOARD con la información estadística, histogramas y diagramas de barras, y el propio punto 12c admite que el usuario final utilice diferentes vistas. La cadena entregada cumple el espíritu del requisito de punta a punta: el núcleo C++ calcula los agregados, FastAPI los expone en `/api/v1/dashboard/stats` y React los presenta como histograma de producción por año, distribución del estado de validación y barras de clasificación de grupos. Duplicar ese mismo análisis en PNGs con matplotlib añadiría un artefacto redundante sin valor analítico adicional.
+
+**Cobertura.** T-29 y T-30/T-31/T-32 se cumplen en la aplicación integrada.
+
+**Riesgo residual aceptado.** Si el docente exige un dashboard ejecutable sin navegador, el equipo añadirá un modo `dashboard` en el backend que genere el HTML con matplotlib. Se registra como trabajo futuro de bajo costo, no como incumplimiento.
+
+#### D-03 — La ingesta se cumple por la ruta URL oficial (SCIENTI); PDF y CSV quedan descartados
+
+**Decisión.** No se implementan importadores de PDF ni de CSV. La capacidad de carga de datos se cumple por la vía que el propio taller declara principal: descargar desde SCIENTI por URL.
+
+```text
+GrupLAC        scraping del grupo completo con vista previa y confirmación.
+CvLAC         scraping del currículo del investigador por cod_rh.
+Scienti       buscador oficial de grupos con resolución del nro real de GrupLAC.
+Datos abiertos enriquecimiento desde datasets oficiales (datos.gov.co).
+pea_data.json importación y exportación del archivo de persistencia.
+```
+
+**Justificación.** El punto 7 del taller es disyuntivo: los programas deben estar en capacidad de "descargar los datos desde una URL (...) **o** procesar un archivo PDF **o** un archivo CSV". Las tres alternativas son equivalentes entre sí y el enunciado declara canónica la primera — la información de investigación "descargada desde el SCIENTI" (párrafo introductorio). Se implementó la ruta oficial en su totalidad; un PDF o un CSV es una copia degradada de esa misma fuente. Además, la carga desde archivo sí existe en el proyecto: las notas 9 y 10 del taller (persistencia en archivo y decisión de cargar el archivo o ejecutar sin datos) se cumplen con `pea_data.json` y los endpoints `/system/initialize/file` y `/system/export`.
+
+**Cobertura.** T-11 cubierto e implementado; T-12 y T-13 descartados por esta decisión.
+
+**Riesgo residual aceptado.** Ningún requisito obligatorio queda sin ruta de carga de datos. El riesgo se limita a la interpretación del "o" del punto 7, que el equipo defenderá en la sustentación.
+
+## 27. Interpretación de las dos soluciones
+
+El taller solicita una solución en C/C++ y otra en Python. Conforme a la decisión D-01, el proyecto contiene ambas soluciones — ejecutables de forma independiente e integradas en una sola entrega:
+
+### 27.1 Solución C++
+
+Código:
+
+```text
+core_cpp/   núcleo con las estructuras manuales + CLI
 ```
 
 Ejecutable:
 
 ```text
-pea_cli
+pea_cli.exe
 ```
 
 Responsabilidades:
@@ -100,31 +149,26 @@ Responsabilidades:
 - Consultar y procesar la cola de validación.
 - Exportar el estado a archivo JSON.
 
-### 27.2 Solución Python independiente
+### 27.2 Solución Python
 
-Punto de entrada:
+Código:
 
 ```text
-ABPOXX.py
+backend/app/   FastAPI + scraping + estadísticas
 ```
 
-Modos:
+Ejecución:
 
 ```bash
-python ABPOXX.py api
-python ABPOXX.py dashboard
-python ABPOXX.py import --source archivo.csv
-python ABPOXX.py summary
+python -m uvicorn app.main:app --host 127.0.0.1 --port 8000
 ```
 
 Responsabilidades:
 
-- Ejecutar FastAPI.
-- Importar URL, CSV y PDF.
-- Generar estadísticas descriptivas.
-- Generar histogramas y diagramas de barras.
-- Producir un dashboard HTML o una vista analítica ejecutable.
-- Consumir el núcleo C++ mediante pybind11 cuando esté disponible.
+- Ejecutar FastAPI y exponer la API REST.
+- Importar desde URL: GrupLAC, CvLAC, buscador Scienti y datos abiertos (D-03).
+- Servir las estadísticas del dashboard vía `/api/v1/dashboard/stats`, con agregaciones calculadas por el núcleo C++.
+- Consumir el núcleo C++ mediante pybind11 (interoperabilidad nativa).
 
 ### 27.3 Aplicación integrada
 
@@ -140,14 +184,14 @@ Núcleo C++
 SQL Server
 ```
 
-La aplicación integrada no sustituye los dos puntos de entrada independientes. Los reutiliza como parte de una solución unificada.
+La aplicación integrada es la entrega (D-01): no sustituye a las dos soluciones, las unifica. Ambas son demostrables de forma independiente y también operando juntas.
 
 ## 28. Matriz completa de requisitos del taller
 
 | ID | Requisito | Componente | Evidencia esperada | Estado del diseño |
 |---|---|---|---|---|
-| T-01 | Solución en C/C++ | `pea_cli`, núcleo C++ | Ejecución en consola | Cubierto |
-| T-02 | Solución en Python | `ABPOXX.py` | API, dashboard o reporte | Cubierto |
+| T-01 | Solución en C/C++ | `pea_cli`, núcleo C++ | Ejecución en consola | Cubierto (D-01) |
+| T-02 | Solución en Python | Backend FastAPI | API en ejecución + dashboard integrado | Cubierto (D-01) |
 | T-03 | Gestionar grupos | C++ + API + React | CRUD funcional | Cubierto |
 | T-04 | Gestionar investigadores | C++ + API + React | CRUD funcional | Cubierto |
 | T-05 | Gestionar productos por grupo | Multilista + SQL | Consulta por grupo | Cubierto |
@@ -156,9 +200,9 @@ La aplicación integrada no sustituye los dos puntos de entrada independientes. 
 | T-08 | Gestionar planes | `WorkPlan` | CRUD y asociación | Cubierto |
 | T-09 | Gestionar información personal | `Researcher` | Formulario protegido | Cubierto |
 | T-10 | Identificar entradas y salidas | Catálogo formal | Sección 31 | Cubierto |
-| T-11 | Descargar desde URL | Importador Python | Prueba con URL | Cubierto |
-| T-12 | Procesar PDF | Importador Python | Archivo y resultado | Cubierto |
-| T-13 | Procesar CSV | Importador Python | Archivo y resultado | Cubierto |
+| T-11 | Descargar desde URL | Importador Python (GrupLAC/CvLAC/Scienti) | Prueba con URL real de SCIENTI | Cubierto (implementado) |
+| T-12 | Procesar PDF | No aplica | No aplica | Descartado (D-03) |
+| T-13 | Procesar CSV | No aplica | No aplica | Descartado (D-03) |
 | T-14 | Diseñar listas | C++ manual | Pruebas de nodos | Cubierto |
 | T-15 | Usar multilistas | C++ manual | Recorridos multidimensionales | Cubierto |
 | T-16 | Usar pilas | Historial deshacer | Push, pop y undo | Cubierto |
@@ -174,10 +218,10 @@ La aplicación integrada no sustituye los dos puntos de entrada independientes. 
 | T-26 | Filtrar por año | Ventanas | 2, 5 y personalizados | Cubierto |
 | T-27 | Editar cualquier dato permitido | UI + servicios | Formularios y auditoría | Cubierto |
 | T-28 | Resumen C++ en tablas y números | CLI | Salida de consola | Cubierto |
-| T-29 | Dashboard Python | Python | Histograma y barras | Cubierto |
-| T-30 | Vista por grupo | React/Python | Pantalla o reporte | Cubierto |
-| T-31 | Vista por investigador | React/Python | Pantalla o reporte | Cubierto |
-| T-32 | Vista por producto | React/Python | Pantalla o reporte | Cubierto |
+| T-29 | Dashboard estadístico | React servido por FastAPI | Histograma y barras en la web | Cubierto (D-02, implementado) |
+| T-30 | Vista por grupo | React (detalle de grupo) | Pantalla | Cubierto (implementado) |
+| T-31 | Vista por investigador | React (detalle de investigador) | Pantalla | Cubierto (implementado) |
+| T-32 | Vista por producto | React (listado filtrable) | Pantalla | Cubierto (implementado) |
 | T-33 | Archivo de persistencia | JSON | `pea_data.json` | Cubierto |
 | T-34 | Cargar archivo o iniciar vacío | Inicialización | Selector de arranque | Cubierto |
 | T-35 | Word de especificación | Documentación | `.docx` final | Cubierto en plan |
@@ -187,7 +231,7 @@ La aplicación integrada no sustituye los dos puntos de entrada independientes. 
 | T-39 | Integrantes visibles en video | Entrega | Video final | Cubierto en plan |
 | T-40 | Identidad UPC en video | Entrega | Portada y elementos visuales | Cubierto en plan |
 | T-41 | Archivo de identificación | Entrega | `INTEGRANTES.txt` | Cubierto en plan |
-| T-42 | Archivos con iniciales | Entrega | `.cpp` y `.py` | Cubierto en plan |
+| T-42 | Archivos con iniciales | Entrega | Sustituido por proyecto modular | Sustituido (D-01) |
 | T-43 | Correo y asunto correctos | Entrega | Lista de envío | Cubierto en plan |
 | C-01 | Git y GitHub | Repositorio | Historial de commits | Complemento |
 | C-02 | Base de datos | SQL Server | Esquema y conexión | Complemento cubierto |
@@ -632,33 +676,36 @@ Resumen esperado:
 
 Los valores anteriores son únicamente un ejemplo de presentación, no datos reales del proyecto.
 
-## 35. Dashboard de la solución Python
+## 35. Dashboard estadístico (decisión D-02)
 
-Python debe poder demostrar el componente analítico sin depender obligatoriamente de React.
+Conforme a la decisión D-02, el dashboard exigido en el punto 12 del taller se entrega dentro de la aplicación integrada: la vista es React, el servicio es la solución Python (FastAPI) y las agregaciones las calcula el núcleo C++ a través de pybind11. No se genera un dashboard matplotlib autónomo.
 
-### 35.1 Salidas mínimas
+### 35.1 Cadena de generación
 
 ```text
-dashboard_report.html
-products_by_year.png
-products_by_family.png
-researcher_productivity_histogram.png
+Núcleo C++ (agregaciones sobre SQL Server y estructuras)
+   ↓ pybind11
+FastAPI  GET /api/v1/dashboard/stats
+   ↓ HTTP/JSON
+React   dashboard web
 ```
 
-### 35.2 Vistas obligatorias
+### 35.2 Visualizaciones entregadas
 
-- Por grupo.
-- Por investigador.
-- Por producto.
+- Histograma de producción por año de obtención.
+- Distribución del estado de validación (válidos, pendientes, rechazados).
+- Barras de clasificación de grupos por categoría Minciencias.
+- KPIs numéricos generales (grupos, investigadores, productos, validaciones).
 
-### 35.3 Visualizaciones mínimas
+### 35.3 Vistas obligatorias
 
-- Histograma de cantidad de productos por investigador.
-- Gráfico de barras de productos por familia.
-- Gráfico de barras de productos por año.
-- Resumen numérico general.
+- Por grupo: detalle con integrantes, productos, proyectos y líneas de investigación.
+- Por investigador: detalle con grupos y productos.
+- Por producto: listado con búsqueda, filtros y ventana de observación.
 
-React podrá mostrar los mismos datos dentro de la aplicación integrada, pero la generación estadística se conservará en Python.
+### 35.4 Trabajo futuro (no obligatorio)
+
+Si el docente exige un dashboard ejecutable solo con Python, se añadirá un modo `dashboard` en el backend que produzca `dashboard_report.html` con matplotlib. Queda registrado como complemento de bajo costo, no como requisito incumplido.
 
 ## 36. Edición de datos y permisos
 
@@ -675,14 +722,14 @@ El requisito de editar cualquier dato se interpretará así:
 
 ### 37.1 Código
 
+Por la decisión D-01, no se entregan archivos únicos `ABPOXX.cpp` ni `ABPOXX.py`: se entrega el proyecto modular completo, cuyas dos soluciones son ejecutables de forma independiente.
+
 ```text
-ABPOXX.cpp
-ABPOXX.py
+Solución C/C++   core_cpp/  → pea_cli.exe
+Solución Python  backend/   → uvicorn app.main:app
 ```
 
-Los nombres exactos deben reemplazarse por las iniciales reales del equipo.
-
-Además se entregará el proyecto modular completo.
+El equipo sustentará esta sustitución en el video y en el documento Word (riesgo residual registrado en D-01).
 
 ### 37.2 Documento Word
 
@@ -745,10 +792,10 @@ Guion recomendado:
 04:50 Pila
 05:30 Cola
 06:10 Solución C++
-07:00 Solución Python y dashboard
-08:00 Importación URL/PDF/CSV
+07:00 Solución Python y dashboard integrado
+08:00 Importación desde URL (GrupLAC/CvLAC/Scienti)
 09:00 Aplicación integrada y persistencia
-09:40 Conclusiones
+09:40 Decisiones de alcance (26.1) y conclusiones
 ```
 
 ### 37.6 Correo de entrega
@@ -1043,12 +1090,11 @@ Pilas
 Colas
 CRUD
 Persistencia
-URL
-PDF
-CSV
+Carga por URL (D-03: GrupLAC, CvLAC, Scienti)
+PDF y CSV (descartados, D-03)
 Filtro por año
 Resumen C++
-Dashboard Python
+Dashboard integrado (D-02)
 Tres vistas
 Archivo de persistencia
 Carga o inicio vacío
@@ -1099,61 +1145,50 @@ OLAP empresarial real
 ```text
 pea-i/
 ├── README.md
-├── INTEGRANTES.txt
-├── ABPOXX.cpp
-├── ABPOXX.py
-├── frontend/
-│   └── web-react/
-├── backend/
-│   ├── api-python/
-│   │   ├── app/
-│   │   │   ├── routers/
-│   │   │   ├── schemas/
-│   │   │   ├── use_cases/
-│   │   │   ├── importers/
-│   │   │   ├── statistics/
-│   │   │   └── main.py
-│   │   └── tests/
-│   └── core-cpp/
-│       ├── include/
-│       │   ├── domain/
-│       │   ├── structures/
-│       │   ├── services/
-│       │   └── repositories/
-│       ├── src/
-│       ├── bindings/
-│       ├── cli/
-│       └── tests/
-├── database/
-│   ├── migrations/
-│   ├── schema.sql
-│   └── seed.sql
-├── persistence/
-│   ├── pea_data.json
-│   └── samples/
-├── reports/
-│   ├── dashboard_report.html
-│   └── charts/
-├── contracts/
-│   └── openapi/
-├── docs/
-│   ├── architecture/
-│   ├── requirements/
-│   ├── user-stories/
-│   ├── diagrams/
+├── INTEGRANTES.txt                  (pendiente de entrega)
+├── pea_data.json                    (archivo de persistencia, entregable)
+├── core_cpp/                        (solución C/C++ — D-01)
+│   ├── include/
+│   │   ├── entities/
+│   │   ├── services/
+│   │   └── persistence/
+│   ├── src/
+│   │   ├── services/
+│   │   ├── persistence/
+│   │   └── pea_cli.cpp              (CLI ejecutable: pea_cli.exe)
+│   ├── pybind/
+│   │   └── bindings.cpp             (puente de interoperabilidad)
+│   └── CMakeLists.txt
+├── backend/                         (solución Python — D-01)
+│   ├── app/
+│   │   ├── api/                     (router v1)
+│   │   ├── scraper.py               (GrupLAC + buscador Scienti)
+│   │   ├── cvlac_scraper.py         (CvLAC)
+│   │   ├── datos_abiertos.py        (enriquecimiento datos.gov.co)
+│   │   ├── repository.py            (orquestación RAM + núcleo C++)
+│   │   └── main.py
 │   ├── tests/
-│   └── video-script/
-└── deployment/
-    ├── docker-compose.yml
-    └── env.example
+│   └── requirements.txt
+├── frontend/
+│   └── web-react/                   (dashboard y vistas — D-02)
+├── database/
+│   └── init_schema.sql
+└── docs/
+    ├── PEA-i_Especificacion_Integral_Cumplimiento_Taller2.md
+    └── Taller 2 EdD (2026-09-24) - G 5.md
+
+Pendientes de crear para la entrega:
+├── docs/word/                       (especificación técnica .docx)
+├── docs/diagrams/                   (casos de uso, ER, clases, secuencia)
+└── docs/video-script/               (guion del video de 10 minutos)
 ```
 
 ## 44. Lista de comprobación final
 
 ### Código
 
-- [ ] `ABPOXX.cpp` compila y ejecuta.
-- [ ] `ABPOXX.py` ejecuta.
+- [ ] Núcleo C++ compila y `pea_cli.exe` ejecuta (solución C/C++, D-01).
+- [ ] Backend Python (FastAPI) ejecuta (solución Python, D-01).
 - [ ] Lista implementada manualmente.
 - [ ] Multilista implementada manualmente.
 - [ ] Pila funcional.
@@ -1174,9 +1209,9 @@ pea-i/
 
 ### Importación
 
-- [ ] URL probada.
-- [ ] CSV probado.
-- [ ] PDF probado.
+- [ ] URL probada (GrupLAC y CvLAC contra SCIENTI real).
+- [ ] CSV probado — no aplica (D-03).
+- [ ] PDF probado — no aplica (D-03).
 - [ ] Vista previa.
 - [ ] Errores por fila.
 - [ ] Confirmación idempotente.
@@ -1189,8 +1224,7 @@ pea-i/
 - [ ] Vista por grupo.
 - [ ] Vista por investigador.
 - [ ] Vista por producto.
-- [ ] Histograma.
-- [ ] Barras.
+- [ ] Histograma y barras en el dashboard React (D-02).
 - [ ] Resumen C++.
 
 ### Documentación
@@ -1212,7 +1246,7 @@ pea-i/
 ### Entrega
 
 - [ ] `INTEGRANTES.txt`.
-- [ ] Archivos con iniciales correctas.
+- [ ] Archivos con iniciales correctas — sustituido por entrega modular (D-01).
 - [ ] Video aproximado de 10 minutos.
 - [ ] Identidad institucional en video.
 - [ ] Integrantes visibles en video.
@@ -1230,11 +1264,13 @@ Con las ampliaciones de esta versión, el diseño documental cubre explícitamen
 - Las operaciones CRUD y persistencia por estructura.
 - El modelo de hipercubo recomendado.
 - Las variables de entrada y salida.
-- Las dos soluciones independientes.
+- Las dos soluciones, integradas en una sola aplicación (D-01).
 - La aplicación integrada.
 - La persistencia en SQL Server y archivo.
 - La elección de cargar datos o iniciar vacío.
 - Los entregables de documentación, video e identificación.
 - Los complementos de Git, base de datos, GUI e interoperabilidad.
+
+Alcance ajustado por las decisiones del equipo (sección 26.1): D-01 entrega ambas soluciones integradas en una sola aplicación, D-02 traslada el dashboard estadístico a la aplicación integrada y D-03 concentra la ingesta en la ruta URL oficial de SCIENTI, descartando PDF y CSV como alternativas equivalentes no implementadas. Ninguna de estas decisiones elimina un requisito obligatorio: reinterpretan su forma de entrega, y el equipo las expondrá y defenderá en el video.
 
 La afirmación de cumplimiento total dependerá de completar la implementación y reunir las evidencias enumeradas en la matriz de trazabilidad y en la lista de comprobación.
