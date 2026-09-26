@@ -13,7 +13,7 @@ import {
   Fingerprint
 } from 'lucide-react'
 
-import { getResearcher, updateResearcher, getResearcherProducts } from '@/lib/api'
+import { getResearcher, updateResearcher, getResearcherProducts, getResearcherGroups } from '@/lib/api'
 import type { Researcher } from '@/lib/types'
 
 import { Header } from '@/components/layout/header'
@@ -45,6 +45,11 @@ export function ResearcherDetail() {
   const { data: products, isLoading: isLoadingProducts } = useQuery({
     queryKey: ['researcher-products', researcherId],
     queryFn: () => getResearcherProducts(researcherId),
+  })
+
+  const { data: groups, isLoading: isLoadingGroups } = useQuery({
+    queryKey: ['researcher-groups', researcherId],
+    queryFn: () => getResearcherGroups(researcherId),
   })
 
   const [formData, setFormData] = useState<Partial<Researcher>>({})
@@ -153,9 +158,9 @@ export function ResearcherDetail() {
               <div className='flex-1 pb-1'>
                 <h1 className='text-2xl font-bold'>{researcher.first_names} {researcher.last_names}</h1>
                 <div className='flex flex-wrap gap-2 mt-2'>
-                  {researcher.category && (
-                    <Badge variant='secondary' className='text-xs font-normal bg-secondary/10 text-secondary'>
-                      {researcher.category}
+                  {researcher.classification_records && (
+                    <Badge variant='secondary' className='text-xs font-normal bg-secondary/10 text-secondary max-w-64 truncate'>
+                      {researcher.classification_records}
                     </Badge>
                   )}
                   {researcher.highest_education_level && (
@@ -192,11 +197,17 @@ export function ResearcherDetail() {
             >
               <UserIcon className='mr-2 h-4 w-4' /> Perfil General
             </TabsTrigger>
-            <TabsTrigger 
-              value="productos" 
+            <TabsTrigger
+              value="productos"
               className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:shadow-none px-6 h-full"
             >
               <BookOpen className='mr-2 h-4 w-4' /> Productos ({products?.length ?? 0})
+            </TabsTrigger>
+            <TabsTrigger
+              value="grupos"
+              className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:shadow-none px-6 h-full"
+            >
+              <Users className='mr-2 h-4 w-4' /> Grupos ({groups?.length ?? 0})
             </TabsTrigger>
           </TabsList>
 
@@ -264,7 +275,7 @@ export function ResearcherDetail() {
                       <Label htmlFor="highest_education_level">Formación Máxima</Label>
                       <Input
                         id="highest_education_level"
-                        value={formData.highest_education_level}
+                        value={formData.highest_education_level ?? ''}
                         onChange={(e) => setFormData({ ...formData, highest_education_level: e.target.value })}
                         placeholder="Ej: Doctorado en Ingeniería"
                         className='bg-muted/30 focus-visible:bg-transparent rounded-xl'
@@ -277,7 +288,7 @@ export function ResearcherDetail() {
                         <Input
                           id="institutional_email"
                           type="email"
-                          value={formData.institutional_email}
+                          value={formData.institutional_email ?? ''}
                           onChange={(e) => setFormData({ ...formData, institutional_email: e.target.value })}
                           className='pl-9 bg-muted/30 focus-visible:bg-transparent rounded-xl'
                         />
@@ -287,7 +298,7 @@ export function ResearcherDetail() {
                       <Label htmlFor="orcid">ORCID</Label>
                       <Input
                         id="orcid"
-                        value={formData.orcid}
+                        value={formData.orcid ?? ''}
                         onChange={(e) => setFormData({ ...formData, orcid: e.target.value })}
                         placeholder="Ej: 0000-0002-1825-0097"
                         className='bg-muted/30 focus-visible:bg-transparent rounded-xl font-mono text-sm'
@@ -329,6 +340,44 @@ export function ResearcherDetail() {
               rowKey={(p) => p.id!}
               emptyMessage="Este investigador no tiene productos asociados."
               searchPlaceholder="Buscar productos..."
+            />
+          </TabsContent>
+
+          <TabsContent value="grupos" className="focus-visible:outline-none bg-card border border-border/50 rounded-2xl p-6 shadow-sm">
+            <h3 className="font-semibold text-lg mb-4">Grupos de Investigación</h3>
+            <DataTable
+              columns={[
+                {
+                  key: 'name',
+                  header: 'Nombre del Grupo',
+                  cell: (g) => (
+                    <Link
+                      to="/groups/$id"
+                      params={{ id: String(g.id) }}
+                      className='font-medium text-sm text-primary hover:underline'
+                    >
+                      {g.name}
+                    </Link>
+                  )
+                },
+                {
+                  key: 'acronym',
+                  header: 'Sigla',
+                  cell: (g) => <span className='text-muted-foreground'>{g.acronym || '-'}</span>
+                },
+                {
+                  key: 'classification',
+                  header: 'Clasificación',
+                  cell: (g) => g.classification
+                    ? <Badge variant='secondary'>{g.classification}</Badge>
+                    : <span className='text-muted-foreground'>Sin clasificar</span>
+                }
+              ]}
+              data={groups ?? []}
+              loading={isLoadingGroups}
+              rowKey={(g) => g.id!}
+              emptyMessage="Este investigador no está vinculado a ningún grupo."
+              searchPlaceholder="Buscar grupos..."
             />
           </TabsContent>
         </Tabs>

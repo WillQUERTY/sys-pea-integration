@@ -326,7 +326,7 @@ export function GroupDetail() {
                         <Label htmlFor="acronym">Sigla</Label>
                         <Input
                           id="acronym"
-                          value={formData.acronym}
+                          value={formData.acronym ?? ''}
                           onChange={(e) => setFormData({ ...formData, acronym: e.target.value })}
                           className='bg-muted/30 focus-visible:bg-transparent rounded-xl'
                         />
@@ -347,7 +347,7 @@ export function GroupDetail() {
                         <Label htmlFor="institution">Institución</Label>
                         <Input
                           id="institution"
-                          value={formData.institution}
+                          value={formData.institution ?? ''}
                           onChange={(e) => setFormData({ ...formData, institution: e.target.value })}
                           className='bg-muted/30 focus-visible:bg-transparent rounded-xl'
                         />
@@ -358,14 +358,14 @@ export function GroupDetail() {
                           <Input
                             id="city"
                             placeholder="Ciudad"
-                            value={formData.city}
+                            value={formData.city ?? ''}
                             onChange={(e) => setFormData({ ...formData, city: e.target.value })}
                             className='bg-muted/30 focus-visible:bg-transparent rounded-xl'
                           />
                           <Input
                             id="department"
                             placeholder="Departamento"
-                            value={formData.department}
+                            value={formData.department ?? ''}
                             onChange={(e) => setFormData({ ...formData, department: e.target.value })}
                             className='bg-muted/30 focus-visible:bg-transparent rounded-xl'
                           />
@@ -377,7 +377,7 @@ export function GroupDetail() {
                         <Label htmlFor="email">Email</Label>
                         <Input
                           id="email"
-                          value={formData.email}
+                          value={formData.email ?? ''}
                           onChange={(e) => setFormData({ ...formData, email: e.target.value })}
                           className='bg-muted/30 focus-visible:bg-transparent rounded-xl'
                         />
@@ -386,7 +386,7 @@ export function GroupDetail() {
                         <Label htmlFor="website">Página Web</Label>
                         <Input
                           id="website"
-                          value={formData.website}
+                          value={formData.website ?? ''}
                           onChange={(e) => setFormData({ ...formData, website: e.target.value })}
                           className='bg-muted/30 focus-visible:bg-transparent rounded-xl'
                         />
@@ -397,7 +397,7 @@ export function GroupDetail() {
                         <Label htmlFor="knowledge_area">Área de Conocimiento</Label>
                         <Input
                           id="knowledge_area"
-                          value={formData.knowledge_area}
+                          value={formData.knowledge_area ?? ''}
                           onChange={(e) => setFormData({ ...formData, knowledge_area: e.target.value })}
                           className='bg-muted/30 focus-visible:bg-transparent rounded-xl'
                         />
@@ -406,7 +406,7 @@ export function GroupDetail() {
                         <Label htmlFor="declared_creation_date">Año / Mes de Formación</Label>
                         <Input
                           id="declared_creation_date"
-                          value={formData.declared_creation_date}
+                          value={formData.declared_creation_date ?? ''}
                           onChange={(e) => setFormData({ ...formData, declared_creation_date: e.target.value })}
                           className='bg-muted/30 focus-visible:bg-transparent rounded-xl'
                         />
@@ -430,7 +430,7 @@ export function GroupDetail() {
                     <Label htmlFor="mission">Misión</Label>
                     <Textarea
                       id="mission"
-                      value={formData.mission}
+                      value={formData.mission ?? ''}
                       onChange={(e) => setFormData({ ...formData, mission: e.target.value })}
                       rows={4}
                       className='bg-muted/30 focus-visible:bg-transparent rounded-xl resize-none'
@@ -441,7 +441,7 @@ export function GroupDetail() {
                     <Label htmlFor="vision">Visión</Label>
                     <Textarea
                       id="vision"
-                      value={formData.vision}
+                      value={formData.vision ?? ''}
                       onChange={(e) => setFormData({ ...formData, vision: e.target.value })}
                       rows={4}
                       className='bg-muted/30 focus-visible:bg-transparent rounded-xl resize-none'
@@ -452,7 +452,7 @@ export function GroupDetail() {
                     <Label htmlFor="knowledge_area">Área de Conocimiento</Label>
                     <Input
                       id="knowledge_area"
-                      value={formData.knowledge_area}
+                      value={formData.knowledge_area ?? ''}
                       onChange={(e) => setFormData({ ...formData, knowledge_area: e.target.value })}
                       className='bg-muted/30 focus-visible:bg-transparent rounded-xl'
                     />
@@ -472,7 +472,7 @@ export function GroupDetail() {
                   header: 'Nombre',
                   searchable: (r) => `${r.first_names} ${r.last_names}`,
                   cell: (r) => (
-                    <Link to={`/researchers/${r.id}`} className="font-medium text-primary hover:underline">
+                    <Link to="/researchers/$id" params={{ id: String(r.id) }} className="font-medium text-primary hover:underline">
                       {r.first_names} {r.last_names}
                     </Link>
                   )

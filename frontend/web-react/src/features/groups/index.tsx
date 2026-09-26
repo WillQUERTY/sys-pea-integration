@@ -43,11 +43,6 @@ export function Groups() {
     onError: (e) => toast.error(e instanceof Error ? e.message : 'Error al eliminar'),
   })
 
-  const handleEdit = (group: Group) => {
-    setEditingGroup(group)
-    setFormOpen(true)
-  }
-
   const handleDelete = (id: number) => {
     if (confirm('¿Estás seguro de eliminar este grupo?')) {
       delMutation.mutate(id)

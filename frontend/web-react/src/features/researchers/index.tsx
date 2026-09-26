@@ -108,11 +108,6 @@ export function Researchers() {
     onError: (e) => toast.error(e instanceof Error ? e.message : 'Error al enriquecer'),
   })
 
-  const handleEdit = (researcher: Researcher) => {
-    setEditingResearcher(researcher)
-    setFormOpen(true)
-  }
-
   const handleDelete = (id: number) => {
     if (confirm('¿Estás seguro de eliminar este investigador?')) {
       delMutation.mutate(id)
@@ -136,7 +131,7 @@ export function Researchers() {
               {initial}
             </div>
             <div className='min-w-0'>
-              <Link to={`/researchers/${r.id}`} className='truncate text-sm font-medium hover:underline text-primary'>
+              <Link to="/researchers/$id" params={{ id: String(r.id) }} className='truncate text-sm font-medium hover:underline text-primary'>
                 {r.first_names} {r.last_names}
               </Link>
               {r.institutional_email && (
@@ -198,7 +193,7 @@ export function Researchers() {
             </DropdownMenuTrigger>
             <DropdownMenuContent align='end'>
               <DropdownMenuItem asChild>
-                <Link to={`/researchers/${r.id}`} className='cursor-pointer w-full'>
+                <Link to="/researchers/$id" params={{ id: String(r.id) }} className='cursor-pointer w-full'>
                   <Pencil className='mr-2 h-4 w-4' />
                   Ver / Editar Perfil
                 </Link>

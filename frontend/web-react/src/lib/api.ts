@@ -106,6 +106,10 @@ export async function getResearcherProducts(id: number) {
   const { data } = await api.get<Product[]>(`/researchers/${id}/products`)
   return data
 }
+export async function getResearcherGroups(id: number) {
+  const { data } = await api.get<Group[]>(`/researchers/${id}/groups`)
+  return data
+}
 export async function createResearcher(researcher: Partial<Researcher>) {
   const { data } = await api.post<Researcher>('/researchers', researcher)
   return data

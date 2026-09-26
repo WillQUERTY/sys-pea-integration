@@ -25,7 +25,6 @@ import {
   XCircle,
 } from 'lucide-react'
 import { getDashboardStats, listValidationQueue } from '@/lib/api'
-import type { Product } from '@/lib/types'
 import { Badge } from '@/components/ui/badge'
 import {
   Card,
@@ -416,41 +415,3 @@ function ValidationBar({ label, count, total, color, lightColor }: { label: stri
 }
 
 // ─── Helpers ───────────────────────────────────────────────────────────────────
-
-function productYear(p: Product): number | null {
-  if (p.year) return p.year
-  const raw = p.publication_date ?? p.obtained_date
-  if (!raw) return null
-  const y = Number.parseInt(String(raw).slice(0, 4), 10)
-  return Number.isNaN(y) ? null : y
-}
-
-function aggregateByYear(products: Product[]) {
-  const acc = new Map<number, number>()
-  for (const p of products) {
-    const y = productYear(p)
-    if (y) acc.set(y, (acc.get(y) ?? 0) + 1)
-  }
-  return [...acc.entries()]
-    .sort((a, b) => a[0] - b[0])
-    .map(([year, count]) => ({ year: String(year), count }))
-}
-
-function aggregateByStatus(products: Product[]) {
-  const labels: Record<string, string> = {
-    valid: 'Validados',
-    pending: 'Pendientes',
-    rejected: 'Rechazados',
-    none: 'Sin estado',
-  }
-  const acc = new Map<string, number>()
-  for (const p of products) {
-    const key = p.validation_status ?? 'none'
-    acc.set(key, (acc.get(key) ?? 0) + 1)
-  }
-  return [...acc.entries()].map(([key, value]) => ({
-    key,
-    name: labels[key] ?? key,
-    value,
-  }))
-}
