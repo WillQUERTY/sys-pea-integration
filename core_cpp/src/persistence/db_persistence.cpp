@@ -1199,4 +1199,42 @@ bool vq_enqueue_db(const std::string& conn, int product_id, const std::string& a
         pid + ", 'pending', '" + escape_sql(utf8_to_cp1252(assigned_to)) + "', GETDATE()); "
         "END");
 }
+
+// Runs a catalog query of up to (id, extra_int, name) and appends JSON rows.
+static void query_catalog(SQLHDBC dbc, const char* sql, bool with_extra, std::string& out) {
+    SQLHSTMT stmt;
+    SQLAllocHandle(SQL_HANDLE_STMT, dbc, &stmt);
+    if (!SQL_SUCCEEDED(SQLExecDirect(stmt, (SQLCHAR*)sql, SQL_NTS))) {
+        SQLFreeHandle(SQL_HANDLE_STMT, stmt);
+        return;
+    }
+    bool first = true;
+    while (SQLFetch(stmt) == SQL_SUCCESS) {
+        int id = 0, extra = 0; SQLLEN i1, i2, i3;
+        char name[512];
+        SQLGetData(stmt, 1, SQL_C_LONG, &id, 0, &i1);
+        if (with_extra) SQLGetData(stmt, 2, SQL_C_LONG, &extra, 0, &i2);
+        SQLGetData(stmt, with_extra ? 3 : 2, SQL_C_CHAR, name, sizeof(name), &i3);
+        if (!first) out += ",";
+        out += "{\"id\":" + std::to_string(id);
+        if (with_extra) out += ",\"family_id\":" + std::to_string(extra);
+        out += ",\"name\":\"" + json_escape(i3 != SQL_NULL_DATA ? cp1252_to_utf8(name) : "") + "\"}";
+        first = false;
+    }
+    SQLFreeHandle(SQL_HANDLE_STMT, stmt);
+}
+
+std::string get_product_catalogs_json(const std::string& connection_string) {
+    SQLHDBC dbc = get_or_create_dbc(connection_string);
+    if (!dbc) return "{}";
+
+    std::string json = "{\"families\":[";
+    query_catalog(dbc, "SELECT id, name FROM ProductFamily ORDER BY name", false, json);
+    json += "],\"subtypes\":[";
+    query_catalog(dbc, "SELECT id, family_id, name FROM ProductSubtype ORDER BY name", true, json);
+    json += "],\"quality_categories\":[";
+    query_catalog(dbc, "SELECT id, name FROM QualityCategory ORDER BY name", false, json);
+    json += "]}";
+    return json;
+}
 } // namespace peai

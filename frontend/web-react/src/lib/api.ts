@@ -144,6 +144,15 @@ export async function deleteProduct(id: number, soft: boolean = true) {
   const { data } = await api.delete(`/products/${id}`, { params: { soft } })
   return data
 }
+export interface ProductCatalogs {
+  families: Array<{ id: number; name: string }>
+  subtypes: Array<{ id: number; family_id: number; name: string }>
+  quality_categories: Array<{ id: number; name: string }>
+}
+export async function getProductCatalogs() {
+  const { data } = await api.get<ProductCatalogs>('/products/catalogs')
+  return data
+}
 export async function validateProduct(id: number, validationStatus: 'valid' | 'rejected' | 'pending', reason?: string) {
   const { data } = await api.patch<Product>(`/products/${id}/validation`, {
     validation_status: validationStatus,

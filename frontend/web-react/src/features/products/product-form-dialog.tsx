@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
-import { useMutation, useQueryClient } from '@tanstack/react-query'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { toast } from 'sonner'
-import { createProduct, updateProduct } from '@/lib/api'
+import { createProduct, updateProduct, getProductCatalogs } from '@/lib/api'
 import type { Product } from '@/lib/types'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -66,11 +66,78 @@ function fromProduct(p: Product): Partial<Product> {
   }
 }
 
+// Selector con búsqueda sobre un catálogo (familia / subtipo / categoría).
+function CatalogPicker({
+  label,
+  options,
+  value,
+  onChange,
+}: {
+  label: string
+  options: Array<{ id: number; name: string }>
+  value?: number
+  onChange: (id: number | undefined) => void
+}) {
+  const [search, setSearch] = useState('')
+  const selected = options.find((o) => o.id === value)
+  const filtered = options.filter((o) => o.name.toLowerCase().includes(search.toLowerCase()))
+
+  return (
+    <div className='grid gap-2'>
+      <Label>{label}</Label>
+      {selected ? (
+        <div className='flex items-center justify-between rounded-lg border border-border/50 bg-muted/30 px-3 py-2 text-sm'>
+          <span className='truncate font-medium'>{selected.name}</span>
+          <Button type='button' variant='ghost' size='sm' onClick={() => onChange(undefined)}>
+            Quitar
+          </Button>
+        </div>
+      ) : (
+        <>
+          <Input
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            placeholder='Buscar en el catálogo...'
+          />
+          {search && (
+            <div className='max-h-36 space-y-1 overflow-y-auto rounded-lg border border-border/50 p-1'>
+              {filtered.length === 0 ? (
+                <p className='p-2 text-sm text-muted-foreground'>Sin resultados.</p>
+              ) : (
+                filtered.slice(0, 8).map((o) => (
+                  <button
+                    key={o.id}
+                    type='button'
+                    onClick={() => { onChange(o.id); setSearch('') }}
+                    className='w-full truncate rounded-md px-3 py-2 text-left text-sm transition-colors hover:bg-muted/60'
+                  >
+                    {o.name}
+                  </button>
+                ))
+              )}
+            </div>
+          )}
+        </>
+      )}
+    </div>
+  )
+}
+
 export function ProductFormDialog({ open, onOpenChange, product }: Props) {
   const queryClient = useQueryClient()
   const isEditing = !!product
 
   const [formData, setFormData] = useState<Partial<Product>>(EMPTY)
+
+  // Catálogos desde SQL Server para los selectores (en vez de ids a ciegas).
+  const { data: catalogs } = useQuery({
+    queryKey: ['product-catalogs'],
+    queryFn: getProductCatalogs,
+    enabled: open,
+  })
+  const availableSubtypes = (catalogs?.subtypes ?? []).filter(
+    (s) => !formData.family_id || s.family_id === formData.family_id
+  )
 
   // Sync state when editing
   useEffect(() => {
@@ -230,34 +297,25 @@ export function ProductFormDialog({ open, onOpenChange, product }: Props) {
               </div>
             </div>
 
-            <div className='grid grid-cols-3 gap-4'>
-              <div className='grid gap-2'>
-                <Label htmlFor='family_id'>Familia (id)</Label>
-                <Input
-                  id='family_id'
-                  type='number'
-                  value={formData.family_id ?? ''}
-                  onChange={(e) => set({ family_id: numOrUndefined(e.target.value) })}
-                />
-              </div>
-              <div className='grid gap-2'>
-                <Label htmlFor='subtype_id'>Subtipo (id)</Label>
-                <Input
-                  id='subtype_id'
-                  type='number'
-                  value={formData.subtype_id ?? ''}
-                  onChange={(e) => set({ subtype_id: numOrUndefined(e.target.value) })}
-                />
-              </div>
-              <div className='grid gap-2'>
-                <Label htmlFor='quality_category_id'>Cat. calidad (id)</Label>
-                <Input
-                  id='quality_category_id'
-                  type='number'
-                  value={formData.quality_category_id ?? ''}
-                  onChange={(e) => set({ quality_category_id: numOrUndefined(e.target.value) })}
-                />
-              </div>
+            <div className='grid grid-cols-1 gap-4 sm:grid-cols-3'>
+              <CatalogPicker
+                label='Familia'
+                options={catalogs?.families ?? []}
+                value={formData.family_id ?? undefined}
+                onChange={(id) => set({ family_id: id, subtype_id: undefined })}
+              />
+              <CatalogPicker
+                label='Subtipo'
+                options={availableSubtypes}
+                value={formData.subtype_id ?? undefined}
+                onChange={(id) => set({ subtype_id: id })}
+              />
+              <CatalogPicker
+                label='Categoría de calidad'
+                options={catalogs?.quality_categories ?? []}
+                value={formData.quality_category_id ?? undefined}
+                onChange={(id) => set({ quality_category_id: id })}
+              />
             </div>
 
             <div className='grid gap-2'>

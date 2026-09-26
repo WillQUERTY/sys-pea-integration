@@ -454,6 +454,12 @@ async def list_products_endpoint(
         limit=limit
     )
 
+@router.get("/products/catalogs", tags=["Products"])
+async def get_product_catalogs_endpoint():
+    """Product catalogs (families, subtypes, quality categories) from SQL Server.
+    Used by the UI to render searchable selectors instead of raw numeric ids."""
+    return repository.get_product_catalogs()
+
 @router.get("/products/{prod_id}", response_model=Product, tags=["Products"])
 async def get_product_endpoint(prod_id: int):
     """Retrieve a single product by its identifier."""

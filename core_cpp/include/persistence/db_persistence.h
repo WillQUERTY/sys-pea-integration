@@ -23,6 +23,8 @@ bool sync_product_author_to_db(const std::string& connection_string, int product
 
 // ---- Option A Refactor ----
 std::string get_dashboard_stats_json(const std::string& connection_string);
+// Product catalogs (ProductFamily / ProductSubtype / QualityCategory) as JSON.
+std::string get_product_catalogs_json(const std::string& connection_string);
 int link_project_to_group_db(const std::string& conn, int group_id, const Project& p);
 bool unlink_project_from_group_db(const std::string& conn, int group_id, int project_id);
 int link_research_line_to_group_db(const std::string& conn, int group_id, const std::string& name);

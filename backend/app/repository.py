@@ -556,6 +556,12 @@ def set_product_validation(
 
     return get_product(prod_id)
 
+def get_product_catalogs() -> dict:
+    """Catalogs (families/subtypes/quality categories) read from SQL Server."""
+    if not _active_connection_string:
+        return {"families": [], "subtypes": [], "quality_categories": []}
+    return json.loads(abpoxx_pybind.get_product_catalogs_json(_active_connection_string))
+
 # -------------------------------------------------------------------
 # Multilista Link Operations (Write-Through)
 # -------------------------------------------------------------------

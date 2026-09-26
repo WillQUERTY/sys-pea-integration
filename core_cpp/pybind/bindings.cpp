@@ -75,6 +75,7 @@ PYBIND11_MODULE(abpoxx_pybind, m) {
 
     // ---- Option A Refactor Exports ----
     m.def("get_dashboard_stats_json", &peai::get_dashboard_stats_json);
+    m.def("get_product_catalogs_json", &peai::get_product_catalogs_json, "Product catalogs (families, subtypes, quality categories) as JSON");
     m.def("get_group_projects_db", &peai::get_group_projects_db);
     m.def("get_group_research_lines_db", &peai::get_group_research_lines_db);
     m.def("link_project_to_group_db", &peai::link_project_to_group_db);
