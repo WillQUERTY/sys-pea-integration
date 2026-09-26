@@ -30,6 +30,9 @@ std::vector<ValidationQueueItem>     vq_list();
 int                                  vq_size();
 int                                  vq_pending_count();
 void                                 vq_clear();
+// Remove all pending items for a product (validated directly, outside
+// "process next"); returns how many were removed.
+int                                  vq_resolve_for_product(int product_id, const std::string& result);
 
 } // namespace peai
 

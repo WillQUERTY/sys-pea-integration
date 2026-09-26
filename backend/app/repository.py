@@ -541,6 +541,10 @@ def set_product_validation(
     proto.status = sanitize_str(prev.status)
     abpoxx_pybind.update_product(prod_id, proto)
 
+    # Resolver los items pendientes de la cola RAM para este producto:
+    # al validar directamente, el producto debe salir de la cola (Req. 9/13).
+    abpoxx_pybind.vq_resolve_for_product(prod_id, validation_status)
+
     if _active_connection_string:
         # Operacion compuesta y atomica en el nucleo: Product +
         # GroupProductLink + ValidationQueueItem + AuditLog en una transaccion.

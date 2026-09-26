@@ -179,6 +179,7 @@ PYBIND11_MODULE(abpoxx_pybind, m) {
     m.def("vq_size",          &peai::vq_size,          "Get size of validation queue");
     m.def("vq_pending_count", &peai::vq_pending_count, "Get count of pending queue items");
     m.def("vq_clear",         &peai::vq_clear,         "Clear validation queue");
+    m.def("vq_resolve_for_product", &peai::vq_resolve_for_product, "Mark pending queue items of a product as done");
 
     // ---- Multilista: membership ----
     m.def("add_member_to_group",      [](int g, int r){peai::add_member_to_group(g, r);},
