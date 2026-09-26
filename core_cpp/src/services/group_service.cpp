@@ -3,6 +3,10 @@
 // All data lives in a manually managed linked list (academic requirement).
 
 #include "services/group_service.h"
+#include "services/researcher_service.h"
+#include "services/product_service.h"
+#include "services/undo_stack.h"
+#include "services/validation_queue.h"
 #include <iostream>
 #include <iomanip>
 #include <algorithm>
@@ -280,16 +284,44 @@ int total_product_links() {
     return count;
 }
 
+// Resumen en tablas y números (Requerimiento 12a — esquema descriptivo C++).
 void print_summary() {
+    // Grupos activos: recorrido de la lista de grupos.
+    int active_groups = 0;
+    {
+        GroupNode* cur = _groupHead;
+        while (cur) {
+            if (cur->data.status == "active") active_groups++;
+            cur = cur->nextGroup;
+        }
+    }
+
+    // Investigadores activos (servicio de investigadores).
+    int active_researchers = 0;
+    for (const auto& r : list_researchers()) {
+        if (r.status == "active") active_researchers++;
+    }
+
+    // Productos: registrados / validados / pendientes (servicio de productos).
+    int registered = 0, valid = 0, pending = 0;
+    for (const auto& p : list_products()) {
+        registered++;
+        if      (p.validation_status == "valid")   valid++;
+        else if (p.validation_status == "pending") pending++;
+    }
+
     std::cout << "+----------------------------------+-------+\n";
     std::cout << "| Indicador                        | Total |\n";
     std::cout << "+----------------------------------+-------+\n";
-    std::cout << "| Grupos registrados               | "
-              << std::setw(5) << total_groups() << " |\n";
-    std::cout << "| Vinculaciones (memberships)      | "
-              << std::setw(5) << total_members() << " |\n";
-    std::cout << "| Enlaces grupo-producto           | "
-              << std::setw(5) << total_product_links() << " |\n";
+    std::cout << "| Grupos activos                   | " << std::setw(5) << active_groups    << " |\n";
+    std::cout << "| Investigadores activos            | " << std::setw(5) << active_researchers << " |\n";
+    std::cout << "| Productos registrados            | " << std::setw(5) << registered      << " |\n";
+    std::cout << "| Productos validados               | " << std::setw(5) << valid           << " |\n";
+    std::cout << "| Productos pendientes              | " << std::setw(5) << pending         << " |\n";
+    std::cout << "| Vinculaciones (memberships)      | " << std::setw(5) << total_members()   << " |\n";
+    std::cout << "| Enlaces grupo-producto            | " << std::setw(5) << total_product_links() << " |\n";
+    std::cout << "| Cola de validación (pendientes)   | " << std::setw(5) << vq_pending_count() << " |\n";
+    std::cout << "| Pila de operaciones (undo)        | " << std::setw(5) << undo_size()        << " |\n";
     std::cout << "+----------------------------------+-------+\n";
 }
 

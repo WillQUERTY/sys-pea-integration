@@ -30,6 +30,12 @@ endif()
 add_executable(pea_cli src/pea_cli.cpp)
 target_link_libraries(pea_cli PRIVATE abpoxx)
 
+# ---- Structure tests (sección 41.1) ----
+enable_testing()
+add_executable(pea_tests tests/test_structures.cpp)
+target_link_libraries(pea_tests PRIVATE abpoxx)
+add_test(NAME estructuras COMMAND pea_tests)
+
 # ---- Python bindings (optional) ----
 find_package(pybind11 CONFIG QUIET)
 if(pybind11_FOUND)

@@ -1,8 +1,16 @@
 // core_cpp/src/persistence/json_persistence.cpp
 // JSON file import/export — no external dependencies (manual serialization).
+//
+// Schema (sección 33.2 de la especificación — contenido mínimo):
+//   groups, researchers, memberships, products, groupProductLinks,
+//   validationQueue, undoOperations.
 
 #include "persistence/json_persistence.h"
 #include "services/group_service.h"
+#include "services/researcher_service.h"
+#include "services/product_service.h"
+#include "services/undo_stack.h"
+#include "services/validation_queue.h"
 
 #include <fstream>
 #include <sstream>
@@ -19,11 +27,37 @@ static std::string json_escape(const std::string& s) {
     std::string out;
     for (char c : s) {
         switch (c) {
-            case '"':  out += "\\\""; break;
-            case '\\': out += "\\\\"; break;
-            case '\n': out += "\\n";  break;
-            case '\t': out += "\\t";  break;
-            default:   out += c;
+            case '"':   out += "\\\"";  break;
+            case '\\':  out += "\\\\";  break;
+            case '\n':  out += "\\n";   break;
+            case '\r':  out += "\\r";   break;
+            case '\t':  out += "\\t";   break;
+            case '\x1F': out += "\\u001F"; break;  // snapshot field separator
+            default:    out += c;
+        }
+    }
+    return out;
+}
+
+static std::string json_unescape(const std::string& s) {
+    std::string out;
+    for (size_t i = 0; i < s.size(); i++) {
+        if (s[i] != '\\') { out += s[i]; continue; }
+        if (i + 1 >= s.size()) break;
+        char n = s[++i];
+        switch (n) {
+            case '"':  out += '"';  break;
+            case '\\': out += '\\'; break;
+            case 'n':  out += '\n'; break;
+            case 'r':  out += '\r'; break;
+            case 't':  out += '\t'; break;
+            case 'u':  // \uXXXX — only the control separator we emit (\u001F)
+                if (i + 4 < s.size() && s.compare(i + 1, 4, "001F") == 0) {
+                    out += '\x1F';
+                    i += 4;
+                }
+                break;
+            default:   out += n;   break;
         }
     }
     return out;
@@ -37,14 +71,21 @@ static std::string read_file_contents(const std::string& path) {
     return ss.str();
 }
 
+// Extract a string value, skipping escaped quotes inside the value.
 static std::string extract_string(const std::string& block, const std::string& key) {
     std::string search = "\"" + key + "\": \"";
     auto pos = block.find(search);
     if (pos == std::string::npos) return "";
     pos += search.size();
-    auto end = block.find('"', pos);
-    if (end == std::string::npos) return "";
-    return block.substr(pos, end - pos);
+    std::string raw;
+    while (pos < block.size()) {
+        char c = block[pos];
+        if (c == '\\' && pos + 1 < block.size()) { raw += c; raw += block[pos + 1]; pos += 2; continue; }
+        if (c == '"') break;
+        raw += c;
+        pos++;
+    }
+    return json_unescape(raw);
 }
 
 static int extract_int(const std::string& block, const std::string& key) {
@@ -53,15 +94,55 @@ static int extract_int(const std::string& block, const std::string& key) {
     if (pos == std::string::npos) return 0;
     pos += search.size();
     int val = 0;
+    bool neg = false;
+    if (pos < block.size() && block[pos] == '-') { neg = true; pos++; }
     while (pos < block.size() && block[pos] >= '0' && block[pos] <= '9') {
         val = val * 10 + (block[pos] - '0');
         pos++;
     }
-    return val;
+    return neg ? -val : val;
+}
+
+// Iterate over the JSON objects of an array section: {"key": [ ... ]}.
+// Calls fn(block) for each { ... } object, returns number of objects parsed.
+template <typename Fn>
+static size_t for_each_object(const std::string& content, const std::string& key, Fn fn) {
+    std::string marker = "\"" + key + "\": [";
+    auto pos = content.find(marker);
+    if (pos == std::string::npos) return 0;
+    pos += marker.size();
+    auto end = content.find(']', pos);
+    if (end == std::string::npos) return 0;
+    std::string section = content.substr(pos, end - pos);
+
+    size_t count = 0;
+    size_t cursor = 0;
+    while (true) {
+        auto obj_start = section.find('{', cursor);
+        if (obj_start == std::string::npos) break;
+        auto obj_end = section.find('}', obj_start);
+        if (obj_end == std::string::npos) break;
+        fn(section.substr(obj_start, obj_end - obj_start + 1));
+        count++;
+        cursor = obj_end + 1;
+    }
+    return count;
 }
 
 // =====================================================================
-//  Export  (multilista in memory → JSON file)
+//  State cleanup (used before loading)
+// =====================================================================
+
+static void clear_all_state() {
+    for (const auto& g : list_groups())     delete_group(g.id);
+    for (const auto& r : list_researchers()) delete_researcher(r.id);
+    for (const auto& p : list_products())  delete_product(p.id);
+    vq_clear();
+    undo_clear();
+}
+
+// =====================================================================
+//  Export  (structures in memory → JSON file)
 // =====================================================================
 
 bool export_to_file(const std::string& path) {
@@ -69,63 +150,118 @@ bool export_to_file(const std::string& path) {
     if (!out.is_open()) return false;
 
     out << "{\n";
-    out << "  \"schemaVersion\": \"1.0\",\n";
+    out << "  \"schemaVersion\": \"1.2\",\n";
 
     // Groups
     out << "  \"groups\": [\n";
-    GroupNode* cur = get_group_head();
     bool first = true;
-    while (cur) {
+    for (const auto& g : list_groups()) {
         if (!first) out << ",\n";
         first = false;
         out << "    {"
-            << "\"id\": "              << cur->data.id << ", "
-            << "\"external_code\": \"" << json_escape(cur->data.external_code) << "\", "
-            << "\"name\": \""          << json_escape(cur->data.name) << "\", "
-            << "\"acronym\": \""       << json_escape(cur->data.acronym) << "\", "
-            << "\"description\": \""   << json_escape(cur->data.description) << "\""
+            << "\"id\": "              << g.id << ", "
+            << "\"external_code\": \"" << json_escape(g.external_code) << "\", "
+            << "\"name\": \""          << json_escape(g.name) << "\", "
+            << "\"acronym\": \""       << json_escape(g.acronym) << "\", "
+            << "\"description\": \""   << json_escape(g.description) << "\", "
+            << "\"classification\": \"" << json_escape(g.classification) << "\", "
+            << "\"status\": \""        << json_escape(g.status) << "\""
             << "}";
-        cur = cur->nextGroup;
+    }
+    out << "\n  ],\n";
+
+    // Researchers
+    out << "  \"researchers\": [\n";
+    first = true;
+    for (const auto& r : list_researchers()) {
+        if (!first) out << ",\n";
+        first = false;
+        out << "    {"
+            << "\"id\": "                 << r.id << ", "
+            << "\"external_code\": \""    << json_escape(r.external_code) << "\", "
+            << "\"first_names\": \""      << json_escape(r.first_names) << "\", "
+            << "\"last_names\": \""       << json_escape(r.last_names) << "\", "
+            << "\"institutional_email\": \"" << json_escape(r.institutional_email) << "\", "
+            << "\"status\": \""           << json_escape(r.status) << "\""
+            << "}";
     }
     out << "\n  ],\n";
 
     // Memberships
     out << "  \"memberships\": [\n";
-    cur = get_group_head();
     first = true;
-    while (cur) {
-        MembershipNode* m = cur->firstMember;
-        while (m) {
+    for (const auto& g : list_groups()) {
+        for (int rid : members_of_group(g.id)) {
             if (!first) out << ",\n";
             first = false;
             out << "    {"
-                << "\"membershipId\": " << m->data.membershipId << ", "
-                << "\"groupId\": "      << cur->data.id << ", "
-                << "\"researcherId\": " << m->data.researcherId
+                << "\"groupId\": "      << g.id << ", "
+                << "\"researcherId\": " << rid
                 << "}";
-            m = m->nextInGroup;
         }
-        cur = cur->nextGroup;
     }
     out << "\n  ],\n";
 
-    // Product links
-    out << "  \"groupProductLinks\": [\n";
-    cur = get_group_head();
+    // Products
+    out << "  \"products\": [\n";
     first = true;
-    while (cur) {
-        GroupProductNode* p = cur->firstProduct;
-        while (p) {
+    for (const auto& p : list_products()) {
+        if (!first) out << ",\n";
+        first = false;
+        out << "    {"
+            << "\"id\": "                 << p.id << ", "
+            << "\"external_code\": \""    << json_escape(p.external_code) << "\", "
+            << "\"title\": \""            << json_escape(p.title) << "\", "
+            << "\"obtained_date\": \""    << json_escape(p.obtained_date) << "\", "
+            << "\"year\": "               << p.year << ", "
+            << "\"validation_status\": \"" << json_escape(p.validation_status) << "\", "
+            << "\"status\": \""           << json_escape(p.status) << "\""
+            << "}";
+    }
+    out << "\n  ],\n";
+
+    // Group-product links
+    out << "  \"groupProductLinks\": [\n";
+    first = true;
+    for (const auto& g : list_groups()) {
+        for (int pid : products_of_group(g.id)) {
             if (!first) out << ",\n";
             first = false;
             out << "    {"
-                << "\"linkId\": "    << p->data.linkId << ", "
-                << "\"groupId\": "   << cur->data.id << ", "
-                << "\"productId\": " << p->data.productId
+                << "\"groupId\": "   << g.id << ", "
+                << "\"productId\": " << pid
                 << "}";
-            p = p->nextInGroup;
         }
-        cur = cur->nextGroup;
+    }
+    out << "\n  ],\n";
+
+    // Validation queue (FIFO order: front first)
+    out << "  \"validationQueue\": [\n";
+    first = true;
+    for (const auto& it : vq_list()) {
+        if (!first) out << ",\n";
+        first = false;
+        out << "    {"
+            << "\"product_id\": "    << it.product_id << ", "
+            << "\"status\": \""      << json_escape(it.status) << "\", "
+            << "\"attempts\": "      << it.attempts << ", "
+            << "\"assigned_to\": \"" << json_escape(it.assigned_to) << "\""
+            << "}";
+    }
+    out << "\n  ],\n";
+
+    // Undo operations (top first; reloaded in reverse to preserve LIFO order)
+    out << "  \"undoOperations\": [\n";
+    first = true;
+    for (const auto& op : undo_list()) {
+        if (!first) out << ",\n";
+        first = false;
+        out << "    {"
+            << "\"operation_type\": \"" << json_escape(op.operation_type) << "\", "
+            << "\"entity_type\": \""    << json_escape(op.entity_type) << "\", "
+            << "\"entity_id\": "        << op.entity_id << ", "
+            << "\"previous_state\": \"" << json_escape(op.previous_state) << "\""
+            << "}";
     }
     out << "\n  ]\n";
 
@@ -135,78 +271,92 @@ bool export_to_file(const std::string& path) {
 }
 
 // =====================================================================
-//  Load  (JSON file → multilista in memory)
+//  Load  (JSON file → structures in memory)
 // =====================================================================
 
 bool load_from_file(const std::string& path) {
     std::string content = read_file_contents(path);
     if (content.empty()) return false;
 
-    // Clear existing state
-    while (!list_groups().empty()) {
-        delete_group(list_groups()[0].id);
-    }
+    // Clear existing state (all structures — RAM is rebuilt from the file)
+    clear_all_state();
 
-    // Parse groups array
-    std::string groups_key = "\"groups\": [";
-    auto gpos = content.find(groups_key);
-    if (gpos == std::string::npos) return false;
-    gpos += groups_key.size();
-    auto gend = content.find(']', gpos);
-    std::string groups_section = content.substr(gpos, gend - gpos);
-
-    size_t cursor = 0;
-    while (true) {
-        auto obj_start = groups_section.find('{', cursor);
-        if (obj_start == std::string::npos) break;
-        auto obj_end = groups_section.find('}', obj_start);
-        if (obj_end == std::string::npos) break;
-
-        std::string block = groups_section.substr(obj_start, obj_end - obj_start + 1);
+    // Groups
+    for_each_object(content, "groups", [](const std::string& block) {
         Group g;
-        g.external_code = extract_string(block, "external_code");
-        g.name          = extract_string(block, "name");
-        g.acronym       = extract_string(block, "acronym");
-        g.description   = extract_string(block, "description");
+        g.id             = extract_int(block, "id");
+        g.external_code  = extract_string(block, "external_code");
+        g.name           = extract_string(block, "name");
+        g.acronym        = extract_string(block, "acronym");
+        g.description    = extract_string(block, "description");
+        g.classification = extract_string(block, "classification");
+        g.status         = extract_string(block, "status");
+        if (g.status.empty()) g.status = "active";
         create_group(g);
-        cursor = obj_end + 1;
-    }
+    });
 
-    // Parse memberships
-    std::string mem_key = "\"memberships\": [";
-    auto mpos = content.find(mem_key);
-    if (mpos != std::string::npos) {
-        mpos += mem_key.size();
-        auto mend = content.find(']', mpos);
-        std::string section = content.substr(mpos, mend - mpos);
-        size_t mc = 0;
-        while (true) {
-            auto os = section.find('{', mc);
-            if (os == std::string::npos) break;
-            auto oe = section.find('}', os);
-            if (oe == std::string::npos) break;
-            std::string block = section.substr(os, oe - os + 1);
-            add_member_to_group(extract_int(block, "groupId"), extract_int(block, "researcherId"));
-            mc = oe + 1;
-        }
-    }
+    // Researchers
+    for_each_object(content, "researchers", [](const std::string& block) {
+        Researcher r;
+        r.id                  = extract_int(block, "id");
+        r.external_code       = extract_string(block, "external_code");
+        r.first_names         = extract_string(block, "first_names");
+        r.last_names          = extract_string(block, "last_names");
+        r.institutional_email = extract_string(block, "institutional_email");
+        r.status              = extract_string(block, "status");
+        if (r.status.empty()) r.status = "active";
+        create_researcher(r);
+    });
 
-    // Parse product links
-    std::string pl_key = "\"groupProductLinks\": [";
-    auto ppos = content.find(pl_key);
-    if (ppos != std::string::npos) {
-        ppos += pl_key.size();
-        auto pend = content.find(']', ppos);
-        std::string section = content.substr(ppos, pend - ppos);
-        size_t pc = 0;
-        while (true) {
-            auto os = section.find('{', pc);
-            if (os == std::string::npos) break;
-            auto oe = section.find('}', os);
-            if (oe == std::string::npos) break;
-            std::string block = section.substr(os, oe - os + 1);
-            link_product_to_group(extract_int(block, "groupId"), extract_int(block, "productId"));
-            pc = oe + 1;
+    // Memberships
+    for_each_object(content, "memberships", [](const std::string& block) {
+        add_member_to_group(extract_int(block, "groupId"), extract_int(block, "researcherId"));
+    });
+
+    // Products
+    for_each_object(content, "products", [](const std::string& block) {
+        Product p;
+        p.id                = extract_int(block, "id");
+        p.external_code     = extract_string(block, "external_code");
+        p.title             = extract_string(block, "title");
+        p.obtained_date     = extract_string(block, "obtained_date");
+        p.year              = extract_int(block, "year");
+        p.validation_status = extract_string(block, "validation_status");
+        if (p.validation_status.empty()) p.validation_status = "pending";
+        p.status            = extract_string(block, "status");
+        if (p.status.empty()) p.status = "active";
+        create_product(p);
+    });
+
+    // Group-product links
+    for_each_object(content, "groupProductLinks", [](const std::string& block) {
+        link_product_to_group(extract_int(block, "groupId"), extract_int(block, "productId"));
+    });
+
+    // Validation queue (enqueue in file order keeps FIFO)
+    for_each_object(content, "validationQueue", [](const std::string& block) {
+        ValidationQueueItem it;
+        it.product_id  = extract_int(block, "product_id");
+        it.status      = extract_string(block, "status");
+        if (it.status.empty()) it.status = "pending";
+        it.attempts    = extract_int(block, "attempts");
+        it.assigned_to = extract_string(block, "assigned_to");
+        vq_enqueue(it);
+    });
+
+    // Undo operations: file is top-first, push in reverse to rebuild LIFO order.
+    {
+        std::vector<UndoOperation> ops;
+        for_each_object(content, "undoOperations", [&](const std::string& block) {
+            UndoOperation op;
+            op.operation_type = extract_string(block, "operation_type");
+            op.entity_type    = extract_string(block, "entity_type");
+            op.entity_id      = extract_int(block, "entity_id");
+            op.previous_state = extract_string(block, "previous_state");
+            ops.push_back(op);
+        });
+        for (auto it = ops.rbegin(); it != ops.rend(); ++it) {
+            undo_push(*it);
         }
     }
 
