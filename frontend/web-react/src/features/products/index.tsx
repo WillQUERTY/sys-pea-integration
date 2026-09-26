@@ -1,8 +1,8 @@
 import { useState, useMemo } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { toast } from 'sonner'
-import { Plus, MoreHorizontal, Pencil, Trash2 } from 'lucide-react'
-import { listProducts, deleteProduct } from '@/lib/api'
+import { Plus, MoreHorizontal, Pencil, Trash2, ClipboardCheck } from 'lucide-react'
+import { listProducts, deleteProduct, enqueueValidation } from '@/lib/api'
 import type { Product } from '@/lib/types'
 import { Button } from '@/components/ui/button'
 import {
@@ -86,6 +86,15 @@ export function Products() {
     onError: (e) => toast.error(e instanceof Error ? e.message : 'Error al eliminar'),
   })
 
+  const enqueueMutation = useMutation({
+    mutationFn: (id: number) => enqueueValidation(id),
+    onSuccess: (data) => {
+      toast.success(`Producto encolado para validación (cola: ${data.queue_size})`)
+      queryClient.invalidateQueries({ queryKey: ['validation-queue'] })
+    },
+    onError: (e) => toast.error(e instanceof Error ? e.message : 'Error al encolar'),
+  })
+
   const handleEdit = (product: Product) => {
     setEditingProduct(product)
     setFormOpen(true)
@@ -153,6 +162,15 @@ export function Products() {
               <Pencil className='mr-2 h-4 w-4' />
               Editar
             </DropdownMenuItem>
+            {(p.validation_status ?? 'pending') !== 'valid' && (
+              <DropdownMenuItem
+                onClick={() => enqueueMutation.mutate(p.id!)}
+                disabled={enqueueMutation.isPending}
+              >
+                <ClipboardCheck className='mr-2 h-4 w-4' />
+                Encolar validación
+              </DropdownMenuItem>
+            )}
             <DropdownMenuSeparator />
             <DropdownMenuItem
               className='text-destructive focus:text-destructive'
@@ -165,7 +183,7 @@ export function Products() {
         </DropdownMenu>
       ),
     },
-  ], [delMutation])
+  ], [delMutation, enqueueMutation])
 
   // Filters to exclude inactive products
   const activeProducts = (products.data ?? []).filter(p => p.status !== 'inactive')

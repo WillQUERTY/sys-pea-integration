@@ -163,6 +163,13 @@ export async function processNextValidation() {
   )
   return data
 }
+export async function enqueueValidation(productId: number) {
+  const { data } = await api.post<{ status: string; product_id: number; queue_size: number }>(
+    '/system/validation-queue/enqueue',
+    { product_id: productId }
+  )
+  return data
+}
 
 // --- Ingestion (GrupLAC two-phase, CvLAC) ---
 export async function previewGruplac(url: string, groupCode?: string) {
