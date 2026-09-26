@@ -10,10 +10,15 @@ import {
   Save,
   Building2,
   Trophy,
-  Info
+  Info,
+  Trash2,
+  Plus
 } from 'lucide-react'
 
-import { getGroup, updateGroup, getGroupMembers, getGroupProducts } from '@/lib/api'
+import { 
+  getGroup, updateGroup, getGroupMembers, getGroupProducts, getGroupProjects, getGroupResearchLines,
+  linkProject, unlinkProject, linkResearchLine, unlinkResearchLine
+} from '@/lib/api'
 import type { Group } from '@/lib/types'
 
 import { Header } from '@/components/layout/header'
@@ -27,6 +32,7 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Badge } from '@/components/ui/badge'
 
@@ -59,7 +65,21 @@ export function GroupDetail() {
     queryFn: () => getGroupProducts(groupId),
   })
 
+  const { data: projects, isLoading: isLoadingProjects } = useQuery({
+    queryKey: ['groups', groupId, 'projects'],
+    queryFn: () => getGroupProjects(groupId),
+  })
+
+  const { data: researchLines, isLoading: isLoadingLines } = useQuery({
+    queryKey: ['groups', groupId, 'researchLines'],
+    queryFn: () => getGroupResearchLines(groupId),
+  })
+
   const [formData, setFormData] = useState<Partial<Group>>({})
+  const [newProject, setNewProject] = useState({ title: '', start_date: '', status: 'Activo' })
+  const [newLine, setNewLine] = useState('')
+  const [projectOpen, setProjectOpen] = useState(false)
+  const [lineOpen, setLineOpen] = useState(false)
 
   // Sync state when group loads
   useEffect(() => {
@@ -75,6 +95,10 @@ export function GroupDetail() {
         vision: group.vision ?? '',
         knowledge_area: group.knowledge_area ?? '',
         city: group.city ?? '',
+        department: group.department ?? '',
+        email: group.email ?? '',
+        website: group.website ?? '',
+        declared_creation_date: group.declared_creation_date ?? '',
       })
     }
   }, [group])
@@ -89,6 +113,44 @@ export function GroupDetail() {
     onError: (e) => {
       toast.error(e instanceof Error ? e.message : 'Error al guardar el grupo')
     },
+  })
+
+  const linkProjMutation = useMutation({
+    mutationFn: () => linkProject(groupId, newProject),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['groups', groupId, 'projects'] })
+      toast.success('Proyecto añadido correctamente')
+      setProjectOpen(false)
+      setNewProject({ title: '', start_date: '', status: 'Activo' })
+    },
+    onError: (e) => toast.error(e instanceof Error ? e.message : 'Error al añadir')
+  })
+
+  const unlinkProjMutation = useMutation({
+    mutationFn: (pid: number) => unlinkProject(groupId, pid),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['groups', groupId, 'projects'] })
+      toast.success('Proyecto desvinculado')
+    }
+  })
+
+  const linkLineMutation = useMutation({
+    mutationFn: () => linkResearchLine(groupId, newLine),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['groups', groupId, 'researchLines'] })
+      toast.success('Línea añadida correctamente')
+      setLineOpen(false)
+      setNewLine('')
+    },
+    onError: (e) => toast.error(e instanceof Error ? e.message : 'Error al añadir')
+  })
+
+  const unlinkLineMutation = useMutation({
+    mutationFn: (name: string) => unlinkResearchLine(groupId, name),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['groups', groupId, 'researchLines'] })
+      toast.success('Línea desvinculada')
+    }
   })
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -221,6 +283,18 @@ export function GroupDetail() {
             >
               <BookOpen className='mr-2 h-4 w-4' /> Productos ({products?.length ?? 0})
             </TabsTrigger>
+            <TabsTrigger 
+              value="proyectos" 
+              className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:shadow-none px-6 h-full"
+            >
+              <Building2 className='mr-2 h-4 w-4' /> Proyectos ({projects?.length ?? 0})
+            </TabsTrigger>
+            <TabsTrigger 
+              value="lineas" 
+              className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:shadow-none px-6 h-full"
+            >
+              <Info className='mr-2 h-4 w-4' /> Líneas de Inv. ({researchLines?.length ?? 0})
+            </TabsTrigger>
           </TabsList>
 
           <TabsContent value="perfil" className="focus-visible:outline-none">
@@ -279,11 +353,61 @@ export function GroupDetail() {
                         />
                       </div>
                       <div className="space-y-2">
-                        <Label htmlFor="city">Ciudad</Label>
+                        <Label htmlFor="city">Ciudad / Depto</Label>
+                        <div className="flex gap-2">
+                          <Input
+                            id="city"
+                            placeholder="Ciudad"
+                            value={formData.city}
+                            onChange={(e) => setFormData({ ...formData, city: e.target.value })}
+                            className='bg-muted/30 focus-visible:bg-transparent rounded-xl'
+                          />
+                          <Input
+                            id="department"
+                            placeholder="Departamento"
+                            value={formData.department}
+                            onChange={(e) => setFormData({ ...formData, department: e.target.value })}
+                            className='bg-muted/30 focus-visible:bg-transparent rounded-xl'
+                          />
+                        </div>
+                      </div>
+                    </div>
+                    <div className="grid grid-cols-2 gap-4">
+                      <div className="space-y-2">
+                        <Label htmlFor="email">Email</Label>
                         <Input
-                          id="city"
-                          value={formData.city}
-                          onChange={(e) => setFormData({ ...formData, city: e.target.value })}
+                          id="email"
+                          value={formData.email}
+                          onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                          className='bg-muted/30 focus-visible:bg-transparent rounded-xl'
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="website">Página Web</Label>
+                        <Input
+                          id="website"
+                          value={formData.website}
+                          onChange={(e) => setFormData({ ...formData, website: e.target.value })}
+                          className='bg-muted/30 focus-visible:bg-transparent rounded-xl'
+                        />
+                      </div>
+                    </div>
+                    <div className="grid grid-cols-2 gap-4">
+                      <div className="space-y-2">
+                        <Label htmlFor="knowledge_area">Área de Conocimiento</Label>
+                        <Input
+                          id="knowledge_area"
+                          value={formData.knowledge_area}
+                          onChange={(e) => setFormData({ ...formData, knowledge_area: e.target.value })}
+                          className='bg-muted/30 focus-visible:bg-transparent rounded-xl'
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="declared_creation_date">Año / Mes de Formación</Label>
+                        <Input
+                          id="declared_creation_date"
+                          value={formData.declared_creation_date}
+                          onChange={(e) => setFormData({ ...formData, declared_creation_date: e.target.value })}
                           className='bg-muted/30 focus-visible:bg-transparent rounded-xl'
                         />
                       </div>
@@ -400,6 +524,117 @@ export function GroupDetail() {
               emptyMessage="Este grupo no tiene productos asociados."
               searchPlaceholder="Buscar por título del producto..."
             />
+          </TabsContent>
+          <TabsContent value="proyectos" className="focus-visible:outline-none bg-card border border-border/50 rounded-2xl p-6 shadow-sm">
+            <div className="flex justify-between items-center mb-4">
+              <h3 className="font-semibold text-lg">Proyectos del Grupo</h3>
+              <Dialog open={projectOpen} onOpenChange={setProjectOpen}>
+                <DialogTrigger asChild>
+                  <Button size="sm"><Plus className="w-4 h-4 mr-2"/> Añadir Proyecto</Button>
+                </DialogTrigger>
+                <DialogContent>
+                  <DialogHeader>
+                    <DialogTitle>Añadir Nuevo Proyecto</DialogTitle>
+                  </DialogHeader>
+                  <div className="space-y-4 py-4">
+                    <div className="space-y-2">
+                      <Label>Título del Proyecto</Label>
+                      <Input value={newProject.title} onChange={e => setNewProject({...newProject, title: e.target.value})} />
+                    </div>
+                    <div className="space-y-2">
+                      <Label>Fecha de Inicio</Label>
+                      <Input value={newProject.start_date} onChange={e => setNewProject({...newProject, start_date: e.target.value})} placeholder="Ej: 2024" />
+                    </div>
+                    <Button className="w-full" onClick={() => linkProjMutation.mutate()} disabled={!newProject.title || linkProjMutation.isPending}>
+                      Guardar Proyecto
+                    </Button>
+                  </div>
+                </DialogContent>
+              </Dialog>
+            </div>
+            <DataTable
+              columns={[
+                {
+                  key: 'title',
+                  header: 'Título del Proyecto',
+                  searchable: (p) => p.title,
+                  className: 'max-w-[400px]',
+                  cell: (p) => <span className='block truncate font-medium text-sm'>{p.title}</span>
+                },
+                {
+                  key: 'start_date',
+                  header: 'Fecha de Inicio',
+                  cell: (p) => <span className='text-muted-foreground'>{p.start_date || '-'}</span>
+                },
+                {
+                  key: 'status',
+                  header: 'Estado',
+                  cell: (p) => <Badge variant='secondary'>{p.status || 'Activo'}</Badge>
+                },
+                {
+                  key: 'actions',
+                  header: '',
+                  cell: (p) => (
+                    <Button variant="ghost" size="icon" onClick={() => unlinkProjMutation.mutate(p.id!)}>
+                      <Trash2 className="w-4 h-4 text-red-500" />
+                    </Button>
+                  )
+                }
+              ]}
+              data={projects ?? []}
+              loading={isLoadingProjects}
+              rowKey={(p) => p.id!}
+              emptyMessage="Este grupo no tiene proyectos asociados."
+              searchPlaceholder="Buscar por título de proyecto..."
+            />
+          </TabsContent>
+
+          <TabsContent value="lineas" className="focus-visible:outline-none bg-card border border-border/50 rounded-2xl p-6 shadow-sm">
+            <div className="flex justify-between items-center mb-4">
+              <h3 className="font-semibold text-lg">Líneas de Investigación Declaradas</h3>
+              <Dialog open={lineOpen} onOpenChange={setLineOpen}>
+                <DialogTrigger asChild>
+                  <Button size="sm"><Plus className="w-4 h-4 mr-2"/> Añadir Línea</Button>
+                </DialogTrigger>
+                <DialogContent>
+                  <DialogHeader>
+                    <DialogTitle>Añadir Línea de Investigación</DialogTitle>
+                  </DialogHeader>
+                  <div className="space-y-4 py-4">
+                    <div className="space-y-2">
+                      <Label>Nombre de la Línea</Label>
+                      <Input value={newLine} onChange={e => setNewLine(e.target.value)} />
+                    </div>
+                    <Button className="w-full" onClick={() => linkLineMutation.mutate()} disabled={!newLine || linkLineMutation.isPending}>
+                      Guardar Línea
+                    </Button>
+                  </div>
+                </DialogContent>
+              </Dialog>
+            </div>
+            {isLoadingLines ? (
+              <div className="space-y-2">
+                <Skeleton className="h-10 w-full" />
+                <Skeleton className="h-10 w-full" />
+                <Skeleton className="h-10 w-full" />
+              </div>
+            ) : researchLines?.length ? (
+              <ul className="space-y-2">
+                {researchLines.map((line, idx) => (
+                  <li key={idx} className="bg-muted/30 p-3 rounded-lg border border-border/50 flex items-center justify-between text-sm font-medium">
+                    <div className="flex items-center">
+                      <div className="h-2 w-2 rounded-full bg-primary mr-3" />
+                      {line}
+                    </div>
+                    <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => unlinkLineMutation.mutate(line)}>
+                      <Trash2 className="w-4 h-4 text-red-500" />
+                    </Button>
+                  </li>
+                ))}
+              </ul>
+            ) : (
+              <p className="text-muted-foreground text-sm">No se encontraron líneas de investigación.</p>
+            )}
           </TabsContent>
         </Tabs>
       </Main>

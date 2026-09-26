@@ -3,6 +3,7 @@ import type {
   Group,
   Researcher,
   Product,
+  Project,
   ProductFilters,
   ValidationQueueItem,
   GruplacPreview,
@@ -30,6 +31,46 @@ export async function getGroupMembers(id: number) {
 }
 export async function getGroupProducts(id: number) {
   const { data } = await api.get<Product[]>(`/groups/${id}/products`)
+  return data
+}
+export async function getGroupProjects(id: number) {
+  const { data } = await api.get<Project[]>(`/groups/${id}/projects`)
+  return data
+}
+export async function getGroupResearchLines(id: number) {
+  const { data } = await api.get<string[]>(`/groups/${id}/research-lines`)
+  return data
+}
+export async function linkMember(groupId: number, researcherId: number, req: { role?: string, start_date?: string, end_date?: string }) {
+  const { data } = await api.post(`/groups/${groupId}/members/${researcherId}`, req)
+  return data
+}
+export async function unlinkMember(groupId: number, researcherId: number) {
+  const { data } = await api.delete(`/groups/${groupId}/members/${researcherId}`)
+  return data
+}
+export async function linkProduct(groupId: number, productId: number) {
+  const { data } = await api.post(`/groups/${groupId}/products/${productId}`)
+  return data
+}
+export async function unlinkProduct(groupId: number, productId: number) {
+  const { data } = await api.delete(`/groups/${groupId}/products/${productId}`)
+  return data
+}
+export async function linkProject(groupId: number, project: Partial<Project>) {
+  const { data } = await api.post(`/groups/${groupId}/projects`, project)
+  return data
+}
+export async function unlinkProject(groupId: number, projectId: number) {
+  const { data } = await api.delete(`/groups/${groupId}/projects/${projectId}`)
+  return data
+}
+export async function linkResearchLine(groupId: number, name: string) {
+  const { data } = await api.post(`/groups/${groupId}/research-lines`, { name })
+  return data
+}
+export async function unlinkResearchLine(groupId: number, name: string) {
+  const { data } = await api.delete(`/groups/${groupId}/research-lines/${encodeURIComponent(name)}`)
   return data
 }
 export async function createGroup(group: Partial<Group>) {
