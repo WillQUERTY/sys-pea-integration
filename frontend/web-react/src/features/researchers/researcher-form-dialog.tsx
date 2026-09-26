@@ -29,6 +29,10 @@ export function ResearcherFormDialog({ open, onOpenChange, researcher }: Props) 
     first_names: '',
     last_names: '',
     external_code: '',
+    identification_type: '',
+    identification_number: '',
+    nationality: '',
+    country_of_residence: '',
     highest_education_level: '',
     institutional_email: '',
     orcid: '',
@@ -41,6 +45,10 @@ export function ResearcherFormDialog({ open, onOpenChange, researcher }: Props) 
         first_names: researcher.first_names,
         last_names: researcher.last_names,
         external_code: researcher.external_code,
+        identification_type: researcher.identification_type ?? '',
+        identification_number: researcher.identification_number ?? '',
+        nationality: researcher.nationality ?? '',
+        country_of_residence: researcher.country_of_residence ?? '',
         highest_education_level: researcher.highest_education_level ?? '',
         institutional_email: researcher.institutional_email ?? '',
         orcid: researcher.orcid ?? '',
@@ -50,6 +58,10 @@ export function ResearcherFormDialog({ open, onOpenChange, researcher }: Props) 
         first_names: '',
         last_names: '',
         external_code: '',
+        identification_type: '',
+        identification_number: '',
+        nationality: '',
+        country_of_residence: '',
         highest_education_level: '',
         institutional_email: '',
         orcid: '',
@@ -129,6 +141,45 @@ export function ResearcherFormDialog({ open, onOpenChange, researcher }: Props) 
                   value={formData.orcid || ''}
                   onChange={(e) => setFormData({ ...formData, orcid: e.target.value })}
                   placeholder='0000-0000-0000-0000'
+                />
+              </div>
+            </div>
+            <div className='grid grid-cols-2 gap-4'>
+              <div className='grid gap-2'>
+                <Label htmlFor='identification_type'>Tipo de Identificación</Label>
+                <Input
+                  id='identification_type'
+                  value={formData.identification_type ?? ''}
+                  onChange={(e) => setFormData({ ...formData, identification_type: e.target.value })}
+                  placeholder='Ej: CC'
+                />
+              </div>
+              <div className='grid gap-2'>
+                <Label htmlFor='identification_number'>Número de Identificación</Label>
+                <Input
+                  id='identification_number'
+                  value={formData.identification_number ?? ''}
+                  onChange={(e) => setFormData({ ...formData, identification_number: e.target.value })}
+                />
+              </div>
+            </div>
+            <div className='grid grid-cols-2 gap-4'>
+              <div className='grid gap-2'>
+                <Label htmlFor='nationality'>Nacionalidad</Label>
+                <Input
+                  id='nationality'
+                  value={formData.nationality ?? ''}
+                  onChange={(e) => setFormData({ ...formData, nationality: e.target.value })}
+                  placeholder='Ej: Colombiana'
+                />
+              </div>
+              <div className='grid gap-2'>
+                <Label htmlFor='country_of_residence'>País de Residencia</Label>
+                <Input
+                  id='country_of_residence'
+                  value={formData.country_of_residence ?? ''}
+                  onChange={(e) => setFormData({ ...formData, country_of_residence: e.target.value })}
+                  placeholder='Ej: Colombia'
                 />
               </div>
             </div>
