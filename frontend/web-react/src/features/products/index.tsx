@@ -1,4 +1,5 @@
 import { useState, useMemo } from 'react'
+import { Link } from '@tanstack/react-router'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { toast } from 'sonner'
 import { Plus, MoreHorizontal, Pencil, Trash2, ClipboardCheck } from 'lucide-react'
@@ -112,7 +113,15 @@ export function Products() {
       header: 'Título',
       className: 'max-w-[520px]',
       searchable: (p) => p.title,
-      cell: (p) => <span className='block truncate font-medium'>{p.title}</span>,
+      cell: (p) => (
+        <Link
+          to='/products/$id'
+          params={{ id: String(p.id) }}
+          className='block truncate font-medium text-primary hover:underline'
+        >
+          {p.title}
+        </Link>
+      ),
     },
     {
       key: 'year',

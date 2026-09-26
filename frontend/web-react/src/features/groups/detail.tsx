@@ -689,7 +689,7 @@ export function GroupDetail() {
                           >
                             <span className="block truncate">{p.title}</span>
                             <span className="text-xs text-muted-foreground">
-                              {p.year ?? String(p.publication_date ?? '').slice(0, 4) || 's/f'}
+                              {p.year ?? (String(p.publication_date ?? '').slice(0, 4) || 's/f')}
                             </span>
                           </button>
                         ))
