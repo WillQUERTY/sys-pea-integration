@@ -3,14 +3,16 @@ import os
 import json
 import logging
 import unicodedata
-import pyodbc
+# NOTA ARQUITECTONICA: este modulo NO usa pyodbc. Toda la persistencia SQL
+# vive en el nucleo C++ (abpoxx_pybind, db_persistence.cpp). La unica
+# excepcion documentada es la ingesta masiva del scraper.
 
 # Ensure the native extension can be found
 sys.path.append(os.path.dirname(__file__))
 import abpoxx_pybind
 
 from typing import List, Optional, Dict, Any
-from .models import Group, Researcher, Product
+from .models import Group, Researcher, Product, Project
 
 logger = logging.getLogger("peai.repository")
 
@@ -153,21 +155,9 @@ def update_group(group_id: int, updates: Group, skip_undo: bool = False) -> Grou
     abpoxx_pybind.update_group(group_id, proto)
 
     if _active_connection_string:
-        with pyodbc.connect(_active_connection_string) as conn:
-            cur = conn.cursor()
-            cur.execute("""
-                UPDATE ResearchGroup
-                SET name = ?, acronym = ?, institution = ?, classification = ?,
-                    description = ?, mission = ?, vision = ?, declared_creation_date = ?,
-                    knowledge_area = ?, knowledge_subarea = ?, city = ?, department = ?,
-                    website = ?, email = ?, leader_id = ?, status = ?, updated_at = GETDATE()
-                WHERE id = ?;
-            """, proto.name, proto.acronym, proto.institution, proto.classification,
-                 proto.description, proto.mission, proto.vision, proto.declared_creation_date,
-                 proto.knowledge_area, proto.knowledge_subarea, proto.city, proto.department,
-                 proto.website, proto.email, proto.leader_id if proto.leader_id else None,
-                 proto.status, group_id)
-            conn.commit()
+        # El nucleo hace MERGE por external_code (upsert completo del objeto en RAM)
+        if not abpoxx_pybind.sync_group_to_db(_active_connection_string, group_id):
+            raise RuntimeError(f"Error sincronizando grupo {group_id} a BD")
 
     return get_group(group_id)
 
@@ -177,23 +167,35 @@ def delete_group(group_id: int, soft: bool = True, skip_undo: bool = False) -> b
         undo_push("DELETE", "Group", group_id, prev.model_dump_json())
 
     if soft:
+        # update_group del nucleo ahora aplica TODOS los campos: construir el
+        # proto completo desde el estado previo y solo cambiar status.
         proto = abpoxx_pybind.Group()
-        proto.external_code = prev.external_code
-        proto.name = prev.name
+        proto.external_code = sanitize_str(prev.external_code)
+        proto.name = sanitize_str(prev.name)
+        proto.acronym = sanitize_str(prev.acronym)
+        proto.institution = sanitize_str(prev.institution)
+        proto.classification = sanitize_str(prev.classification)
+        proto.description = sanitize_str(prev.description)
+        proto.mission = sanitize_str(prev.mission)
+        proto.vision = sanitize_str(prev.vision)
+        proto.declared_creation_date = sanitize_str(prev.declared_creation_date)
+        proto.knowledge_area = sanitize_str(prev.knowledge_area)
+        proto.knowledge_subarea = sanitize_str(prev.knowledge_subarea)
+        proto.city = sanitize_str(prev.city)
+        proto.department = sanitize_str(prev.department)
+        proto.website = sanitize_str(prev.website)
+        proto.email = sanitize_str(prev.email)
+        proto.leader_id = prev.leader_id or 0
         proto.status = "inactive"
         abpoxx_pybind.update_group(group_id, proto)
         if _active_connection_string:
-            with pyodbc.connect(_active_connection_string) as conn:
-                cur = conn.cursor()
-                cur.execute("UPDATE ResearchGroup SET status = 'inactive', updated_at = GETDATE() WHERE id = ?", group_id)
-                conn.commit()
+            if not abpoxx_pybind.delete_group_from_db(_active_connection_string, group_id, False):
+                raise RuntimeError(f"Error en soft-delete del grupo {group_id}")
     else:
         abpoxx_pybind.delete_group(group_id)
         if _active_connection_string:
-            with pyodbc.connect(_active_connection_string) as conn:
-                cur = conn.cursor()
-                cur.execute("DELETE FROM ResearchGroup WHERE id = ?", group_id)
-                conn.commit()
+            if not abpoxx_pybind.delete_group_from_db(_active_connection_string, group_id, True):
+                raise RuntimeError(f"Error en hard-delete del grupo {group_id}")
     return True
 
 # -------------------------------------------------------------------
@@ -292,20 +294,8 @@ def update_researcher(res_id: int, updates: Researcher, skip_undo: bool = False)
     abpoxx_pybind.update_researcher(res_id, proto)
 
     if _active_connection_string:
-        with pyodbc.connect(_active_connection_string) as conn:
-            cur = conn.cursor()
-            cur.execute("""
-                UPDATE Researcher
-                SET identification_type = ?, identification_number = ?, first_names = ?, last_names = ?,
-                    nationality = ?, country_of_residence = ?, institutional_email = ?, orcid = ?,
-                    highest_education_level = ?, education_records = ?, classification_records = ?,
-                    status = ?, updated_at = GETDATE()
-                WHERE id = ?;
-            """, proto.identification_type, proto.identification_number, proto.first_names, proto.last_names,
-                 proto.nationality, proto.country_of_residence, proto.institutional_email, proto.orcid,
-                 proto.highest_education_level, proto.education_records, proto.classification_records,
-                 proto.status, res_id)
-            conn.commit()
+        if not abpoxx_pybind.sync_researcher_to_db(_active_connection_string, res_id):
+            raise RuntimeError(f"Error sincronizando investigador {res_id} a BD")
 
     return get_researcher(res_id)
 
@@ -315,24 +305,31 @@ def delete_researcher(res_id: int, soft: bool = True, skip_undo: bool = False) -
         undo_push("DELETE", "Researcher", res_id, prev.model_dump_json())
 
     if soft:
+        # Proto completo desde el estado previo (update_researcher del nucleo
+        # aplica todos los campos); solo cambia status.
         proto = abpoxx_pybind.Researcher()
-        proto.external_code = prev.external_code
-        proto.first_names = prev.first_names
-        proto.last_names = prev.last_names
+        proto.external_code = sanitize_str(prev.external_code)
+        proto.identification_type = sanitize_str(prev.identification_type)
+        proto.identification_number = sanitize_str(prev.identification_number)
+        proto.first_names = sanitize_str(prev.first_names)
+        proto.last_names = sanitize_str(prev.last_names)
+        proto.nationality = sanitize_str(prev.nationality)
+        proto.country_of_residence = sanitize_str(prev.country_of_residence)
+        proto.institutional_email = sanitize_str(prev.institutional_email)
+        proto.orcid = sanitize_str(prev.orcid)
+        proto.highest_education_level = sanitize_str(prev.highest_education_level)
+        proto.education_records = sanitize_str(prev.education_records)
+        proto.classification_records = sanitize_str(prev.classification_records)
         proto.status = "inactive"
         abpoxx_pybind.update_researcher(res_id, proto)
         if _active_connection_string:
-            with pyodbc.connect(_active_connection_string) as conn:
-                cur = conn.cursor()
-                cur.execute("UPDATE Researcher SET status = 'inactive', updated_at = GETDATE() WHERE id = ?", res_id)
-                conn.commit()
+            if not abpoxx_pybind.delete_researcher_from_db(_active_connection_string, res_id, False):
+                raise RuntimeError(f"Error en soft-delete del investigador {res_id}")
     else:
         abpoxx_pybind.delete_researcher(res_id)
         if _active_connection_string:
-            with pyodbc.connect(_active_connection_string) as conn:
-                cur = conn.cursor()
-                cur.execute("DELETE FROM Researcher WHERE id = ?", res_id)
-                conn.commit()
+            if not abpoxx_pybind.delete_researcher_from_db(_active_connection_string, res_id, True):
+                raise RuntimeError(f"Error en hard-delete del investigador {res_id}")
     return True
 
 # -------------------------------------------------------------------
@@ -463,22 +460,8 @@ def update_product(prod_id: int, updates: Product, skip_undo: bool = False) -> P
     abpoxx_pybind.update_product(prod_id, proto)
 
     if _active_connection_string:
-        with pyodbc.connect(_active_connection_string) as conn:
-            cur = conn.cursor()
-            cur.execute("""
-                UPDATE Product
-                SET title = ?, description = ?, family_id = ?, subtype_id = ?,
-                    quality_category_id = ?, obtained_date = ?, publication_date = ?,
-                    validation_status = ?, language = ?, country = ?, doi = ?,
-                    isbn = ?, issn = ?, url = ?, evidence = ?, specialized_attributes = ?,
-                    status = ?, year = ?, updated_at = GETDATE()
-                WHERE id = ?;
-            """, proto.title, proto.description, proto.family_id or None, proto.subtype_id or None,
-                 proto.quality_category_id or None, proto.obtained_date, proto.publication_date,
-                 proto.validation_status, proto.language, proto.country, proto.doi,
-                 proto.isbn, proto.issn, proto.url, proto.evidence, proto.specialized_attributes,
-                 proto.status, proto.year, prod_id)
-            conn.commit()
+        if not abpoxx_pybind.sync_product_to_db(_active_connection_string, prod_id):
+            raise RuntimeError(f"Error sincronizando producto {prod_id} a BD")
 
     return get_product(prod_id)
 
@@ -488,23 +471,37 @@ def delete_product(prod_id: int, soft: bool = True, skip_undo: bool = False) -> 
         undo_push("DELETE", "Product", prod_id, prev.model_dump_json())
 
     if soft:
+        # Proto completo desde el estado previo (update_product del nucleo
+        # aplica todos los campos); solo cambia status.
         proto = abpoxx_pybind.Product()
-        proto.external_code = prev.external_code
-        proto.title = prev.title
+        proto.external_code = sanitize_str(prev.external_code)
+        proto.title = sanitize_str(prev.title)
+        proto.description = sanitize_str(prev.description)
+        proto.family_id = prev.family_id or 0
+        proto.subtype_id = prev.subtype_id or 0
+        proto.quality_category_id = prev.quality_category_id or 0
+        proto.obtained_date = sanitize_str(prev.obtained_date)
+        proto.publication_date = sanitize_str(prev.publication_date)
+        proto.validation_status = sanitize_str(prev.validation_status)
+        proto.language = sanitize_str(prev.language)
+        proto.country = sanitize_str(prev.country)
+        proto.doi = sanitize_str(prev.doi)
+        proto.isbn = sanitize_str(prev.isbn)
+        proto.issn = sanitize_str(prev.issn)
+        proto.url = sanitize_str(prev.url)
+        proto.evidence = sanitize_str(prev.evidence)
+        proto.specialized_attributes = sanitize_str(prev.specialized_attributes)
+        proto.year = prev.year or 0
         proto.status = "inactive"
         abpoxx_pybind.update_product(prod_id, proto)
         if _active_connection_string:
-            with pyodbc.connect(_active_connection_string) as conn:
-                cur = conn.cursor()
-                cur.execute("UPDATE Product SET status = 'inactive', updated_at = GETDATE() WHERE id = ?", prod_id)
-                conn.commit()
+            if not abpoxx_pybind.delete_product_from_db(_active_connection_string, prod_id, False):
+                raise RuntimeError(f"Error en soft-delete del producto {prod_id}")
     else:
         abpoxx_pybind.delete_product(prod_id)
         if _active_connection_string:
-            with pyodbc.connect(_active_connection_string) as conn:
-                cur = conn.cursor()
-                cur.execute("DELETE FROM Product WHERE id = ?", prod_id)
-                conn.commit()
+            if not abpoxx_pybind.delete_product_from_db(_active_connection_string, prod_id, True):
+                raise RuntimeError(f"Error en hard-delete del producto {prod_id}")
     return True
 
 def set_product_validation(
@@ -520,54 +517,38 @@ def set_product_validation(
     prev = get_product(prod_id)
     undo_push("VALIDATE", "Product", prod_id, prev.model_dump_json())
 
+    # Proto completo desde el estado previo (update_product del nucleo aplica
+    # todos los campos); solo cambian validation_status y quality_category_id.
     proto = abpoxx_pybind.Product()
-    proto.external_code = prev.external_code
-    proto.title = prev.title
+    proto.external_code = sanitize_str(prev.external_code)
+    proto.title = sanitize_str(prev.title)
+    proto.description = sanitize_str(prev.description)
+    proto.family_id = prev.family_id or 0
+    proto.subtype_id = prev.subtype_id or 0
+    proto.quality_category_id = quality_category_id if quality_category_id is not None else (prev.quality_category_id or 0)
+    proto.obtained_date = sanitize_str(prev.obtained_date)
+    proto.publication_date = sanitize_str(prev.publication_date)
     proto.validation_status = validation_status
-    if quality_category_id is not None:
-        proto.quality_category_id = quality_category_id
-    else:
-        proto.quality_category_id = prev.quality_category_id
-    proto.status = prev.status
+    proto.language = sanitize_str(prev.language)
+    proto.country = sanitize_str(prev.country)
+    proto.doi = sanitize_str(prev.doi)
+    proto.isbn = sanitize_str(prev.isbn)
+    proto.issn = sanitize_str(prev.issn)
+    proto.url = sanitize_str(prev.url)
+    proto.evidence = sanitize_str(prev.evidence)
+    proto.specialized_attributes = sanitize_str(prev.specialized_attributes)
+    proto.year = prev.year or 0
+    proto.status = sanitize_str(prev.status)
     abpoxx_pybind.update_product(prod_id, proto)
 
     if _active_connection_string:
-        with pyodbc.connect(_active_connection_string) as conn:
-            cur = conn.cursor()
-            cur.execute("""
-                UPDATE Product
-                SET validation_status = ?,
-                    quality_category_id = COALESCE(?, quality_category_id),
-                    updated_at = GETDATE()
-                WHERE id = ?;
-            """, validation_status, quality_category_id, prod_id)
-
-            # Sincronizar enlace en GroupProductLink
-            gpl_status = "approved" if validation_status == "valid" else ("rejected" if validation_status == "rejected" else "pending_validation")
-            cur.execute("""
-                UPDATE GroupProductLink
-                SET status = ?,
-                    validation_reason = ?,
-                    authorized_at = CASE WHEN ? IN ('approved', 'rejected') THEN GETDATE() ELSE NULL END
-                WHERE product_id = ?;
-            """, gpl_status, reason, gpl_status, prod_id)
-
-            # Si el ítem estaba en la cola de validación FIFO, marcarlo como procesado
-            cur.execute("""
-                UPDATE ValidationQueueItem
-                SET status = 'processed',
-                    result = ?,
-                    processed_at = GETDATE()
-                WHERE product_id = ? AND status = 'pending';
-            """, validation_status, prod_id)
-
-            # Registrar en Auditoría
-            cur.execute("""
-                INSERT INTO AuditLog (entity_type, entity_id, action, changed_by, change_details)
-                VALUES ('Product', ?, 'VALIDATE_PRODUCT', 'api_user', ?);
-            """, prod_id, f"Validación cambiada a {validation_status} ({reason})")
-
-            conn.commit()
+        # Operacion compuesta y atomica en el nucleo: Product +
+        # GroupProductLink + ValidationQueueItem + AuditLog en una transaccion.
+        if not abpoxx_pybind.set_product_validation_db(
+            _active_connection_string, prod_id, validation_status,
+            quality_category_id or 0, reason
+        ):
+            raise RuntimeError(f"Error aplicando validacion del producto {prod_id} en BD")
 
     return get_product(prod_id)
 
@@ -592,19 +573,11 @@ def add_product_author(
         if _active_connection_string:
             abpoxx_pybind.sync_product_author_to_db(_active_connection_string, product_id, researcher_id, author_order)
     elif external_author_name and _active_connection_string:
-        try:
-            with pyodbc.connect(_active_connection_string) as conn:
-                cur = conn.cursor()
-                cur.execute("""
-                    IF NOT EXISTS (SELECT 1 FROM ProductAuthor WHERE product_id = ? AND external_author_name = ?)
-                    BEGIN
-                        INSERT INTO ProductAuthor (product_id, researcher_id, author_order, external_author_name, external_author_identifier, match_status)
-                        VALUES (?, NULL, ?, ?, ?, ?);
-                    END
-                """, product_id, external_author_name, product_id, author_order, external_author_name, external_author_identifier, match_status)
-                conn.commit()
-        except pyodbc.Error as e:
-            logger.warning(f"Error registrando autor externo: {e}")
+        if not abpoxx_pybind.insert_external_product_author_db(
+            _active_connection_string, product_id, author_order,
+            external_author_name, external_author_identifier, match_status
+        ):
+            logger.warning("Error registrando autor externo en BD")
 
 def link_product_to_group(group_id: int, product_id: int):
     abpoxx_pybind.link_product_to_group(group_id, product_id)
@@ -619,25 +592,10 @@ def propose_product_group_link(
     reason: str = "Propuesta automatica importada desde GrupLAC"
 ):
     if _active_connection_string:
-        try:
-            with pyodbc.connect(_active_connection_string) as conn:
-                cur = conn.cursor()
-                cur.execute("""
-                    IF EXISTS (SELECT 1 FROM GroupProductLink WHERE group_id = ? AND product_id = ?)
-                    BEGIN
-                        UPDATE GroupProductLink
-                        SET status = ?, source = ?, validation_reason = ?
-                        WHERE group_id = ? AND product_id = ? AND (source = 'system' OR source IS NULL);
-                    END
-                    ELSE
-                    BEGIN
-                        INSERT INTO GroupProductLink (group_id, product_id, status, source, requested_at, validation_reason)
-                        VALUES (?, ?, ?, ?, GETDATE(), ?);
-                    END
-                """, group_id, product_id, status, source, reason, group_id, product_id, group_id, product_id, status, source, reason)
-                conn.commit()
-        except pyodbc.Error as e:
-            logger.warning(f"Error proponiendo enlace producto-grupo: {e}")
+        if not abpoxx_pybind.upsert_product_group_link_db(
+            _active_connection_string, group_id, product_id, status, source, reason
+        ):
+            logger.warning("Error proponiendo enlace producto-grupo en BD")
 
 def record_import_item(
     job_id: int,
@@ -648,16 +606,11 @@ def record_import_item(
     details: str = ""
 ):
     if _active_connection_string and job_id:
-        try:
-            with pyodbc.connect(_active_connection_string) as conn:
-                cur = conn.cursor()
-                cur.execute("""
-                    INSERT INTO ImportRecord (job_id, entity_type, external_identifier, action_taken, source_data_summary, resolution_details, created_at)
-                    VALUES (?, ?, ?, ?, ?, ?, GETDATE());
-                """, job_id, entity_type, external_identifier, action_taken, summary[:500], details)
-                conn.commit()
-        except pyodbc.Error as e:
-            logger.warning(f"Error registrando item de conciliacion: {e}")
+        if not abpoxx_pybind.insert_import_record_db(
+            _active_connection_string, job_id, entity_type,
+            external_identifier, action_taken, summary[:500], details
+        ):
+            logger.warning("Error registrando item de conciliacion en BD")
 
 
 def members_of_group(group_id: int) -> List[int]:
@@ -709,26 +662,19 @@ def remove_member_from_group(group_id: int, researcher_id: int):
     undo_push("UNLINK_MEMBER", "GroupMembership", group_id, f"{group_id}:{researcher_id}")
     abpoxx_pybind.remove_member_from_group(group_id, researcher_id)
     if _active_connection_string:
-        with pyodbc.connect(_active_connection_string) as conn:
-            cur = conn.cursor()
-            cur.execute("DELETE FROM GroupMembership WHERE group_id = ? AND researcher_id = ?", group_id, researcher_id)
-            conn.commit()
+        if not abpoxx_pybind.delete_membership_from_db(_active_connection_string, group_id, researcher_id):
+            raise RuntimeError(f"Error eliminando membresia {group_id}:{researcher_id} en BD")
 
 def unlink_product_from_group(group_id: int, product_id: int):
     undo_push("UNLINK_PRODUCT", "GroupProductLink", group_id, f"{group_id}:{product_id}")
     abpoxx_pybind.unlink_product_from_group(group_id, product_id)
     if _active_connection_string:
-        with pyodbc.connect(_active_connection_string) as conn:
-            cur = conn.cursor()
-            cur.execute("DELETE FROM GroupProductLink WHERE group_id = ? AND product_id = ?", group_id, product_id)
-            conn.commit()
+        if not abpoxx_pybind.delete_product_link_from_db(_active_connection_string, group_id, product_id):
+            raise RuntimeError(f"Error eliminando enlace producto-grupo {group_id}:{product_id} en BD")
 
 def products_of_researcher(researcher_id: int) -> List[int]:
     if _active_connection_string:
-        with pyodbc.connect(_active_connection_string) as conn:
-            cur = conn.cursor()
-            cur.execute("SELECT product_id FROM ProductAuthor WHERE researcher_id = ?", researcher_id)
-            return [row[0] for row in cur.fetchall()]
+        return list(abpoxx_pybind.products_of_researcher_db(_active_connection_string, researcher_id))
     return []
 
 def filter_products(
@@ -800,13 +746,10 @@ def undo_perform() -> Dict[str, Any]:
             add_member_to_group(gid, rid)
 
         if _active_connection_string:
-            with pyodbc.connect(_active_connection_string) as conn:
-                cur = conn.cursor()
-                cur.execute("""
-                    INSERT INTO AuditLog (entity_type, entity_id, action, changed_by, change_details)
-                    VALUES (?, ?, 'UNDO_PERFORMED', 'system', ?);
-                """, e_type, e_id, f"Revertida operación {op_type}")
-                conn.commit()
+            abpoxx_pybind.insert_audit_log_db(
+                _active_connection_string, e_type, e_id,
+                'UNDO_PERFORMED', 'system', f"Revertida operación {op_type}"
+            )
 
         return {
             "status": "success",
@@ -838,20 +781,9 @@ def vq_enqueue(product_id: int, assigned_to: str = ""):
     item.assigned_to = assigned_to
     abpoxx_pybind.vq_enqueue(item)
     if _active_connection_string:
-        try:
-            with pyodbc.connect(_active_connection_string) as conn:
-                cur = conn.cursor()
-                cur.execute("""
-                IF NOT EXISTS (SELECT 1 FROM ValidationQueueItem WHERE product_id = ? AND status = 'pending')
-                BEGIN
-                    INSERT INTO ValidationQueueItem (product_id, status, assigned_to, enqueued_at)
-                    VALUES (?, 'pending', ?, GETDATE());
-                END
-            """, product_id, product_id, assigned_to)
-                conn.commit()
-        except pyodbc.Error as e:
-            logger.exception("Error sincronizando ValidationQueueItem a BD", exc_info=e)
-            raise
+        if not abpoxx_pybind.vq_enqueue_db(_active_connection_string, product_id, assigned_to):
+            logger.error("Error sincronizando ValidationQueueItem a BD")
+            raise RuntimeError("Error sincronizando ValidationQueueItem a BD")
 
 def vq_front():
     return abpoxx_pybind.vq_front()
@@ -875,43 +807,56 @@ def vq_clear():
     abpoxx_pybind.vq_clear()
 
 def get_dashboard_stats() -> dict:
-    import pyodbc
     if not _active_connection_string:
         return {}
-    
-    with pyodbc.connect(_active_connection_string) as conn:
-        cur = conn.cursor()
-        
-        cur.execute("SELECT COUNT(*) FROM ResearchGroup WHERE status != 'inactive'")
-        total_groups = cur.fetchone()[0]
-        
-        cur.execute("SELECT COUNT(*) FROM Researcher WHERE status != 'inactive'")
-        total_researchers = cur.fetchone()[0]
-        
-        cur.execute("SELECT COUNT(*) FROM Product WHERE status != 'inactive'")
-        total_products = cur.fetchone()[0]
-        
-        cur.execute("SELECT ISNULL(validation_status, 'pending'), COUNT(*) FROM Product WHERE status != 'inactive' GROUP BY ISNULL(validation_status, 'pending')")
-        validation_counts = {row[0]: row[1] for row in cur.fetchall()}
-        
-        cur.execute("SELECT ISNULL(YEAR(publication_date), YEAR(obtained_date)) as yr, COUNT(*) FROM Product WHERE status != 'inactive' GROUP BY ISNULL(YEAR(publication_date), YEAR(obtained_date))")
-        year_counts = []
-        for row in cur.fetchall():
-            yr = row[0]
-            if yr is not None:
-                year_counts.append({'year': str(yr), 'count': row[1]})
-        
-        year_counts.sort(key=lambda x: int(x['year']))
-        
-        cur.execute("SELECT ISNULL(NULLIF(LTRIM(RTRIM(classification)), ''), 'Sin clasificar'), COUNT(*) FROM ResearchGroup WHERE status != 'inactive' GROUP BY ISNULL(NULLIF(LTRIM(RTRIM(classification)), ''), 'Sin clasificar')")
-        classification_counts = {row[0]: row[1] for row in cur.fetchall()}
-        
-        return {
-            'total_groups': total_groups,
-            'total_researchers': total_researchers,
-            'total_products': total_products,
-            'validation': validation_counts,
-            'by_year': year_counts,
-            'groups_by_classification': classification_counts,
-        }
+    # El nucleo C++ ejecuta las 6 agregaciones y devuelve el JSON ya
+    # estructurado con las mismas claves que consumia la API.
+    return json.loads(abpoxx_pybind.get_dashboard_stats_json(_active_connection_string))
 
+def get_group_projects(group_id: int) -> List[Project]:
+    if not _active_connection_string: return []
+    return [
+        Project(
+            id=p.id,
+            title=safe_get_str(p, 'title'),
+            summary=safe_get_str(p, 'summary'),
+            start_date=safe_get_str(p, 'start_date'),
+            end_date=safe_get_str(p, 'end_date'),
+            status=safe_get_str(p, 'status'),
+            project_type=safe_get_str(p, 'project_type'),
+            funding_type=safe_get_str(p, 'funding_type'),
+            budget=p.budget or 0.0,
+            principal_investigator_id=p.principal_investigator_id
+        )
+        for p in abpoxx_pybind.get_group_projects_db(_active_connection_string, group_id)
+    ]
+
+def get_group_research_lines(group_id: int) -> List[str]:
+    if not _active_connection_string: return []
+    return abpoxx_pybind.get_group_research_lines_db(_active_connection_string, group_id)
+
+def link_project_to_group(group_id: int, project: Project) -> int:
+    if not _active_connection_string: raise Exception("No DB connection")
+    proto = abpoxx_pybind.Project()
+    proto.title = sanitize_str(project.title)
+    proto.summary = sanitize_str(project.summary)
+    proto.start_date = sanitize_str(project.start_date)
+    proto.end_date = sanitize_str(project.end_date)
+    proto.status = sanitize_str(project.status)
+    proto.project_type = sanitize_str(project.project_type)
+    proto.funding_type = sanitize_str(project.funding_type)
+    proto.budget = project.budget or 0.0
+    proto.principal_investigator_id = project.principal_investigator_id or 0
+    return abpoxx_pybind.link_project_to_group_db(_active_connection_string, group_id, proto)
+
+def unlink_project_from_group(group_id: int, project_id: int):
+    if not _active_connection_string: raise Exception("No DB connection")
+    abpoxx_pybind.unlink_project_from_group_db(_active_connection_string, group_id, project_id)
+
+def link_research_line_to_group(group_id: int, line_name: str) -> int:
+    if not _active_connection_string: raise Exception("No DB connection")
+    return abpoxx_pybind.link_research_line_to_group_db(_active_connection_string, group_id, line_name.strip())
+
+def unlink_research_line_from_group(group_id: int, line_name: str):
+    if not _active_connection_string: raise Exception("No DB connection")
+    abpoxx_pybind.unlink_research_line_from_group_db(_active_connection_string, group_id, line_name.strip())

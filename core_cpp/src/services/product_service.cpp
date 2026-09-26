@@ -37,6 +37,12 @@ Product create_product(const Product& prototype) {
         node->data.id = _nextProductId++;
     }
 
+    // Auto-generar external_code para que el MERGE de sync_product_to_db
+    // sea idempotente en entidades creadas por API.
+    if (node->data.external_code.empty()) {
+        node->data.external_code = "API-PROD-" + std::to_string(node->data.id);
+    }
+
     if (!_productHead) {
         _productHead = node;
     } else {
@@ -76,6 +82,15 @@ bool update_product(int id, const Product& updates) {
     node->data.obtained_date       = updates.obtained_date;
     node->data.publication_date    = updates.publication_date;
     node->data.validation_status   = updates.validation_status;
+    node->data.language            = updates.language;
+    node->data.country             = updates.country;
+    node->data.doi                 = updates.doi;
+    node->data.isbn                = updates.isbn;
+    node->data.issn                = updates.issn;
+    node->data.url                 = updates.url;
+    node->data.evidence            = updates.evidence;
+    node->data.specialized_attributes = updates.specialized_attributes;
+    node->data.year                = updates.year;
     node->data.status              = updates.status;
     return true;
 }

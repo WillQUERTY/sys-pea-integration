@@ -14,8 +14,10 @@
 #include <sql.h>
 #include <sqlext.h>
 
+#include <cstdio>
 #include <iostream>
 #include <string>
+#include <utility>
 #include <vector>
 
 namespace peai {
@@ -560,6 +562,39 @@ bool load_from_db(const std::string& connection_string) {
 //  sync_xxx_to_db (Write-Through Implementation)
 // =====================================================================
 
+// El id RAM de una entidad creada por API NO coincide necesariamente con el
+// id IDENTITY que le asigna SQL Server al insertarla via MERGE. Toda funcion
+// *_db debe resolver el id de BD por external_code (que siempre existe: los
+// servicios de creacion lo auto-generan si viene vacio). Fallback al id crudo
+// solo si no hay external_code (entidad aun no sincronizable).
+static std::string db_id_expr(const char* table, const std::string& ext, int ram_id) {
+    if (ext.empty()) return std::to_string(ram_id);
+    return "(SELECT id FROM " + std::string(table) + " WHERE external_code = '" +
+           escape_sql(utf8_to_cp1252(ext)) + "')";
+}
+
+static std::string group_db_id(int ram_id) {
+    auto o = get_group(ram_id);
+    return db_id_expr("ResearchGroup", o ? o->external_code : "", ram_id);
+}
+static std::string researcher_db_id(int ram_id) {
+    auto o = get_researcher(ram_id);
+    return db_id_expr("Researcher", o ? o->external_code : "", ram_id);
+}
+static std::string product_db_id(int ram_id) {
+    auto o = get_product(ram_id);
+    return db_id_expr("Product", o ? o->external_code : "", ram_id);
+}
+
+// Emite NULL para ids de catalogo sin asignar (0 violaria el FK)
+static std::string nullable_int(int v) {
+    return v > 0 ? std::to_string(v) : "NULL";
+}
+// Emite NULL para fechas vacias ('' se convertiria a 1900-01-01)
+static std::string nullable_date(const std::string& s) {
+    return s.empty() ? "NULL" : "'" + escape_sql(utf8_to_cp1252(s)) + "'";
+}
+
 bool sync_group_to_db(const std::string& connection_string, int group_id) {
     std::optional<Group> g_opt = get_group(group_id);
     if (!g_opt) return false;
@@ -569,7 +604,7 @@ bool sync_group_to_db(const std::string& connection_string, int group_id) {
 
     std::string sql = 
         "MERGE ResearchGroup AS target "
-        "USING (SELECT '" + escape_sql(utf8_to_cp1252(g.external_code)) + "' AS ext, '" + escape_sql(utf8_to_cp1252(g.name)) + "' AS name, '" + escape_sql(utf8_to_cp1252(g.acronym)) + "' AS acr, '" + escape_sql(utf8_to_cp1252(g.institution)) + "' AS inst, '" + escape_sql(utf8_to_cp1252(g.classification)) + "' AS clas, '" + escape_sql(utf8_to_cp1252(g.description)) + "' AS descr, '" + escape_sql(utf8_to_cp1252(g.mission)) + "' AS miss, '" + escape_sql(utf8_to_cp1252(g.vision)) + "' AS vis, '" + escape_sql(utf8_to_cp1252(g.declared_creation_date)) + "' AS cdate, '" + escape_sql(utf8_to_cp1252(g.knowledge_area)) + "' AS karea, '" + escape_sql(utf8_to_cp1252(g.knowledge_subarea)) + "' AS ksub, '" + escape_sql(utf8_to_cp1252(g.city)) + "' AS city, '" + escape_sql(utf8_to_cp1252(g.department)) + "' AS dep, '" + escape_sql(utf8_to_cp1252(g.website)) + "' AS web, '" + escape_sql(utf8_to_cp1252(g.email)) + "' AS email, " + std::to_string(g.leader_id) + " AS lid, '" + escape_sql(utf8_to_cp1252(g.status)) + "' AS sts) AS source "
+        "USING (SELECT '" + escape_sql(utf8_to_cp1252(g.external_code)) + "' AS ext, '" + escape_sql(utf8_to_cp1252(g.name)) + "' AS name, '" + escape_sql(utf8_to_cp1252(g.acronym)) + "' AS acr, '" + escape_sql(utf8_to_cp1252(g.institution)) + "' AS inst, '" + escape_sql(utf8_to_cp1252(g.classification)) + "' AS clas, '" + escape_sql(utf8_to_cp1252(g.description)) + "' AS descr, '" + escape_sql(utf8_to_cp1252(g.mission)) + "' AS miss, '" + escape_sql(utf8_to_cp1252(g.vision)) + "' AS vis, '" + escape_sql(utf8_to_cp1252(g.declared_creation_date)) + "' AS cdate, '" + escape_sql(utf8_to_cp1252(g.knowledge_area)) + "' AS karea, '" + escape_sql(utf8_to_cp1252(g.knowledge_subarea)) + "' AS ksub, '" + escape_sql(utf8_to_cp1252(g.city)) + "' AS city, '" + escape_sql(utf8_to_cp1252(g.department)) + "' AS dep, '" + escape_sql(utf8_to_cp1252(g.website)) + "' AS web, '" + escape_sql(utf8_to_cp1252(g.email)) + "' AS email, " + nullable_int(g.leader_id) + " AS lid, '" + escape_sql(utf8_to_cp1252(g.status)) + "' AS sts) AS source "
         "ON (target.external_code = source.ext) "
         "WHEN MATCHED THEN "
         "  UPDATE SET name = source.name, acronym = source.acr, institution = source.inst, classification = source.clas, description = source.descr, mission = source.miss, vision = source.vis, declared_creation_date = source.cdate, knowledge_area = source.karea, knowledge_subarea = source.ksub, city = source.city, department = source.dep, website = source.web, email = source.email, leader_id = source.lid, status = source.sts, updated_at = GETDATE() "
@@ -607,7 +642,7 @@ bool sync_product_to_db(const std::string& connection_string, int prod_id) {
 
     std::string sql = 
         "MERGE Product AS target "
-        "USING (SELECT '" + escape_sql(utf8_to_cp1252(p.external_code)) + "' AS ext, '" + escape_sql(utf8_to_cp1252(p.title)) + "' AS title, '" + escape_sql(utf8_to_cp1252(p.description)) + "' AS descr, " + std::to_string(p.family_id) + " AS fam, " + std::to_string(p.subtype_id) + " AS sub, " + std::to_string(p.quality_category_id) + " AS qc, '" + escape_sql(utf8_to_cp1252(p.obtained_date)) + "' AS odate, '" + escape_sql(utf8_to_cp1252(p.publication_date)) + "' AS pdate, '" + escape_sql(utf8_to_cp1252(p.validation_status)) + "' AS vsts, '" + escape_sql(utf8_to_cp1252(p.language)) + "' AS lang, '" + escape_sql(utf8_to_cp1252(p.country)) + "' AS ctry, '" + escape_sql(utf8_to_cp1252(p.doi)) + "' AS doi, '" + escape_sql(utf8_to_cp1252(p.isbn)) + "' AS isbn, '" + escape_sql(utf8_to_cp1252(p.issn)) + "' AS issn, '" + escape_sql(utf8_to_cp1252(p.url)) + "' AS url, '" + escape_sql(utf8_to_cp1252(p.evidence)) + "' AS evid, '" + escape_sql(utf8_to_cp1252(p.specialized_attributes)) + "' AS spec, '" + escape_sql(utf8_to_cp1252(p.status)) + "' AS sts, " + std::to_string(p.year) + " AS yr) AS source "
+        "USING (SELECT '" + escape_sql(utf8_to_cp1252(p.external_code)) + "' AS ext, '" + escape_sql(utf8_to_cp1252(p.title)) + "' AS title, '" + escape_sql(utf8_to_cp1252(p.description)) + "' AS descr, " + nullable_int(p.family_id) + " AS fam, " + nullable_int(p.subtype_id) + " AS sub, " + nullable_int(p.quality_category_id) + " AS qc, " + nullable_date(p.obtained_date) + " AS odate, " + nullable_date(p.publication_date) + " AS pdate, '" + escape_sql(utf8_to_cp1252(p.validation_status)) + "' AS vsts, '" + escape_sql(utf8_to_cp1252(p.language)) + "' AS lang, '" + escape_sql(utf8_to_cp1252(p.country)) + "' AS ctry, '" + escape_sql(utf8_to_cp1252(p.doi)) + "' AS doi, '" + escape_sql(utf8_to_cp1252(p.isbn)) + "' AS isbn, '" + escape_sql(utf8_to_cp1252(p.issn)) + "' AS issn, '" + escape_sql(utf8_to_cp1252(p.url)) + "' AS url, '" + escape_sql(utf8_to_cp1252(p.evidence)) + "' AS evid, '" + escape_sql(utf8_to_cp1252(p.specialized_attributes)) + "' AS spec, '" + escape_sql(utf8_to_cp1252(p.status)) + "' AS sts, " + std::to_string(p.year) + " AS yr) AS source "
         "ON (target.external_code = source.ext) "
         "WHEN MATCHED THEN "
         "  UPDATE SET title = source.title, description = source.descr, family_id = source.fam, subtype_id = source.sub, quality_category_id = source.qc, obtained_date = source.odate, publication_date = source.pdate, validation_status = source.vsts, language = source.lang, country = source.ctry, doi = source.doi, isbn = source.isbn, issn = source.issn, url = source.url, evidence = source.evid, specialized_attributes = source.spec, status = source.sts, year = source.yr, updated_at = GETDATE() "
@@ -715,4 +750,449 @@ bool initialize(InitMode mode, const std::string& source) {
     return true;
 }
 
+
+// =====================================================================
+//  OPTION A: SQL Refactor to C++
+// =====================================================================
+
+static std::string json_escape(const std::string& s) {
+    std::string res;
+    res.reserve(s.size() + 8);
+    for (char c : s) {
+        switch (c) {
+            case '"':  res += "\\\""; break;
+            case '\\': res += "\\\\"; break;
+            case '\b': res += "\\b";  break;
+            case '\f': res += "\\f";  break;
+            case '\n': res += "\\n";  break;
+            case '\r': res += "\\r";  break;
+            case '\t': res += "\\t";  break;
+            default:
+                if (static_cast<unsigned char>(c) < 0x20) {
+                    char buf[8];
+                    snprintf(buf, sizeof(buf), "\\u%04x", c);
+                    res += buf;
+                } else {
+                    res += c;
+                }
+        }
+    }
+    return res;
+}
+
+// Runs a "SELECT <label>, COUNT(*) ... GROUP BY <label>" query and returns
+// the rows as (label, count) pairs.
+static std::vector<std::pair<std::string, int>> query_group_counts(SQLHDBC dbc, const std::string& sql) {
+    std::vector<std::pair<std::string, int>> rows;
+    SQLHSTMT stmt;
+    SQLAllocHandle(SQL_HANDLE_STMT, dbc, &stmt);
+    if (!SQL_SUCCEEDED(SQLExecDirect(stmt, (SQLCHAR*)sql.c_str(), SQL_NTS))) {
+        SQLFreeHandle(SQL_HANDLE_STMT, stmt);
+        return rows;
+    }
+    while (SQLFetch(stmt) == SQL_SUCCESS) {
+        char label[512]; SQLLEN i1, i2; int count = 0;
+        SQLGetData(stmt, 1, SQL_C_CHAR, label, sizeof(label), &i1);
+        SQLGetData(stmt, 2, SQL_C_LONG, &count, 0, &i2);
+        rows.emplace_back(i1 != SQL_NULL_DATA ? cp1252_to_utf8(label) : "", count);
+    }
+    SQLFreeHandle(SQL_HANDLE_STMT, stmt);
+    return rows;
+}
+
+std::string get_dashboard_stats_json(const std::string& connection_string) {
+    SQLHDBC dbc = get_or_create_dbc(connection_string);
+    if (!dbc) return "{}";
+
+    int total_groups = 0, total_researchers = 0, total_products = 0;
+    SQLHSTMT stmt;
+
+    SQLAllocHandle(SQL_HANDLE_STMT, dbc, &stmt);
+    SQLExecDirect(stmt, (SQLCHAR*)"SELECT COUNT(*) FROM ResearchGroup WHERE status != 'inactive'", SQL_NTS);
+    if (SQLFetch(stmt) == SQL_SUCCESS) { SQLLEN ind; SQLGetData(stmt, 1, SQL_C_LONG, &total_groups, 0, &ind); }
+    SQLFreeHandle(SQL_HANDLE_STMT, stmt);
+
+    SQLAllocHandle(SQL_HANDLE_STMT, dbc, &stmt);
+    SQLExecDirect(stmt, (SQLCHAR*)"SELECT COUNT(*) FROM Researcher WHERE status != 'inactive'", SQL_NTS);
+    if (SQLFetch(stmt) == SQL_SUCCESS) { SQLLEN ind; SQLGetData(stmt, 1, SQL_C_LONG, &total_researchers, 0, &ind); }
+    SQLFreeHandle(SQL_HANDLE_STMT, stmt);
+
+    SQLAllocHandle(SQL_HANDLE_STMT, dbc, &stmt);
+    SQLExecDirect(stmt, (SQLCHAR*)"SELECT COUNT(*) FROM Product WHERE status != 'inactive'", SQL_NTS);
+    if (SQLFetch(stmt) == SQL_SUCCESS) { SQLLEN ind; SQLGetData(stmt, 1, SQL_C_LONG, &total_products, 0, &ind); }
+    SQLFreeHandle(SQL_HANDLE_STMT, stmt);
+
+    std::string json = "{\"total_groups\":" + std::to_string(total_groups) +
+           ",\"total_researchers\":" + std::to_string(total_researchers) +
+           ",\"total_products\":" + std::to_string(total_products);
+
+    // Productos por estado de validacion
+    json += ",\"validation\":{";
+    bool first = true;
+    for (auto& row : query_group_counts(dbc,
+            "SELECT ISNULL(validation_status, 'pending'), COUNT(*) FROM Product WHERE status != 'inactive' GROUP BY ISNULL(validation_status, 'pending')")) {
+        if (!first) json += ",";
+        json += "\"" + json_escape(row.first) + "\":" + std::to_string(row.second);
+        first = false;
+    }
+    json += "}";
+
+    // Productos por anio (publication_date con fallback a obtained_date)
+    json += ",\"by_year\":[";
+    first = true;
+    for (auto& row : query_group_counts(dbc,
+            "SELECT ISNULL(YEAR(publication_date), YEAR(obtained_date)), COUNT(*) FROM Product WHERE status != 'inactive' GROUP BY ISNULL(YEAR(publication_date), YEAR(obtained_date)) ORDER BY 1")) {
+        if (row.first.empty()) continue;
+        if (!first) json += ",";
+        json += "{\"year\":\"" + json_escape(row.first) + "\",\"count\":" + std::to_string(row.second) + "}";
+        first = false;
+    }
+    json += "]";
+
+    // Grupos por clasificacion
+    json += ",\"groups_by_classification\":{";
+    first = true;
+    for (auto& row : query_group_counts(dbc,
+            "SELECT ISNULL(NULLIF(LTRIM(RTRIM(classification)), ''), 'Sin clasificar'), COUNT(*) FROM ResearchGroup WHERE status != 'inactive' GROUP BY ISNULL(NULLIF(LTRIM(RTRIM(classification)), ''), 'Sin clasificar')")) {
+        if (!first) json += ",";
+        json += "\"" + json_escape(row.first) + "\":" + std::to_string(row.second);
+        first = false;
+    }
+    json += "}}";
+
+    return json;
+}
+
+int link_project_to_group_db(const std::string& conn, int group_id, const Project& p) {
+    SQLHDBC dbc = get_or_create_dbc(conn);
+    if (!dbc) return 0;
+    
+    int project_id = 0;
+    std::string sql = "SELECT id FROM Project WHERE title = '" + escape_sql(p.title) + "'";
+    SQLHSTMT stmt;
+    SQLAllocHandle(SQL_HANDLE_STMT, dbc, &stmt);
+    SQLExecDirect(stmt, (SQLCHAR*)sql.c_str(), SQL_NTS);
+    if (SQLFetch(stmt) == SQL_SUCCESS) {
+        SQLLEN ind; SQLGetData(stmt, 1, SQL_C_LONG, &project_id, 0, &ind);
+    }
+    SQLFreeHandle(SQL_HANDLE_STMT, stmt);
+
+    if (project_id == 0) {
+        std::string ins = "INSERT INTO Project (title, summary, start_date, end_date, status, project_type, funding_type, budget, principal_investigator_id) OUTPUT INSERTED.id VALUES ('" + escape_sql(p.title) + "', '" + escape_sql(p.summary) + "', '" + escape_sql(p.start_date) + "', '" + escape_sql(p.end_date) + "', '" + escape_sql(p.status) + "', '" + escape_sql(p.project_type) + "', '" + escape_sql(p.funding_type) + "', " + std::to_string(p.budget) + ", " + std::to_string(p.principal_investigator_id) + ")";
+        SQLAllocHandle(SQL_HANDLE_STMT, dbc, &stmt);
+        SQLExecDirect(stmt, (SQLCHAR*)ins.c_str(), SQL_NTS);
+        if (SQLFetch(stmt) == SQL_SUCCESS) {
+            SQLLEN ind; SQLGetData(stmt, 1, SQL_C_LONG, &project_id, 0, &ind);
+        }
+        SQLFreeHandle(SQL_HANDLE_STMT, stmt);
+    }
+
+    std::string gid = group_db_id(group_id);
+    std::string link_chk = "SELECT 1 FROM GroupProject WHERE group_id=" + gid + " AND project_id=" + std::to_string(project_id);
+    SQLAllocHandle(SQL_HANDLE_STMT, dbc, &stmt);
+    bool exists = false;
+    SQLExecDirect(stmt, (SQLCHAR*)link_chk.c_str(), SQL_NTS);
+    if (SQLFetch(stmt) == SQL_SUCCESS) exists = true;
+    SQLFreeHandle(SQL_HANDLE_STMT, stmt);
+
+    if (!exists) {
+        std::string link_ins = "INSERT INTO GroupProject (group_id, project_id) VALUES (" + gid + ", " + std::to_string(project_id) + ")";
+        exec_sql(dbc, link_ins);
+    }
+    return project_id;
+}
+
+bool unlink_project_from_group_db(const std::string& conn, int group_id, int project_id) {
+    SQLHDBC dbc = get_or_create_dbc(conn);
+    if (!dbc) return false;
+    return exec_sql(dbc, "DELETE FROM GroupProject WHERE group_id=" + group_db_id(group_id) + " AND project_id=" + std::to_string(project_id));
+}
+
+int link_research_line_to_group_db(const std::string& conn, int group_id, const std::string& name) {
+    SQLHDBC dbc = get_or_create_dbc(conn);
+    if (!dbc) return 0;
+    
+    int line_id = 0;
+    std::string sql = "SELECT id FROM ResearchLine WHERE name = '" + escape_sql(name) + "'";
+    SQLHSTMT stmt;
+    SQLAllocHandle(SQL_HANDLE_STMT, dbc, &stmt);
+    SQLExecDirect(stmt, (SQLCHAR*)sql.c_str(), SQL_NTS);
+    if (SQLFetch(stmt) == SQL_SUCCESS) {
+        SQLLEN ind; SQLGetData(stmt, 1, SQL_C_LONG, &line_id, 0, &ind);
+    }
+    SQLFreeHandle(SQL_HANDLE_STMT, stmt);
+
+    if (line_id == 0) {
+        std::string ins = "INSERT INTO ResearchLine (name) OUTPUT INSERTED.id VALUES ('" + escape_sql(name) + "')";
+        SQLAllocHandle(SQL_HANDLE_STMT, dbc, &stmt);
+        SQLExecDirect(stmt, (SQLCHAR*)ins.c_str(), SQL_NTS);
+        if (SQLFetch(stmt) == SQL_SUCCESS) {
+            SQLLEN ind; SQLGetData(stmt, 1, SQL_C_LONG, &line_id, 0, &ind);
+        }
+        SQLFreeHandle(SQL_HANDLE_STMT, stmt);
+    }
+
+    std::string gid = group_db_id(group_id);
+    std::string link_chk = "SELECT 1 FROM GroupResearchLine WHERE group_id=" + gid + " AND line_id=" + std::to_string(line_id);
+    SQLAllocHandle(SQL_HANDLE_STMT, dbc, &stmt);
+    bool exists = false;
+    SQLExecDirect(stmt, (SQLCHAR*)link_chk.c_str(), SQL_NTS);
+    if (SQLFetch(stmt) == SQL_SUCCESS) exists = true;
+    SQLFreeHandle(SQL_HANDLE_STMT, stmt);
+
+    if (!exists) {
+        std::string link_ins = "INSERT INTO GroupResearchLine (group_id, line_id) VALUES (" + gid + ", " + std::to_string(line_id) + ")";
+        exec_sql(dbc, link_ins);
+    }
+    return line_id;
+}
+
+bool unlink_research_line_from_group_db(const std::string& conn, int group_id, const std::string& name) {
+    SQLHDBC dbc = get_or_create_dbc(conn);
+    if (!dbc) return false;
+    return exec_sql(dbc, "DELETE grl FROM GroupResearchLine grl JOIN ResearchLine rl ON grl.line_id = rl.id WHERE grl.group_id=" + group_db_id(group_id) + " AND rl.name='" + escape_sql(utf8_to_cp1252(name)) + "'");
+}
+
+
+std::vector<Project> get_group_projects_db(const std::string& conn, int group_id) {
+    std::vector<Project> res;
+    SQLHDBC dbc = get_or_create_dbc(conn);
+    if (!dbc) return res;
+    
+    std::string sql = "SELECT p.id, p.title, p.summary, p.start_date, p.end_date, p.status, p.project_type, p.funding_type, p.budget, p.principal_investigator_id FROM Project p JOIN GroupProject gp ON p.id = gp.project_id WHERE gp.group_id=" + group_db_id(group_id);
+    SQLHSTMT stmt;
+    SQLAllocHandle(SQL_HANDLE_STMT, dbc, &stmt);
+    SQLExecDirect(stmt, (SQLCHAR*)sql.c_str(), SQL_NTS);
+    
+    while (SQLFetch(stmt) == SQL_SUCCESS) {
+        Project p;
+        SQLLEN ind;
+        char buf[1024];
+        
+        SQLGetData(stmt, 1, SQL_C_LONG, &p.id, 0, &ind);
+        
+        SQLGetData(stmt, 2, SQL_C_CHAR, buf, sizeof(buf), &ind);
+        if (ind != SQL_NULL_DATA) p.title = cp1252_to_utf8(buf);
+        
+        SQLGetData(stmt, 3, SQL_C_CHAR, buf, sizeof(buf), &ind);
+        if (ind != SQL_NULL_DATA) p.summary = cp1252_to_utf8(buf);
+        
+        SQLGetData(stmt, 4, SQL_C_CHAR, buf, sizeof(buf), &ind);
+        if (ind != SQL_NULL_DATA) p.start_date = cp1252_to_utf8(buf);
+        
+        SQLGetData(stmt, 5, SQL_C_CHAR, buf, sizeof(buf), &ind);
+        if (ind != SQL_NULL_DATA) p.end_date = cp1252_to_utf8(buf);
+        
+        SQLGetData(stmt, 6, SQL_C_CHAR, buf, sizeof(buf), &ind);
+        if (ind != SQL_NULL_DATA) p.status = cp1252_to_utf8(buf);
+        
+        SQLGetData(stmt, 7, SQL_C_CHAR, buf, sizeof(buf), &ind);
+        if (ind != SQL_NULL_DATA) p.project_type = cp1252_to_utf8(buf);
+        
+        SQLGetData(stmt, 8, SQL_C_CHAR, buf, sizeof(buf), &ind);
+        if (ind != SQL_NULL_DATA) p.funding_type = cp1252_to_utf8(buf);
+        
+        SQLGetData(stmt, 9, SQL_C_DOUBLE, &p.budget, 0, &ind);
+        SQLGetData(stmt, 10, SQL_C_LONG, &p.principal_investigator_id, 0, &ind);
+        
+        res.push_back(p);
+    }
+    SQLFreeHandle(SQL_HANDLE_STMT, stmt);
+    return res;
+}
+
+std::vector<std::string> get_group_research_lines_db(const std::string& conn, int group_id) {
+    std::vector<std::string> res;
+    SQLHDBC dbc = get_or_create_dbc(conn);
+    if (!dbc) return res;
+    
+    std::string sql = "SELECT rl.name FROM ResearchLine rl JOIN GroupResearchLine grl ON rl.id = grl.line_id WHERE grl.group_id=" + group_db_id(group_id);
+    SQLHSTMT stmt;
+    SQLAllocHandle(SQL_HANDLE_STMT, dbc, &stmt);
+    SQLExecDirect(stmt, (SQLCHAR*)sql.c_str(), SQL_NTS);
+    
+    while (SQLFetch(stmt) == SQL_SUCCESS) {
+        char buf[1024]; SQLLEN ind;
+        SQLGetData(stmt, 1, SQL_C_CHAR, buf, sizeof(buf), &ind);
+        if (ind != SQL_NULL_DATA) res.push_back(cp1252_to_utf8(buf));
+    }
+    SQLFreeHandle(SQL_HANDLE_STMT, stmt);
+    return res;
+}
+
+// =====================================================================
+//  Architectural consolidation: the core owns ALL SQL
+//  (previously scattered as pyodbc calls in backend/app/repository.py)
+// =====================================================================
+
+static bool delete_entity_from_db(const std::string& conn, const std::string& id_expr, const char* table, bool hard) {
+    SQLHDBC dbc = get_or_create_dbc(conn);
+    if (!dbc) return false;
+    std::string sql = hard
+        ? "DELETE FROM " + std::string(table) + " WHERE id = " + id_expr + ";"
+        : "UPDATE " + std::string(table) + " SET status = 'inactive', updated_at = GETDATE() WHERE id = " + id_expr + ";";
+    return exec_sql(dbc, sql);
+}
+
+bool delete_group_from_db(const std::string& conn, int group_id, bool hard) {
+    return delete_entity_from_db(conn, group_db_id(group_id), "ResearchGroup", hard);
+}
+
+bool delete_researcher_from_db(const std::string& conn, int res_id, bool hard) {
+    return delete_entity_from_db(conn, researcher_db_id(res_id), "Researcher", hard);
+}
+
+bool delete_product_from_db(const std::string& conn, int prod_id, bool hard) {
+    return delete_entity_from_db(conn, product_db_id(prod_id), "Product", hard);
+}
+
+bool delete_membership_from_db(const std::string& conn, int group_id, int researcher_id) {
+    SQLHDBC dbc = get_or_create_dbc(conn);
+    if (!dbc) return false;
+    return exec_sql(dbc,
+        "DELETE FROM GroupMembership WHERE group_id = " + group_db_id(group_id) +
+        " AND researcher_id = " + researcher_db_id(researcher_id) + ";");
+}
+
+bool delete_product_link_from_db(const std::string& conn, int group_id, int product_id) {
+    SQLHDBC dbc = get_or_create_dbc(conn);
+    if (!dbc) return false;
+    return exec_sql(dbc,
+        "DELETE FROM GroupProductLink WHERE group_id = " + group_db_id(group_id) +
+        " AND product_id = " + product_db_id(product_id) + ";");
+}
+
+bool insert_audit_log_db(const std::string& conn, const std::string& entity_type, int entity_id,
+                         const std::string& action, const std::string& changed_by, const std::string& details) {
+    SQLHDBC dbc = get_or_create_dbc(conn);
+    if (!dbc) return false;
+    return exec_sql(dbc,
+        "INSERT INTO AuditLog (entity_type, entity_id, action, changed_by, change_details) VALUES ('" +
+        escape_sql(utf8_to_cp1252(entity_type)) + "', " + std::to_string(entity_id) + ", '" +
+        escape_sql(utf8_to_cp1252(action)) + "', '" + escape_sql(utf8_to_cp1252(changed_by)) + "', '" +
+        escape_sql(utf8_to_cp1252(details)) + "');");
+}
+
+bool set_product_validation_db(const std::string& conn, int product_id, const std::string& validation_status,
+                               int quality_category_id, const std::string& reason) {
+    SQLHDBC dbc = get_or_create_dbc(conn);
+    if (!dbc) return false;
+
+    // Operacion compuesta: las 4 escrituras van en una sola transaccion ODBC
+    // para preservar la atomicidad que tenia el bloque pyodbc original.
+    SQLSetConnectAttr(dbc, SQL_ATTR_AUTOCOMMIT, (SQLPOINTER)SQL_AUTOCOMMIT_OFF, 0);
+
+    std::string qc = nullable_int(quality_category_id);
+    std::string pid = product_db_id(product_id);
+    std::string gpl_status = validation_status == "valid" ? "approved"
+                           : validation_status == "rejected" ? "rejected" : "pending_validation";
+
+    bool ok = true;
+    ok &= exec_sql(dbc,
+        "UPDATE Product SET validation_status = '" + escape_sql(utf8_to_cp1252(validation_status)) +
+        "', quality_category_id = COALESCE(" + qc + ", quality_category_id), updated_at = GETDATE() " +
+        "WHERE id = " + pid + ";");
+
+    ok &= exec_sql(dbc,
+        "UPDATE GroupProductLink SET status = '" + gpl_status + "', validation_reason = '" +
+        escape_sql(utf8_to_cp1252(reason)) + "', authorized_at = CASE WHEN '" + gpl_status +
+        "' IN ('approved', 'rejected') THEN GETDATE() ELSE NULL END " +
+        "WHERE product_id = " + pid + ";");
+
+    ok &= exec_sql(dbc,
+        "UPDATE ValidationQueueItem SET status = 'processed', result = '" +
+        escape_sql(utf8_to_cp1252(validation_status)) + "', processed_at = GETDATE() " +
+        "WHERE product_id = " + pid + " AND status = 'pending';");
+
+    ok &= insert_audit_log_db(conn, "Product", product_id, "VALIDATE_PRODUCT", "api_user",
+        "Validación cambiada a " + validation_status + " (" + reason + ")");
+
+    SQLEndTran(SQL_HANDLE_DBC, dbc, ok ? SQL_COMMIT : SQL_ROLLBACK);
+    SQLSetConnectAttr(dbc, SQL_ATTR_AUTOCOMMIT, (SQLPOINTER)SQL_AUTOCOMMIT_ON, 0);
+    return ok;
+}
+
+bool insert_import_record_db(const std::string& conn, int job_id, const std::string& entity_type,
+                             const std::string& external_identifier, const std::string& action_taken,
+                             const std::string& summary, const std::string& details) {
+    SQLHDBC dbc = get_or_create_dbc(conn);
+    if (!dbc) return false;
+    std::string trimmed_summary = summary.substr(0, 500);
+    return exec_sql(dbc,
+        "INSERT INTO ImportRecord (job_id, entity_type, external_identifier, action_taken, source_data_summary, resolution_details, created_at) VALUES (" +
+        std::to_string(job_id) + ", '" + escape_sql(utf8_to_cp1252(entity_type)) + "', '" +
+        escape_sql(utf8_to_cp1252(external_identifier)) + "', '" + escape_sql(utf8_to_cp1252(action_taken)) + "', '" +
+        escape_sql(utf8_to_cp1252(trimmed_summary)) + "', '" + escape_sql(utf8_to_cp1252(details)) + "', GETDATE());");
+}
+
+bool upsert_product_group_link_db(const std::string& conn, int group_id, int product_id,
+                                  const std::string& status, const std::string& source, const std::string& reason) {
+    SQLHDBC dbc = get_or_create_dbc(conn);
+    if (!dbc) return false;
+    std::string gid = group_db_id(group_id);
+    std::string pid = product_db_id(product_id);
+    return exec_sql(dbc,
+        "IF EXISTS (SELECT 1 FROM GroupProductLink WHERE group_id = " + gid +
+        " AND product_id = " + pid + ") "
+        "BEGIN "
+        "  UPDATE GroupProductLink SET status = '" + escape_sql(utf8_to_cp1252(status)) +
+        "', source = '" + escape_sql(utf8_to_cp1252(source)) + "', validation_reason = '" +
+        escape_sql(utf8_to_cp1252(reason)) + "' "
+        "  WHERE group_id = " + gid + " AND product_id = " + pid +
+        " AND (source = 'system' OR source IS NULL); "
+        "END "
+        "ELSE "
+        "BEGIN "
+        "  INSERT INTO GroupProductLink (group_id, product_id, status, source, requested_at, validation_reason) VALUES (" +
+        gid + ", " + pid + ", '" + escape_sql(utf8_to_cp1252(status)) +
+        "', '" + escape_sql(utf8_to_cp1252(source)) + "', GETDATE(), '" + escape_sql(utf8_to_cp1252(reason)) + "'); "
+        "END");
+}
+
+bool insert_external_product_author_db(const std::string& conn, int product_id, int author_order,
+                                       const std::string& name, const std::string& identifier, const std::string& match_status) {
+    SQLHDBC dbc = get_or_create_dbc(conn);
+    if (!dbc) return false;
+    std::string pid = product_db_id(product_id);
+    return exec_sql(dbc,
+        "IF NOT EXISTS (SELECT 1 FROM ProductAuthor WHERE product_id = " + pid +
+        " AND external_author_name = '" + escape_sql(utf8_to_cp1252(name)) + "') "
+        "BEGIN "
+        "  INSERT INTO ProductAuthor (product_id, researcher_id, author_order, external_author_name, external_author_identifier, match_status) VALUES (" +
+        pid + ", NULL, " + std::to_string(author_order) + ", '" +
+        escape_sql(utf8_to_cp1252(name)) + "', '" + escape_sql(utf8_to_cp1252(identifier)) + "', '" +
+        escape_sql(utf8_to_cp1252(match_status)) + "'); "
+        "END");
+}
+
+std::vector<int> products_of_researcher_db(const std::string& conn, int researcher_id) {
+    std::vector<int> res;
+    SQLHDBC dbc = get_or_create_dbc(conn);
+    if (!dbc) return res;
+
+    std::string sql = "SELECT product_id FROM ProductAuthor WHERE researcher_id = " + researcher_db_id(researcher_id);
+    SQLHSTMT stmt;
+    SQLAllocHandle(SQL_HANDLE_STMT, dbc, &stmt);
+    SQLExecDirect(stmt, (SQLCHAR*)sql.c_str(), SQL_NTS);
+    while (SQLFetch(stmt) == SQL_SUCCESS) {
+        int pid = 0; SQLLEN ind;
+        SQLGetData(stmt, 1, SQL_C_LONG, &pid, 0, &ind);
+        if (ind != SQL_NULL_DATA) res.push_back(pid);
+    }
+    SQLFreeHandle(SQL_HANDLE_STMT, stmt);
+    return res;
+}
+
+bool vq_enqueue_db(const std::string& conn, int product_id, const std::string& assigned_to) {
+    SQLHDBC dbc = get_or_create_dbc(conn);
+    if (!dbc) return false;
+    std::string pid = product_db_id(product_id);
+    return exec_sql(dbc,
+        "IF NOT EXISTS (SELECT 1 FROM ValidationQueueItem WHERE product_id = " + pid +
+        " AND status = 'pending') "
+        "BEGIN "
+        "  INSERT INTO ValidationQueueItem (product_id, status, assigned_to, enqueued_at) VALUES (" +
+        pid + ", 'pending', '" + escape_sql(utf8_to_cp1252(assigned_to)) + "', GETDATE()); "
+        "END");
+}
 } // namespace peai

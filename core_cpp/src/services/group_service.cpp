@@ -47,6 +47,13 @@ Group create_group(const Group& prototype) {
         node->data.id = _nextGroupId++;
     }
 
+    // Entidades creadas por API pueden venir sin external_code; el MERGE de
+    // sync_group_to_db hace match por external_code, asi que se auto-genera
+    // uno unico para garantizar idempotencia del write-through.
+    if (node->data.external_code.empty()) {
+        node->data.external_code = "API-GRP-" + std::to_string(node->data.id);
+    }
+
     // Append at end of linked list
     if (!_groupHead) {
         _groupHead = node;
@@ -77,10 +84,23 @@ std::vector<Group> list_groups() {
 bool update_group(int id, const Group& updates) {
     GroupNode* node = find_group_node(id);
     if (!node) return false;
-    node->data.external_code = updates.external_code;
-    node->data.name          = updates.name;
-    node->data.acronym       = updates.acronym;
-    node->data.description   = updates.description;
+    node->data.external_code          = updates.external_code;
+    node->data.name                   = updates.name;
+    node->data.acronym                = updates.acronym;
+    node->data.description            = updates.description;
+    node->data.mission                = updates.mission;
+    node->data.vision                 = updates.vision;
+    node->data.declared_creation_date = updates.declared_creation_date;
+    node->data.knowledge_area         = updates.knowledge_area;
+    node->data.knowledge_subarea      = updates.knowledge_subarea;
+    node->data.city                   = updates.city;
+    node->data.department             = updates.department;
+    node->data.website                = updates.website;
+    node->data.email                  = updates.email;
+    node->data.institution            = updates.institution;
+    node->data.classification         = updates.classification;
+    node->data.leader_id              = updates.leader_id;
+    node->data.status                 = updates.status;
     return true;
 }
 

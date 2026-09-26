@@ -70,6 +70,18 @@ PYBIND11_MODULE(abpoxx_pybind, m) {
     m.def("update_researcher", &peai::update_researcher);
     m.def("delete_researcher", &peai::delete_researcher);
 
+
+
+
+    // ---- Option A Refactor Exports ----
+    m.def("get_dashboard_stats_json", &peai::get_dashboard_stats_json);
+    m.def("get_group_projects_db", &peai::get_group_projects_db);
+    m.def("get_group_research_lines_db", &peai::get_group_research_lines_db);
+    m.def("link_project_to_group_db", &peai::link_project_to_group_db);
+    m.def("unlink_project_from_group_db", &peai::unlink_project_from_group_db);
+    m.def("link_research_line_to_group_db", &peai::link_research_line_to_group_db);
+    m.def("unlink_research_line_from_group_db", &peai::unlink_research_line_from_group_db);
+
     // ---- Struct: Product ----
     py::class_<Product>(m, "Product")
         .def(py::init<>())
@@ -206,6 +218,20 @@ PYBIND11_MODULE(abpoxx_pybind, m) {
     m.def("sync_membership_details_to_db", &peai::sync_membership_details_to_db, "Sync group membership with role and dates to DB");
     m.def("sync_product_link_to_db",       &peai::sync_product_link_to_db,       "Sync a group product link to DB");
     m.def("sync_product_author_to_db",     &peai::sync_product_author_to_db,     "Sync a product author link to DB");
+
+    // Architectural consolidation: the core owns ALL SQL
+    m.def("delete_group_from_db",      &peai::delete_group_from_db,      "Soft/hard delete of a group in DB");
+    m.def("delete_researcher_from_db", &peai::delete_researcher_from_db, "Soft/hard delete of a researcher in DB");
+    m.def("delete_product_from_db",    &peai::delete_product_from_db,    "Soft/hard delete of a product in DB");
+    m.def("delete_membership_from_db",    &peai::delete_membership_from_db,    "Delete a group membership link in DB");
+    m.def("delete_product_link_from_db",  &peai::delete_product_link_from_db,  "Delete a group-product link in DB");
+    m.def("set_product_validation_db",    &peai::set_product_validation_db,    "Transactional product validation (Product + GroupProductLink + ValidationQueueItem + AuditLog)");
+    m.def("insert_audit_log_db",          &peai::insert_audit_log_db,          "Insert an AuditLog row");
+    m.def("insert_import_record_db",      &peai::insert_import_record_db,      "Insert an ImportRecord row");
+    m.def("upsert_product_group_link_db", &peai::upsert_product_group_link_db, "Propose/upsert a group-product link");
+    m.def("insert_external_product_author_db", &peai::insert_external_product_author_db, "Insert an external product author");
+    m.def("products_of_researcher_db",    &peai::products_of_researcher_db,    "List product ids authored by a researcher");
+    m.def("vq_enqueue_db",                &peai::vq_enqueue_db,                "Persist a validation queue item");
 
 
     // ---- Summary ----

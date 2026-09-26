@@ -6,4 +6,4 @@ if not exist build2 mkdir build2
 cd build2
 cmake -Dpybind11_DIR="C:\Users\Chick\AppData\Local\Programs\Python\Python312\Lib\site-packages\pybind11\share\cmake\pybind11" ..
 cmake --build . --config Release
-copy /Y Release\abpoxx_pybind*.pyd ..\..\backend\app\abpoxx_pybind.pyd
+copy /Y /B Release\abpoxx_pybind.cp312-win_amd64.pyd ..\..\backend\app\abpoxx_pybind.pyd

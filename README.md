@@ -6,10 +6,12 @@ Este repositorio contiene la implementación del proyecto PEA-i bajo una arquite
 
 El proyecto opera bajo un modelo de "Memoria como Caché Activa + Auto-Guardado (Write-Through)":
 
-1. **Núcleo C++ (Core):** Aloja las multilistas de `ResearchGroup`, `Researcher` y `Product`. Las consultas y relaciones entre entidades se resuelven recorriendo punteros en memoria RAM a máxima velocidad.
+1. **Núcleo C++ (Core):** Aloja las multilistas de `ResearchGroup`, `Researcher` y `Product`. Las consultas y relaciones entre entidades se resuelven recorriendo punteros en memoria RAM a máxima velocidad. **Toda la persistencia SQL Server vive aquí** (`core_cpp/src/persistence/db_persistence.cpp`, vía ODBC nativo): CRUD por `MERGE` sobre `external_code`, tablas de enlace, validación transaccional de productos, cola de validación, auditoría, conciliación de importaciones y agregados del dashboard.
 2. **Pybind11 (Puente):** Traduce las estructuras de C++ a objetos de Python permitiendo ejecución nativa sin sobrecarga.
-3. **FastAPI (Backend):** Expone las funcionalidades a través de Endpoints HTTP.
+3. **FastAPI (Backend):** Expone las funcionalidades a través de Endpoints HTTP. `backend/app/repository.py` orquesta la RAM y delega **todo** el SQL al núcleo (no usa pyodbc).
 4. **SQL Server (Persistencia):** Guarda la información para que no se pierda al apagar el servidor. Al arrancar, los datos se cargan desde aquí a la memoria. Al hacer un POST/PUT, los datos se actualizan en memoria y en BD al instante.
+
+> **Clave del write-through:** el match con BD se hace por `external_code` (no por id), porque el id en RAM de una entidad nueva no coincide con el `IDENTITY` que le asigna SQL Server. Las entidades creadas por API sin código reciben uno auto-generado (`API-GRP-<id>`, `API-RES-<id>`, `API-PROD-<id>`) para garantizar la idempotencia del MERGE.
 
 > **Excepción documentada — ingesta masiva:** únicamente `GruplacCommitService` (`backend/app/scraper.py`) y `CvCommitService` (`backend/app/cvlac_scraper.py`) escriben directo a SQL Server con pyodbc, sin pasar por la RAM del núcleo. Razón: la importación masiva exige una transacción atómica con rollback y conciliación/dedupe canónico (por `external_code` y nombre normalizado) que el CRUD del núcleo no expone. Tras cada commit, la API recarga la RAM con `repository.load_from_db` y reporta `ram_reloaded` en la respuesta. **Toda otra escritura/lectura pasa por `repository.py`**; la conciliación y el dedupe son responsabilidad exclusiva de estos dos servicios (no duplicar esa lógica en el repositorio). Las importaciones no participan de la pila de deshacer (limitación conocida: se revierten borrando el grupo).
 

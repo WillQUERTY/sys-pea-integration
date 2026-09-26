@@ -37,6 +37,12 @@ Researcher create_researcher(const Researcher& prototype) {
         node->data.id = _nextResearcherId++;
     }
 
+    // Auto-generar external_code para que el MERGE de sync_researcher_to_db
+    // sea idempotente en entidades creadas por API.
+    if (node->data.external_code.empty()) {
+        node->data.external_code = "API-RES-" + std::to_string(node->data.id);
+    }
+
     if (!_researcherHead) {
         _researcherHead = node;
     } else {
@@ -77,6 +83,8 @@ bool update_researcher(int id, const Researcher& updates) {
     node->data.institutional_email     = updates.institutional_email;
     node->data.orcid                   = updates.orcid;
     node->data.highest_education_level = updates.highest_education_level;
+    node->data.education_records       = updates.education_records;
+    node->data.classification_records  = updates.classification_records;
     node->data.status                  = updates.status;
     return true;
 }
