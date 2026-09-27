@@ -589,6 +589,30 @@ def add_product_author(
         ):
             logger.warning("Error registrando autor externo en BD")
 
+def get_product_authors(product_id: int) -> list:
+    """Autores de un producto (internos + externos), leidos de SQL Server.
+
+    Cada item trae researcher_external_code para mapearlo al investigador RAM.
+    """
+    if not _active_connection_string:
+        return []
+    rows = json.loads(abpoxx_pybind.authors_of_product_json(_active_connection_string, product_id))
+    # Mapear external_code -> id RAM del investigador
+    by_code = {r.external_code: r.id for r in abpoxx_pybind.list_researchers()}
+    for row in rows:
+        code = row.get("researcher_external_code") or ""
+        row["researcher_id"] = by_code.get(code)
+    return rows
+
+def remove_product_author(product_id: int, researcher_id: int = 0, external_author_name: str = ""):
+    if not _active_connection_string:
+        raise RuntimeError("No hay conexion activa a la base de datos")
+    ok = abpoxx_pybind.remove_product_author_db(
+        _active_connection_string, product_id, researcher_id, external_author_name
+    )
+    if not ok:
+        raise RuntimeError("No se pudo eliminar el autor en la base de datos")
+
 def link_product_to_group(group_id: int, product_id: int):
     abpoxx_pybind.link_product_to_group(group_id, product_id)
     if _active_connection_string:

@@ -511,6 +511,63 @@ async def validate_product_endpoint(prod_id: int, req: ProductValidationRequest)
         raise HTTPException(status_code=400, detail=str(e))
 
 # -------------------------------------------------------------------
+# Product authorship (ProductAuthor)
+# -------------------------------------------------------------------
+
+class ProductAuthorRequest(BaseModel):
+    researcher_id: Optional[int] = None
+    author_order: int = 1
+    external_author_name: str = ""
+    external_author_identifier: str = ""
+
+@router.get("/products/{prod_id}/authors", tags=["Products"])
+async def get_product_authors_endpoint(prod_id: int):
+    """List authors of a product (internal researchers and external authors)."""
+    try:
+        repository.get_product(prod_id)
+    except KeyError:
+        raise HTTPException(status_code=404, detail="Product not found")
+    return repository.get_product_authors(prod_id)
+
+@router.post("/products/{prod_id}/authors", status_code=201, tags=["Products"])
+async def add_product_author_endpoint(prod_id: int, req: ProductAuthorRequest):
+    """Link a researcher (or register an external author) as author of a product."""
+    try:
+        repository.get_product(prod_id)
+    except KeyError:
+        raise HTTPException(status_code=404, detail="Product not found")
+    if req.researcher_id:
+        try:
+            repository.get_researcher(req.researcher_id)
+        except KeyError:
+            raise HTTPException(status_code=404, detail="Researcher not found")
+    elif not req.external_author_name:
+        raise HTTPException(status_code=400, detail="Debe indicar researcher_id o external_author_name")
+    repository.add_product_author(
+        product_id=prod_id,
+        researcher_id=req.researcher_id or 0,
+        author_order=req.author_order,
+        external_author_name=req.external_author_name,
+        external_author_identifier=req.external_author_identifier,
+    )
+    return {"status": "success", "product_id": prod_id}
+
+@router.delete("/products/{prod_id}/authors", tags=["Products"])
+async def remove_product_author_endpoint(
+    prod_id: int,
+    researcher_id: Optional[int] = Query(None),
+    external_author_name: Optional[str] = Query(None),
+):
+    """Remove an author from a product (by researcher_id or external_author_name)."""
+    if not researcher_id and not external_author_name:
+        raise HTTPException(status_code=400, detail="Debe indicar researcher_id o external_author_name")
+    try:
+        repository.remove_product_author(prod_id, researcher_id or 0, external_author_name or "")
+        return {"status": "success", "product_id": prod_id}
+    except RuntimeError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+# -------------------------------------------------------------------
 # Scraping & Ingestion endpoints (Taller 2 - Requerimiento 7)
 # -------------------------------------------------------------------
 
