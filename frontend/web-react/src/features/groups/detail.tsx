@@ -2,11 +2,11 @@ import { useEffect, useState } from 'react'
 import { useParams, Link } from '@tanstack/react-router'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { toast } from 'sonner'
-import { 
-  ArrowLeft, 
-  Users as GroupIcon, 
-  BookOpen, 
-  UserCircle2, 
+import {
+  ArrowLeft,
+  Users as GroupIcon,
+  BookOpen,
+  UserCircle2,
   Save,
   Building2,
   Trophy,
@@ -14,7 +14,8 @@ import {
   Trash2,
   Plus,
   UserPlus,
-  Pencil
+  Pencil,
+  FileDown
 } from 'lucide-react'
 
 import {
@@ -22,7 +23,8 @@ import {
   linkProject, unlinkProject, linkResearchLine, unlinkResearchLine,
   linkMember, unlinkMember, listResearchers,
   linkProduct, unlinkProduct, listProducts,
-  getGroupMemberships, updateMember
+  getGroupMemberships, updateMember,
+  groupReportPdfUrl
 } from '@/lib/api'
 import type { Researcher } from '@/lib/types'
 import type { Group } from '@/lib/types'
@@ -368,9 +370,20 @@ export function GroupDetail() {
                 </div>
               </div>
               
-              <div className='pb-1 w-full sm:w-auto'>
-                <Button 
-                  onClick={handleSubmit} 
+              <div className='pb-1 w-full sm:w-auto flex flex-col sm:flex-row gap-2'>
+                <Button
+                  variant='outline'
+                  asChild
+                  className='rounded-xl shadow-sm'
+                  title='Informe PDF del grupo con toda su producción (estilo GrupLAC)'
+                >
+                  <a href={groupReportPdfUrl(groupId)} target='_blank' rel='noopener noreferrer'>
+                    <FileDown className='mr-2 h-4 w-4' />
+                    Informe PDF
+                  </a>
+                </Button>
+                <Button
+                  onClick={handleSubmit}
                   disabled={mutation.isPending}
                   className='w-full sm:w-auto rounded-xl shadow-md'
                 >

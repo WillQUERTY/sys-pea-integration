@@ -1,7 +1,9 @@
 from fastapi import APIRouter, HTTPException, Query
+from fastapi.responses import Response
 from pydantic import BaseModel
 from typing import Any, Dict, List, Optional
 from .. import repository
+from .. import reports
 from ..models import Group, Researcher, Product, Project
 
 router = APIRouter()
@@ -308,6 +310,22 @@ async def list_group_research_lines(group_id: int):
         return repository.get_group_research_lines(group_id)
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+
+@router.get("/groups/{group_id}/report/pdf", tags=["Groups"])
+async def get_group_report_pdf(group_id: int):
+    """Informe PDF del grupo (estilo GrupLAC): datos basicos, integrantes,
+    produccion agrupada por familia/subtipo Minciencias y proyectos."""
+    try:
+        pdf = reports.build_group_report_pdf(group_id)
+    except KeyError:
+        raise HTTPException(status_code=404, detail="Grupo no encontrado")
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error generando el informe: {e}")
+    return Response(
+        content=pdf,
+        media_type="application/pdf",
+        headers={"Content-Disposition": f'attachment; filename="informe_grupo_{group_id}.pdf"'},
+    )
 
 @router.post("/groups/{group_id}/products/{product_id}", tags=["Groups"])
 async def link_product_endpoint(group_id: int, product_id: int):

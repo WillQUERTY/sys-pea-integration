@@ -220,6 +220,11 @@ export async function validateProduct(id: number, validationStatus: 'valid' | 'r
   return data
 }
 
+// --- Reports ---
+export function groupReportPdfUrl(id: number) {
+  return `${api.defaults.baseURL}/groups/${id}/report/pdf`
+}
+
 // --- Validation queue (FIFO) ---
 export async function listValidationQueue() {
   const { data } = await api.get<ValidationQueueItem[]>('/system/validation-queue')
