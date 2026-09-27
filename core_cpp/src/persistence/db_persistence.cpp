@@ -504,14 +504,14 @@ bool load_from_db(const std::string& connection_string) {
             g.mission       = (i8 != SQL_NULL_DATA) ? cp1252_to_utf8((char*)miss ) : "";
             g.vision        = (i9 != SQL_NULL_DATA) ? cp1252_to_utf8((char*)vis  ) : "";
             g.declared_creation_date = (i10 != SQL_NULL_DATA) ? cp1252_to_utf8((char*)cdate) : "";
-            g.knowledge_area = (i11 != SQL_NULL_DATA) ? (char*)karea: "";
+            g.knowledge_area = (i11 != SQL_NULL_DATA) ? cp1252_to_utf8((char*)karea) : "";
             g.knowledge_subarea = (i12 != SQL_NULL_DATA) ? cp1252_to_utf8((char*)ksub) : "";
             g.city          = (i13 != SQL_NULL_DATA) ? cp1252_to_utf8((char*)city) : "";
             g.department    = (i14 != SQL_NULL_DATA) ? cp1252_to_utf8((char*)dep ) : "";
             g.website       = (i15 != SQL_NULL_DATA) ? cp1252_to_utf8((char*)web ) : "";
-            g.email         = (i16 != SQL_NULL_DATA) ? (char*)email: "";
+            g.email         = (i16 != SQL_NULL_DATA) ? cp1252_to_utf8((char*)email) : "";
             g.leader_id     = (i17 != SQL_NULL_DATA) ? leader_id   : 0;
-            g.status        = (i18 != SQL_NULL_DATA) ? (char*)status: "active";
+            g.status        = (i18 != SQL_NULL_DATA) ? cp1252_to_utf8((char*)status) : "active";
             create_group(g);
         }
         SQLFreeHandle(SQL_HANDLE_STMT, stmt);
