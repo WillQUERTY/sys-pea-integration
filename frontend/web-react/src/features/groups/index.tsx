@@ -2,8 +2,8 @@ import { useState, useMemo } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { Link } from '@tanstack/react-router'
 import { toast } from 'sonner'
-import { Plus, MoreHorizontal, Pencil, Trash2 } from 'lucide-react'
-import { listGroups, deleteGroup } from '@/lib/api'
+import { Plus, MoreHorizontal, Pencil, Trash2, RotateCcw } from 'lucide-react'
+import { listGroups, deleteGroup, restoreGroup } from '@/lib/api'
 import type { Group } from '@/lib/types'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -41,6 +41,16 @@ export function Groups() {
       queryClient.invalidateQueries({ queryKey: ['undo-stack'] })
     },
     onError: (e) => toast.error(e instanceof Error ? e.message : 'Error al eliminar'),
+  })
+
+  const restoreMutation = useMutation({
+    mutationFn: (id: number) => restoreGroup(id),
+    onSuccess: () => {
+      toast.success('Grupo restaurado')
+      queryClient.invalidateQueries({ queryKey: ['groups'] })
+      queryClient.invalidateQueries({ queryKey: ['undo-stack'] })
+    },
+    onError: (e) => toast.error(e instanceof Error ? e.message : 'Error al restaurar'),
   })
 
   const handleDelete = (id: number) => {
@@ -117,13 +127,20 @@ export function Groups() {
               </Link>
             </DropdownMenuItem>
             <DropdownMenuSeparator />
-            <DropdownMenuItem
-              className='text-destructive focus:text-destructive'
-              onClick={() => handleDelete(g.id!)}
-            >
-              <Trash2 className='mr-2 h-4 w-4' />
-              Eliminar
-            </DropdownMenuItem>
+            {g.status === 'inactive' ? (
+              <DropdownMenuItem onClick={() => restoreMutation.mutate(g.id!)}>
+                <RotateCcw className='mr-2 h-4 w-4' />
+                Restaurar
+              </DropdownMenuItem>
+            ) : (
+              <DropdownMenuItem
+                className='text-destructive focus:text-destructive'
+                onClick={() => handleDelete(g.id!)}
+              >
+                <Trash2 className='mr-2 h-4 w-4' />
+                Eliminar
+              </DropdownMenuItem>
+            )}
           </DropdownMenuContent>
         </DropdownMenu>
       ),

@@ -102,6 +102,18 @@ export async function updateGroup(id: number, group: Partial<Group>) {
   const { data } = await api.put<Group>(`/groups/${id}`, group)
   return data
 }
+export async function restoreGroup(id: number) {
+  const { data } = await api.post(`/groups/${id}/restore`)
+  return data
+}
+export async function restoreResearcher(id: number) {
+  const { data } = await api.post(`/researchers/${id}/restore`)
+  return data
+}
+export async function restoreProduct(id: number) {
+  const { data } = await api.post(`/products/${id}/restore`)
+  return data
+}
 export async function deleteGroup(id: number, soft: boolean = true) {
   const { data } = await api.delete(`/groups/${id}`, { params: { soft } })
   return data

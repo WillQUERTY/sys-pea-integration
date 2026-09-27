@@ -2,8 +2,8 @@ import { useState, useMemo } from 'react'
 import { Link } from '@tanstack/react-router'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { toast } from 'sonner'
-import { Plus, MoreHorizontal, Pencil, Trash2, ClipboardCheck } from 'lucide-react'
-import { listProducts, deleteProduct, enqueueValidation } from '@/lib/api'
+import { Plus, MoreHorizontal, Pencil, Trash2, ClipboardCheck, RotateCcw } from 'lucide-react'
+import { listProducts, deleteProduct, enqueueValidation, restoreProduct } from '@/lib/api'
 import type { Product } from '@/lib/types'
 import { Button } from '@/components/ui/button'
 import {
@@ -36,6 +36,16 @@ const productFilters: DataFilter[] = [
     ],
   },
   {
+    key: 'record_status',
+    label: 'Estado del registro',
+    defaultValue: 'active',
+    options: [
+      { value: 'all', label: 'Todos' },
+      { value: 'active', label: 'Activos' },
+      { value: 'inactive', label: 'Inactivos' },
+    ],
+  },
+  {
     key: 'window',
     label: 'Ventana de observación',
     defaultValue: 'all',
@@ -50,6 +60,11 @@ const productFilters: DataFilter[] = [
 ]
 
 function productFilterFn(p: Product, filters: Record<string, string>): boolean {
+  // Record status filter (activo / inactivo)
+  if (filters.record_status && filters.record_status !== 'all') {
+    if ((p.status ?? 'active') !== filters.record_status) return false
+  }
+
   // Status filter
   if (filters.status && filters.status !== 'all') {
     const st = p.validation_status ?? 'pending'
@@ -85,6 +100,16 @@ export function Products() {
       queryClient.invalidateQueries({ queryKey: ['undo-stack'] })
     },
     onError: (e) => toast.error(e instanceof Error ? e.message : 'Error al eliminar'),
+  })
+
+  const restoreMutation = useMutation({
+    mutationFn: (id: number) => restoreProduct(id),
+    onSuccess: () => {
+      toast.success('Producto restaurado')
+      queryClient.invalidateQueries({ queryKey: ['products'] })
+      queryClient.invalidateQueries({ queryKey: ['undo-stack'] })
+    },
+    onError: (e) => toast.error(e instanceof Error ? e.message : 'Error al restaurar'),
   })
 
   const enqueueMutation = useMutation({
@@ -181,21 +206,25 @@ export function Products() {
               </DropdownMenuItem>
             )}
             <DropdownMenuSeparator />
-            <DropdownMenuItem
-              className='text-destructive focus:text-destructive'
-              onClick={() => handleDelete(p.id!)}
-            >
-              <Trash2 className='mr-2 h-4 w-4' />
-              Eliminar
-            </DropdownMenuItem>
+            {p.status === 'inactive' ? (
+              <DropdownMenuItem onClick={() => restoreMutation.mutate(p.id!)}>
+                <RotateCcw className='mr-2 h-4 w-4' />
+                Restaurar
+              </DropdownMenuItem>
+            ) : (
+              <DropdownMenuItem
+                className='text-destructive focus:text-destructive'
+                onClick={() => handleDelete(p.id!)}
+              >
+                <Trash2 className='mr-2 h-4 w-4' />
+                Eliminar
+              </DropdownMenuItem>
+            )}
           </DropdownMenuContent>
         </DropdownMenu>
       ),
     },
-  ], [delMutation, enqueueMutation])
-
-  // Filters to exclude inactive products
-  const activeProducts = (products.data ?? []).filter(p => p.status !== 'inactive')
+  ], [delMutation, restoreMutation, enqueueMutation])
 
   return (
     <>
@@ -223,7 +252,7 @@ export function Products() {
 
         <DataTable
           columns={columns}
-          data={activeProducts}
+          data={products.data ?? []}
           loading={products.isLoading}
           rowKey={(p) => p.id ?? p.external_code}
           searchPlaceholder='Buscar por título o DOI…'

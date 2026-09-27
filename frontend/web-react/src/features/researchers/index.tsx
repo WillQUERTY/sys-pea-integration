@@ -2,8 +2,8 @@ import { useState, useMemo } from 'react'
 import { Link } from '@tanstack/react-router'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { toast } from 'sonner'
-import { Sparkles, Plus, MoreHorizontal, Pencil, Trash2, DownloadCloud } from 'lucide-react'
-import { enrichAllResearchers, enrichResearcher, importCvlacByCodRh, listResearchers, deleteResearcher } from '@/lib/api'
+import { Sparkles, Plus, MoreHorizontal, Pencil, Trash2, DownloadCloud, RotateCcw } from 'lucide-react'
+import { enrichAllResearchers, enrichResearcher, importCvlacByCodRh, listResearchers, deleteResearcher, restoreResearcher } from '@/lib/api'
 import type { Researcher } from '@/lib/types'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -95,6 +95,16 @@ export function Researchers() {
       queryClient.invalidateQueries({ queryKey: ['undo-stack'] })
     },
     onError: (e) => toast.error(e instanceof Error ? e.message : 'Error al eliminar'),
+  })
+
+  const restoreMutation = useMutation({
+    mutationFn: (id: number) => restoreResearcher(id),
+    onSuccess: () => {
+      toast.success('Investigador restaurado')
+      queryClient.invalidateQueries({ queryKey: ['researchers'] })
+      queryClient.invalidateQueries({ queryKey: ['undo-stack'] })
+    },
+    onError: (e) => toast.error(e instanceof Error ? e.message : 'Error al restaurar'),
   })
 
   const enrichAll = useMutation({
@@ -199,13 +209,20 @@ export function Researchers() {
                 </Link>
               </DropdownMenuItem>
               <DropdownMenuSeparator />
-              <DropdownMenuItem
-                className='text-destructive focus:text-destructive'
-                onClick={() => handleDelete(r.id!)}
-              >
-                <Trash2 className='mr-2 h-4 w-4' />
-                Eliminar
-              </DropdownMenuItem>
+              {r.status === 'inactive' ? (
+                <DropdownMenuItem onClick={() => restoreMutation.mutate(r.id!)}>
+                  <RotateCcw className='mr-2 h-4 w-4' />
+                  Restaurar
+                </DropdownMenuItem>
+              ) : (
+                <DropdownMenuItem
+                  className='text-destructive focus:text-destructive'
+                  onClick={() => handleDelete(r.id!)}
+                >
+                  <Trash2 className='mr-2 h-4 w-4' />
+                  Eliminar
+                </DropdownMenuItem>
+              )}
             </DropdownMenuContent>
           </DropdownMenu>
         </div>
@@ -213,8 +230,8 @@ export function Researchers() {
     },
   ], [delMutation])
 
-  // Filters to exclude inactive researchers
-  const activeResearchers = (researchers.data ?? []).filter(r => r.status !== 'inactive')
+  // Todos los investigadores; el filtro 'Estado' (defecto: Activos) controla la vista
+  const allResearchers = researchers.data ?? []
 
   return (
     <>
@@ -237,11 +254,11 @@ export function Researchers() {
 
         <DataTable
           columns={columns}
-          data={activeResearchers}
+          data={allResearchers}
           loading={researchers.isLoading}
           rowKey={(r) => r.id ?? r.external_code}
           searchPlaceholder='Buscar por nombre o código…'
-          emptyMessage='No hay investigadores activos registrados.'
+          emptyMessage='No hay investigadores que coincidan.'
           defaultPageSize={10}
           filters={[
             {
@@ -251,7 +268,8 @@ export function Researchers() {
                 { value: 'all', label: 'Todos' },
                 { value: 'active', label: 'Activos' },
                 { value: 'inactive', label: 'Inactivos' },
-              ]
+              ],
+              defaultValue: 'active',
             },
             {
               key: 'educational_level',
