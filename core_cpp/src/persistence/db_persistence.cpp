@@ -551,12 +551,39 @@ bool load_from_db(const std::string& connection_string) {
         SQLFreeHandle(SQL_HANDLE_STMT, stmt);
     }
 
-    
+    // Reconstruir la cola FIFO de validacion desde los items 'pending'.
+    // RAM-only (vq_enqueue directo): NO usar vq_enqueue_db aqui porque los
+    // items ya existen en la BD; reinsertarlos los duplicaria.
+    {
+        SQLHSTMT stmt;
+        SQLAllocHandle(SQL_HANDLE_STMT, dbc, &stmt);
+        SQLExecDirect(stmt, (SQLCHAR*)
+            "SELECT product_id, assigned_to, CONVERT(VARCHAR(19), enqueued_at, 120) "
+            "FROM ValidationQueueItem WHERE status = 'pending' ORDER BY enqueued_at, id",
+            SQL_NTS);
+        SQLINTEGER pid;
+        SQLCHAR assigned[128], enq[32];
+        SQLLEN i1, i2, i3;
+        SQLBindCol(stmt, 1, SQL_C_SLONG, &pid, 0, &i1);
+        SQLBindCol(stmt, 2, SQL_C_CHAR, assigned, sizeof(assigned), &i2);
+        SQLBindCol(stmt, 3, SQL_C_CHAR, enq, sizeof(enq), &i3);
+        while (SQL_SUCCEEDED(SQLFetch(stmt))) {
+            ValidationQueueItem item;
+            item.product_id  = (i1 != SQL_NULL_DATA) ? pid : 0;
+            item.assigned_to = (i2 != SQL_NULL_DATA) ? cp1252_to_utf8((char*)assigned) : "";
+            item.enqueued_at = (i3 != SQL_NULL_DATA) ? (char*)enq : "";
+            item.status      = "pending";
+            vq_enqueue(item);
+        }
+        SQLFreeHandle(SQL_HANDLE_STMT, stmt);
+    }
+
     std::cout << "[DB] Reconstructed " << list_groups().size() << " groups, "
               << list_researchers().size() << " researchers, "
               << list_products().size() << " products, "
               << total_members() << " memberships, "
-              << total_product_links() << " product links from SQL Server.\n";
+              << total_product_links() << " product links, "
+              << vq_size() << " pending validations from SQL Server.\n";
     return true;
 }
 
