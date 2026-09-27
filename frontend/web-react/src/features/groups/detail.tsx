@@ -13,15 +13,18 @@ import {
   Info,
   Trash2,
   Plus,
-  UserPlus
+  UserPlus,
+  Pencil
 } from 'lucide-react'
 
 import {
   getGroup, updateGroup, getGroupMembers, getGroupProducts, getGroupProjects, getGroupResearchLines,
   linkProject, unlinkProject, linkResearchLine, unlinkResearchLine,
   linkMember, unlinkMember, listResearchers,
-  linkProduct, unlinkProduct, listProducts
+  linkProduct, unlinkProduct, listProducts,
+  getGroupMemberships, updateMember
 } from '@/lib/api'
+import type { Researcher } from '@/lib/types'
 import type { Group } from '@/lib/types'
 
 import { Header } from '@/components/layout/header'
@@ -210,9 +213,43 @@ export function GroupDetail() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['groups', groupId, 'members'] })
       queryClient.invalidateQueries({ queryKey: ['researcher-groups'] })
+      queryClient.invalidateQueries({ queryKey: ['groups', groupId, 'memberships'] })
       toast.success('Investigador desvinculado del grupo')
     },
     onError: (e) => toast.error(e instanceof Error ? e.message : 'Error al desvincular')
+  })
+
+  // Edición de membresía (rol y fechas sin desvincular)
+  const { data: memberships } = useQuery({
+    queryKey: ['groups', groupId, 'memberships'],
+    queryFn: () => getGroupMemberships(groupId),
+  })
+  const [editingMember, setEditingMember] = useState<Researcher | null>(null)
+  const [editRole, setEditRole] = useState('Investigador')
+  const [editStartDate, setEditStartDate] = useState('')
+  const [editEndDate, setEditEndDate] = useState('')
+
+  const openEditMember = (r: Researcher) => {
+    const ms = (memberships ?? []).find((m) => m.researcher_id === r.id)
+    setEditingMember(r)
+    setEditRole(ms?.role || 'Investigador')
+    setEditStartDate(ms?.start_date || '')
+    setEditEndDate(ms?.end_date || '')
+  }
+
+  const updateMemberMutation = useMutation({
+    mutationFn: () =>
+      updateMember(groupId, editingMember!.id!, {
+        role: editRole,
+        start_date: editStartDate,
+        end_date: editEndDate,
+      }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['groups', groupId, 'memberships'] })
+      toast.success('Membresía actualizada')
+      setEditingMember(null)
+    },
+    onError: (e) => toast.error(e instanceof Error ? e.message : 'Error al actualizar membresía')
   })
 
   const linkProductMutation = useMutation({
@@ -628,6 +665,18 @@ export function GroupDetail() {
                   cell: (r) => <span className='text-muted-foreground font-mono text-xs'>{r.orcid || '-'}</span>
                 },
                 {
+                  key: 'role',
+                  header: 'Rol',
+                  cell: (r) => {
+                    const ms = (memberships ?? []).find((m) => m.researcher_id === r.id)
+                    return ms ? (
+                      <Badge variant="secondary">
+                        {ms.role}{ms.start_date ? ` · ${ms.start_date}` : ''}
+                      </Badge>
+                    ) : '-'
+                  }
+                },
+                {
                   key: 'education',
                   header: 'Formación',
                   cell: (r) => r.highest_education_level ? <Badge variant="outline">{r.highest_education_level}</Badge> : '-'
@@ -636,9 +685,14 @@ export function GroupDetail() {
                   key: 'actions',
                   header: '',
                   cell: (r) => (
-                    <Button variant="ghost" size="icon" onClick={() => unlinkMemberMutation.mutate(r.id!)}>
-                      <Trash2 className="w-4 h-4 text-red-500" />
-                    </Button>
+                    <div className="flex items-center gap-1">
+                      <Button variant="ghost" size="icon" title="Editar membresía" onClick={() => openEditMember(r)}>
+                        <Pencil className="w-4 h-4" />
+                      </Button>
+                      <Button variant="ghost" size="icon" title="Desvincular" onClick={() => unlinkMemberMutation.mutate(r.id!)}>
+                        <Trash2 className="w-4 h-4 text-red-500" />
+                      </Button>
+                    </div>
                   )
                 }
               ]}
@@ -648,6 +702,41 @@ export function GroupDetail() {
               emptyMessage="No hay integrantes vinculados a este grupo."
               searchPlaceholder="Buscar por nombre..."
             />
+
+            {/* Diálogo: editar membresía */}
+            <Dialog open={!!editingMember} onOpenChange={(open) => !open && setEditingMember(null)}>
+              <DialogContent className="sm:max-w-md">
+                <DialogHeader>
+                  <DialogTitle>Editar Membresía</DialogTitle>
+                </DialogHeader>
+                <div className="space-y-4 py-2">
+                  <p className="text-sm text-muted-foreground">
+                    {editingMember ? `${editingMember.first_names} ${editingMember.last_names}` : ''}
+                  </p>
+                  <div className="space-y-2">
+                    <Label>Rol en el grupo</Label>
+                    <Input value={editRole} onChange={e => setEditRole(e.target.value)} placeholder="Ej: Investigador" />
+                  </div>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label>Fecha de vinculación</Label>
+                      <Input value={editStartDate} onChange={e => setEditStartDate(e.target.value)} placeholder="Ej: 2024-01" />
+                    </div>
+                    <div className="space-y-2">
+                      <Label>Fecha de retiro</Label>
+                      <Input value={editEndDate} onChange={e => setEditEndDate(e.target.value)} placeholder="Opcional" />
+                    </div>
+                  </div>
+                  <Button
+                    className="w-full"
+                    onClick={() => updateMemberMutation.mutate()}
+                    disabled={updateMemberMutation.isPending}
+                  >
+                    {updateMemberMutation.isPending ? 'Guardando...' : 'Guardar cambios'}
+                  </Button>
+                </div>
+              </DialogContent>
+            </Dialog>
           </TabsContent>
 
           <TabsContent value="productos" className="focus-visible:outline-none bg-card border border-border/50 rounded-2xl p-6 shadow-sm">

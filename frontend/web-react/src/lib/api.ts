@@ -45,6 +45,27 @@ export async function linkMember(groupId: number, researcherId: number, req: { r
   const { data } = await api.post(`/groups/${groupId}/members/${researcherId}`, req)
   return data
 }
+export interface GroupMembership {
+  researcher_external_code: string
+  role: string
+  start_date: string
+  end_date: string
+  status: string
+  researcher_id: number | null
+  researcher_name: string
+}
+export async function getGroupMemberships(id: number) {
+  const { data } = await api.get<GroupMembership[]>(`/groups/${id}/memberships`)
+  return data
+}
+export async function updateMember(
+  groupId: number,
+  researcherId: number,
+  req: { role?: string; start_date?: string; end_date?: string }
+) {
+  const { data } = await api.put(`/groups/${groupId}/members/${researcherId}`, req)
+  return data
+}
 export async function unlinkMember(groupId: number, researcherId: number) {
   const { data } = await api.delete(`/groups/${groupId}/members/${researcherId}`)
   return data
