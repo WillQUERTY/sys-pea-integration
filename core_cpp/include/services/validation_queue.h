@@ -34,6 +34,9 @@ void                                 vq_clear();
 // "process next"); returns how many were removed.
 int                                  vq_resolve_for_product(int product_id, const std::string& result);
 
+// Remove a specific item by id (cancel without processing); returns false if absent.
+bool                                 vq_remove(int item_id);
+
 } // namespace peai
 
 #endif // PEAI_SERVICES_VALIDATION_QUEUE_H

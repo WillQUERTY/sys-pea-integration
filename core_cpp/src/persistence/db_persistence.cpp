@@ -1285,6 +1285,15 @@ std::string authors_of_product_json(const std::string& connection_string, int pr
     return out;
 }
 
+bool vq_cancel_db(const std::string& conn, int product_id) {
+    SQLHDBC dbc = get_or_create_dbc(conn);
+    if (!dbc) return false;
+    std::string pid = product_db_id(product_id);
+    return exec_sql(dbc,
+        "UPDATE ValidationQueueItem SET status = 'cancelled', processed_at = GETDATE() "
+        "WHERE product_id = " + pid + " AND status = 'pending';");
+}
+
 std::string members_of_group_details_json(const std::string& connection_string, int group_id) {
     SQLHDBC dbc = get_or_create_dbc(connection_string);
     if (!dbc) return "[]";

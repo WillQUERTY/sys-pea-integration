@@ -55,6 +55,7 @@ bool remove_product_author_db(const std::string& conn, int product_id, int resea
 // Memberships of a group with role/dates as JSON.
 std::string members_of_group_details_json(const std::string& conn, int group_id);
 bool vq_enqueue_db(const std::string& conn, int product_id, const std::string& assigned_to);
+bool vq_cancel_db(const std::string& conn, int product_id);
 // ---- Initialization modes (spec section 33.3) ----
 enum class InitMode { Database, File, Empty };
 bool initialize(InitMode mode, const std::string& source = "");

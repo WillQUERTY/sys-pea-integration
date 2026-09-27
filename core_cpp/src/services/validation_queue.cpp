@@ -122,6 +122,25 @@ int vq_resolve_for_product(int product_id, const std::string& result) {
     return resolved;
 }
 
+bool vq_remove(int item_id) {
+    // Physically unlink the node (same reasoning as vq_resolve_for_product).
+    VQNode** link = &_queueFront;
+    while (*link) {
+        VQNode* node = *link;
+        if (node->data.id == item_id) {
+            *link = node->next;
+            delete node;
+            _queueSize--;
+            _queueRear = nullptr;
+            for (VQNode* cur = _queueFront; cur; cur = cur->next)
+                if (!cur->next) _queueRear = cur;
+            return true;
+        }
+        link = &node->next;
+    }
+    return false;
+}
+
 std::vector<ValidationQueueItem> vq_list() {
     std::vector<ValidationQueueItem> result;
     VQNode* cur = _queueFront;
