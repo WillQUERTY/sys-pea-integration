@@ -231,6 +231,12 @@ export async function processNextValidation() {
   )
   return data
 }
+export async function cancelValidationItem(itemId: number) {
+  const { data } = await api.delete<{ status: string; item_id: number }>(
+    `/system/validation-queue/${itemId}`
+  )
+  return data
+}
 export async function enqueueValidation(productId: number) {
   const { data } = await api.post<{ status: string; product_id: number; queue_size: number }>(
     '/system/validation-queue/enqueue',

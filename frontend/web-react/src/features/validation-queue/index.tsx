@@ -1,6 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { toast } from 'sonner'
-import { listValidationQueue, processNextValidation, validateProduct } from '@/lib/api'
+import { listValidationQueue, processNextValidation, validateProduct, cancelValidationItem } from '@/lib/api'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import {
@@ -52,6 +52,15 @@ export function ValidationQueue() {
       invalidate()
     },
     onError: (e) => toast.error(e instanceof Error ? e.message : 'Error al validar'),
+  })
+
+  const cancelItem = useMutation({
+    mutationFn: (itemId: number) => cancelValidationItem(itemId),
+    onSuccess: () => {
+      toast.success('Ítem cancelado y retirado de la cola')
+      invalidate()
+    },
+    onError: (e) => toast.error(e instanceof Error ? e.message : 'Error al cancelar'),
   })
 
   const pending = (queue.data ?? []).filter((i) => i.status === 'pending')
@@ -139,6 +148,15 @@ export function ValidationQueue() {
                             onClick={() => validate.mutate({ id: item.product_id, status: 'rejected' })}
                           >
                             Rechazar
+                          </Button>
+                          <Button
+                            size='sm'
+                            variant='ghost'
+                            disabled={cancelItem.isPending}
+                            onClick={() => cancelItem.mutate(item.id)}
+                            title='Retirar de la cola sin procesar'
+                          >
+                            Cancelar
                           </Button>
                         </>
                       )}
