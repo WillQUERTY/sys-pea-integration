@@ -1,79 +1,177 @@
-# PEA-i (Proyecto Estratégico de Arquitectura) - Taller 2
+# PEA-i — Programa Estadístico de Análisis de Investigación
 
-Este repositorio contiene la implementación del proyecto PEA-i bajo una arquitectura híbrida de alto rendimiento. El sistema cumple estrictamente con el requerimiento de manejar **estructuras de datos en memoria (punteros, nodos y multilistas a mano)** mediante un núcleo de **C++**, mientras expone una interfaz profesional RESTful usando **Python (FastAPI)** y asegura la persistencia en **SQL Server**.
+Sistema de gestión de producción académica de grupos de investigación (Universidad Popular del Cesar — Taller 2, Estructura de Datos, Grupo 5).
 
-## 🏗️ Arquitectura del Sistema
+Arquitectura híbrida: **núcleo C++** con estructuras de datos manuales en memoria (listas, multilistas, pila LIFO de deshacer, cola FIFO de validación), puente **pybind11**, API **FastAPI**, frontend **React** (shadcn + TanStack) y persistencia en **SQL Server**.
 
-El proyecto opera bajo un modelo de "Memoria como Caché Activa + Auto-Guardado (Write-Through)":
+## 🏗️ Arquitectura: "Memoria como Caché Activa + Write-Through"
 
-1. **Núcleo C++ (Core):** Aloja las multilistas de `ResearchGroup`, `Researcher` y `Product`. Las consultas y relaciones entre entidades se resuelven recorriendo punteros en memoria RAM a máxima velocidad. **Toda la persistencia SQL Server vive aquí** (`core_cpp/src/persistence/db_persistence.cpp`, vía ODBC nativo): CRUD por `MERGE` sobre `external_code`, tablas de enlace, validación transaccional de productos, cola de validación, auditoría, conciliación de importaciones y agregados del dashboard.
-2. **Pybind11 (Puente):** Traduce las estructuras de C++ a objetos de Python permitiendo ejecución nativa sin sobrecarga.
-3. **FastAPI (Backend):** Expone las funcionalidades a través de Endpoints HTTP. `backend/app/repository.py` orquesta la RAM y delega **todo** el SQL al núcleo (no usa pyodbc).
-4. **SQL Server (Persistencia):** Guarda la información para que no se pierda al apagar el servidor. Al arrancar, los datos se cargan desde aquí a la memoria. Al hacer un POST/PUT, los datos se actualizan en memoria y en BD al instante.
+1. **Core C++** (`core_cpp/`): las entidades viven en RAM como nodos enlazados a mano; las consultas y relaciones se resuelven recorriendo punteros. **Todo el SQL vive aquí** (`src/persistence/db_persistence.cpp`, ODBC nativo): CRUD por `MERGE` sobre `external_code`, enlaces, cola de validación, pila de deshacer, auditoría y agregados del dashboard.
+2. **pybind11** (`core_cpp/pybind/`): expone el core a Python como `abpoxx_pybind`.
+3. **FastAPI** (`backend/`): orquesta la RAM y delega todo el SQL al core (`app/repository.py` no usa pyodbc).
+4. **React** (`frontend/web-react/`): SPA de gestión.
+5. **SQL Server**: persistencia; al arrancar el backend se carga a RAM y cada escritura se replica al instante (write-through).
 
-> **Clave del write-through:** el match con BD se hace por `external_code` (no por id), porque el id en RAM de una entidad nueva no coincide con el `IDENTITY` que le asigna SQL Server. Las entidades creadas por API sin código reciben uno auto-generado (`API-GRP-<id>`, `API-RES-<id>`, `API-PROD-<id>`) para garantizar la idempotencia del MERGE.
+> **Clave del write-through:** el match con BD es por `external_code` (no por id). Las entidades creadas por API sin código reciben uno auto-generado (`API-GRP-<id>`, etc.) para que el `MERGE` sea idempotente.
 
-> **Excepción documentada — ingesta masiva:** únicamente `GruplacCommitService` (`backend/app/scraper.py`) y `CvCommitService` (`backend/app/cvlac_scraper.py`) escriben directo a SQL Server con pyodbc, sin pasar por la RAM del núcleo. Razón: la importación masiva exige una transacción atómica con rollback y conciliación/dedupe canónico (por `external_code` y nombre normalizado) que el CRUD del núcleo no expone. Tras cada commit, la API recarga la RAM con `repository.load_from_db` y reporta `ram_reloaded` en la respuesta. **Toda otra escritura/lectura pasa por `repository.py`**; la conciliación y el dedupe son responsabilidad exclusiva de estos dos servicios (no duplicar esa lógica en el repositorio). Las importaciones no participan de la pila de deshacer (limitación conocida: se revierten borrando el grupo).
-
----
-
-## 🛠️ Requisitos Previos
-
-- **Sistema Operativo:** Windows 10/11
-- **Compilador:** Visual Studio 2026 (MSVC) con extensiones de CMake.
-- **Python:** 3.12 (con virtual environment configurado).
-- **Base de Datos:** SQL Server (Instancia local `.` o `localhost`).
+> **Excepción documentada — ingesta masiva:** solo `GruplacCommitService` (`backend/app/scraper.py`) y `CvCommitService` (`backend/app/cvlac_scraper.py`) escriben directo a SQL Server con pyodbc (transacción atómica + conciliación/dedupe canónico). Tras cada commit, la API recarga la RAM desde la BD. Las importaciones no participan de la pila de deshacer (se revierten borrando el grupo).
 
 ---
 
-## 🚀 Guía de Instalación y Ejecución
+## ✅ Requisitos previos
 
-### 1. Configuración de Base de Datos
-Asegúrate de tener SQL Server corriendo e inicia sesión en SSMS (SQL Server Management Studio) o usa SQLCMD para crear la base de datos `peai`:
-```sql
-CREATE DATABASE peai;
-```
-*(No necesitas crear las tablas manualmente, el motor de C++ creará el esquema automáticamente la primera vez que se ejecute).*
+| Herramienta | Versión / notas |
+|---|---|
+| Windows | 10/11 |
+| Visual Studio | 2022/2026 con workload **C++** (trae CMake y MSVC). Ruta típica de cmake: `C:\Program Files\Microsoft Visual Studio\18\Community\Common7\IDE\CommonExtensions\Microsoft\CMake\CMake\bin\cmake.exe` |
+| SQL Server | Cualquier edición local (Express sirve) + **ODBC Driver 17 for SQL Server** |
+| sqlcmd | Client SDK 170/180 (incluido con SQL Server). Con driver 18 usar flags `-C -I` (ver abajo) |
+| Python | 3.12 (el `.pyd` compilado es para cp312) |
+| Node.js | 20+ (para el frontend; `npm` incluido) |
 
-### 2. Compilación del Núcleo C++
-Debes compilar el motor C++ y generar el archivo binario (`.pyd`) que usará Python.
-Abre PowerShell y ejecuta:
+---
+
+## 🚀 Instalación desde cero
+
+### 1. Base de datos
+
+Desde `database/`, con el servidor de backend **detenido** (libera conexiones ODBC):
 
 ```powershell
-cd c:\repos\sys_pea_integration\core_cpp\build
-# Usar el CMake incluido en Visual Studio para compilar
+cd database
+sqlcmd -S localhost -E -C -b -i recreate_database.sql      # DROP + CREATE peai
+sqlcmd -S localhost -E -C -I -b -d peai -i init_schema.sql # tablas + semillas Minciencias
+```
+
+- `-E`: autenticación Windows. `-C`: confiar en el certificado del servidor (driver 18 lo exige). `-I`: `QUOTED_IDENTIFIER ON` (requerido por los índices filtrados de `ProductAuthor`).
+- Esto deja **5 familias y 56 subtipos Minciencias** sembrados y las tablas de datos vacías.
+- Si la BD ya existe y solo faltan los subtipos nuevos (no quieres borrar): `../backend/venv/Scripts/python.exe seed_new_subtypes.py`.
+
+### 2. Core C++ (compilar el puente pybind11)
+
+```powershell
+cd core_cpp
 $cmake = "C:\Program Files\Microsoft Visual Studio\18\Community\Common7\IDE\CommonExtensions\Microsoft\CMake\CMake\bin\cmake.exe"
-& $cmake --build . --config Release
-
-# Copiar el puente de Pybind al entorno de Python
-Copy-Item .\Release\abpoxx_pybind.cp312-win_amd64.pyd -Destination ..\..\backend\app\abpoxx_pybind.pyd -Force
+& $cmake -S . -B build2
+& $cmake --build build2 --config Release --target abpoxx_pybind
+& $cmake\..\ctest.exe --test-dir build2 -C Release --output-on-failure   # tests del core
 ```
 
-### 3. Iniciar el Backend (FastAPI)
-Una vez el archivo `.pyd` está en la carpeta de la API, encendemos el servidor.
-Abre una nueva terminal en la raíz del backend:
+Copiar el módulo al backend (ver nota "pyd ocupado" en Solución de problemas):
 
 ```powershell
-cd c:\repos\sys_pea_integration\backend
-# Activar el entorno virtual (si no está activo)
-.\venv\Scripts\Activate.ps1
+copy build2\Release\abpoxx_pybind.cp312-win_amd64.pyd ..\backend\app\abpoxx_pybind.pyd
+```
 
-# Iniciar Uvicorn
+### 3. Backend (FastAPI)
+
+```powershell
+cd backend
+python -m venv venv                    # solo la primera vez
+.\venv\Scripts\Activate.ps1
+pip install -r requirements.txt        # fastapi, uvicorn, pyodbc, reportlab, ...
 python -m uvicorn app.main:app --host 127.0.0.1 --port 8000 --reload
 ```
 
+Al arrancar, la RAM se carga desde la BD automáticamente. Si necesitas recargarla a mano (p. ej. tras una ingesta por script):
+
+```powershell
+curl -X POST http://127.0.0.1:8000/api/v1/system/initialize/database `
+  -H "Content-Type: application/json" `
+  -d '{"connection_string": "Driver={ODBC Driver 17 for SQL Server};Server=localhost;Database=peai;Trusted_Connection=yes;"}'
+```
+
+API y Swagger UI: **http://127.0.0.1:8000/docs**
+
+### 4. Frontend (React)
+
+```powershell
+cd frontend\web-react
+npm install                            # solo la primera vez
+npm run dev                            # http://localhost:5173
+```
+
+Por defecto habla con `http://localhost:8000/api/v1`. Para otro host/puerto, crea `frontend/web-react/.env`:
+
+```env
+VITE_API_URL=http://localhost:8000/api/v1
+```
+
+Build de producción: `npm run build` (tsc + vite, sale en `dist/`).
+
 ---
 
-## 🔌 Uso de la API y Documentación
+## 🧪 Verificación rápida (smoke test)
 
-Una vez el servidor esté corriendo, abre tu navegador en:
-👉 **[http://127.0.0.1:8000/docs](http://127.0.0.1:8000/docs)**
+Con backend y frontend arriba:
 
-Verás la interfaz de Swagger UI (OpenAPI) donde puedes probar todos los endpoints interactivos.
+1. `GET /api/v1/dashboard/stats` → responde con conteos (0 en BD limpia).
+2. Crear un grupo desde la UI (o `POST /api/v1/groups`), editarlo, validarlo.
+3. Perfil del grupo → botón **"Informe PDF"** → descarga el PDF estilo GrupLAC.
+4. Importar un GrupLAC desde la UI, procesar la **cola de validación** (FIFO) y probar **deshacer** (pila LIFO) en Sistema.
 
-### Flujo de Trabajo (Importante)
-Como el núcleo opera en memoria, antes de consultar datos debes cargar el contexto:
+---
 
-1. **Inicializar la Memoria:** Llama al endpoint `POST /api/v1/system/initialize/database` enviando el `connection_string` (ej. `"Driver={ODBC Driver 17 for SQL Server};Server=localhost;Database=peai;Trusted_Connection=yes;"`). Esto traerá todo de SQL a la RAM.
-2. **Operar Libremente:** Usa los métodos `GET` y `POST` de Grupos, Investigadores y Productos de forma instantánea. El *Write-Through* actualizará automáticamente la base de datos de fondo.
-3. **Guardado Manual (Opcional):** Si deseas forzar un volcado completo de la memoria hacia la base de datos, puedes llamar a `POST /api/v1/system/save/database`.
+## 📥 Cargar datos de ejemplo (grupo AITICE)
+
+Dos vías idempotentes (concilian por `external_code` y dejan los productos en la cola como `pending`):
+
+**A. Desde el HTML local** (`docs/AITICE-PAGE.html`, no depende de Scienti):
+
+```powershell
+cd backend
+.\venv\Scripts\python.exe ..\database\reimport_aitice.py
+```
+
+**B. Desde la URL en vivo de Scienti** (como lo haría un usuario):
+
+```powershell
+cd backend
+.\venv\Scripts\python.exe -m app.scraper "<URL_GRUPLAC>" --preview     # solo vista previa
+.\venv\Scripts\python.exe -m app.scraper "<URL_GRUPLAC>" --enrich-cvlac # importa y enriquece integrantes
+```
+
+El scraper extrae del GrupLAC: datos del grupo, líneas, integrantes, proyectos y toda la producción clasificada por familia/subtipo Minciencias (artículos, libros, capítulos, software, eventos, tutorías —doctorado/maestría/pregrado/monografía—, apropiación social, jurados, etc.). Tras importar por script, recarga la RAM del backend (paso 3) si el servidor estaba corriendo.
+
+---
+
+## 🧹 Limpieza / reset total
+
+1. Detener el backend (libera la BD y el `.pyd`).
+2. Ejecutar de nuevo los dos comandos de **1. Base de datos** (`recreate_database.sql` + `init_schema.sql`).
+3. Arrancar el backend: arranca con RAM vacía, consistente con la BD limpia.
+
+---
+
+## 🩹 Solución de problemas
+
+| Síntoma | Causa | Solución |
+|---|---|---|
+| `SSL Provider: The certificate chain was issued by an authority that is not trusted` | sqlcmd con ODBC Driver 18 | Agregar flag `-C` (trust server certificate) |
+| `CREATE INDEX failed ... QUOTED_IDENTIFIER` al correr `init_schema.sql` | sqlcmd apaga QUOTED_IDENTIFIER por defecto; los índices filtrados de `ProductAuthor` lo requieren | Agregar flag `-I` |
+| `Device or resource busy` al copiar `abpoxx_pybind.pyd` | Un proceso python (uvicorn) lo tiene cargado | Detener el servidor, **o** renombrar primero (`ren abpoxx_pybind.pyd abpoxx_pybind.old.pyd`) y copiar encima; borrar el `.old` cuando el proceso viejo muera |
+| `[Error de Codificación]` en un campo | (Corregido en `db_persistence.cpp`) el core devolvía cp1252 sin transcodificar a UTF-8 | Recompilar el core y actualizar el `.pyd` del backend; los datos en BD no se dañan |
+| curl con tildes/ñ corrompe el JSON | Git Bash re-codifica `-d` | Escribir el JSON a un archivo y usar `--data-binary @archivo.json` |
+| Puerto 8000 ocupado / cambios de Python no surten efecto | uvicorn sin `--reload` o proceso zombie | Matar el proceso del puerto y reiniciar (el `--reload` **no** recarga el `.pyd`: para cambios del core hay que reiniciar el servidor) |
+
+---
+
+## 📁 Estructura del repositorio
+
+```
+core_cpp/            Núcleo C++: entidades, servicios, persistencia ODBC, pybind11
+  build2/            Build de CMake (Release -> abpoxx_pybind.cp312-win_amd64.pyd)
+backend/
+  app/main.py        FastAPI (arranque, carga RAM desde BD)
+  app/repository.py  Orquestación RAM <-> core (sin SQL directo)
+  app/scraper.py     Importador GrupLAC (excepción: pyodbc directo)
+  app/reports.py     Informe PDF estilo GrupLAC (ReportLab)
+  app/abpoxx_pybind.pyd   <- copia del módulo compilado (regenerar tras cada build del core)
+frontend/web-react/  SPA React (shadcn + TanStack Query/Router)
+database/
+  init_schema.sql    Tablas + semillas Minciencias (56 subtipos, 5 familias)
+  recreate_database.sql  DROP + CREATE de la BD peai
+  seed_new_subtypes.py   Semillas idempotentes para BD existente
+  reimport_aitice.py     Importación de ejemplo desde docs/AITICE-PAGE.html
+docs/AITICE-PAGE.html    Página GrupLAC de ejemplo (fixture de pruebas del scraper)
+```
