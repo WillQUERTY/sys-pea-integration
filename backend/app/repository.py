@@ -571,6 +571,27 @@ def add_member_to_group(group_id: int, researcher_id: int, role: str = "Investig
     if _active_connection_string:
         abpoxx_pybind.sync_membership_details_to_db(_active_connection_string, group_id, researcher_id, role, start_date, end_date)
 
+def get_group_members_detailed(group_id: int) -> list:
+    """Membresias del grupo con rol y fechas (leido de SQL Server)."""
+    if not _active_connection_string:
+        return []
+    rows = json.loads(abpoxx_pybind.members_of_group_details_json(_active_connection_string, group_id))
+    by_code = {r.external_code: r for r in abpoxx_pybind.list_researchers()}
+    for row in rows:
+        r = by_code.get(row.get("researcher_external_code") or "")
+        row["researcher_id"] = r.id if r else None
+        row["researcher_name"] = f"{r.first_names} {r.last_names}".strip() if r else ""
+    return rows
+
+def update_member(group_id: int, researcher_id: int, role: str, start_date: str = "", end_date: str = ""):
+    """Actualiza rol y fechas de una membresia existente (upsert en BD)."""
+    members = abpoxx_pybind.members_of_group(group_id)
+    if researcher_id not in members:
+        raise KeyError(f"Researcher {researcher_id} is not a member of group {group_id}")
+    if _active_connection_string:
+        if not abpoxx_pybind.sync_membership_details_to_db(_active_connection_string, group_id, researcher_id, role, start_date, end_date):
+            raise RuntimeError("No se pudo actualizar la membresia en la base de datos")
+
 def add_product_author(
     product_id: int,
     researcher_id: int = 0,

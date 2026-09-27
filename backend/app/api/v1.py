@@ -231,6 +231,26 @@ async def add_member_endpoint(group_id: int, researcher_id: int, req: AddMemberR
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
+@router.get("/groups/{group_id}/memberships", tags=["Groups"])
+async def list_group_memberships(group_id: int):
+    """Memberships of a group with role and dates (read from SQL Server)."""
+    try:
+        repository.get_group(group_id)
+    except KeyError:
+        raise HTTPException(status_code=404, detail="Group not found")
+    return repository.get_group_members_detailed(group_id)
+
+@router.put("/groups/{group_id}/members/{researcher_id}", tags=["Groups"])
+async def update_member_endpoint(group_id: int, researcher_id: int, req: AddMemberRequest):
+    """Update role and dates of an existing membership (keeps history, no unlink)."""
+    try:
+        repository.update_member(group_id, researcher_id, req.role or "Investigador", req.start_date or "", req.end_date or "")
+        return {"status": "success", "group_id": group_id, "researcher_id": researcher_id}
+    except KeyError as e:
+        raise HTTPException(status_code=404, detail=str(e))
+    except RuntimeError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
 @router.delete("/groups/{group_id}/members/{researcher_id}", tags=["Groups"])
 async def remove_member_endpoint(group_id: int, researcher_id: int):
     """Unlink a researcher from a group (Multilista write-through)."""
