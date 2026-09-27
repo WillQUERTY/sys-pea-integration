@@ -4,7 +4,7 @@ from pydantic import BaseModel
 from typing import Any, Dict, List, Optional
 from .. import repository
 from .. import reports
-from ..models import Group, Researcher, Product, Project
+from ..models import Group, Researcher, Product, Project, PagedResponse
 
 router = APIRouter()
 
@@ -177,14 +177,25 @@ class AddMemberRequest(BaseModel):
     start_date: Optional[str] = ""
     end_date: Optional[str] = ""
 
-@router.get("/groups", response_model=List[Group], tags=["Groups"])
-async def list_groups_endpoint(skip: int = 0, limit: int = 100, search: Optional[str] = None):
-    """Return all groups stored in the RAM repository with pagination and search."""
+@router.get("/groups", response_model=PagedResponse[Group], tags=["Groups"])
+async def list_groups_endpoint(
+    skip: int = Query(0, ge=0),
+    limit: int = Query(100, ge=1, le=10000),
+    search: Optional[str] = None,
+    status: Optional[str] = None,
+    classification: Optional[str] = None,
+):
+    """Return groups stored in the RAM repository with server-side pagination, search and filters."""
     all_groups = repository.list_groups()
     if search:
         s = search.lower()
         all_groups = [g for g in all_groups if (s in g.name.lower()) or (g.acronym and s in g.acronym.lower()) or (s in g.external_code.lower())]
-    return all_groups[skip : skip + limit]
+    if status and status != 'all':
+        all_groups = [g for g in all_groups if g.status == status]
+    if classification and classification != 'all':
+        all_groups = [g for g in all_groups if g.classification == classification]
+    total = len(all_groups)
+    return PagedResponse(items=all_groups[skip : skip + limit], total=total, skip=skip, limit=limit)
 
 @router.get("/groups/{group_id}", response_model=Group, tags=["Groups"])
 async def get_group_endpoint(group_id: int):
@@ -388,16 +399,16 @@ async def unlink_research_line_endpoint(group_id: int, line_name: str):
 # Researcher Endpoints (CRUD & Cross-Queries)
 # -------------------------------------------------------------------
 
-@router.get("/researchers", response_model=List[Researcher], tags=["Researchers"])
+@router.get("/researchers", response_model=PagedResponse[Researcher], tags=["Researchers"])
 async def list_researchers_endpoint(
-    skip: int = 0, 
-    limit: int = 500, 
-    search: Optional[str] = None, 
+    skip: int = Query(0, ge=0),
+    limit: int = Query(500, ge=1, le=10000),
+    search: Optional[str] = None,
     status: Optional[str] = None,
     educational_level: Optional[str] = None,
     category: Optional[str] = None
 ):
-    """Return researchers with pagination, search and filtering."""
+    """Return researchers with server-side pagination, search, filtering and total count."""
     all_res = repository.list_researchers()
     if status and status != 'all':
         all_res = [r for r in all_res if r.status == status]
@@ -408,7 +419,8 @@ async def list_researchers_endpoint(
     if search:
         s = search.lower()
         all_res = [r for r in all_res if s in r.first_names.lower() or s in r.last_names.lower() or s in r.external_code.lower()]
-    return all_res[skip : skip + limit]
+    total = len(all_res)
+    return PagedResponse(items=all_res[skip : skip + limit], total=total, skip=skip, limit=limit)
 
 @router.get("/researchers/{res_id}", response_model=Researcher, tags=["Researchers"])
 async def get_researcher_endpoint(res_id: int):
@@ -484,12 +496,13 @@ class ProductValidationRequest(BaseModel):
     quality_category_id: Optional[int] = None
     reason: Optional[str] = "Validación técnica manual"
 
-@router.get("/products", response_model=List[Product], tags=["Products"])
+@router.get("/products", response_model=PagedResponse[Product], tags=["Products"])
 async def list_products_endpoint(
-    skip: int = 0,
-    limit: int = 100,
+    skip: int = Query(0, ge=0),
+    limit: int = Query(100, ge=1, le=10000),
     search: Optional[str] = None,
     validation_status: Optional[str] = None,
+    status: Optional[str] = Query(None, description="Estado del registro (active/inactive), no confundir con validation_status"),
     family_id: Optional[int] = None,
     group_id: Optional[int] = None,
     start_year: Optional[int] = Query(None, description="Año inicial para Ventana de Observación (Requerimiento 10)"),
@@ -497,7 +510,8 @@ async def list_products_endpoint(
     window_years: Optional[int] = Query(None, description="Ventana de observación en años hacia atrás (ej. 2 o 5 años)")
 ):
     """
-    List products with complete filtering and dynamic Observation Window (Requerimiento 10).
+    List products with complete filtering, dynamic Observation Window (Requerimiento 10)
+    and server-side pagination with total count.
     """
     import datetime
     cur_year = datetime.datetime.now().year
@@ -508,16 +522,17 @@ async def list_products_endpoint(
         effective_start = cur_year - window_years
         effective_end = cur_year
 
-    return repository.filter_products(
+    items = repository.filter_products(
         start_year=effective_start,
         end_year=effective_end,
         family_id=family_id,
         validation_status=validation_status,
+        status=status,
         group_id=group_id,
         search=search,
-        skip=skip,
-        limit=limit
     )
+    total = len(items)
+    return PagedResponse(items=items[skip : skip + limit], total=total, skip=skip, limit=limit)
 
 @router.get("/products/catalogs", tags=["Products"])
 async def get_product_catalogs_endpoint():

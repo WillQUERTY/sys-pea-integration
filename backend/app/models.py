@@ -1,5 +1,14 @@
 from pydantic import BaseModel
-from typing import List, Optional
+from typing import Generic, List, Optional, TypeVar
+
+T = TypeVar("T")
+
+class PagedResponse(BaseModel, Generic[T]):
+    """Envelope paginado estándar para los endpoints de listado."""
+    items: List[T]
+    total: int
+    skip: int
+    limit: int
 
 class ProductFamily(BaseModel):
     id: Optional[int] = None

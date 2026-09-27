@@ -92,11 +92,20 @@ def run_tests():
     print(f"\n--- Prueba ENDPOINTS HTTP FASTAPI ---")
     client = TestClient(app)
     
-    # GET /api/v1/products con filtro de ventana de observación
+    # GET /api/v1/products con filtro de ventana de observación (respuesta paginada)
     resp = client.get("/api/v1/products?start_year=2024&end_year=2026&limit=5")
     assert resp.status_code == 200, f"Error HTTP {resp.status_code}"
-    data = resp.json()
-    print(f"  [OK] GET /api/v1/products (Ventana 2024-2026): {len(data)} ítems")
+    page = resp.json()
+    assert page["total"] > 0, "Debe haber productos en la ventana con total > 0"
+    assert len(page["items"]) <= 5 and page["limit"] == 5, "El envelope debe paginar con items/total/limit"
+    print(f"  [OK] GET /api/v1/products (Ventana 2024-2026): {len(page['items'])} ítems de {page['total']}")
+
+    # GET /api/v1/groups con envelope paginado
+    resp_groups = client.get("/api/v1/groups?limit=3")
+    assert resp_groups.status_code == 200, f"Error HTTP {resp_groups.status_code}"
+    groups_page = resp_groups.json()
+    assert groups_page["total"] >= len(groups_page["items"]), "total debe ser >= items de la página"
+    print(f"  [OK] GET /api/v1/groups: {len(groups_page['items'])} ítems de {groups_page['total']}")
 
     # PATCH /api/v1/products/{id}/validation
     val_payload = {
