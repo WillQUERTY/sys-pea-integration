@@ -198,6 +198,33 @@ def delete_group(group_id: int, soft: bool = True, skip_undo: bool = False) -> b
                 raise RuntimeError(f"Error en hard-delete del grupo {group_id}")
     return True
 
+def restore_group(group_id: int) -> bool:
+    """Reactiva un grupo inactivo (inverso del soft-delete)."""
+    prev = get_group(group_id)
+    undo_push("RESTORE", "Group", group_id, prev.model_dump_json())
+    proto = abpoxx_pybind.Group()
+    proto.external_code = sanitize_str(prev.external_code)
+    proto.name = sanitize_str(prev.name)
+    proto.acronym = sanitize_str(prev.acronym)
+    proto.institution = sanitize_str(prev.institution)
+    proto.classification = sanitize_str(prev.classification)
+    proto.description = sanitize_str(prev.description)
+    proto.mission = sanitize_str(prev.mission)
+    proto.vision = sanitize_str(prev.vision)
+    proto.declared_creation_date = sanitize_str(prev.declared_creation_date)
+    proto.knowledge_area = sanitize_str(prev.knowledge_area)
+    proto.knowledge_subarea = sanitize_str(prev.knowledge_subarea)
+    proto.city = sanitize_str(prev.city)
+    proto.department = sanitize_str(prev.department)
+    proto.website = sanitize_str(prev.website)
+    proto.email = sanitize_str(prev.email)
+    proto.leader_id = prev.leader_id or 0
+    proto.status = "active"
+    abpoxx_pybind.update_group(group_id, proto)
+    if _active_connection_string:
+        abpoxx_pybind.sync_group_to_db(_active_connection_string, group_id)
+    return True
+
 # -------------------------------------------------------------------
 # Researcher CRUD
 # -------------------------------------------------------------------
@@ -330,6 +357,29 @@ def delete_researcher(res_id: int, soft: bool = True, skip_undo: bool = False) -
         if _active_connection_string:
             if not abpoxx_pybind.delete_researcher_from_db(_active_connection_string, res_id, True):
                 raise RuntimeError(f"Error en hard-delete del investigador {res_id}")
+    return True
+
+def restore_researcher(res_id: int) -> bool:
+    """Reactiva un investigador inactivo (inverso del soft-delete)."""
+    prev = get_researcher(res_id)
+    undo_push("RESTORE", "Researcher", res_id, prev.model_dump_json())
+    proto = abpoxx_pybind.Researcher()
+    proto.external_code = sanitize_str(prev.external_code)
+    proto.identification_type = sanitize_str(prev.identification_type)
+    proto.identification_number = sanitize_str(prev.identification_number)
+    proto.first_names = sanitize_str(prev.first_names)
+    proto.last_names = sanitize_str(prev.last_names)
+    proto.nationality = sanitize_str(prev.nationality)
+    proto.country_of_residence = sanitize_str(prev.country_of_residence)
+    proto.institutional_email = sanitize_str(prev.institutional_email)
+    proto.orcid = sanitize_str(prev.orcid)
+    proto.highest_education_level = sanitize_str(prev.highest_education_level)
+    proto.education_records = sanitize_str(prev.education_records)
+    proto.classification_records = sanitize_str(prev.classification_records)
+    proto.status = "active"
+    abpoxx_pybind.update_researcher(res_id, proto)
+    if _active_connection_string:
+        abpoxx_pybind.sync_researcher_to_db(_active_connection_string, res_id)
     return True
 
 # -------------------------------------------------------------------
@@ -502,6 +552,35 @@ def delete_product(prod_id: int, soft: bool = True, skip_undo: bool = False) -> 
         if _active_connection_string:
             if not abpoxx_pybind.delete_product_from_db(_active_connection_string, prod_id, True):
                 raise RuntimeError(f"Error en hard-delete del producto {prod_id}")
+    return True
+
+def restore_product(prod_id: int) -> bool:
+    """Reactiva un producto inactivo (inverso del soft-delete)."""
+    prev = get_product(prod_id)
+    undo_push("RESTORE", "Product", prod_id, prev.model_dump_json())
+    proto = abpoxx_pybind.Product()
+    proto.external_code = sanitize_str(prev.external_code)
+    proto.title = sanitize_str(prev.title)
+    proto.description = sanitize_str(prev.description)
+    proto.family_id = prev.family_id or 0
+    proto.subtype_id = prev.subtype_id or 0
+    proto.quality_category_id = prev.quality_category_id or 0
+    proto.obtained_date = sanitize_str(prev.obtained_date)
+    proto.publication_date = sanitize_str(prev.publication_date)
+    proto.validation_status = sanitize_str(prev.validation_status)
+    proto.language = sanitize_str(prev.language)
+    proto.country = sanitize_str(prev.country)
+    proto.doi = sanitize_str(prev.doi)
+    proto.isbn = sanitize_str(prev.isbn)
+    proto.issn = sanitize_str(prev.issn)
+    proto.url = sanitize_str(prev.url)
+    proto.evidence = sanitize_str(prev.evidence)
+    proto.specialized_attributes = sanitize_str(prev.specialized_attributes)
+    proto.year = prev.year or 0
+    proto.status = "active"
+    abpoxx_pybind.update_product(prod_id, proto)
+    if _active_connection_string:
+        abpoxx_pybind.sync_product_to_db(_active_connection_string, prod_id)
     return True
 
 def set_product_validation(
@@ -779,7 +858,7 @@ def undo_perform() -> Dict[str, Any]:
             elif e_type == "Group":
                 update_group(e_id, Group(**data), skip_undo=True)
 
-        elif op_type == "DELETE":
+        elif op_type in ("DELETE", "RESTORE"):
             data = json.loads(prev_state)
             if e_type == "Product":
                 update_product(e_id, Product(**data), skip_undo=True)

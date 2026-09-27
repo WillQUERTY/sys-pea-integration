@@ -207,6 +207,15 @@ async def delete_group_endpoint(group_id: int, soft: bool = Query(True, descript
     except KeyError:
         raise HTTPException(status_code=404, detail="Group not found")
 
+@router.post("/groups/{group_id}/restore", tags=["Groups"])
+async def restore_group_endpoint(group_id: int):
+    """Reactivate a soft-deleted group (Requerimiento 9, inverso)."""
+    try:
+        repository.restore_group(group_id)
+        return {"status": "success", "group_id": group_id}
+    except KeyError:
+        raise HTTPException(status_code=404, detail="Group not found")
+
 @router.get("/groups/{group_id}/members", response_model=List[Researcher], tags=["Groups"])
 async def list_group_members(group_id: int):
     """Retrieve all researcher members belonging to this group (Multilista)."""
@@ -406,6 +415,15 @@ async def delete_researcher_endpoint(res_id: int, soft: bool = Query(True, descr
     except KeyError:
         raise HTTPException(status_code=404, detail="Researcher not found")
 
+@router.post("/researchers/{res_id}/restore", tags=["Researchers"])
+async def restore_researcher_endpoint(res_id: int):
+    """Reactivate a soft-deleted researcher (Requerimiento 9, inverso)."""
+    try:
+        repository.restore_researcher(res_id)
+        return {"status": "success", "researcher_id": res_id}
+    except KeyError:
+        raise HTTPException(status_code=404, detail="Researcher not found")
+
 @router.get("/researchers/{res_id}/groups", response_model=List[Group], tags=["Researchers"])
 async def list_researcher_groups(res_id: int):
     """Retrieve all groups where this researcher is a member."""
@@ -509,6 +527,15 @@ async def delete_product_endpoint(prod_id: int, soft: bool = Query(True, descrip
     try:
         repository.delete_product(prod_id, soft=soft)
         return {"status": "success", "product_id": prod_id, "soft_delete": soft}
+    except KeyError:
+        raise HTTPException(status_code=404, detail="Product not found")
+
+@router.post("/products/{prod_id}/restore", tags=["Products"])
+async def restore_product_endpoint(prod_id: int):
+    """Reactivate a soft-deleted product (Requerimiento 9, inverso)."""
+    try:
+        repository.restore_product(prod_id)
+        return {"status": "success", "product_id": prod_id}
     except KeyError:
         raise HTTPException(status_code=404, detail="Product not found")
 
