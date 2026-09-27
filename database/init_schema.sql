@@ -270,7 +270,8 @@ BEGIN
         (N'Productos de nuevo conocimiento'),
         (N'Productos de desarrollo tecnologico e innovacion'),
         (N'Productos de apropiacion social del conocimiento'),
-        (N'Productos de formacion de recurso humano');
+        (N'Productos de formacion de recurso humano'),
+        (N'Produccion en arte arquitectura y diseno');
 END
 GO
 
@@ -281,43 +282,92 @@ BEGIN
     DECLARE @f2 INT = (SELECT id FROM ProductFamily WHERE name LIKE N'%desarrollo tecnologico%');
     DECLARE @f3 INT = (SELECT id FROM ProductFamily WHERE name LIKE N'%apropiacion social%');
     DECLARE @f4 INT = (SELECT id FROM ProductFamily WHERE name LIKE N'%formacion de recurso%');
+    DECLARE @f5 INT = (SELECT id FROM ProductFamily WHERE name LIKE N'%arte arquitectura%');
 
-    -- Subtipos familia 1
+    -- Subtipos familia 1 (nuevo conocimiento)
     IF @f1 IS NOT NULL
     BEGIN
         INSERT INTO ProductSubtype (family_id, name) VALUES
             (@f1, N'Articulos de investigacion'),
             (@f1, N'Libros resultado de investigacion'),
             (@f1, N'Capitulos de libro resultado de investigacion'),
-            (@f1, N'Variedades vegetales y nueva raza animal');
+            (@f1, N'Variedades vegetales y nueva raza animal'),
+            (@f1, N'Documentos de trabajo'),
+            (@f1, N'Otros articulos publicados'),
+            (@f1, N'Demas trabajos'),
+            (@f1, N'Notas cientificas'),
+            (@f1, N'Libros de formacion'),
+            (@f1, N'Otros libros publicados'),
+            (@f1, N'Manuales y guias especializadas');
     END
 
-    -- Subtipos familia 2
+    -- Subtipos familia 2 (desarrollo tecnologico e innovacion)
     IF @f2 IS NOT NULL
     BEGIN
         INSERT INTO ProductSubtype (family_id, name) VALUES
             (@f2, N'Patentes de invencion o modelo de utilidad'),
             (@f2, N'Software con registro de soporte logico'),
             (@f2, N'Prototipos industriales y plantas piloto'),
-            (@f2, N'Secretos empresariales e innovaciones');
+            (@f2, N'Secretos empresariales e innovaciones'),
+            (@f2, N'Innovaciones en procesos y procedimientos'),
+            (@f2, N'Innovaciones generadas en la gestion empresarial'),
+            (@f2, N'Empresas de base tecnologica'),
+            (@f2, N'Otros productos tecnologicos'),
+            (@f2, N'Disenos industriales'),
+            (@f2, N'Esquemas de trazados de circuito integrado'),
+            (@f2, N'Productos nutraceuticos'),
+            (@f2, N'Regulaciones y normas'),
+            (@f2, N'Signos distintivos');
     END
 
-    -- Subtipos familia 3
+    -- Subtipos familia 3 (apropiacion social)
     IF @f3 IS NOT NULL
     BEGIN
         INSERT INTO ProductSubtype (family_id, name) VALUES
             (@f3, N'Eventos cientificos con memorias'),
             (@f3, N'Informes tecnicos finales de investigacion'),
-            (@f3, N'Estrategias de divulgacion y comunicacion publica');
+            (@f3, N'Estrategias de divulgacion y comunicacion publica'),
+            (@f3, N'Generacion de contenido virtual'),
+            (@f3, N'Producciones audiovisuales'),
+            (@f3, N'Generacion de recursos graficos'),
+            (@f3, N'Generacion de contenido de audio'),
+            (@f3, N'Generacion de contenido multimedia'),
+            (@f3, N'Generacion de contenido impreso'),
+            (@f3, N'Libros de divulgacion'),
+            (@f3, N'Estrategias pedagogicas para el fomento a la CTI'),
+            (@f3, N'Desarrollo web'),
+            (@f3, N'Otra publicacion divulgativa'),
+            (@f3, N'Ediciones'),
+            (@f3, N'Espacios de participacion ciudadana'),
+            (@f3, N'Consultorias cientifico-tecnologicas'),
+            (@f3, N'Procesos de apropiacion social'),
+            (@f3, N'Cartas mapas o similares'),
+            (@f3, N'Talleres de creacion'),
+            (@f3, N'Traducciones');
     END
 
-    -- Subtipos familia 4
+    -- Subtipos familia 4 (formacion de recurso humano)
     IF @f4 IS NOT NULL
     BEGIN
         INSERT INTO ProductSubtype (family_id, name) VALUES
             (@f4, N'Tesis de doctorado dirigidas y aprobadas'),
             (@f4, N'Trabajos de grado de maestria dirigidos'),
-            (@f4, N'Trabajos de grado de pregrado dirigidos');
+            (@f4, N'Trabajos de grado de pregrado dirigidos'),
+            (@f4, N'Cursos de corta duracion dictados'),
+            (@f4, N'Cursos de formacion y extension'),
+            (@f4, N'Programas academicos de formacion'),
+            (@f4, N'Jurados y comisiones evaluadoras'),
+            (@f4, N'Comites de evaluacion'),
+            (@f4, N'Asesorias al Programa Ondas'),
+            (@f4, N'Monografias de conclusion de curso'),
+            (@f4, N'Trabajos dirigidos/tutorias de otro tipo');
+    END
+
+    -- Subtipos familia 5 (arte, arquitectura y diseno)
+    IF @f5 IS NOT NULL
+    BEGIN
+        INSERT INTO ProductSubtype (family_id, name) VALUES
+            (@f5, N'Produccion en arte arquitectura y diseno');
     END
 END
 GO

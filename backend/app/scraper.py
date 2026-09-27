@@ -508,15 +508,73 @@ class GruplacHtmlParser:
 
         # Mapeo seccion GrupLAC -> nombre de subtipo del catalogo Minciencias.
         # Los IDs se resuelven desde la BD en commit (Revision §20: sin numeros magicos).
+        # El orden importa: patrones especificos primero (p.ej. "otros articulos"
+        # antes que "articulos"). match_key normaliza tildes/puntuacion.
         SECTION_MAP = [
+            # --- Formacion de recurso humano / actividades como evaluador ---
+            ("trabajos dirigidos", "Tesis de doctorado dirigidas y aprobadas"),  # refinado por fila
+            ("tesis", "Tesis de doctorado dirigidas y aprobadas"),
+            ("curso de corta duracion", "Cursos de corta duracion dictados"),
+            ("curso de doctorado", "Cursos de formacion y extension"),
+            ("curso de maestria", "Cursos de formacion y extension"),
+            ("curso especializado de extension", "Cursos de formacion y extension"),
+            ("otro programa academico", "Programas academicos de formacion"),
+            ("programa academico", "Programas academicos de formacion"),
+            ("jurado", "Jurados y comisiones evaluadoras"),
+            ("comites", "Comites de evaluacion"),
+            ("asesorias al programa ondas", "Asesorias al Programa Ondas"),
+            # --- Apropiacion social del conocimiento ---
+            ("contenido virtual", "Generacion de contenido virtual"),
+            ("audiovisual", "Producciones audiovisuales"),
+            ("recursos graficos", "Generacion de contenido multimedia"),
+            ("contenido de audio", "Generacion de contenido multimedia"),
+            ("contenido multimedia", "Generacion de contenido multimedia"),
+            ("contenido impreso", "Generacion de contenido impreso"),
+            ("libros de divulgacion", "Libros de divulgacion"),
+            ("estrategias pedagogicas", "Estrategias pedagogicas para el fomento a la CTI"),
+            ("estrategias de comunicacion", "Estrategias de divulgacion y comunicacion publica"),
+            ("produccion de estrategias", "Estrategias de divulgacion y comunicacion publica"),
+            ("estrategias y contenidos", "Estrategias de divulgacion y comunicacion publica"),
+            ("desarrollo web", "Desarrollo web"),
+            ("otra publicacion divulgativa", "Otra publicacion divulgativa"),
+            ("ediciones", "Ediciones"),
+            ("participacion ciudadana", "Espacios de participacion ciudadana"),
+            ("consultorias", "Consultorias cientifico-tecnologicas"),
+            ("proceso de apropiacion social", "Procesos de apropiacion social"),
+            ("procesos de apropiacion social", "Procesos de apropiacion social"),
+            ("informes de investigacion", "Informes tecnicos finales de investigacion"),
+            ("informes tecnicos", "Informes tecnicos finales de investigacion"),
+            ("cartas mapas o similares", "Cartas mapas o similares"),
+            ("talleres de creacion", "Talleres de creacion"),
+            ("traducciones", "Traducciones"),
+            # --- Nuevo conocimiento ---
+            ("otros articulos", "Otros articulos publicados"),
             ("articulos", "Articulos de investigacion"),
+            ("documentos de trabajo", "Documentos de trabajo"),
+            ("demas trabajos", "Demas trabajos"),
+            ("notas cientificas", "Notas cientificas"),
+            ("libros de formacion", "Libros de formacion"),
+            ("otros libros", "Otros libros publicados"),
             ("libros publicados", "Libros resultado de investigacion"),
             ("capitulos", "Capitulos de libro resultado de investigacion"),
+            ("manuales y guias", "Manuales y guias especializadas"),
+            ("nuevas variedades", "Variedades vegetales y nueva raza animal"),
+            # --- Desarrollo tecnologico e innovacion ---
             ("software", "Software con registro de soporte logico"),
             ("prototipo", "Prototipos industriales y plantas piloto"),
+            ("innovaciones en procesos", "Innovaciones en procesos y procedimientos"),
+            ("innovaciones generadas", "Innovaciones generadas en la gestion empresarial"),
+            ("empresas de base tecnologica", "Empresas de base tecnologica"),
+            ("otros productos tecnologicos", "Otros productos tecnologicos"),
+            ("disenos industriales", "Disenos industriales"),
+            ("esquemas de trazados", "Esquemas de trazados de circuito integrado"),
+            ("productos nutraceuticos", "Productos nutraceuticos"),
+            ("regulaciones y normas", "Regulaciones y normas"),
+            ("signos distintivos", "Signos distintivos"),
+            ("eventos artisticos", "Produccion en arte arquitectura y diseno"),
+            ("produccion en arte", "Produccion en arte arquitectura y diseno"),
+            ("obras o productos", "Produccion en arte arquitectura y diseno"),
             ("eventos", "Eventos cientificos con memorias"),
-            ("trabajos dirigidos", "Tesis de doctorado dirigidas y aprobadas"),
-            ("tesis", "Tesis de doctorado dirigidas y aprobadas"),
         ]
 
         for table in tables:
@@ -556,20 +614,74 @@ class GruplacHtmlParser:
                 if idx < len(lines) and re.match(r"^\d+\.-\s*$", lines[idx]):
                     idx += 1
                 
+                META_PREFIXES = (
+                    "autor", "tutor", "director", "codirector", "fecha",
+                    "lugar", "institucion", "tipo de orientacion",
+                    "programa academico", "editorial", "revista",
+                    "volumen", "paginas", "doi", "issn", "isbn",
+                )
+                CONNECTORS = (
+                    "de", "del", "la", "el", "los", "las", "en", "y", "a",
+                    "para", "con", "un", "una", "por", "su", "al", "e", "o",
+                )
+
+                def _is_meta(line: str) -> bool:
+                    return GruplacNormalizer.match_key(line).startswith(META_PREFIXES)
+
+                def _next_title_line(i: int) -> tuple:
+                    # Devuelve (titulo, nuevo_idx) saltando lineas vacias o de
+                    # solo puntuacion (el ":" suele quedar solo en su linea).
+                    while i < len(lines):
+                        cand = lines[i].lstrip(": ").strip()
+                        i += 1
+                        if cand and not re.fullmatch(r"[:\-.\s]*", cand):
+                            return cand, i
+                    return "", i
+
                 if idx < len(lines):
                     first_line = lines[idx]
-                    if ":" in first_line and len(first_line.split(":", 1)[1].strip()) > 3:
-                        title = first_line.split(":", 1)[1].strip()
+                    if ":" in first_line:
+                        frag = first_line.split(":", 1)[1].strip()
                         idx += 1
+                        if len(frag) <= 3:
+                            frag, idx = _next_title_line(idx)
+                        title = frag
                     else:
                         idx += 1
-                        if idx < len(lines):
-                            title = lines[idx].lstrip(": ").strip()
-                            idx += 1
+                        title, idx = _next_title_line(idx)
+
+                # El titulo puede partirse en varias lineas (GrupLAC lo corta
+                # con <br>): concatenar mientras termine en conector y la
+                # siguiente linea no sea metadato.
+                while idx < len(lines) and title and title.split()[-1].lower().strip(":,.") in CONNECTORS:
+                    if _is_meta(lines[idx]):
+                        break
+                    nxt, idx = _next_title_line(idx)
+                    if not nxt:
+                        break
+                    title = f"{title} {nxt}".strip()
 
                 title = re.sub(r"^\d+\.-\s*", "", title).strip()
                 if not title:
                     title = re.sub(r"^\d+\.-\s*", "", lines[0])[:200]
+                title = title.lstrip(": ").strip() or title
+
+                # Refinamiento por fila: la seccion "Trabajos dirigidos/tutorias"
+                # mezcla doctorado, maestria, pregrado, monografias y "otro tipo";
+                # el tipo real viene en la primera linea de contenido de la fila.
+                if section_label in ("trabajos dirigidos", "tesis"):
+                    tipo_idx = 1 if re.match(r"^\d+\.-\s*$", lines[0]) and len(lines) > 1 else 0
+                    t = GruplacNormalizer.match_key(lines[tipo_idx])
+                    if "doctorado" in t:
+                        subtype_name = "Tesis de doctorado dirigidas y aprobadas"
+                    elif "maestr" in t:
+                        subtype_name = "Trabajos de grado de maestria dirigidos"
+                    elif "pregrado" in t:
+                        subtype_name = "Trabajos de grado de pregrado dirigidos"
+                    elif "monograf" in t:
+                        subtype_name = "Monografias de conclusion de curso"
+                    else:
+                        subtype_name = "Trabajos dirigidos/tutorias de otro tipo"
 
                 # Extracción estructurada de DOI, ISSN, ISBN
                 doi = cls.extract_labeled_value(lines, "DOI")
