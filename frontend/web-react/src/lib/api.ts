@@ -153,6 +153,32 @@ export async function getProductCatalogs() {
   const { data } = await api.get<ProductCatalogs>('/products/catalogs')
   return data
 }
+export interface ProductAuthor {
+  id: number
+  author_order: number
+  researcher_db_id: number | null
+  researcher_id: number | null
+  researcher_external_code: string
+  researcher_name: string
+  external_author_name: string
+  external_author_identifier: string
+  match_status: string
+}
+export async function getProductAuthors(id: number) {
+  const { data } = await api.get<ProductAuthor[]>(`/products/${id}/authors`)
+  return data
+}
+export async function addProductAuthor(
+  id: number,
+  req: { researcher_id?: number; author_order?: number; external_author_name?: string; external_author_identifier?: string }
+) {
+  const { data } = await api.post(`/products/${id}/authors`, req)
+  return data
+}
+export async function removeProductAuthor(id: number, params: { researcher_id?: number; external_author_name?: string }) {
+  const { data } = await api.delete(`/products/${id}/authors`, { params })
+  return data
+}
 export async function validateProduct(id: number, validationStatus: 'valid' | 'rejected' | 'pending', reason?: string) {
   const { data } = await api.patch<Product>(`/products/${id}/validation`, {
     validation_status: validationStatus,

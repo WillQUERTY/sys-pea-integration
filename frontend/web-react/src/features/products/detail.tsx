@@ -1,3 +1,4 @@
+import { useState } from 'react'
 import { useParams, Link } from '@tanstack/react-router'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { toast } from 'sonner'
@@ -11,9 +12,20 @@ import {
   Fingerprint,
   CalendarDays,
   FileText,
+  Users,
+  UserPlus,
+  Trash2,
 } from 'lucide-react'
 
-import { getProduct, validateProduct, enqueueValidation } from '@/lib/api'
+import {
+  getProduct,
+  validateProduct,
+  enqueueValidation,
+  getProductAuthors,
+  addProductAuthor,
+  removeProductAuthor,
+  listResearchers,
+} from '@/lib/api'
 
 import { Header } from '@/components/layout/header'
 import { Main } from '@/components/layout/main'
@@ -24,6 +36,16 @@ import { ConfigDrawer } from '@/components/config-drawer'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Skeleton } from '@/components/ui/skeleton'
+import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog'
 
 import { ValidationBadge } from '@/features/groups/detail'
 
@@ -46,11 +68,74 @@ export function ProductDetail() {
     queryFn: () => getProduct(productId),
   })
 
+  const { data: authors } = useQuery({
+    queryKey: ['products', productId, 'authors'],
+    queryFn: () => getProductAuthors(productId),
+  })
+
+  // Estado del diálogo "Vincular Autor"
+  const [authorOpen, setAuthorOpen] = useState(false)
+  const [authorSearch, setAuthorSearch] = useState('')
+  const [selectedResearcherId, setSelectedResearcherId] = useState<number | null>(null)
+  const [authorOrder, setAuthorOrder] = useState('1')
+  const [extName, setExtName] = useState('')
+  const [extIdentifier, setExtIdentifier] = useState('')
+
+  const { data: pickerResults } = useQuery({
+    queryKey: ['researchers', 'picker', authorSearch],
+    queryFn: () => listResearchers({ search: authorSearch, limit: 8 }),
+    enabled: authorOpen,
+  })
+
   const invalidate = () => {
     queryClient.invalidateQueries({ queryKey: ['products'] })
     queryClient.invalidateQueries({ queryKey: ['validation-queue'] })
     queryClient.invalidateQueries({ queryKey: ['dashboard-stats'] })
   }
+
+  const invalidateAuthors = () => {
+    queryClient.invalidateQueries({ queryKey: ['products', productId, 'authors'] })
+  }
+
+  const linkableResearchers = (pickerResults ?? []).filter(
+    (r) => !(authors ?? []).some((a) => a.researcher_id === r.id)
+  )
+  const selectedResearcher = (pickerResults ?? []).find((r) => r.id === selectedResearcherId)
+
+  const addAuthorMutation = useMutation({
+    mutationFn: () =>
+      selectedResearcherId
+        ? addProductAuthor(productId, {
+            researcher_id: selectedResearcherId,
+            author_order: Number(authorOrder) || 1,
+          })
+        : addProductAuthor(productId, {
+            external_author_name: extName.trim(),
+            external_author_identifier: extIdentifier.trim(),
+            author_order: Number(authorOrder) || 1,
+          }),
+    onSuccess: () => {
+      toast.success('Autor vinculado al producto')
+      setAuthorOpen(false)
+      setSelectedResearcherId(null)
+      setAuthorSearch('')
+      setExtName('')
+      setExtIdentifier('')
+      setAuthorOrder('1')
+      invalidateAuthors()
+    },
+    onError: (e) => toast.error(e instanceof Error ? e.message : 'Error al vincular autor'),
+  })
+
+  const removeAuthorMutation = useMutation({
+    mutationFn: (params: { researcher_id?: number; external_author_name?: string }) =>
+      removeProductAuthor(productId, params),
+    onSuccess: () => {
+      toast.success('Autor desvinculado')
+      invalidateAuthors()
+    },
+    onError: (e) => toast.error(e instanceof Error ? e.message : 'Error al desvincular autor'),
+  })
 
   const validateMutation = useMutation({
     mutationFn: (status: 'valid' | 'rejected') =>
@@ -222,6 +307,72 @@ export function ProductDetail() {
             </div>
           </div>
 
+          {/* Autores */}
+          <div className='rounded-2xl border border-border/50 bg-card p-6 shadow-sm lg:col-span-2'>
+            <div className='mb-5 flex items-center justify-between'>
+              <div className='flex items-center gap-2'>
+                <div className='rounded-lg bg-cyan-500/10 p-2'>
+                  <Users className='h-4 w-4 text-cyan-500' />
+                </div>
+                <h3 className='text-lg font-semibold'>Autores</h3>
+              </div>
+              <Button size='sm' variant='outline' onClick={() => setAuthorOpen(true)}>
+                <UserPlus className='mr-2 h-4 w-4' /> Vincular Autor
+              </Button>
+            </div>
+            {!authors || authors.length === 0 ? (
+              <p className='text-sm text-muted-foreground'>Sin autores registrados.</p>
+            ) : (
+              <ul className='divide-y divide-border/50'>
+                {authors.map((a) => (
+                  <li key={a.id} className='flex items-center justify-between gap-3 py-2'>
+                    <div className='flex min-w-0 items-center gap-3'>
+                      <Badge variant='outline' className='shrink-0 font-mono text-xs'>
+                        #{a.author_order}
+                      </Badge>
+                      <div className='min-w-0'>
+                        {a.researcher_id ? (
+                          <Link
+                            to='/researchers/$id'
+                            params={{ id: String(a.researcher_id) }}
+                            className='truncate text-sm font-medium text-primary hover:underline'
+                          >
+                            {a.researcher_name.trim() || a.researcher_external_code}
+                          </Link>
+                        ) : (
+                          <p className='truncate text-sm font-medium'>
+                            {a.external_author_name}
+                            <span className='ml-2 text-xs text-muted-foreground'>(externo)</span>
+                          </p>
+                        )}
+                        <p className='text-xs text-muted-foreground'>
+                          {a.researcher_id
+                            ? a.researcher_external_code
+                            : a.external_author_identifier || a.match_status}
+                        </p>
+                      </div>
+                    </div>
+                    <Button
+                      size='icon'
+                      variant='ghost'
+                      className='h-8 w-8 shrink-0 text-destructive'
+                      disabled={removeAuthorMutation.isPending}
+                      onClick={() =>
+                        removeAuthorMutation.mutate(
+                          a.researcher_id
+                            ? { researcher_id: a.researcher_id }
+                            : { external_author_name: a.external_author_name }
+                        )
+                      }
+                    >
+                      <Trash2 className='h-4 w-4' />
+                    </Button>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
+
           {/* Descripción */}
           <div className='rounded-2xl border border-border/50 bg-card p-6 shadow-sm lg:col-span-2'>
             <div className='mb-5 flex items-center gap-2'>
@@ -263,6 +414,99 @@ export function ProductDetail() {
             </a>
           </div>
         )}
+
+        {/* Diálogo: vincular autor */}
+        <Dialog open={authorOpen} onOpenChange={setAuthorOpen}>
+          <DialogContent className='sm:max-w-lg'>
+            <DialogHeader>
+              <DialogTitle>Vincular Autor</DialogTitle>
+              <DialogDescription>
+                Busca un investigador del sistema o registra un autor externo.
+              </DialogDescription>
+            </DialogHeader>
+            <div className='grid gap-4 py-2'>
+              <div className='grid gap-2'>
+                <Label>Investigador del sistema</Label>
+                {selectedResearcher ? (
+                  <div className='flex items-center justify-between rounded-lg border border-border/50 bg-muted/30 px-3 py-2 text-sm'>
+                    <span className='truncate font-medium'>
+                      {selectedResearcher.first_names} {selectedResearcher.last_names}
+                    </span>
+                    <Button type='button' variant='ghost' size='sm' onClick={() => setSelectedResearcherId(null)}>
+                      Quitar
+                    </Button>
+                  </div>
+                ) : (
+                  <>
+                    <Input
+                      value={authorSearch}
+                      onChange={(e) => setAuthorSearch(e.target.value)}
+                      placeholder='Buscar investigador...'
+                    />
+                    {authorSearch && (
+                      <div className='max-h-36 space-y-1 overflow-y-auto rounded-lg border border-border/50 p-1'>
+                        {linkableResearchers.length === 0 ? (
+                          <p className='p-2 text-sm text-muted-foreground'>Sin resultados.</p>
+                        ) : (
+                          linkableResearchers.map((r) => (
+                            <button
+                              key={r.id}
+                              type='button'
+                              onClick={() => setSelectedResearcherId(r.id ?? null)}
+                              className='w-full truncate rounded-md px-3 py-2 text-left text-sm transition-colors hover:bg-muted/60'
+                            >
+                              {r.first_names} {r.last_names}
+                            </button>
+                          ))
+                        )}
+                      </div>
+                    )}
+                  </>
+                )}
+              </div>
+              {!selectedResearcher && (
+                <div className='grid grid-cols-2 gap-4'>
+                  <div className='grid gap-2'>
+                    <Label>Autor externo (nombre)</Label>
+                    <Input
+                      value={extName}
+                      onChange={(e) => setExtName(e.target.value)}
+                      placeholder='Ej: JOHN DOE'
+                    />
+                  </div>
+                  <div className='grid gap-2'>
+                    <Label>Identificador externo</Label>
+                    <Input
+                      value={extIdentifier}
+                      onChange={(e) => setExtIdentifier(e.target.value)}
+                      placeholder='ORCID, documento...'
+                    />
+                  </div>
+                </div>
+              )}
+              <div className='grid gap-2'>
+                <Label>Orden de autoría</Label>
+                <Input
+                  type='number'
+                  min={1}
+                  value={authorOrder}
+                  onChange={(e) => setAuthorOrder(e.target.value)}
+                />
+              </div>
+            </div>
+            <DialogFooter>
+              <Button type='button' variant='outline' onClick={() => setAuthorOpen(false)}>
+                Cancelar
+              </Button>
+              <Button
+                onClick={() => addAuthorMutation.mutate()}
+                disabled={addAuthorMutation.isPending || (!selectedResearcherId && !extName.trim())}
+              >
+                {addAuthorMutation.isPending ? 'Vinculando...' : 'Vincular'}
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
       </Main>
     </>
   )
