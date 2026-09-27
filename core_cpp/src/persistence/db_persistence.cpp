@@ -1285,6 +1285,51 @@ std::string authors_of_product_json(const std::string& connection_string, int pr
     return out;
 }
 
+std::string members_of_group_details_json(const std::string& connection_string, int group_id) {
+    SQLHDBC dbc = get_or_create_dbc(connection_string);
+    if (!dbc) return "[]";
+    auto g_opt = get_group(group_id);
+    std::string g_ext = g_opt ? escape_sql(utf8_to_cp1252(g_opt->external_code)) : "";
+    std::string g_clause = g_ext.empty() ? ("g.id = " + std::to_string(group_id)) : ("g.external_code = '" + g_ext + "'");
+    std::string sql =
+        "SELECT r.external_code, m.role, m.start_date, m.end_date, m.status "
+        "FROM GroupMembership m "
+        "JOIN ResearchGroup g ON g.id = m.group_id "
+        "JOIN Researcher r ON r.id = m.researcher_id "
+        "WHERE " + g_clause + " ORDER BY m.id";
+
+    SQLHSTMT stmt;
+    SQLAllocHandle(SQL_HANDLE_STMT, dbc, &stmt);
+    if (!SQL_SUCCEEDED(SQLExecDirect(stmt, (SQLCHAR*)sql.c_str(), SQL_NTS))) {
+        SQLFreeHandle(SQL_HANDLE_STMT, stmt);
+        return "[]";
+    }
+    std::string out = "[";
+    bool first = true;
+    while (SQLFetch(stmt) == SQL_SUCCESS) {
+        char ext[128], role[200], sd[64], ed[64], st[64];
+        SQLLEN i1, i2, i3, i4, i5;
+        SQLGetData(stmt, 1, SQL_C_CHAR, ext, sizeof(ext), &i1);
+        SQLGetData(stmt, 2, SQL_C_CHAR, role, sizeof(role), &i2);
+        SQLGetData(stmt, 3, SQL_C_CHAR, sd, sizeof(sd), &i3);
+        SQLGetData(stmt, 4, SQL_C_CHAR, ed, sizeof(ed), &i4);
+        SQLGetData(stmt, 5, SQL_C_CHAR, st, sizeof(st), &i5);
+        if (!first) out += ",";
+        out += "{\"researcher_external_code\":\"" + json_escape(i1 != SQL_NULL_DATA ? cp1252_to_utf8(ext) : "") + "\"";
+        out += ",\"role\":\"" + json_escape(i2 != SQL_NULL_DATA ? cp1252_to_utf8(role) : "") + "\"";
+        // Las fechas vienen como "YYYY-MM-DD 00:00:00.0000000"; recortar a la fecha
+        std::string sds = i3 != SQL_NULL_DATA ? cp1252_to_utf8(sd) : "";
+        std::string eds = i4 != SQL_NULL_DATA ? cp1252_to_utf8(ed) : "";
+        out += ",\"start_date\":\"" + json_escape(sds.substr(0, 10)) + "\"";
+        out += ",\"end_date\":\"" + json_escape(eds.substr(0, 10)) + "\"";
+        out += ",\"status\":\"" + json_escape(i5 != SQL_NULL_DATA ? cp1252_to_utf8(st) : "") + "\"}";
+        first = false;
+    }
+    SQLFreeHandle(SQL_HANDLE_STMT, stmt);
+    out += "]";
+    return out;
+}
+
 bool remove_product_author_db(const std::string& conn, int product_id, int researcher_id, const std::string& external_name) {
     SQLHDBC dbc = get_or_create_dbc(conn);
     if (!dbc) return false;

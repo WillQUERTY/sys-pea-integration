@@ -52,6 +52,8 @@ std::vector<int> products_of_researcher_db(const std::string& conn, int research
 std::string authors_of_product_json(const std::string& conn, int product_id);
 // Remove an author: by RAM researcher_id (>0) or by external_author_name.
 bool remove_product_author_db(const std::string& conn, int product_id, int researcher_id, const std::string& external_name);
+// Memberships of a group with role/dates as JSON.
+std::string members_of_group_details_json(const std::string& conn, int group_id);
 bool vq_enqueue_db(const std::string& conn, int product_id, const std::string& assigned_to);
 // ---- Initialization modes (spec section 33.3) ----
 enum class InitMode { Database, File, Empty };
