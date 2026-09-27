@@ -1,6 +1,9 @@
+import { useMemo } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { Link } from '@tanstack/react-router'
 import { toast } from 'sonner'
-import { listValidationQueue, processNextValidation, validateProduct, cancelValidationItem } from '@/lib/api'
+import { listValidationQueue, processNextValidation, validateProduct, cancelValidationItem, listProducts } from '@/lib/api'
+import type { ValidationQueueItem } from '@/lib/types'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import {
@@ -10,15 +13,7 @@ import {
   CardHeader,
   CardTitle,
 } from '@/components/ui/card'
-import { Skeleton } from '@/components/ui/skeleton'
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from '@/components/ui/table'
+import { DataTable, type DataColumn, type DataFilter } from '@/components/data-table'
 import { ConfigDrawer } from '@/components/config-drawer'
 import { Header } from '@/components/layout/header'
 import { Main } from '@/components/layout/main'
@@ -26,9 +21,33 @@ import { ProfileDropdown } from '@/components/profile-dropdown'
 import { Search } from '@/components/search'
 import { ThemeSwitch } from '@/components/theme-switch'
 
+const statusFilters: DataFilter[] = [
+  {
+    key: 'status',
+    label: 'Estado',
+    defaultValue: 'pending',
+    options: [
+      { value: 'all', label: 'Todos los estados' },
+      { value: 'pending', label: 'Pendientes' },
+      { value: 'processed', label: 'Procesados' },
+      { value: 'cancelled', label: 'Cancelados' },
+    ],
+  },
+]
+
 export function ValidationQueue() {
   const queryClient = useQueryClient()
   const queue = useQuery({ queryKey: ['validation-queue'], queryFn: listValidationQueue })
+  const products = useQuery({ queryKey: ['products'], queryFn: () => listProducts() })
+
+  // id -> titulo, para que la tabla busque y muestre el titulo del producto
+  const titleById = useMemo(() => {
+    const map = new Map<number, string>()
+    for (const p of products.data ?? []) {
+      if (p.id != null) map.set(p.id, p.title)
+    }
+    return map
+  }, [products.data])
 
   const invalidate = () => {
     queryClient.invalidateQueries({ queryKey: ['validation-queue'] })
@@ -62,6 +81,86 @@ export function ValidationQueue() {
     },
     onError: (e) => toast.error(e instanceof Error ? e.message : 'Error al cancelar'),
   })
+
+  const columns = useMemo<DataColumn<ValidationQueueItem>[]>(() => [
+    {
+      key: 'id',
+      header: '#',
+      className: 'w-16',
+      cell: (item) => <span className='font-mono text-xs'>{item.id}</span>,
+    },
+    {
+      key: 'product',
+      header: 'Producto',
+      className: 'max-w-[480px]',
+      searchable: (item) => titleById.get(item.product_id) ?? `producto ${item.product_id}`,
+      cell: (item) => (
+        <Link
+          to='/products/$id'
+          params={{ id: String(item.product_id) }}
+          className='block truncate font-medium text-primary hover:underline'
+        >
+          {titleById.get(item.product_id) ?? `Producto #${item.product_id}`}
+        </Link>
+      ),
+    },
+    {
+      key: 'enqueued_at',
+      header: 'Encolado',
+      cell: (item) => (
+        <span className='text-sm'>
+          {item.enqueued_at ? new Date(item.enqueued_at).toLocaleString() : '—'}
+        </span>
+      ),
+    },
+    {
+      key: 'status',
+      header: 'Estado',
+      cell: (item) =>
+        item.status === 'pending' ? (
+          <Badge variant='secondary'>Pendiente</Badge>
+        ) : item.status === 'cancelled' ? (
+          <Badge variant='destructive'>Cancelado</Badge>
+        ) : (
+          <Badge variant='outline'>{item.status ?? 'procesado'}</Badge>
+        ),
+    },
+    {
+      key: 'actions',
+      header: 'Acciones',
+      className: 'text-right',
+      cell: (item) =>
+        item.status === 'pending' ? (
+          <div className='space-x-2 text-right'>
+            <Button
+              size='sm'
+              variant='outline'
+              disabled={validate.isPending}
+              onClick={() => validate.mutate({ id: item.product_id, status: 'valid' })}
+            >
+              Validar
+            </Button>
+            <Button
+              size='sm'
+              variant='destructive'
+              disabled={validate.isPending}
+              onClick={() => validate.mutate({ id: item.product_id, status: 'rejected' })}
+            >
+              Rechazar
+            </Button>
+            <Button
+              size='sm'
+              variant='ghost'
+              disabled={cancelItem.isPending}
+              onClick={() => cancelItem.mutate(item.id)}
+              title='Retirar de la cola sin procesar'
+            >
+              Cancelar
+            </Button>
+          </div>
+        ) : null,
+    },
+  ], [titleById, validate.isPending, cancelItem.isPending])
 
   const pending = (queue.data ?? []).filter((i) => i.status === 'pending')
 
@@ -99,79 +198,17 @@ export function ValidationQueue() {
             </CardDescription>
           </CardHeader>
           <CardContent>
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>#</TableHead>
-                  <TableHead>Producto</TableHead>
-                  <TableHead>Encolado</TableHead>
-                  <TableHead>Estado</TableHead>
-                  <TableHead className='text-right'>Acciones</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {queue.isLoading &&
-                  Array.from({ length: 5 }).map((_, i) => (
-                    <TableRow key={i}>
-                      <TableCell colSpan={5}>
-                        <Skeleton className='h-5 w-full' />
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                {(queue.data ?? []).map((item) => (
-                  <TableRow key={item.id}>
-                    <TableCell className='font-mono text-xs'>{item.id}</TableCell>
-                    <TableCell className='font-mono text-xs'>Producto #{item.product_id}</TableCell>
-                    <TableCell>{item.enqueued_at ? new Date(item.enqueued_at).toLocaleString() : '—'}</TableCell>
-                    <TableCell>
-                      {item.status === 'pending' ? (
-                        <Badge variant='secondary'>Pendiente</Badge>
-                      ) : (
-                        <Badge variant='outline'>{item.status ?? 'procesado'}</Badge>
-                      )}
-                    </TableCell>
-                    <TableCell className='space-x-2 text-right'>
-                      {item.status === 'pending' && (
-                        <>
-                          <Button
-                            size='sm'
-                            variant='outline'
-                            disabled={validate.isPending}
-                            onClick={() => validate.mutate({ id: item.product_id, status: 'valid' })}
-                          >
-                            Validar
-                          </Button>
-                          <Button
-                            size='sm'
-                            variant='destructive'
-                            disabled={validate.isPending}
-                            onClick={() => validate.mutate({ id: item.product_id, status: 'rejected' })}
-                          >
-                            Rechazar
-                          </Button>
-                          <Button
-                            size='sm'
-                            variant='ghost'
-                            disabled={cancelItem.isPending}
-                            onClick={() => cancelItem.mutate(item.id)}
-                            title='Retirar de la cola sin procesar'
-                          >
-                            Cancelar
-                          </Button>
-                        </>
-                      )}
-                    </TableCell>
-                  </TableRow>
-                ))}
-                {!queue.isLoading && (queue.data ?? []).length === 0 && (
-                  <TableRow>
-                    <TableCell colSpan={5} className='py-8 text-center text-muted-foreground'>
-                      La cola está vacía.
-                    </TableCell>
-                  </TableRow>
-                )}
-              </TableBody>
-            </Table>
+            <DataTable
+              columns={columns}
+              data={queue.data ?? []}
+              loading={queue.isLoading}
+              rowKey={(item) => item.id}
+              searchPlaceholder='Buscar por título de producto…'
+              filters={statusFilters}
+              filterFn={(item, f) => f.status === 'all' || (item.status ?? 'pending') === f.status}
+              emptyMessage='La cola está vacía.'
+              defaultPageSize={20}
+            />
           </CardContent>
         </Card>
       </Main>
