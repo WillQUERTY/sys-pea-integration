@@ -101,7 +101,7 @@ export function GroupDetail() {
     queryFn: () => listResearchers({ search: memberSearch, limit: 8 }),
     enabled: memberOpen,
   })
-  const linkableResearchers = (researcherResults ?? []).filter(
+  const linkableResearchers = (researcherResults?.items ?? []).filter(
     (r) => !(members ?? []).some((m) => m.id === r.id)
   )
 
@@ -115,7 +115,7 @@ export function GroupDetail() {
     queryFn: () => listProducts({ search: productSearch, limit: 8 }),
     enabled: productOpen,
   })
-  const linkableProducts = (productResults ?? []).filter(
+  const linkableProducts = (productResults?.items ?? []).filter(
     (p) => !(products ?? []).some((gp) => gp.id === p.id)
   )
 

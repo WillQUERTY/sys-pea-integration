@@ -97,10 +97,10 @@ export function ProductDetail() {
     queryClient.invalidateQueries({ queryKey: ['products', productId, 'authors'] })
   }
 
-  const linkableResearchers = (pickerResults ?? []).filter(
+  const linkableResearchers = (pickerResults?.items ?? []).filter(
     (r) => !(authors ?? []).some((a) => a.researcher_id === r.id)
   )
-  const selectedResearcher = (pickerResults ?? []).find((r) => r.id === selectedResearcherId)
+  const selectedResearcher = (pickerResults?.items ?? []).find((r) => r.id === selectedResearcherId)
 
   const addAuthorMutation = useMutation({
     mutationFn: () =>

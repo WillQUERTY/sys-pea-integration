@@ -57,6 +57,29 @@ export interface DataFilter {
   defaultValue?: string
 }
 
+// ─── Server mode ────────────────────────────────────────────────────────────────
+// Si `server` está presente, la tabla es 100% controlada por la vista: los datos
+// llegan pre-filtrados/paginados del backend y la tabla solo emite cambios
+// (búsqueda cruda, filtros, página). El debounce y el reset de página viven en la vista.
+export interface DataTableServerProps {
+  /** Total de filas del servidor para los filtros actuales (no de la página). */
+  total: number
+  /** Página actual controlada (0-based). */
+  pageIndex: number
+  /** Tamaño de página controlado. */
+  pageSize: number
+  onPageChange: (pageIndex: number) => void
+  onPageSizeChange: (pageSize: number) => void
+  /** Valor controlado del input de búsqueda (crudo; el debounce vive en la vista). */
+  searchValue: string
+  onSearchChange: (search: string) => void
+  /** Valores de filtro controlados (claves = DataFilter.key). */
+  filterValues?: Record<string, string>
+  onFilterChange?: (filterValues: Record<string, string>) => void
+  /** Refetch en background (placeholderData) — atenúa la tabla sin skeletons. */
+  isFetching?: boolean
+}
+
 // ─── Props ──────────────────────────────────────────────────────────────────────
 interface DataTableProps<T> {
   columns: DataColumn<T>[]
@@ -80,6 +103,8 @@ interface DataTableProps<T> {
   skeletonRows?: number
   /** Optional actions rendered in the toolbar (right side) */
   toolbarActions?: ReactNode
+  /** Modo server: búsqueda/filtros/paginación controlados por la vista (datos del backend). */
+  server?: DataTableServerProps
 }
 
 // ─── Component ──────────────────────────────────────────────────────────────────
@@ -96,6 +121,7 @@ export function DataTable<T>({
   emptyMessage = 'No hay resultados.',
   skeletonRows = 8,
   toolbarActions,
+  server,
 }: DataTableProps<T>) {
   const [search, setSearch] = useState('')
   const [page, setPage] = useState(0)
@@ -105,6 +131,12 @@ export function DataTable<T>({
     for (const f of filters) init[f.key] = f.defaultValue ?? 'all'
     return init
   })
+
+  const isServer = server !== undefined
+
+  // Valores efectivos: en modo server manda lo controlado por la vista
+  const activeSearchValue = isServer ? server.searchValue : search
+  const activeFilterValues = isServer ? (server.filterValues ?? filterValues) : filterValues
 
   // searchable columns
   const searchableCols = columns.filter((c) => c.searchable)
@@ -130,11 +162,16 @@ export function DataTable<T>({
   }, [data, search, filterValues, searchableCols, filterFn])
 
   // pagination math
-  const totalPages = Math.max(1, Math.ceil(filtered.length / pageSize))
-  const safePage = Math.min(page, totalPages - 1)
+  const safePage = Math.min(page, Math.max(1, Math.ceil(filtered.length / pageSize)) - 1)
   const paged = filtered.slice(safePage * pageSize, (safePage + 1) * pageSize)
-  const from = filtered.length === 0 ? 0 : safePage * pageSize + 1
-  const to = Math.min((safePage + 1) * pageSize, filtered.length)
+
+  const totalRows = isServer ? server.total : filtered.length
+  const activePage = isServer ? server.pageIndex : safePage
+  const activePageSize = isServer ? server.pageSize : pageSize
+  const totalPages = Math.max(1, Math.ceil(totalRows / activePageSize))
+  const rows = isServer ? data : paged
+  const from = totalRows === 0 ? 0 : activePage * activePageSize + 1
+  const to = Math.min((activePage + 1) * activePageSize, totalRows)
 
   // reset page on search/filter change
   const updateSearch = (v: string) => { setSearch(v); setPage(0) }
@@ -148,13 +185,18 @@ export function DataTable<T>({
   }
 
   // Count active filters (not default)
-  const activeFiltersCount = Object.keys(filterValues).filter(k => filterValues[k] !== 'all').length
+  const activeFiltersCount = Object.keys(activeFilterValues).filter(k => activeFilterValues[k] !== 'all').length
 
   const clearFilters = () => {
     const reset: Record<string, string> = {}
     for (const f of filters) reset[f.key] = f.defaultValue ?? 'all'
-    setFilterValues(reset)
-    setPage(0)
+    if (isServer) {
+      // El reset de página lo hace la vista en su handler
+      server.onFilterChange?.(reset)
+    } else {
+      setFilterValues(reset)
+      setPage(0)
+    }
   }
 
   return (
@@ -166,8 +208,10 @@ export function DataTable<T>({
           <SearchIcon className='pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground' />
           <Input
             placeholder={searchPlaceholder}
-            value={search}
-            onChange={(e) => updateSearch(e.target.value)}
+            value={activeSearchValue}
+            onChange={(e) =>
+              isServer ? server.onSearchChange(e.target.value) : updateSearch(e.target.value)
+            }
             className='ps-9'
           />
         </div>
@@ -202,8 +246,12 @@ export function DataTable<T>({
                   <div key={f.key} className='space-y-1.5'>
                     <label className='text-sm font-semibold text-foreground/80'>{f.label}</label>
                     <Select
-                      value={filterValues[f.key]}
-                      onValueChange={(v) => updateFilter(f.key, v)}
+                      value={activeFilterValues[f.key]}
+                      onValueChange={(v) =>
+                        isServer
+                          ? server.onFilterChange?.({ ...activeFilterValues, [f.key]: v })
+                          : updateFilter(f.key, v)
+                      }
                     >
                       <SelectTrigger className='w-full bg-muted/30 border-transparent hover:border-border transition-colors h-10 px-3.5 rounded-lg'>
                         <SelectValue placeholder={f.label} />
@@ -237,7 +285,10 @@ export function DataTable<T>({
       </div>
 
       {/* ── Table ── */}
-      <div className='rounded-lg border'>
+      <div
+        className={`rounded-lg border${isServer && server.isFetching && !loading ? ' opacity-60 pointer-events-none transition-opacity' : ''}`}
+        aria-busy={isServer && server.isFetching}
+      >
         <Table>
           <TableHeader>
             <TableRow>
@@ -263,7 +314,7 @@ export function DataTable<T>({
 
             {/* Data rows */}
             {!loading &&
-              paged.map((item) => (
+              rows.map((item) => (
                 <TableRow key={rowKey(item)} className='transition-colors'>
                   {columns.map((col) => (
                     <TableCell key={col.key} className={col.className}>
@@ -274,7 +325,7 @@ export function DataTable<T>({
               ))}
 
             {/* Empty state */}
-            {!loading && filtered.length === 0 && (
+            {!loading && (isServer ? data.length === 0 : filtered.length === 0) && (
               <TableRow>
                 <TableCell
                   colSpan={columns.length}
@@ -289,19 +340,24 @@ export function DataTable<T>({
       </div>
 
       {/* ── Pagination ── */}
-      {!loading && filtered.length > 0 && (
+      {!loading && (isServer ? server.total > 0 : filtered.length > 0) && (
         <div className='flex flex-wrap items-center justify-between gap-3 text-sm'>
           {/* Info */}
           <p className='text-muted-foreground'>
             Mostrando <span className='font-medium text-foreground'>{from}–{to}</span> de{' '}
-            <span className='font-medium text-foreground'>{filtered.length}</span> resultados
+            <span className='font-medium text-foreground'>{totalRows}</span> resultados
           </p>
 
           <div className='flex items-center gap-3'>
             {/* Page size selector */}
             <div className='flex items-center gap-2'>
               <span className='text-muted-foreground text-xs'>Filas</span>
-              <Select value={String(pageSize)} onValueChange={updatePageSize}>
+              <Select
+                value={String(activePageSize)}
+                onValueChange={(v) =>
+                  isServer ? server.onPageSizeChange(Number(v)) : updatePageSize(v)
+                }
+              >
                 <SelectTrigger className='h-8 w-[72px] text-xs'>
                   <SelectValue />
                 </SelectTrigger>
@@ -317,7 +373,7 @@ export function DataTable<T>({
 
             {/* Page info */}
             <span className='text-muted-foreground text-xs'>
-              Pág. {safePage + 1} de {totalPages}
+              Pág. {activePage + 1} de {totalPages}
             </span>
 
             {/* Navigation */}
@@ -326,8 +382,8 @@ export function DataTable<T>({
                 variant='outline'
                 size='icon'
                 className='h-8 w-8'
-                disabled={safePage === 0}
-                onClick={() => setPage(0)}
+                disabled={activePage === 0}
+                onClick={() => (isServer ? server.onPageChange(0) : setPage(0))}
               >
                 <ChevronsLeft className='h-4 w-4' />
               </Button>
@@ -335,8 +391,12 @@ export function DataTable<T>({
                 variant='outline'
                 size='icon'
                 className='h-8 w-8'
-                disabled={safePage === 0}
-                onClick={() => setPage((p) => Math.max(0, p - 1))}
+                disabled={activePage === 0}
+                onClick={() =>
+                  isServer
+                    ? server.onPageChange(Math.max(0, activePage - 1))
+                    : setPage((p) => Math.max(0, p - 1))
+                }
               >
                 <ChevronLeft className='h-4 w-4' />
               </Button>
@@ -344,8 +404,12 @@ export function DataTable<T>({
                 variant='outline'
                 size='icon'
                 className='h-8 w-8'
-                disabled={safePage >= totalPages - 1}
-                onClick={() => setPage((p) => Math.min(totalPages - 1, p + 1))}
+                disabled={activePage >= totalPages - 1}
+                onClick={() =>
+                  isServer
+                    ? server.onPageChange(Math.min(totalPages - 1, activePage + 1))
+                    : setPage((p) => Math.min(totalPages - 1, p + 1))
+                }
               >
                 <ChevronRight className='h-4 w-4' />
               </Button>
@@ -353,8 +417,8 @@ export function DataTable<T>({
                 variant='outline'
                 size='icon'
                 className='h-8 w-8'
-                disabled={safePage >= totalPages - 1}
-                onClick={() => setPage(totalPages - 1)}
+                disabled={activePage >= totalPages - 1}
+                onClick={() => (isServer ? server.onPageChange(totalPages - 1) : setPage(totalPages - 1))}
               >
                 <ChevronsRight className='h-4 w-4' />
               </Button>

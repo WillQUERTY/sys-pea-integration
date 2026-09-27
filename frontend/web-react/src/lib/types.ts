@@ -155,11 +155,21 @@ export interface ProductFilters {
   limit?: number
   search?: string
   validation_status?: string
+  /** Estado del registro (active/inactive) — no confundir con validation_status */
+  status?: string
   family_id?: number
   group_id?: number
   start_year?: number
   end_year?: number
   window_years?: number
+}
+
+/** Envelope paginado estándar de los endpoints de listado. */
+export interface PagedResponse<T> {
+  items: T[]
+  total: number
+  skip: number
+  limit: number
 }
 
 export interface UndoOperation {

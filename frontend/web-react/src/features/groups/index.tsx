@@ -1,10 +1,11 @@
-import { useState, useMemo } from 'react'
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
+import { useState, useMemo, useEffect } from 'react'
+import { useQuery, useMutation, useQueryClient, keepPreviousData } from '@tanstack/react-query'
 import { Link } from '@tanstack/react-router'
 import { toast } from 'sonner'
 import { Plus, MoreHorizontal, Pencil, Trash2, RotateCcw } from 'lucide-react'
 import { listGroups, deleteGroup, restoreGroup } from '@/lib/api'
 import type { Group } from '@/lib/types'
+import { useDebouncedValue } from '@/hooks/use-debounced-value'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import {
@@ -28,10 +29,39 @@ export function Groups() {
   const [formOpen, setFormOpen] = useState(false)
   const [editingGroup, setEditingGroup] = useState<Group | null>(null)
 
-  const groups = useQuery({
-    queryKey: ['groups'],
-    queryFn: () => listGroups({ limit: 500 }),
+  // Estado server-side: búsqueda (debounced), página y filtros
+  const [search, setSearch] = useState('')
+  const debouncedSearch = useDebouncedValue(search, 300)
+  const [page, setPage] = useState(0)
+  const [pageSize, setPageSize] = useState(10)
+  const [filterValues, setFilterValues] = useState<Record<string, string>>({
+    status: 'active',
+    classification: 'all',
   })
+
+  const params = useMemo(
+    () => ({
+      skip: page * pageSize,
+      limit: pageSize,
+      search: debouncedSearch.trim() || undefined,
+      status: filterValues.status !== 'all' ? filterValues.status : undefined,
+      classification:
+        filterValues.classification !== 'all' ? filterValues.classification : undefined,
+    }),
+    [page, pageSize, debouncedSearch, filterValues]
+  )
+
+  const groups = useQuery({
+    queryKey: ['groups', 'list', params],
+    queryFn: () => listGroups(params),
+    placeholderData: keepPreviousData,
+  })
+
+  // Si un delete/restauración deja la última página vacía, volver a una página válida
+  useEffect(() => {
+    const maxPage = Math.max(0, Math.ceil((groups.data?.total ?? 0) / pageSize) - 1)
+    if (page > maxPage) setPage(maxPage)
+  }, [groups.data?.total, pageSize, page])
 
   const delMutation = useMutation({
     mutationFn: (id: number) => deleteGroup(id, true),
@@ -145,7 +175,7 @@ export function Groups() {
         </DropdownMenu>
       ),
     },
-  ], [delMutation])
+  ], [delMutation, restoreMutation])
 
   // Filtering is now handled by DataTable
 
@@ -175,12 +205,11 @@ export function Groups() {
 
         <DataTable
           columns={columns}
-          data={groups.data ?? []}
+          data={groups.data?.items ?? []}
           loading={groups.isLoading}
           rowKey={(g) => g.id ?? g.external_code}
           searchPlaceholder='Buscar por nombre, sigla o código…'
           emptyMessage='No hay grupos que coincidan.'
-          defaultPageSize={10}
           filters={[
             {
               key: 'status',
@@ -205,10 +234,26 @@ export function Groups() {
               ]
             }
           ]}
-          filterFn={(g, filterValues) => {
-            if (filterValues.status && filterValues.status !== 'all' && g.status !== filterValues.status) return false
-            if (filterValues.classification && filterValues.classification !== 'all' && g.classification !== filterValues.classification) return false
-            return true
+          server={{
+            total: groups.data?.total ?? 0,
+            pageIndex: page,
+            pageSize,
+            onPageChange: setPage,
+            onPageSizeChange: (ps) => {
+              setPageSize(ps)
+              setPage(0)
+            },
+            searchValue: search,
+            onSearchChange: (v) => {
+              setSearch(v)
+              setPage(0)
+            },
+            filterValues,
+            onFilterChange: (v) => {
+              setFilterValues(v)
+              setPage(0)
+            },
+            isFetching: groups.isFetching,
           }}
         />
       </Main>

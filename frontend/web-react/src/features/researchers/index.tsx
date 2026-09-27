@@ -1,10 +1,11 @@
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useEffect } from 'react'
 import { Link } from '@tanstack/react-router'
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { useMutation, useQuery, useQueryClient, keepPreviousData } from '@tanstack/react-query'
 import { toast } from 'sonner'
 import { Sparkles, Plus, MoreHorizontal, Pencil, Trash2, DownloadCloud, RotateCcw } from 'lucide-react'
 import { enrichAllResearchers, enrichResearcher, importCvlacByCodRh, listResearchers, deleteResearcher, restoreResearcher } from '@/lib/api'
 import type { Researcher } from '@/lib/types'
+import { useDebouncedValue } from '@/hooks/use-debounced-value'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import {
@@ -82,10 +83,41 @@ export function Researchers() {
   const [formOpen, setFormOpen] = useState(false)
   const [editingResearcher, setEditingResearcher] = useState<Researcher | null>(null)
 
-  const researchers = useQuery({
-    queryKey: ['researchers'],
-    queryFn: () => listResearchers({ limit: 1000 }),
+  // Estado server-side: búsqueda (debounced), página y filtros
+  const [search, setSearch] = useState('')
+  const debouncedSearch = useDebouncedValue(search, 300)
+  const [page, setPage] = useState(0)
+  const [pageSize, setPageSize] = useState(10)
+  const [filterValues, setFilterValues] = useState<Record<string, string>>({
+    status: 'active',
+    educational_level: 'all',
+    category: 'all',
   })
+
+  const params = useMemo(
+    () => ({
+      skip: page * pageSize,
+      limit: pageSize,
+      search: debouncedSearch.trim() || undefined,
+      status: filterValues.status !== 'all' ? filterValues.status : undefined,
+      educational_level:
+        filterValues.educational_level !== 'all' ? filterValues.educational_level : undefined,
+      category: filterValues.category !== 'all' ? filterValues.category : undefined,
+    }),
+    [page, pageSize, debouncedSearch, filterValues]
+  )
+
+  const researchers = useQuery({
+    queryKey: ['researchers', 'list', params],
+    queryFn: () => listResearchers(params),
+    placeholderData: keepPreviousData,
+  })
+
+  // Si un delete/restauración deja la última página vacía, volver a una página válida
+  useEffect(() => {
+    const maxPage = Math.max(0, Math.ceil((researchers.data?.total ?? 0) / pageSize) - 1)
+    if (page > maxPage) setPage(maxPage)
+  }, [researchers.data?.total, pageSize, page])
 
   const delMutation = useMutation({
     mutationFn: (id: number) => deleteResearcher(id, true),
@@ -228,10 +260,7 @@ export function Researchers() {
         </div>
       ),
     },
-  ], [delMutation])
-
-  // Todos los investigadores; el filtro 'Estado' (defecto: Activos) controla la vista
-  const allResearchers = researchers.data ?? []
+  ], [delMutation, restoreMutation])
 
   return (
     <>
@@ -254,12 +283,11 @@ export function Researchers() {
 
         <DataTable
           columns={columns}
-          data={allResearchers}
+          data={researchers.data?.items ?? []}
           loading={researchers.isLoading}
           rowKey={(r) => r.id ?? r.external_code}
           searchPlaceholder='Buscar por nombre o código…'
           emptyMessage='No hay investigadores que coincidan.'
-          defaultPageSize={10}
           filters={[
             {
               key: 'status',
@@ -294,11 +322,26 @@ export function Researchers() {
               ]
             }
           ]}
-          filterFn={(r, filterValues) => {
-            if (filterValues.status && filterValues.status !== 'all' && r.status !== filterValues.status) return false
-            if (filterValues.educational_level && filterValues.educational_level !== 'all' && r.highest_education_level !== filterValues.educational_level) return false
-            if (filterValues.category && filterValues.category !== 'all' && r.classification_records !== filterValues.category) return false
-            return true
+          server={{
+            total: researchers.data?.total ?? 0,
+            pageIndex: page,
+            pageSize,
+            onPageChange: setPage,
+            onPageSizeChange: (ps) => {
+              setPageSize(ps)
+              setPage(0)
+            },
+            searchValue: search,
+            onSearchChange: (v) => {
+              setSearch(v)
+              setPage(0)
+            },
+            filterValues,
+            onFilterChange: (v) => {
+              setFilterValues(v)
+              setPage(0)
+            },
+            isFetching: researchers.isFetching,
           }}
           toolbarActions={
             <>

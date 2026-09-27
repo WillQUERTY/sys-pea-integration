@@ -5,6 +5,7 @@ import type {
   Product,
   Project,
   ProductFilters,
+  PagedResponse,
   ValidationQueueItem,
   GruplacPreview,
   ImportResult,
@@ -17,8 +18,15 @@ const baseURL = import.meta.env.VITE_API_URL ?? 'http://localhost:8000/api/v1'
 export const api = axios.create({ baseURL, timeout: 120_000 })
 
 // --- Groups ---
-export async function listGroups(params?: { skip?: number; limit?: number; search?: string }) {
-  const { data } = await api.get<Group[]>('/groups', { params: { limit: 500, ...params } })
+export interface GroupListParams {
+  skip?: number
+  limit?: number
+  search?: string
+  status?: string
+  classification?: string
+}
+export async function listGroups(params?: GroupListParams) {
+  const { data } = await api.get<PagedResponse<Group>>('/groups', { params })
   return data
 }
 export async function getGroup(id: number) {
@@ -120,15 +128,15 @@ export async function deleteGroup(id: number, soft: boolean = true) {
 }
 
 // --- Researchers ---
-export async function listResearchers(params?: { 
-  skip?: number; 
-  limit?: number; 
-  search?: string; 
+export async function listResearchers(params?: {
+  skip?: number;
+  limit?: number;
+  search?: string;
   status?: string;
   educational_level?: string;
   category?: string;
 }) {
-  const { data } = await api.get<Researcher[]>('/researchers', { params: { limit: 1000, ...params } })
+  const { data } = await api.get<PagedResponse<Researcher>>('/researchers', { params })
   return data
 }
 export async function getResearcher(id: number) {
@@ -158,7 +166,7 @@ export async function deleteResearcher(id: number, soft: boolean = true) {
 
 // --- Products ---
 export async function listProducts(filters?: ProductFilters) {
-  const { data } = await api.get<Product[]>('/products', { params: { limit: 1000, ...filters } })
+  const { data } = await api.get<PagedResponse<Product>>('/products', { params: filters })
   return data
 }
 export async function getProduct(id: number) {

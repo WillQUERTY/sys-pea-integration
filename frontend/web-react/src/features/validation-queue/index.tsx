@@ -38,12 +38,14 @@ const statusFilters: DataFilter[] = [
 export function ValidationQueue() {
   const queryClient = useQueryClient()
   const queue = useQuery({ queryKey: ['validation-queue'], queryFn: listValidationQueue })
-  const products = useQuery({ queryKey: ['products'], queryFn: () => listProducts() })
+  // mapa id→título para la cola: necesita un catálogo amplio (core en RAM).
+  // TODO: exponer el título desde el endpoint de la cola y eliminar este fetch.
+  const products = useQuery({ queryKey: ['products', 'catalog'], queryFn: () => listProducts({ limit: 5000 }) })
 
   // id -> titulo, para que la tabla busque y muestre el titulo del producto
   const titleById = useMemo(() => {
     const map = new Map<number, string>()
-    for (const p of products.data ?? []) {
+    for (const p of products.data?.items ?? []) {
       if (p.id != null) map.set(p.id, p.title)
     }
     return map

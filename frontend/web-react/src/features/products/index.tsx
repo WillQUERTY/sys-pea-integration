@@ -1,10 +1,11 @@
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useEffect } from 'react'
 import { Link } from '@tanstack/react-router'
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
+import { useQuery, useMutation, useQueryClient, keepPreviousData } from '@tanstack/react-query'
 import { toast } from 'sonner'
 import { Plus, MoreHorizontal, Pencil, Trash2, ClipboardCheck, RotateCcw } from 'lucide-react'
 import { listProducts, deleteProduct, enqueueValidation, restoreProduct } from '@/lib/api'
 import type { Product } from '@/lib/types'
+import { useDebouncedValue } from '@/hooks/use-debounced-value'
 import { Button } from '@/components/ui/button'
 import {
   DropdownMenu,
@@ -59,38 +60,45 @@ const productFilters: DataFilter[] = [
   },
 ]
 
-function productFilterFn(p: Product, filters: Record<string, string>): boolean {
-  // Record status filter (activo / inactivo)
-  if (filters.record_status && filters.record_status !== 'all') {
-    if ((p.status ?? 'active') !== filters.record_status) return false
-  }
-
-  // Status filter
-  if (filters.status && filters.status !== 'all') {
-    const st = p.validation_status ?? 'pending'
-    if (st !== filters.status) return false
-  }
-
-  // Observation window filter
-  if (filters.window && filters.window !== 'all') {
-    const windowYears = Number(filters.window)
-    const currentYear = new Date().getFullYear()
-    const year = p.year ?? (Number(String(p.publication_date ?? '').slice(0, 4)) || 0)
-    if (year < currentYear - windowYears) return false
-  }
-
-  return true
-}
-
 export function Products() {
   const queryClient = useQueryClient()
   const [formOpen, setFormOpen] = useState(false)
   const [editingProduct, setEditingProduct] = useState<Product | null>(null)
 
-  const products = useQuery({
-    queryKey: ['products'],
-    queryFn: () => listProducts({ limit: 2000 }),
+  // Estado server-side: búsqueda (debounced), página y filtros
+  const [search, setSearch] = useState('')
+  const debouncedSearch = useDebouncedValue(search, 300)
+  const [page, setPage] = useState(0)
+  const [pageSize, setPageSize] = useState(20)
+  const [filterValues, setFilterValues] = useState<Record<string, string>>({
+    status: 'all',
+    record_status: 'active',
+    window: 'all',
   })
+
+  const params = useMemo(
+    () => ({
+      skip: page * pageSize,
+      limit: pageSize,
+      search: debouncedSearch.trim() || undefined,
+      validation_status: filterValues.status !== 'all' ? filterValues.status : undefined,
+      status: filterValues.record_status !== 'all' ? filterValues.record_status : undefined,
+      window_years: filterValues.window !== 'all' ? Number(filterValues.window) : undefined,
+    }),
+    [page, pageSize, debouncedSearch, filterValues]
+  )
+
+  const products = useQuery({
+    queryKey: ['products', 'list', params],
+    queryFn: () => listProducts(params),
+    placeholderData: keepPreviousData,
+  })
+
+  // Si un delete/restauración deja la última página vacía, volver a una página válida
+  useEffect(() => {
+    const maxPage = Math.max(0, Math.ceil((products.data?.total ?? 0) / pageSize) - 1)
+    if (page > maxPage) setPage(maxPage)
+  }, [products.data?.total, pageSize, page])
 
   const delMutation = useMutation({
     mutationFn: (id: number) => deleteProduct(id, true),
@@ -252,14 +260,33 @@ export function Products() {
 
         <DataTable
           columns={columns}
-          data={products.data ?? []}
+          data={products.data?.items ?? []}
           loading={products.isLoading}
           rowKey={(p) => p.id ?? p.external_code}
           searchPlaceholder='Buscar por título o DOI…'
           filters={productFilters}
-          filterFn={productFilterFn}
           emptyMessage='Sin productos para los filtros seleccionados o activos.'
-          defaultPageSize={20}
+          server={{
+            total: products.data?.total ?? 0,
+            pageIndex: page,
+            pageSize,
+            onPageChange: setPage,
+            onPageSizeChange: (ps) => {
+              setPageSize(ps)
+              setPage(0)
+            },
+            searchValue: search,
+            onSearchChange: (v) => {
+              setSearch(v)
+              setPage(0)
+            },
+            filterValues,
+            onFilterChange: (v) => {
+              setFilterValues(v)
+              setPage(0)
+            },
+            isFetching: products.isFetching,
+          }}
         />
       </Main>
 

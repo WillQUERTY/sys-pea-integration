@@ -69,7 +69,7 @@ export function ResearcherDetail() {
     queryFn: () => listGroups({ search: groupSearch, limit: 8 }),
     enabled: groupOpen,
   })
-  const linkableGroups = (groupResults ?? []).filter(
+  const linkableGroups = (groupResults?.items ?? []).filter(
     (g) => !(groups ?? []).some((gg) => gg.id === g.id)
   )
 
