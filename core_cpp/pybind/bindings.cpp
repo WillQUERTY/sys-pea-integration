@@ -233,6 +233,8 @@ PYBIND11_MODULE(abpoxx_pybind, m) {
     m.def("upsert_product_group_link_db", &peai::upsert_product_group_link_db, "Propose/upsert a group-product link");
     m.def("insert_external_product_author_db", &peai::insert_external_product_author_db, "Insert an external product author");
     m.def("products_of_researcher_db",    &peai::products_of_researcher_db,    "List product ids authored by a researcher");
+    m.def("authors_of_product_json",      &peai::authors_of_product_json,      "Authors of a product as JSON");
+    m.def("remove_product_author_db",     &peai::remove_product_author_db,     "Remove a product author (researcher or external)");
     m.def("vq_enqueue_db",                &peai::vq_enqueue_db,                "Persist a validation queue item");
 
 

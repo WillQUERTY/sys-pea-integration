@@ -48,6 +48,10 @@ bool insert_import_record_db(const std::string& conn, int job_id, const std::str
 bool upsert_product_group_link_db(const std::string& conn, int group_id, int product_id, const std::string& status, const std::string& source, const std::string& reason);
 bool insert_external_product_author_db(const std::string& conn, int product_id, int author_order, const std::string& name, const std::string& identifier, const std::string& match_status);
 std::vector<int> products_of_researcher_db(const std::string& conn, int researcher_id);
+// Authors of a product as JSON (internal researchers + external authors).
+std::string authors_of_product_json(const std::string& conn, int product_id);
+// Remove an author: by RAM researcher_id (>0) or by external_author_name.
+bool remove_product_author_db(const std::string& conn, int product_id, int researcher_id, const std::string& external_name);
 bool vq_enqueue_db(const std::string& conn, int product_id, const std::string& assigned_to);
 // ---- Initialization modes (spec section 33.3) ----
 enum class InitMode { Database, File, Empty };

@@ -1237,4 +1237,61 @@ std::string get_product_catalogs_json(const std::string& connection_string) {
     json += "]}";
     return json;
 }
+std::string authors_of_product_json(const std::string& connection_string, int product_id) {
+    SQLHDBC dbc = get_or_create_dbc(connection_string);
+    if (!dbc) return "[]";
+    std::string pid = product_db_id(product_id);
+    std::string sql =
+        "SELECT pa.id, pa.author_order, pa.researcher_id, pa.external_author_name, "
+        "pa.external_author_identifier, pa.match_status, r.external_code, r.first_names, r.last_names "
+        "FROM ProductAuthor pa LEFT JOIN Researcher r ON r.id = pa.researcher_id "
+        "WHERE pa.product_id = " + pid + " ORDER BY pa.author_order, pa.id";
+
+    SQLHSTMT stmt;
+    SQLAllocHandle(SQL_HANDLE_STMT, dbc, &stmt);
+    if (!SQL_SUCCEEDED(SQLExecDirect(stmt, (SQLCHAR*)sql.c_str(), SQL_NTS))) {
+        SQLFreeHandle(SQL_HANDLE_STMT, stmt);
+        return "[]";
+    }
+    std::string out = "[";
+    bool first = true;
+    while (SQLFetch(stmt) == SQL_SUCCESS) {
+        int id = 0, ord = 0, rid = 0; SQLLEN i1, i2, i3, i4, i5, i6, i7, i8, i9;
+        char ext_name[512], ext_id[256], match[128], r_ext[128], r_first[256], r_last[256];
+        SQLGetData(stmt, 1, SQL_C_LONG, &id, 0, &i1);
+        SQLGetData(stmt, 2, SQL_C_LONG, &ord, 0, &i2);
+        SQLGetData(stmt, 3, SQL_C_LONG, &rid, 0, &i3);
+        SQLGetData(stmt, 4, SQL_C_CHAR, ext_name, sizeof(ext_name), &i4);
+        SQLGetData(stmt, 5, SQL_C_CHAR, ext_id, sizeof(ext_id), &i5);
+        SQLGetData(stmt, 6, SQL_C_CHAR, match, sizeof(match), &i6);
+        SQLGetData(stmt, 7, SQL_C_CHAR, r_ext, sizeof(r_ext), &i7);
+        SQLGetData(stmt, 8, SQL_C_CHAR, r_first, sizeof(r_first), &i8);
+        SQLGetData(stmt, 9, SQL_C_CHAR, r_last, sizeof(r_last), &i9);
+        if (!first) out += ",";
+        out += "{\"id\":" + std::to_string(id);
+        out += ",\"author_order\":" + std::to_string(i2 != SQL_NULL_DATA ? ord : 1);
+        out += ",\"researcher_db_id\":" + (i3 != SQL_NULL_DATA ? std::to_string(rid) : std::string("null"));
+        out += ",\"researcher_external_code\":\"" + json_escape(i7 != SQL_NULL_DATA ? cp1252_to_utf8(r_ext) : "") + "\"";
+        std::string rname = (i8 != SQL_NULL_DATA ? cp1252_to_utf8(r_first) : "") + " " +
+                            (i9 != SQL_NULL_DATA ? cp1252_to_utf8(r_last) : "");
+        out += ",\"researcher_name\":\"" + json_escape(rname) + "\"";
+        out += ",\"external_author_name\":\"" + json_escape(i4 != SQL_NULL_DATA ? cp1252_to_utf8(ext_name) : "") + "\"";
+        out += ",\"external_author_identifier\":\"" + json_escape(i5 != SQL_NULL_DATA ? cp1252_to_utf8(ext_id) : "") + "\"";
+        out += ",\"match_status\":\"" + json_escape(i6 != SQL_NULL_DATA ? cp1252_to_utf8(match) : "") + "\"}";
+        first = false;
+    }
+    SQLFreeHandle(SQL_HANDLE_STMT, stmt);
+    out += "]";
+    return out;
+}
+
+bool remove_product_author_db(const std::string& conn, int product_id, int researcher_id, const std::string& external_name) {
+    SQLHDBC dbc = get_or_create_dbc(conn);
+    if (!dbc) return false;
+    std::string pid = product_db_id(product_id);
+    std::string cond = researcher_id > 0
+        ? "researcher_id = " + researcher_db_id(researcher_id)
+        : "external_author_name = '" + escape_sql(utf8_to_cp1252(external_name)) + "'";
+    return exec_sql(dbc, "DELETE FROM ProductAuthor WHERE product_id = " + pid + " AND " + cond);
+}
 } // namespace peai
