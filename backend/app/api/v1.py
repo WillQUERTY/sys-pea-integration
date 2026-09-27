@@ -157,6 +157,15 @@ async def process_next_validation_item():
         raise HTTPException(status_code=400, detail="La cola de validación está vacía o no hay ítems pendientes.")
     return {"status": "success", "remaining_pending": repository.vq_pending_count()}
 
+@router.delete("/system/validation-queue/{item_id}", tags=["Validation Queue"])
+async def cancel_validation_item(item_id: int):
+    """Cancel a specific queue item without processing it (RAM + BD)."""
+    try:
+        product_id = repository.vq_remove_item(item_id)
+        return {"status": "cancelled", "item_id": item_id, "product_id": product_id}
+    except KeyError:
+        raise HTTPException(status_code=404, detail="Queue item not found")
+
 # -------------------------------------------------------------------
 # Group Endpoints (CRUD & Multilistas)
 # -------------------------------------------------------------------

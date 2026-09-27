@@ -940,6 +940,17 @@ def vq_pending_count() -> int:
 def vq_clear():
     abpoxx_pybind.vq_clear()
 
+def vq_remove_item(item_id: int):
+    """Cancela un item especifico de la cola sin procesarlo (RAM + BD)."""
+    item = next((i for i in abpoxx_pybind.vq_list() if i.id == item_id), None)
+    if item is None:
+        raise KeyError(f"Queue item {item_id} not found")
+    if not abpoxx_pybind.vq_remove(item_id):
+        raise KeyError(f"Queue item {item_id} not found")
+    if _active_connection_string:
+        abpoxx_pybind.vq_cancel_db(_active_connection_string, item.product_id)
+    return item.product_id
+
 def get_dashboard_stats() -> dict:
     if not _active_connection_string:
         return {}
