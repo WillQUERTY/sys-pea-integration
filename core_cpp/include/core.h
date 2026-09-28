@@ -17,6 +17,7 @@
 #include "services/product_service.h"
 #include "services/undo_stack.h"
 #include "services/validation_queue.h"
+#include "services/work_plan_service.h"
 
 // ---- Persistence ----
 #include "persistence/json_persistence.h"

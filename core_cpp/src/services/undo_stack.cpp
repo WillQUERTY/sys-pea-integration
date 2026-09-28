@@ -6,6 +6,7 @@
 #include "services/group_service.h"
 #include "services/researcher_service.h"
 #include "services/product_service.h"
+#include "services/work_plan_service.h"
 
 #include <iostream>
 
@@ -120,6 +121,18 @@ std::string undo_snapshot_product(const Product& p) {
     return s;
 }
 
+std::string undo_snapshot_work_plan(const WorkPlan& wp) {
+    std::string s;
+    join(s, std::to_string(wp.id));
+    join(s, std::to_string(wp.group_id));
+    join(s, wp.title);
+    join(s, wp.description);
+    join(s, wp.start_date);
+    join(s, wp.end_date);
+    join(s, wp.status);
+    return s;
+}
+
 // =====================================================================
 //  Revert logic
 // =====================================================================
@@ -196,6 +209,19 @@ bool revert_delete(const UndoOperation& op) {
         create_product(p);
         return true;
     }
+    if (op.entity_type == "WorkPlan") {
+        WorkPlan wp;
+        wp.id          = id;
+        try { wp.group_id = std::stoi(at(1)); } catch (...) {}
+        wp.title       = at(2);
+        wp.description = at(3);
+        wp.start_date  = at(4);
+        wp.end_date    = at(5);
+        wp.status      = at(6);
+        if (wp.title.empty()) return false;
+        create_work_plan(wp);
+        return true;
+    }
     return false;
 }
 
@@ -219,6 +245,7 @@ bool undo_perform() {
         if      (e == "Group")      ok = delete_group(id);
         else if (e == "Researcher") ok = delete_researcher(id);
         else if (e == "Product")    ok = delete_product(id);
+        else if (e == "WorkPlan")   ok = delete_work_plan(id);
         std::cout << "[UNDO] CREATE " << e << " #" << id
                   << (ok ? " revertido: entidad eliminada.\n"
                           : " (ya no existe, nada que revertir).\n");
@@ -269,6 +296,16 @@ bool undo_perform() {
             restored.validation_status = at(5);
             restored.status            = at(6);
             update_product(id, restored);
+        } else if (e == "WorkPlan") {
+            auto cur = get_work_plan(id);
+            if (!cur) { std::cerr << "[UNDO] UPDATE: plan " << id << " no encontrado.\n"; return false; }
+            WorkPlan restored = *cur;
+            restored.title       = at(2);
+            restored.description = at(3);
+            restored.start_date  = at(4);
+            restored.end_date    = at(5);
+            restored.status      = at(6);
+            update_work_plan(id, restored);
         } else {
             std::cerr << "[UNDO] UPDATE: tipo de entidad desconocido: " << e << "\n";
             return false;

@@ -34,6 +34,16 @@ export interface Project {
   principal_investigator_id?: number | null
 }
 
+export interface WorkPlan {
+  id?: number
+  group_id: number
+  title: string
+  description?: string | null
+  start_date?: string | null
+  end_date?: string | null
+  status?: string | null
+}
+
 export interface Researcher {
   id?: number
   external_code: string

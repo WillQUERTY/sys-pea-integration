@@ -15,7 +15,8 @@ import {
   Plus,
   UserPlus,
   Pencil,
-  FileDown
+  FileDown,
+  ClipboardList
 } from 'lucide-react'
 
 import {
@@ -24,10 +25,11 @@ import {
   linkMember, unlinkMember, listResearchers,
   linkProduct, unlinkProduct, listProducts,
   getGroupMemberships, updateMember,
+  getGroupPlans, createPlan, updatePlan, deletePlan,
   groupReportPdfUrl
 } from '@/lib/api'
 import type { Researcher } from '@/lib/types'
-import type { Group } from '@/lib/types'
+import type { Group, WorkPlan } from '@/lib/types'
 
 import { Header } from '@/components/layout/header'
 import { Main } from '@/components/layout/main'
@@ -83,11 +85,40 @@ export function GroupDetail() {
     queryFn: () => getGroupResearchLines(groupId),
   })
 
+  // Planes de trabajo (T-08)
+  const { data: plans, isLoading: isLoadingPlans } = useQuery({
+    queryKey: ['groups', groupId, 'plans'],
+    queryFn: () => getGroupPlans(groupId),
+  })
+
   const [formData, setFormData] = useState<Partial<Group>>({})
   const [newProject, setNewProject] = useState({ title: '', start_date: '', status: 'Activo' })
   const [newLine, setNewLine] = useState('')
   const [projectOpen, setProjectOpen] = useState(false)
   const [lineOpen, setLineOpen] = useState(false)
+
+  // Planes de trabajo: diálogo de creación/edición (T-08)
+  const emptyPlanForm = { title: '', description: '', start_date: '', end_date: '', status: 'active' }
+  const [planOpen, setPlanOpen] = useState(false)
+  const [editingPlan, setEditingPlan] = useState<WorkPlan | null>(null)
+  const [planForm, setPlanForm] = useState(emptyPlanForm)
+
+  const openCreatePlan = () => {
+    setEditingPlan(null)
+    setPlanForm(emptyPlanForm)
+    setPlanOpen(true)
+  }
+  const openEditPlan = (p: WorkPlan) => {
+    setEditingPlan(p)
+    setPlanForm({
+      title: p.title,
+      description: p.description ?? '',
+      start_date: p.start_date ?? '',
+      end_date: p.end_date ?? '',
+      status: p.status ?? 'active',
+    })
+    setPlanOpen(true)
+  }
 
   // Vinculación de investigadores (multilista — Req. 5)
   const [memberOpen, setMemberOpen] = useState(false)
@@ -189,6 +220,30 @@ export function GroupDetail() {
       queryClient.invalidateQueries({ queryKey: ['groups', groupId, 'researchLines'] })
       toast.success('Línea desvinculada')
     }
+  })
+
+  const savePlanMutation = useMutation({
+    mutationFn: () =>
+      editingPlan
+        ? updatePlan(editingPlan.id!, { ...planForm, group_id: groupId })
+        : createPlan(groupId, planForm),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['groups', groupId, 'plans'] })
+      toast.success(editingPlan ? 'Plan actualizado' : 'Plan creado correctamente')
+      setPlanOpen(false)
+      setEditingPlan(null)
+      setPlanForm(emptyPlanForm)
+    },
+    onError: (e) => toast.error(e instanceof Error ? e.message : 'Error al guardar el plan')
+  })
+
+  const deletePlanMutation = useMutation({
+    mutationFn: (pid: number) => deletePlan(pid),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['groups', groupId, 'plans'] })
+      toast.success('Plan desactivado')
+    },
+    onError: (e) => toast.error(e instanceof Error ? e.message : 'Error al desactivar el plan')
   })
 
   const linkMemberMutation = useMutation({
@@ -422,8 +477,14 @@ export function GroupDetail() {
             >
               <Building2 className='mr-2 h-4 w-4' /> Proyectos ({projects?.length ?? 0})
             </TabsTrigger>
-            <TabsTrigger 
-              value="lineas" 
+            <TabsTrigger
+              value="planes"
+              className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:shadow-none px-6 h-full"
+            >
+              <ClipboardList className='mr-2 h-4 w-4' /> Planes ({plans?.length ?? 0})
+            </TabsTrigger>
+            <TabsTrigger
+              value="lineas"
               className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:shadow-none px-6 h-full"
             >
               <Info className='mr-2 h-4 w-4' /> Líneas de Inv. ({researchLines?.length ?? 0})
@@ -905,6 +966,99 @@ export function GroupDetail() {
               rowKey={(p) => p.id!}
               emptyMessage="Este grupo no tiene proyectos asociados."
               searchPlaceholder="Buscar por título de proyecto..."
+            />
+          </TabsContent>
+
+          <TabsContent value="planes" className="focus-visible:outline-none bg-card border border-border/50 rounded-2xl p-6 shadow-sm">
+            <div className="flex justify-between items-center mb-4">
+              <h3 className="font-semibold text-lg">Planes de Trabajo del Grupo</h3>
+              <Dialog open={planOpen} onOpenChange={setPlanOpen}>
+                <DialogTrigger asChild>
+                  <Button size="sm" onClick={openCreatePlan}><Plus className="w-4 h-4 mr-2"/> Añadir Plan</Button>
+                </DialogTrigger>
+                <DialogContent>
+                  <DialogHeader>
+                    <DialogTitle>{editingPlan ? 'Editar Plan de Trabajo' : 'Añadir Plan de Trabajo'}</DialogTitle>
+                  </DialogHeader>
+                  <div className="space-y-4 py-4">
+                    <div className="space-y-2">
+                      <Label>Título del Plan</Label>
+                      <Input value={planForm.title} onChange={e => setPlanForm({...planForm, title: e.target.value})} />
+                    </div>
+                    <div className="space-y-2">
+                      <Label>Descripción</Label>
+                      <Textarea
+                        value={planForm.description}
+                        onChange={e => setPlanForm({...planForm, description: e.target.value})}
+                        rows={3}
+                        className='bg-muted/30 focus-visible:bg-transparent rounded-xl resize-none'
+                        placeholder="Objetivos y actividades del plan..."
+                      />
+                    </div>
+                    <div className="grid grid-cols-2 gap-4">
+                      <div className="space-y-2">
+                        <Label>Fecha de Inicio</Label>
+                        <Input value={planForm.start_date} onChange={e => setPlanForm({...planForm, start_date: e.target.value})} placeholder="Ej: 2024-01" />
+                      </div>
+                      <div className="space-y-2">
+                        <Label>Fecha de Fin</Label>
+                        <Input value={planForm.end_date} onChange={e => setPlanForm({...planForm, end_date: e.target.value})} placeholder="Ej: 2026-12" />
+                      </div>
+                    </div>
+                    <Button className="w-full" onClick={() => savePlanMutation.mutate()} disabled={!planForm.title || savePlanMutation.isPending}>
+                      {savePlanMutation.isPending ? 'Guardando...' : editingPlan ? 'Guardar Cambios' : 'Guardar Plan'}
+                    </Button>
+                  </div>
+                </DialogContent>
+              </Dialog>
+            </div>
+            <DataTable
+              columns={[
+                {
+                  key: 'title',
+                  header: 'Título del Plan',
+                  searchable: (p) => p.title,
+                  className: 'max-w-[300px]',
+                  cell: (p) => <span className='block truncate font-medium text-sm'>{p.title}</span>
+                },
+                {
+                  key: 'period',
+                  header: 'Periodo',
+                  cell: (p) => (
+                    <span className='text-muted-foreground'>
+                      {p.start_date || '—'} → {p.end_date || '—'}
+                    </span>
+                  )
+                },
+                {
+                  key: 'status',
+                  header: 'Estado',
+                  cell: (p) => p.status === 'active'
+                    ? <Badge className='bg-green-600 text-white hover:bg-green-700'>Activo</Badge>
+                    : <Badge variant='secondary'>{p.status || 'Inactivo'}</Badge>
+                },
+                {
+                  key: 'actions',
+                  header: '',
+                  cell: (p) => (
+                    <div className="flex items-center gap-1">
+                      <Button variant="ghost" size="icon" title="Editar plan" onClick={() => openEditPlan(p)}>
+                        <Pencil className="w-4 h-4" />
+                      </Button>
+                      {p.status === 'active' && (
+                        <Button variant="ghost" size="icon" title="Desactivar plan" onClick={() => deletePlanMutation.mutate(p.id!)}>
+                          <Trash2 className="w-4 h-4 text-red-500" />
+                        </Button>
+                      )}
+                    </div>
+                  )
+                }
+              ]}
+              data={plans ?? []}
+              loading={isLoadingPlans}
+              rowKey={(p) => p.id!}
+              emptyMessage="Este grupo no tiene planes de trabajo registrados."
+              searchPlaceholder="Buscar por título del plan..."
             />
           </TabsContent>
 

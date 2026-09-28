@@ -26,11 +26,6 @@ struct GroupProjectNode {
     GroupProjectNode* nextForProject = nullptr;
 };
 
-struct PlanNode {
-    int       planId = 0;
-    PlanNode* next   = nullptr;
-};
-
 struct WorkPlan {
     int         id       = 0;
     int         group_id = 0;
@@ -39,6 +34,13 @@ struct WorkPlan {
     std::string start_date;
     std::string end_date;
     std::string status   = "active";
+};
+
+// Nodo de la cadena de planes de un grupo (multilista Grupo -> planes).
+// El dato viaja en el nodo, igual que MembershipNode/GroupProductNode.
+struct PlanNode {
+    WorkPlan  data;
+    PlanNode* next = nullptr;
 };
 
 #endif // PEAI_ENTITIES_PROJECT_H

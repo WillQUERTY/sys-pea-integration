@@ -12,6 +12,7 @@ add_library(abpoxx STATIC
     src/services/product_service.cpp
     src/services/undo_stack.cpp
     src/services/validation_queue.cpp
+    src/services/work_plan_service.cpp
     src/persistence/json_persistence.cpp
     src/persistence/db_persistence.cpp
 )

@@ -20,6 +20,7 @@
 #include "../entities/group.h"
 #include "../entities/researcher.h"
 #include "../entities/product.h"
+#include "../entities/project.h"
 
 #include <string>
 #include <optional>
@@ -50,6 +51,7 @@ void                        undo_clear();
 std::string undo_snapshot_group(const Group& g);
 std::string undo_snapshot_researcher(const Researcher& r);
 std::string undo_snapshot_product(const Product& p);
+std::string undo_snapshot_work_plan(const WorkPlan& wp);
 
 } // namespace peai
 

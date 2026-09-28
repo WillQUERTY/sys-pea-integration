@@ -9,6 +9,7 @@
 #include "services/product_service.h"
 #include "services/validation_queue.h"
 #include "services/undo_stack.h"
+#include "services/work_plan_service.h"
 
 #ifdef _WIN32
 #include <windows.h>
@@ -551,6 +552,38 @@ bool load_from_db(const std::string& connection_string) {
         SQLFreeHandle(SQL_HANDLE_STMT, stmt);
     }
 
+    // Load work plans (multilista Grupo -> planes, T-08). El id RAM se
+    // reasigna al de BD para que sync/delete por id funcionen despues.
+    {
+        SQLHSTMT stmt;
+        SQLAllocHandle(SQL_HANDLE_STMT, dbc, &stmt);
+        SQLExecDirect(stmt, (SQLCHAR*)
+            "SELECT id, group_id, title, description, start_date, end_date, status FROM WorkPlan ORDER BY id",
+            SQL_NTS);
+        SQLINTEGER pid, gid;
+        SQLCHAR title[512], descr[4096], sdate[64], edate[64], status[64];
+        SQLLEN i1, i2, i3, i4, i5, i6, i7;
+        SQLBindCol(stmt, 1, SQL_C_SLONG, &pid, 0, &i1);
+        SQLBindCol(stmt, 2, SQL_C_SLONG, &gid, 0, &i2);
+        SQLBindCol(stmt, 3, SQL_C_CHAR, title, sizeof(title), &i3);
+        SQLBindCol(stmt, 4, SQL_C_CHAR, descr, sizeof(descr), &i4);
+        SQLBindCol(stmt, 5, SQL_C_CHAR, sdate, sizeof(sdate), &i5);
+        SQLBindCol(stmt, 6, SQL_C_CHAR, edate, sizeof(edate), &i6);
+        SQLBindCol(stmt, 7, SQL_C_CHAR, status, sizeof(status), &i7);
+        while (SQL_SUCCEEDED(SQLFetch(stmt))) {
+            WorkPlan wp;
+            wp.id          = (i1 != SQL_NULL_DATA) ? pid : 0;
+            wp.group_id    = (i2 != SQL_NULL_DATA) ? gid : 0;
+            wp.title       = (i3 != SQL_NULL_DATA) ? cp1252_to_utf8((char*)title) : "";
+            wp.description = (i4 != SQL_NULL_DATA) ? cp1252_to_utf8((char*)descr) : "";
+            wp.start_date  = (i5 != SQL_NULL_DATA) ? cp1252_to_utf8((char*)sdate) : "";
+            wp.end_date    = (i6 != SQL_NULL_DATA) ? cp1252_to_utf8((char*)edate) : "";
+            wp.status      = (i7 != SQL_NULL_DATA) ? cp1252_to_utf8((char*)status) : "active";
+            create_work_plan(wp);
+        }
+        SQLFreeHandle(SQL_HANDLE_STMT, stmt);
+    }
+
     // Reconstruir la cola FIFO de validacion desde los items 'pending'.
     // RAM-only (vq_enqueue directo): NO usar vq_enqueue_db aqui porque los
     // items ya existen en la BD; reinsertarlos los duplicaria.
@@ -583,6 +616,7 @@ bool load_from_db(const std::string& connection_string) {
               << list_products().size() << " products, "
               << total_members() << " memberships, "
               << total_product_links() << " product links, "
+              << total_work_plans() << " work plans, "
               << vq_size() << " pending validations from SQL Server.\n";
     return true;
 }
@@ -753,6 +787,40 @@ bool sync_product_author_to_db(const std::string& connection_string, int product
 
 
 
+// WorkPlan (T-08). El id RAM es la clave estable (tras load_from_db coincide
+// con el id de BD; los planes nuevos se insertan con IDENTITY_INSERT usando
+// el id RAM). Hacer MERGE por (grupo, titulo) duplicaria la fila al renombrar.
+bool sync_work_plan_to_db(const std::string& connection_string, int plan_id) {
+    std::optional<WorkPlan> wp_opt = get_work_plan(plan_id);
+    if (!wp_opt) return false;
+    WorkPlan wp = wp_opt.value();
+    SQLHDBC dbc = get_or_create_dbc(connection_string);
+    if (!dbc) return false;
+
+    std::string gid_expr = group_db_id(wp.group_id);
+    std::string sql =
+        "SET IDENTITY_INSERT WorkPlan ON; "
+        "MERGE WorkPlan AS target "
+        "USING (SELECT " + std::to_string(wp.id) + " AS id, " + gid_expr + " AS gid, '" + escape_sql(utf8_to_cp1252(wp.title)) + "' AS title, '" + escape_sql(utf8_to_cp1252(wp.description)) + "' AS descr, " + nullable_date(wp.start_date) + " AS sdate, " + nullable_date(wp.end_date) + " AS edate, '" + escape_sql(utf8_to_cp1252(wp.status)) + "' AS sts) AS source "
+        "ON (target.id = source.id) "
+        "WHEN MATCHED THEN "
+        "  UPDATE SET group_id = source.gid, title = source.title, description = source.descr, start_date = source.sdate, end_date = source.edate, status = source.sts "
+        "WHEN NOT MATCHED THEN "
+        "  INSERT (id, group_id, title, description, start_date, end_date, status) VALUES (source.id, source.gid, source.title, source.descr, source.sdate, source.edate, source.sts); "
+        "SET IDENTITY_INSERT WorkPlan OFF;";
+    return exec_sql(dbc, sql);
+}
+
+bool delete_work_plan_from_db(const std::string& conn, int plan_id, bool hard) {
+    SQLHDBC dbc = get_or_create_dbc(conn);
+    if (!dbc) return false;
+
+    std::string sql = hard
+        ? "DELETE FROM WorkPlan WHERE id = " + std::to_string(plan_id) + ";"
+        : "UPDATE WorkPlan SET status = 'inactive' WHERE id = " + std::to_string(plan_id) + ";";
+    return exec_sql(dbc, sql);
+}
+
 bool save_to_db(const std::string& connection_string) {
     bool ok = true;
     for (const auto& g : list_groups()) {
@@ -762,6 +830,9 @@ bool save_to_db(const std::string& connection_string) {
         }
         for (int pid : products_of_group(g.id)) {
             ok &= sync_product_link_to_db(connection_string, g.id, pid);
+        }
+        for (const auto& wp : plans_of_group(g.id)) {
+            ok &= sync_work_plan_to_db(connection_string, wp.id);
         }
     }
     for (const auto& r : list_researchers()) ok &= sync_researcher_to_db(connection_string, r.id);

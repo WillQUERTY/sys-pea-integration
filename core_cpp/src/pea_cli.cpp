@@ -61,6 +61,11 @@ static void usage() {
         << "  products unlink <gid> <pid>         Desasociar\n"
         << "  products by-year <start> <end>      Ventana de observación (Req. 10)\n"
         << "  products by-year last <N>           Últimos N años\n\n"
+        << "Planes de trabajo (multilista Grupo → planes):\n"
+        << "  plans    list   <gid>               Planes del grupo\n"
+        << "  plans    add    <gid> <title> [start] [end]   Crear plan\n"
+        << "  plans    update <id> <title>          Modificar (push a la pila)\n"
+        << "  plans    delete <id>                Eliminar (push a la pila)\n\n"
         << "Cola de validación (FIFO):\n"
         << "  queue    list                       Ver la cola en orden de llegada\n"
         << "  queue    enqueue <pid>              Encolar producto\n"
@@ -550,6 +555,71 @@ static int dispatch(int argc, char* argv[]) {
         }
     }
 
+    // ---- plans (multilista Grupo → planes de trabajo, T-08) ----
+    if (cmd == "plans") {
+        if (argc < 3) { usage(); return 1; }
+        std::string sub = argv[2];
+
+        if (sub == "list") {
+            if (argc < 4) { std::cerr << "Provide group_id\n"; return 1; }
+            int gid = std::stoi(argv[3]);
+            auto plans = plans_of_group(gid);
+            if (plans.empty()) {
+                std::cout << "(no plans in group " << gid << ")\n";
+            } else {
+                std::cout << "Planes del grupo " << gid << " (" << plans.size() << "):\n";
+                for (const auto& wp : plans) {
+                    std::cout << "  ID: " << wp.id << "  | " << wp.title;
+                    if (!wp.start_date.empty() || !wp.end_date.empty())
+                        std::cout << "  | " << wp.start_date << " → " << wp.end_date;
+                    std::cout << "  | " << wp.status << "\n";
+                }
+            }
+            return 0;
+        }
+
+        if (sub == "add") {
+            if (argc < 5) { std::cerr << "Provide group_id and title\n"; return 1; }
+            WorkPlan proto;
+            proto.group_id = std::stoi(argv[3]);
+            proto.title    = argv[4];
+            if (argc >= 6) proto.start_date = argv[5];
+            if (argc >= 7) proto.end_date   = argv[6];
+            WorkPlan created = create_work_plan(proto);
+            if (created.id == 0) { std::cerr << "Group " << proto.group_id << " not found\n"; return 1; }
+            push_undo("CREATE", "WorkPlan", created.id);
+            std::cout << "Created work plan with ID " << created.id
+                      << " in group " << created.group_id << " (operación apilada)\n";
+            return 0;
+        }
+
+        if (sub == "update") {
+            if (argc < 5) { std::cerr << "Provide plan id and new title\n"; return 1; }
+            int id = std::stoi(argv[3]);
+            auto prev = get_work_plan(id);
+            if (!prev) { std::cerr << "Work plan " << id << " not found\n"; return 1; }
+            WorkPlan updates = *prev;
+            updates.title = argv[4];
+            push_undo("UPDATE", "WorkPlan", id, undo_snapshot_work_plan(*prev));
+            if (update_work_plan(id, updates))
+                std::cout << "Work plan " << id << " updated (operación apilada)\n";
+            else
+                std::cerr << "Update failed\n";
+            return 0;
+        }
+
+        if (sub == "delete") {
+            if (argc < 4) { std::cerr << "Provide plan id\n"; return 1; }
+            int id = std::stoi(argv[3]);
+            auto prev = get_work_plan(id);
+            if (!prev) { std::cerr << "Work plan " << id << " not found\n"; return 1; }
+            push_undo("DELETE", "WorkPlan", id, undo_snapshot_work_plan(*prev));
+            if (delete_work_plan(id)) std::cout << "Deleted work plan " << id << " (operación apilada)\n";
+            else                      std::cerr << "Delete failed\n";
+            return 0;
+        }
+    }
+
     // ---- queue (cola FIFO de validación) ----
     if (cmd == "queue") {
         if (argc < 3) { usage(); return 1; }
@@ -669,7 +739,8 @@ static int dispatch(int argc, char* argv[]) {
                 std::cout << "  [nodo " << (++i) << "] grupo #" << g.id
                           << " \"" << g.name << "\" (" << g.status << ")"
                           << " → integrantes: " << members_of_group(g.id).size()
-                          << " | enlaces producto: " << products_of_group(g.id).size() << "\n";
+                          << " | enlaces producto: " << products_of_group(g.id).size()
+                          << " | planes: " << plans_of_group(g.id).size() << "\n";
             }
             std::cout << "  (fin de la lista — " << i << " nodos)\n";
             return 0;
@@ -731,6 +802,14 @@ static int dispatch(int argc, char* argv[]) {
                 std::cout << "    → product " << pid
                           << (p ? " (\"" + p->title + "\")" : " (no en memoria)")
                           << "\n";
+            }
+
+            std::cout << "  Cadena de planes (PlanNode → next):\n";
+            auto plans = plans_of_group(gid);
+            if (plans.empty()) std::cout << "    (sin planes)\n";
+            for (const auto& wp : plans) {
+                std::cout << "    → plan " << wp.id << " (\"" << wp.title << "\", "
+                          << wp.status << ")\n";
             }
             return 0;
         }

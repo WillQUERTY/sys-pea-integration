@@ -4,7 +4,7 @@ from pydantic import BaseModel
 from typing import Any, Dict, List, Optional
 from .. import repository
 from .. import reports
-from ..models import Group, Researcher, Product, Project, PagedResponse
+from ..models import Group, Researcher, Product, Project, WorkPlan, PagedResponse
 
 router = APIRouter()
 
@@ -393,6 +393,61 @@ async def unlink_research_line_endpoint(group_id: int, line_name: str):
         repository.unlink_research_line_from_group(group_id, line_name)
         return {"status": "success", "group_id": group_id, "line_name": line_name}
     except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+# -------------------------------------------------------------------
+# WorkPlan Endpoints (T-08: planes de trabajo por grupo)
+# -------------------------------------------------------------------
+
+@router.get("/groups/{group_id}/plans", response_model=List[WorkPlan], tags=["Groups"])
+async def list_group_plans(group_id: int):
+    """Retrieve the work plans of a research group (Multilista Grupo → planes)."""
+    try:
+        return repository.list_work_plans_of_group(group_id)
+    except KeyError:
+        raise HTTPException(status_code=404, detail="Group not found")
+
+@router.post("/groups/{group_id}/plans", response_model=WorkPlan, status_code=201, tags=["Groups"])
+async def create_plan_endpoint(group_id: int, plan: WorkPlan):
+    """Create a work plan for a group (write-through to SQL Server)."""
+    try:
+        plan.group_id = group_id
+        return repository.create_work_plan(plan)
+    except KeyError:
+        raise HTTPException(status_code=404, detail="Group not found")
+    except RuntimeError as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@router.put("/plans/{plan_id}", response_model=WorkPlan, tags=["Plans"])
+async def update_plan_endpoint(plan_id: int, updates: WorkPlan):
+    """Update a work plan (Requerimiento 11)."""
+    try:
+        return repository.update_work_plan(plan_id, updates)
+    except KeyError:
+        raise HTTPException(status_code=404, detail="Work plan not found")
+    except RuntimeError as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@router.delete("/plans/{plan_id}", tags=["Plans"])
+async def delete_plan_endpoint(plan_id: int, soft: bool = Query(True, description="Si es True, realiza baja lógica status='inactive'")):
+    """Deactivate or remove a work plan (Requerimiento 9)."""
+    try:
+        repository.delete_work_plan(plan_id, soft=soft)
+        return {"status": "success", "plan_id": plan_id, "soft_delete": soft}
+    except KeyError:
+        raise HTTPException(status_code=404, detail="Work plan not found")
+    except RuntimeError as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@router.post("/plans/{plan_id}/restore", tags=["Plans"])
+async def restore_plan_endpoint(plan_id: int):
+    """Reactivate a soft-deleted work plan (Requerimiento 9, inverso)."""
+    try:
+        repository.restore_work_plan(plan_id)
+        return {"status": "success", "plan_id": plan_id}
+    except KeyError:
+        raise HTTPException(status_code=404, detail="Work plan not found")
+    except RuntimeError as e:
         raise HTTPException(status_code=500, detail=str(e))
 
 # -------------------------------------------------------------------

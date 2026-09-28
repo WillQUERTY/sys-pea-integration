@@ -3,10 +3,12 @@
 // All data lives in a manually managed linked list (academic requirement).
 
 #include "services/group_service.h"
+#include "entities/project.h"   // PlanNode (cadena de planes del grupo)
 #include "services/researcher_service.h"
 #include "services/product_service.h"
 #include "services/undo_stack.h"
 #include "services/validation_queue.h"
+#include "services/work_plan_service.h"
 #include <iostream>
 #include <iomanip>
 #include <algorithm>
@@ -123,6 +125,10 @@ bool delete_group(int id) {
             // Free product link chain
             GroupProductNode* p = cur->firstProduct;
             while (p) { auto* tmp = p; p = p->nextInGroup; delete tmp; }
+
+            // Free work plan chain (multilista Grupo -> planes)
+            PlanNode* pl = cur->firstPlan;
+            while (pl) { auto* tmp = pl; pl = pl->next; delete tmp; }
 
             delete cur;
             return true;
@@ -318,6 +324,7 @@ void print_summary() {
     std::cout << "| Productos registrados            | " << std::setw(5) << registered      << " |\n";
     std::cout << "| Productos validados               | " << std::setw(5) << valid           << " |\n";
     std::cout << "| Productos pendientes              | " << std::setw(5) << pending         << " |\n";
+    std::cout << "| Planes de trabajo               | " << std::setw(5) << total_work_plans() << " |\n";
     std::cout << "| Vinculaciones (memberships)      | " << std::setw(5) << total_members()   << " |\n";
     std::cout << "| Enlaces grupo-producto            | " << std::setw(5) << total_product_links() << " |\n";
     std::cout << "| Cola de validación (pendientes)   | " << std::setw(5) << vq_pending_count() << " |\n";

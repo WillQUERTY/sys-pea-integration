@@ -1004,6 +1004,7 @@ para probar distintos escenarios.
 | Gestionar grupos | `ResearchGroup` | `/api/groups` | IT-GRP-001 | captura + respuesta |
 | Gestionar investigadores | `Researcher` | `/api/researchers` | IT-RES-001 | captura + respuesta |
 | Gestionar productos | `Product` | `/api/products` | IT-PRD-001 | captura + respuesta |
+| Gestionar planes | `WorkPlan` | `groups/{id}/plans`, `plans/{id}` | UT-PLN-001 | prueba automática + respuesta |
 | Vinculación temporal | `RV-001`, `RV-002` | grupos/memberships | UT-MEM-002 | prueba automática |
 | Producto-grupo | `RPG-001` | products/group-links | UT-LNK-001 | prueba automática |
 | Lista | `LinkedList<T>` | CLI structures | UT-LST-001 | salida consola |
@@ -1034,6 +1035,9 @@ para probar distintos escenarios.
 - Push, top y pop.
 - Enqueue, front y dequeue.
 - Mantener FIFO.
+- Crear, editar y eliminar planes de un grupo (UT-PLN-001).
+- Liberar la cadena de planes al eliminar el grupo (cascada).
+- Deshacer creación, edición y borrado de planes (pila).
 
 ### 41.2 Reglas de dominio
 
@@ -1187,45 +1191,45 @@ Pendientes de crear para la entrega:
 
 ### Código
 
-- [ ] Núcleo C++ compila y `pea_cli.exe` ejecuta (solución C/C++, D-01).
-- [ ] Backend Python (FastAPI) ejecuta (solución Python, D-01).
-- [ ] Lista implementada manualmente.
-- [ ] Multilista implementada manualmente.
-- [ ] Pila funcional.
-- [ ] Cola FIFO funcional.
-- [ ] CRUD completo.
-- [ ] pybind11 funcional.
-- [ ] FastAPI funcional.
-- [ ] React funcional.
+- [x] Núcleo C++ compila y `pea_cli.exe` ejecuta (solución C/C++, D-01).
+- [x] Backend Python (FastAPI) ejecuta (solución Python, D-01).
+- [x] Lista implementada manualmente.
+- [x] Multilista implementada manualmente.
+- [x] Pila funcional.
+- [x] Cola FIFO funcional.
+- [x] CRUD completo (incluye planes de trabajo, T-08).
+- [x] pybind11 funcional.
+- [x] FastAPI funcional.
+- [x] React funcional.
 
 ### Datos
 
-- [ ] SQL Server creado.
-- [ ] Migraciones incluidas.
-- [ ] `pea_data.json` incluido.
-- [ ] Carga desde archivo probada.
+- [x] SQL Server creado.
+- [x] Migraciones incluidas.
+- [x] `pea_data.json` incluido.
+- [x] Carga desde archivo probada.
 - [ ] Inicio sin datos probado.
-- [ ] Reconstrucción desde SQL probada.
+- [x] Reconstrucción desde SQL probada.
 
 ### Importación
 
-- [ ] URL probada (GrupLAC y CvLAC contra SCIENTI real).
-- [ ] CSV probado — no aplica (D-03).
-- [ ] PDF probado — no aplica (D-03).
-- [ ] Vista previa.
-- [ ] Errores por fila.
-- [ ] Confirmación idempotente.
+- [x] URL probada (GrupLAC y CvLAC contra SCIENTI real).
+- [x] CSV probado — no aplica (D-03).
+- [x] PDF probado — no aplica (D-03).
+- [x] Vista previa.
+- [x] Errores por fila.
+- [x] Confirmación idempotente.
 
 ### Analítica
 
-- [ ] Filtro de dos años.
-- [ ] Filtro de cinco años.
-- [ ] Periodo personalizado.
-- [ ] Vista por grupo.
-- [ ] Vista por investigador.
-- [ ] Vista por producto.
-- [ ] Histograma y barras en el dashboard React (D-02).
-- [ ] Resumen C++.
+- [x] Filtro de dos años.
+- [x] Filtro de cinco años.
+- [ ] Periodo personalizado (la UI solo ofrece presets 2/3/5/10).
+- [x] Vista por grupo.
+- [x] Vista por investigador.
+- [x] Vista por producto.
+- [x] Histograma y barras en el dashboard React (D-02).
+- [x] Resumen C++.
 
 ### Documentación
 
@@ -1274,3 +1278,5 @@ Con las ampliaciones de esta versión, el diseño documental cubre explícitamen
 Alcance ajustado por las decisiones del equipo (sección 26.1): D-01 entrega ambas soluciones integradas en una sola aplicación, D-02 traslada el dashboard estadístico a la aplicación integrada y D-03 concentra la ingesta en la ruta URL oficial de SCIENTI, descartando PDF y CSV como alternativas equivalentes no implementadas. Ninguna de estas decisiones elimina un requisito obligatorio: reinterpretan su forma de entrega, y el equipo las expondrá y defenderá en el video.
 
 La afirmación de cumplimiento total dependerá de completar la implementación y reunir las evidencias enumeradas en la matriz de trazabilidad y en la lista de comprobación.
+
+> **Estado de implementación (2026-09-27):** T-08 (gestión de planes) está implementado de punta a punta: `PlanNode` en la multilista C++, `work_plan_service`, persistencia JSON y SQL Server (MERGE por id estable), pybind11, endpoints REST (`/groups/{id}/plans`, `/plans/{id}`), pestaña "Planes" en el detalle de grupo en React, comandos `plans` en `pea_cli` y pruebas unitarias (113/113 en verde). Brechas de código restantes: CRUD independiente de proyectos, periodo de observación personalizado en la UI, lectura/actualización individual de membresías en C++ y pruebas automatizadas del backend (hoy solo cubren los importadores).

@@ -360,6 +360,86 @@ static void test_cola_clear() {
 }
 
 // =====================================================================
+//  PLANES DE TRABAJO (T-08) — multilista Grupo → planes
+// =====================================================================
+
+static int make_plan(int gid, const char* title) {
+    WorkPlan wp; wp.group_id = gid; wp.title = title;
+    return create_work_plan(wp).id;
+}
+
+// CRUD sobre la cadena de planes del grupo.
+static void test_planes_crud() {
+    int g = make_group("G");
+
+    int p1 = make_plan(g, "Plan 2024");
+    int p2 = make_plan(g, "Plan 2025");
+    CHECK(p1 > 0 && p2 > 0 && p1 != p2, "crear dos planes asigna ids distintos");
+    CHECK(plans_of_group(g).size() == 2, "recorrido grupo→planes: 2 planes");
+    CHECK(total_work_plans() == 2, "total de planes = 2");
+
+    // Crear en grupo inexistente falla sin crear nada.
+    WorkPlan bad; bad.group_id = 999999; bad.title = "Huérfano";
+    CHECK(create_work_plan(bad).id == 0, "crear en grupo inexistente devuelve id 0");
+    CHECK(total_work_plans() == 2, "no se creó el plan huérfano");
+
+    // Consultar / modificar / desactivar.
+    auto found = get_work_plan(p1);
+    CHECK(found.has_value() && found->title == "Plan 2024", "get_work_plan encuentra el plan");
+    WorkPlan upd = *found;
+    upd.title = "Plan 2024 (rev)";
+    upd.status = "inactive";
+    CHECK(update_work_plan(p1, upd), "update_work_plan devuelve true");
+    CHECK(get_work_plan(p1)->title == "Plan 2024 (rev)", "el título quedó modificado");
+    CHECK(get_work_plan(p1)->status == "inactive", "el plan quedó desactivado");
+
+    // Eliminar.
+    CHECK(delete_work_plan(p2), "delete_work_plan devuelve true");
+    CHECK(plans_of_group(g).size() == 1, "queda 1 plan tras eliminar");
+    CHECK(!delete_work_plan(p2), "eliminar de nuevo devuelve false");
+}
+
+// Cascada: eliminar el grupo libera su cadena de planes.
+static void test_planes_cascada_al_eliminar_grupo() {
+    int g = make_group("G");
+    make_plan(g, "P1");
+    make_plan(g, "P2");
+    CHECK(total_work_plans() == 2, "ANTES: 2 planes");
+
+    CHECK(delete_group(g), "eliminar el grupo devuelve true");
+    CHECK(total_work_plans() == 0, "los planes se liberan en cascada");
+}
+
+// Undo de CREATE/UPDATE/DELETE sobre planes (pila LIFO).
+static void test_planes_undo() {
+    int g = make_group("G");
+
+    // CREATE → undo elimina el plan.
+    int pid = make_plan(g, "Plan Nuevo");
+    push_op("CREATE", "WorkPlan", pid);
+    CHECK(undo_perform(), "undo de CREATE devuelve true");
+    CHECK(!get_work_plan(pid).has_value(), "DESPUÉS: el plan fue eliminado");
+
+    // UPDATE → undo restaura los campos previos.
+    pid = make_plan(g, "Título Viejo");
+    push_op("UPDATE", "WorkPlan", pid, undo_snapshot_work_plan(*get_work_plan(pid)));
+    WorkPlan upd = *get_work_plan(pid);
+    upd.title = "Título Nuevo";
+    update_work_plan(pid, upd);
+    CHECK(get_work_plan(pid)->title == "Título Nuevo", "ANTES: el cambio se aplicó");
+    CHECK(undo_perform(), "undo de UPDATE devuelve true");
+    CHECK(get_work_plan(pid)->title == "Título Viejo", "DESPUÉS: el título volvió al valor previo");
+
+    // DELETE → undo re-crea el plan con su id original.
+    push_op("DELETE", "WorkPlan", pid, undo_snapshot_work_plan(*get_work_plan(pid)));
+    delete_work_plan(pid);
+    CHECK(!get_work_plan(pid).has_value(), "ANTES: el plan fue eliminado");
+    CHECK(undo_perform(), "undo de DELETE devuelve true");
+    CHECK(get_work_plan(pid).has_value() && get_work_plan(pid)->title == "Título Viejo",
+          "DESPUÉS: el plan fue restaurado con sus datos");
+}
+
+// =====================================================================
 //  PERSISTENCIA — round-trip JSON (exportar → limpiar → cargar)
 // =====================================================================
 
@@ -371,6 +451,7 @@ static void test_persistencia_json_roundtrip() {
     int p  = make_product("P-RT");
     add_member_to_group(g, r);
     link_product_to_group(g, p);
+    make_plan(g, "Plan RT");
     enqueue_product(p);
     push_op("CREATE", "Group", g);
 
@@ -387,6 +468,8 @@ static void test_persistencia_json_roundtrip() {
     CHECK(list_products().size() == 1, "el producto se restauró");
     CHECK(members_of_group(g).size() == 1, "la vinculación se restauró");
     CHECK(products_of_group(g).size() == 1, "el enlace producto se restauró");
+    CHECK(plans_of_group(g).size() == 1 && plans_of_group(g)[0].title == "Plan RT",
+          "el plan de trabajo se restauró");
     CHECK(vq_pending_count() == 1, "la cola se restauró");
     CHECK(undo_size() == 1 && undo_top()->operation_type == "CREATE",
           "la pila se restauró en orden LIFO");
@@ -414,6 +497,11 @@ int main() {
     RUN_TEST(test_pila_undo_update);
     RUN_TEST(test_pila_undo_enlaces);
     RUN_TEST(test_pila_undo_validate);
+
+    std::cout << "\n--- PLANES DE TRABAJO (T-08) ---\n";
+    RUN_TEST(test_planes_crud);
+    RUN_TEST(test_planes_cascada_al_eliminar_grupo);
+    RUN_TEST(test_planes_undo);
 
     std::cout << "\n--- COLA (FIFO de validación) ---\n";
     RUN_TEST(test_cola_fifo_orden_de_llegada);

@@ -11,6 +11,7 @@
 #include "services/product_service.h"
 #include "services/undo_stack.h"
 #include "services/validation_queue.h"
+#include "services/work_plan_service.h"
 
 #include <fstream>
 #include <sstream>
@@ -235,6 +236,24 @@ bool export_to_file(const std::string& path) {
     }
     out << "\n  ],\n";
 
+    // Work plans (multilista Grupo -> planes, T-08)
+    out << "  \"workPlans\": [\n";
+    first = true;
+    for (const auto& wp : list_work_plans()) {
+        if (!first) out << ",\n";
+        first = false;
+        out << "    {"
+            << "\"id\": "             << wp.id << ", "
+            << "\"group_id\": "       << wp.group_id << ", "
+            << "\"title\": \""        << json_escape(wp.title) << "\", "
+            << "\"description\": \""  << json_escape(wp.description) << "\", "
+            << "\"start_date\": \""   << json_escape(wp.start_date) << "\", "
+            << "\"end_date\": \""     << json_escape(wp.end_date) << "\", "
+            << "\"status\": \""       << json_escape(wp.status) << "\""
+            << "}";
+    }
+    out << "\n  ],\n";
+
     // Validation queue (FIFO order: front first)
     out << "  \"validationQueue\": [\n";
     first = true;
@@ -331,6 +350,20 @@ bool load_from_file(const std::string& path) {
     // Group-product links
     for_each_object(content, "groupProductLinks", [](const std::string& block) {
         link_product_to_group(extract_int(block, "groupId"), extract_int(block, "productId"));
+    });
+
+    // Work plans (recorrido Grupo -> planes reconstruido nodo a nodo)
+    for_each_object(content, "workPlans", [](const std::string& block) {
+        WorkPlan wp;
+        wp.id          = extract_int(block, "id");
+        wp.group_id    = extract_int(block, "group_id");
+        wp.title       = extract_string(block, "title");
+        wp.description = extract_string(block, "description");
+        wp.start_date  = extract_string(block, "start_date");
+        wp.end_date    = extract_string(block, "end_date");
+        wp.status      = extract_string(block, "status");
+        if (wp.status.empty()) wp.status = "active";
+        create_work_plan(wp);
     });
 
     // Validation queue (enqueue in file order keeps FIFO)

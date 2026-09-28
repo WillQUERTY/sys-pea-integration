@@ -139,6 +139,15 @@ PYBIND11_MODULE(abpoxx_pybind, m) {
         .def_readwrite("end_date",    &WorkPlan::end_date)
         .def_readwrite("status",      &WorkPlan::status);
 
+    // ---- WorkPlan CRUD (T-08: planes de trabajo por grupo) ----
+    m.def("create_work_plan", &peai::create_work_plan, "Create a work plan for a group");
+    m.def("get_work_plan",    &peai::get_work_plan,    "Get work plan by id (returns None if not found)");
+    m.def("list_work_plans",  &peai::list_work_plans,  "List all work plans");
+    m.def("plans_of_group",   &peai::plans_of_group,   "List work plans of a group (multilista)");
+    m.def("update_work_plan", &peai::update_work_plan, "Update work plan fields by id");
+    m.def("delete_work_plan", &peai::delete_work_plan, "Delete work plan by id");
+    m.def("total_work_plans", &peai::total_work_plans);
+
     // ---- Struct: UndoOperation (Stack) ----
     py::class_<peai::UndoOperation>(m, "UndoOperation")
         .def(py::init<>())
@@ -221,6 +230,7 @@ PYBIND11_MODULE(abpoxx_pybind, m) {
     m.def("sync_membership_details_to_db", &peai::sync_membership_details_to_db, "Sync group membership with role and dates to DB");
     m.def("sync_product_link_to_db",       &peai::sync_product_link_to_db,       "Sync a group product link to DB");
     m.def("sync_product_author_to_db",     &peai::sync_product_author_to_db,     "Sync a product author link to DB");
+    m.def("sync_work_plan_to_db",          &peai::sync_work_plan_to_db,          "Sync a group work plan to DB");
 
     // Architectural consolidation: the core owns ALL SQL
     m.def("delete_group_from_db",      &peai::delete_group_from_db,      "Soft/hard delete of a group in DB");
@@ -228,6 +238,7 @@ PYBIND11_MODULE(abpoxx_pybind, m) {
     m.def("delete_product_from_db",    &peai::delete_product_from_db,    "Soft/hard delete of a product in DB");
     m.def("delete_membership_from_db",    &peai::delete_membership_from_db,    "Delete a group membership link in DB");
     m.def("delete_product_link_from_db",  &peai::delete_product_link_from_db,  "Delete a group-product link in DB");
+    m.def("delete_work_plan_from_db",     &peai::delete_work_plan_from_db,     "Soft/hard delete of a work plan in DB");
     m.def("set_product_validation_db",    &peai::set_product_validation_db,    "Transactional product validation (Product + GroupProductLink + ValidationQueueItem + AuditLog)");
     m.def("insert_audit_log_db",          &peai::insert_audit_log_db,          "Insert an AuditLog row");
     m.def("insert_import_record_db",      &peai::insert_import_record_db,      "Insert an ImportRecord row");

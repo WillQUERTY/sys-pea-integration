@@ -20,6 +20,8 @@ bool sync_membership_to_db(const std::string& connection_string, int group_id, i
 bool sync_membership_details_to_db(const std::string& connection_string, int group_id, int researcher_id, const std::string& role, const std::string& start_date, const std::string& end_date);
 bool sync_product_link_to_db(const std::string& connection_string, int group_id, int product_id);
 bool sync_product_author_to_db(const std::string& connection_string, int product_id, int researcher_id, int author_order = 1);
+// WorkPlan (T-08): MERGE por (grupo resuelto por external_code, titulo).
+bool sync_work_plan_to_db(const std::string& connection_string, int plan_id);
 
 // ---- Option A Refactor ----
 std::string get_dashboard_stats_json(const std::string& connection_string);
@@ -41,6 +43,7 @@ bool delete_researcher_from_db(const std::string& conn, int res_id, bool hard);
 bool delete_product_from_db(const std::string& conn, int prod_id, bool hard);
 bool delete_membership_from_db(const std::string& conn, int group_id, int researcher_id);
 bool delete_product_link_from_db(const std::string& conn, int group_id, int product_id);
+bool delete_work_plan_from_db(const std::string& conn, int plan_id, bool hard);
 // Compound, transactional: Product + GroupProductLink + ValidationQueueItem + AuditLog
 bool set_product_validation_db(const std::string& conn, int product_id, const std::string& validation_status, int quality_category_id, const std::string& reason);
 bool insert_audit_log_db(const std::string& conn, const std::string& entity_type, int entity_id, const std::string& action, const std::string& changed_by, const std::string& details);
