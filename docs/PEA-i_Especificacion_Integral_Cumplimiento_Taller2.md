@@ -1015,7 +1015,7 @@ para probar distintos escenarios.
 | CSV | `ImportJob` | imports/csv | IT-CSV-001 | vista previa |
 | PDF | `ImportJob` | imports/pdf | IT-PDF-001 | resultado extraído |
 | URL | `ImportJob` | imports/url | IT-URL-001 | fuente + resultado |
-| Ventana | `ObservationWindow` | dashboard | IT-WIN-001 | filtro 2/5 años |
+| Ventana | `ObservationWindow` | `products?start_year&end_year`, `groups/{id}/report/pdf` | IT-WIN-001 | filtro 2/5 años y rango personalizado |
 | Persistencia | repositorios | export/import | IT-PER-001 | reinicio exitoso |
 | Dashboard | estadísticas | dashboard | E2E-DASH-001 | gráficos |
 
@@ -1076,6 +1076,7 @@ para probar distintos escenarios.
 - Filtro por año.
 - Ventana de dos años.
 - Ventana de cinco años.
+- Ventana personalizada (rango arbitrario desde–hasta y "últimos N años").
 - Conteos por familia.
 - Histograma.
 - Barras.
@@ -1228,7 +1229,7 @@ Pendientes de crear para la entrega:
 
 - [x] Filtro de dos años.
 - [x] Filtro de cinco años.
-- [ ] Periodo personalizado (la UI solo ofrece presets 2/3/5/10).
+- [x] Periodo personalizado — rango desde–hasta en el listado de productos y en el informe PDF del grupo (con selector de ventana y "últimos N años"), además de los presets 2/3/5/10 y del CLI `products by-year`.
 - [x] Vista por grupo.
 - [x] Vista por investigador.
 - [x] Vista por producto.
@@ -1283,4 +1284,4 @@ Alcance ajustado por las decisiones del equipo (sección 26.1): D-01 entrega amb
 
 La afirmación de cumplimiento total dependerá de completar la implementación y reunir las evidencias enumeradas en la matriz de trazabilidad y en la lista de comprobación.
 
-> **Estado de implementación (2026-09-27):** T-08 (gestión de planes) está implementado de punta a punta: `PlanNode` en la multilista C++, `work_plan_service`, persistencia JSON y SQL Server (MERGE por id estable), pybind11, endpoints REST (`/groups/{id}/plans`, `/plans/{id}`), pestaña "Planes" en el detalle de grupo en React, comandos `plans` en `pea_cli` y pruebas unitarias. El CRUD independiente de proyectos (Requerimiento 3) también está completo de punta a punta: `ProjectNode` en la lista global C++, `project_service`, persistencia JSON y SQL Server (MERGE por id estable), pybind11, endpoints REST (`/api/projects` con paginación/búsqueda/estado, `/groups/{id}/projects`), página "Proyectos" en React, comandos `projects` en `pea_cli` y pruebas unitarias (154/154 en verde, verificadas end-to-end contra SQL Server). Brechas de código restantes: periodo de observación personalizado en la UI, lectura/actualización individual de membresías en C++ y pruebas automatizadas del backend (hoy solo cubren los importadores).
+> **Estado de implementación (2026-09-27):** T-08 (gestión de planes) está implementado de punta a punta: `PlanNode` en la multilista C++, `work_plan_service`, persistencia JSON y SQL Server (MERGE por id estable), pybind11, endpoints REST (`/groups/{id}/plans`, `/plans/{id}`), pestaña "Planes" en el detalle de grupo en React, comandos `plans` en `pea_cli` y pruebas unitarias. El CRUD independiente de proyectos (Requerimiento 3) también está completo de punta a punta: `ProjectNode` en la lista global C++, `project_service`, persistencia JSON y SQL Server (MERGE por id estable), pybind11, endpoints REST (`/api/projects` con paginación/búsqueda/estado, `/groups/{id}/projects`), página "Proyectos" en React, comandos `projects` en `pea_cli` y pruebas unitarias (154/154 en verde, verificadas end-to-end contra SQL Server). El periodo de observación personalizado (T-26 / HU-07) está cubierto en toda la pila: rango arbitrario `start_year`–`end_year` y "últimos N años" (`window_years`) en `/products`, CLI `products by-year`, e informe PDF de grupo con selector de ventana en la UI que muestra la ventana aplicada y filtra la producción por año de obtención. Brechas de código restantes: lectura/actualización individual de membresías en C++ y pruebas automatizadas del backend (hoy solo cubren los importadores).

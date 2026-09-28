@@ -208,11 +208,25 @@ def _bloques_produccion(productos: list) -> list:
     return story
 
 
-def build_group_report_pdf(group_id: int) -> bytes:
-    """Genera el informe PDF completo del grupo. Lanza KeyError si no existe."""
+def build_group_report_pdf(group_id: int, start_year=None, end_year=None,
+                           window_years=None) -> bytes:
+    """Genera el informe PDF completo del grupo. Lanza KeyError si no existe.
+    La producción puede restringirse a una ventana de observación (Req. 10):
+    rango explícito (start_year/end_year) o últimos N años (window_years)."""
+    # Ventana efectiva: mismos criterios del endpoint /products (Req. 10).
+    cur_year = datetime.now().year
+    eff_start, eff_end = start_year, end_year
+    if window_years is not None and window_years > 0:
+        eff_start, eff_end = cur_year - window_years, cur_year
+    if eff_start is not None and eff_end is not None and eff_start > eff_end:
+        eff_start, eff_end = eff_end, eff_start  # rango invertido: normalizar como el CLI
+    window_applied = eff_start is not None or eff_end is not None
+
     grupo = repository.get_group(group_id)          # KeyError si no existe
     miembros = repository.get_group_members_detailed(group_id)
-    productos = [repository.get_product(pid) for pid in repository.products_of_group(group_id)]
+    productos = repository.filter_products(
+        group_id=group_id, start_year=eff_start, end_year=eff_end
+    )
     proyectos = repository.get_group_projects(group_id)
     lineas = repository.get_group_research_lines(group_id)
 
@@ -225,10 +239,15 @@ def build_group_report_pdf(group_id: int) -> bytes:
         author="PEA-i",
     )
 
+    sub = (f"Generado el {datetime.now():%d/%m/%Y %H:%M} · PEA-i (Taller 2 · "
+           f"Estructura de Datos · Universidad Popular del Cesar)")
+    if window_applied:
+        rango = f"{eff_start if eff_start is not None else '…'}–{eff_end if eff_end is not None else '…'}"
+        sub += f" · Ventana de observación: {rango} (año de obtención, Req. 10)"
+
     story = [
         _p(grupo.name, _S_TITULO),
-        _p(f"Generado el {datetime.now():%d/%m/%Y %H:%M} · PEA-i (Taller 2 · "
-           f"Estructura de Datos · Universidad Popular del Cesar)", _S_SUB),
+        _p(sub, _S_SUB),
     ]
 
     # Resumen ejecutivo

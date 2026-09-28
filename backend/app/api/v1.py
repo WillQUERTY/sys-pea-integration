@@ -323,11 +323,19 @@ async def list_group_research_lines(group_id: int):
         raise HTTPException(status_code=500, detail=str(e))
 
 @router.get("/groups/{group_id}/report/pdf", tags=["Groups"])
-async def get_group_report_pdf(group_id: int):
+async def get_group_report_pdf(
+    group_id: int,
+    start_year: Optional[int] = Query(None, description="Año inicial para Ventana de Observación (Requerimiento 10)"),
+    end_year: Optional[int] = Query(None, description="Año final para Ventana de Observación (Requerimiento 10)"),
+    window_years: Optional[int] = Query(None, description="Ventana de observación en años hacia atrás (ej. 2 o 5 años)"),
+):
     """Informe PDF del grupo (estilo GrupLAC): datos basicos, integrantes,
-    produccion agrupada por familia/subtipo Minciencias y proyectos."""
+    produccion agrupada por familia/subtipo Minciencias y proyectos.
+    La produccion puede restringirse a una ventana de observación (Req. 10)."""
     try:
-        pdf = reports.build_group_report_pdf(group_id)
+        pdf = reports.build_group_report_pdf(
+            group_id, start_year=start_year, end_year=end_year, window_years=window_years
+        )
     except KeyError:
         raise HTTPException(status_code=404, detail="Grupo no encontrado")
     except Exception as e:
@@ -643,6 +651,9 @@ async def list_products_endpoint(
     if window_years is not None and window_years > 0:
         effective_start = cur_year - window_years
         effective_end = cur_year
+    # Rango invertido: normalizar igual que el CLI (`products by-year`)
+    if effective_start is not None and effective_end is not None and effective_start > effective_end:
+        effective_start, effective_end = effective_end, effective_start
 
     items = repository.filter_products(
         start_year=effective_start,

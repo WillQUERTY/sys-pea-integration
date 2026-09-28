@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { useParams, Link } from '@tanstack/react-router'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { toast } from 'sonner'
@@ -45,6 +45,13 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Badge } from '@/components/ui/badge'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select'
 
 import { DataTable } from '@/components/data-table'
 
@@ -57,8 +64,25 @@ export function ValidationBadge({ status }: { status?: string | null }) {
 export function GroupDetail() {
   const { id } = useParams({ from: '/_authenticated/groups/$id' })
   const queryClient = useQueryClient()
-  
+
   const groupId = Number(id)
+
+  // Ventana de observación del informe PDF (Requerimiento 10): presets o rango
+  const [reportWindow, setReportWindow] = useState('all')
+  const [reportStart, setReportStart] = useState('')
+  const [reportEnd, setReportEnd] = useState('')
+  const reportWindowParams = useMemo(
+    () =>
+      reportWindow === 'custom'
+        ? {
+            start_year: Number(reportStart) || undefined,
+            end_year: Number(reportEnd) || undefined,
+          }
+        : reportWindow !== 'all'
+          ? { window_years: Number(reportWindow) }
+          : undefined,
+    [reportWindow, reportStart, reportEnd]
+  )
 
   const { data: group, isLoading } = useQuery({
     queryKey: ['groups', groupId],
@@ -426,13 +450,51 @@ export function GroupDetail() {
               </div>
               
               <div className='pb-1 w-full sm:w-auto flex flex-col sm:flex-row gap-2'>
+                <Select value={reportWindow} onValueChange={setReportWindow}>
+                  <SelectTrigger
+                    className='w-full sm:w-[180px] rounded-xl shadow-sm'
+                    title='Ventana de observación de la producción (Requerimiento 10)'
+                  >
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value='all'>Toda la producción</SelectItem>
+                    <SelectItem value='2'>Últimos 2 años</SelectItem>
+                    <SelectItem value='5'>Últimos 5 años</SelectItem>
+                    <SelectItem value='10'>Últimos 10 años</SelectItem>
+                    <SelectItem value='custom'>Rango personalizado…</SelectItem>
+                  </SelectContent>
+                </Select>
+                {reportWindow === 'custom' && (
+                  <div className='flex items-center gap-2'>
+                    <Input
+                      type='number'
+                      inputMode='numeric'
+                      placeholder='Desde'
+                      value={reportStart}
+                      onChange={(e) => setReportStart(e.target.value)}
+                      className='w-24'
+                      aria-label='Año inicial del informe'
+                    />
+                    <span className='text-sm text-muted-foreground'>–</span>
+                    <Input
+                      type='number'
+                      inputMode='numeric'
+                      placeholder='Hasta'
+                      value={reportEnd}
+                      onChange={(e) => setReportEnd(e.target.value)}
+                      className='w-24'
+                      aria-label='Año final del informe'
+                    />
+                  </div>
+                )}
                 <Button
                   variant='outline'
                   asChild
                   className='rounded-xl shadow-sm'
-                  title='Informe PDF del grupo con toda su producción (estilo GrupLAC)'
+                  title='Informe PDF del grupo (estilo GrupLAC) con la ventana de observación seleccionada'
                 >
-                  <a href={groupReportPdfUrl(groupId)} target='_blank' rel='noopener noreferrer'>
+                  <a href={groupReportPdfUrl(groupId, reportWindowParams)} target='_blank' rel='noopener noreferrer'>
                     <FileDown className='mr-2 h-4 w-4' />
                     Informe PDF
                   </a>

@@ -7,6 +7,7 @@ import { listProducts, deleteProduct, enqueueValidation, restoreProduct } from '
 import type { Product } from '@/lib/types'
 import { useDebouncedValue } from '@/hooks/use-debounced-value'
 import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -56,6 +57,7 @@ const productFilters: DataFilter[] = [
       { value: '3', label: 'Últimos 3 años' },
       { value: '5', label: 'Últimos 5 años' },
       { value: '10', label: 'Últimos 10 años' },
+      { value: 'custom', label: 'Rango personalizado…' },
     ],
   },
 ]
@@ -75,6 +77,9 @@ export function Products() {
     record_status: 'active',
     window: 'all',
   })
+  // Ventana personalizada (Req. 10): rango explícito desde–hasta
+  const [customStart, setCustomStart] = useState('')
+  const [customEnd, setCustomEnd] = useState('')
 
   const params = useMemo(
     () => ({
@@ -83,9 +88,15 @@ export function Products() {
       search: debouncedSearch.trim() || undefined,
       validation_status: filterValues.status !== 'all' ? filterValues.status : undefined,
       status: filterValues.record_status !== 'all' ? filterValues.record_status : undefined,
-      window_years: filterValues.window !== 'all' ? Number(filterValues.window) : undefined,
+      window_years:
+        filterValues.window !== 'all' && filterValues.window !== 'custom'
+          ? Number(filterValues.window)
+          : undefined,
+      start_year:
+        filterValues.window === 'custom' ? Number(customStart) || undefined : undefined,
+      end_year: filterValues.window === 'custom' ? Number(customEnd) || undefined : undefined,
     }),
-    [page, pageSize, debouncedSearch, filterValues]
+    [page, pageSize, debouncedSearch, filterValues, customStart, customEnd]
   )
 
   const products = useQuery({
@@ -265,6 +276,40 @@ export function Products() {
           rowKey={(p) => p.id ?? p.external_code}
           searchPlaceholder='Buscar por título o DOI…'
           filters={productFilters}
+          filterExtra={
+            filterValues.window === 'custom' ? (
+              <div className='space-y-1.5'>
+                <label className='text-sm font-semibold text-foreground/80'>
+                  Ventana personalizada (año desde – hasta)
+                </label>
+                <div className='grid grid-cols-2 gap-3'>
+                  <Input
+                    type='number'
+                    inputMode='numeric'
+                    placeholder='Desde (ej. 2019)'
+                    value={customStart}
+                    onChange={(e) => {
+                      setCustomStart(e.target.value)
+                      setPage(0)
+                    }}
+                  />
+                  <Input
+                    type='number'
+                    inputMode='numeric'
+                    placeholder='Hasta (ej. 2023)'
+                    value={customEnd}
+                    onChange={(e) => {
+                      setCustomEnd(e.target.value)
+                      setPage(0)
+                    }}
+                  />
+                </div>
+                <p className='text-xs text-muted-foreground'>
+                  Filtra por año de obtención del producto (Requerimiento 10).
+                </p>
+              </div>
+            ) : undefined
+          }
           emptyMessage='Sin productos para los filtros seleccionados o activos.'
           server={{
             total: products.data?.total ?? 0,

@@ -1022,11 +1022,12 @@ def products_of_researcher(researcher_id: int) -> List[int]:
     return []
 
 def _product_year(p: Product) -> int:
-    """Año efectivo del producto: `year` o los 4 primeros dígitos de `publication_date`."""
+    """Año efectivo del producto (Req. 10): `year` o los 4 primeros dígitos de
+    `obtained_date` (fecha de obtención, igual que `product_year` del CLI C++)."""
     if p.year:
         return p.year
     try:
-        return int(str(p.publication_date or "")[:4])
+        return int(str(p.obtained_date or "")[:4])
     except ValueError:
         return 0
 

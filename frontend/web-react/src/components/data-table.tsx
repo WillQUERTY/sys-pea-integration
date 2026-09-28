@@ -91,6 +91,8 @@ interface DataTableProps<T> {
   searchPlaceholder?: string
   /** External filter definitions */
   filters?: DataFilter[]
+  /** Contenido extra dentro del panel de filtros (p.ej. inputs de ventana personalizada) */
+  filterExtra?: ReactNode
   /** Apply external filters to each row. Gets current filter values map. */
   filterFn?: (item: T, filterValues: Record<string, string>) => boolean
   /** Rows per page options */
@@ -115,6 +117,7 @@ export function DataTable<T>({
   rowKey,
   searchPlaceholder = 'Buscar…',
   filters = [],
+  filterExtra,
   filterFn,
   pageSizeOptions = [10, 20, 50, 100],
   defaultPageSize = 10,
@@ -266,6 +269,7 @@ export function DataTable<T>({
                     </Select>
                   </div>
                 ))}
+                {filterExtra && <div className='space-y-3 border-t border-border/50 pt-5'>{filterExtra}</div>}
               </div>
               
               {activeFiltersCount > 0 && (
