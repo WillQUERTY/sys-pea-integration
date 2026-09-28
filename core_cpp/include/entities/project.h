@@ -26,6 +26,14 @@ struct GroupProjectNode {
     GroupProjectNode* nextForProject = nullptr;
 };
 
+// Nodo de la lista global de proyectos (mismo patron que ProductNode).
+struct ProjectNode {
+    Project      data;
+    ProjectNode* next = nullptr;
+    // La cadena cruzada Proyecto -> grupos se deriva recorriendo los
+    // GroupProjectNode de cada grupo (igual que GroupProductNode).
+};
+
 struct WorkPlan {
     int         id       = 0;
     int         group_id = 0;

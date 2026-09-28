@@ -7,6 +7,7 @@
 #include "services/researcher_service.h"
 #include "services/product_service.h"
 #include "services/work_plan_service.h"
+#include "services/project_service.h"
 
 #include <iostream>
 
@@ -133,6 +134,21 @@ std::string undo_snapshot_work_plan(const WorkPlan& wp) {
     return s;
 }
 
+std::string undo_snapshot_project(const Project& p) {
+    std::string s;
+    join(s, std::to_string(p.id));
+    join(s, p.title);
+    join(s, p.summary);
+    join(s, p.project_type);
+    join(s, p.start_date);
+    join(s, p.end_date);
+    join(s, p.status);
+    join(s, p.funding_type);
+    join(s, std::to_string(p.budget));
+    join(s, std::to_string(p.principal_investigator_id));
+    return s;
+}
+
 // =====================================================================
 //  Revert logic
 // =====================================================================
@@ -222,6 +238,22 @@ bool revert_delete(const UndoOperation& op) {
         create_work_plan(wp);
         return true;
     }
+    if (op.entity_type == "Project") {
+        Project p;
+        p.id          = id;
+        p.title       = at(1);
+        p.summary     = at(2);
+        p.project_type = at(3);
+        p.start_date  = at(4);
+        p.end_date    = at(5);
+        p.status      = at(6);
+        p.funding_type = at(7);
+        try { p.budget = std::stod(at(8)); } catch (...) {}
+        try { p.principal_investigator_id = std::stoi(at(9)); } catch (...) {}
+        if (p.title.empty()) return false;
+        create_project(p);
+        return true;
+    }
     return false;
 }
 
@@ -246,6 +278,7 @@ bool undo_perform() {
         else if (e == "Researcher") ok = delete_researcher(id);
         else if (e == "Product")    ok = delete_product(id);
         else if (e == "WorkPlan")   ok = delete_work_plan(id);
+        else if (e == "Project")    ok = delete_project(id);
         std::cout << "[UNDO] CREATE " << e << " #" << id
                   << (ok ? " revertido: entidad eliminada.\n"
                           : " (ya no existe, nada que revertir).\n");
@@ -306,6 +339,20 @@ bool undo_perform() {
             restored.end_date    = at(5);
             restored.status      = at(6);
             update_work_plan(id, restored);
+        } else if (e == "Project") {
+            auto cur = get_project(id);
+            if (!cur) { std::cerr << "[UNDO] UPDATE: proyecto " << id << " no encontrado.\n"; return false; }
+            Project restored = *cur;
+            restored.title       = at(1);
+            restored.summary     = at(2);
+            restored.project_type = at(3);
+            restored.start_date  = at(4);
+            restored.end_date    = at(5);
+            restored.status      = at(6);
+            restored.funding_type = at(7);
+            try { restored.budget = std::stod(at(8)); } catch (...) {}
+            try { restored.principal_investigator_id = std::stoi(at(9)); } catch (...) {}
+            update_project(id, restored);
         } else {
             std::cerr << "[UNDO] UPDATE: tipo de entidad desconocido: " << e << "\n";
             return false;
@@ -333,17 +380,20 @@ bool undo_perform() {
 
     // Link operations: previous_state = "<gid>:<rid|pid>".
     if (t == "LINK_MEMBER" || t == "UNLINK_MEMBER" ||
-        t == "LINK_PRODUCT" || t == "UNLINK_PRODUCT") {
+        t == "LINK_PRODUCT" || t == "UNLINK_PRODUCT" ||
+        t == "LINK_PROJECT" || t == "UNLINK_PROJECT") {
         int gid = 0, other = 0;
         if (!parse_pair(prev, gid, other)) {
             std::cerr << "[UNDO] " << t << ": previous_state corrupto ('" << prev << "')\n";
             return false;
         }
         bool ok = false;
-        if      (t == "LINK_MEMBER")   ok = remove_member_from_group(gid, other);
-        else if (t == "UNLINK_MEMBER") ok = add_member_to_group(gid, other) != nullptr;
-        else if (t == "LINK_PRODUCT")  ok = unlink_product_from_group(gid, other);
-        else                           ok = link_product_to_group(gid, other) != nullptr;
+        if      (t == "LINK_MEMBER")    ok = remove_member_from_group(gid, other);
+        else if (t == "UNLINK_MEMBER")  ok = add_member_to_group(gid, other) != nullptr;
+        else if (t == "LINK_PRODUCT")   ok = unlink_product_from_group(gid, other);
+        else if (t == "UNLINK_PRODUCT") ok = link_product_to_group(gid, other) != nullptr;
+        else if (t == "LINK_PROJECT")   ok = unlink_project_from_group(gid, other);
+        else                            ok = link_project_to_group(gid, other) != nullptr;
         std::cout << "[UNDO] " << t << " (" << gid << ":" << other << ")"
                   << (ok ? " revertido.\n" : " (el enlace ya no estaba en el estado esperado).\n");
         return ok;

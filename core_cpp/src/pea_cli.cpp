@@ -66,6 +66,14 @@ static void usage() {
         << "  plans    add    <gid> <title> [start] [end]   Crear plan\n"
         << "  plans    update <id> <title>          Modificar (push a la pila)\n"
         << "  plans    delete <id>                Eliminar (push a la pila)\n\n"
+        << "Proyectos (lista global + multilista Grupo → proyectos):\n"
+        << "  projects all                        Recorrer la lista completa\n"
+        << "  projects add    <title> [type] [start] [end]   Crear proyecto\n"
+        << "  projects update <id> <title>          Modificar (push a la pila)\n"
+        << "  projects delete <id>                Eliminar (push a la pila)\n"
+        << "  projects list   <gid>               Proyectos del grupo (multilista)\n"
+        << "  projects link   <gid> <pid>         Asociar proyecto a grupo\n"
+        << "  projects unlink <gid> <pid>         Desasociar\n\n"
         << "Cola de validación (FIFO):\n"
         << "  queue    list                       Ver la cola en orden de llegada\n"
         << "  queue    enqueue <pid>              Encolar producto\n"
@@ -620,6 +628,101 @@ static int dispatch(int argc, char* argv[]) {
         }
     }
 
+    // ---- projects (lista global + multilista Grupo → proyectos, Req. 3) ----
+    if (cmd == "projects") {
+        if (argc < 3) { usage(); return 1; }
+        std::string sub = argv[2];
+
+        if (sub == "all") {
+            auto projects = list_projects();
+            if (projects.empty()) {
+                std::cout << "(no projects)\n";
+            } else {
+                std::cout << "Proyectos (" << projects.size() << "):\n";
+                for (const auto& p : projects) {
+                    std::cout << "  ID: " << p.id << "  | " << p.title;
+                    if (!p.project_type.empty()) std::cout << "  | " << p.project_type;
+                    if (!p.start_date.empty() || !p.end_date.empty())
+                        std::cout << "  | " << p.start_date << " → " << p.end_date;
+                    std::cout << "  | " << p.status << "\n";
+                }
+            }
+            return 0;
+        }
+
+        if (sub == "add") {
+            if (argc < 4) { std::cerr << "Provide title\n"; return 1; }
+            Project proto;
+            proto.title = argv[3];
+            if (argc >= 5) proto.project_type = argv[4];
+            if (argc >= 6) proto.start_date   = argv[5];
+            if (argc >= 7) proto.end_date     = argv[6];
+            Project created = create_project(proto);
+            push_undo("CREATE", "Project", created.id);
+            std::cout << "Created project with ID " << created.id << " (operación apilada)\n";
+            return 0;
+        }
+
+        if (sub == "update") {
+            if (argc < 5) { std::cerr << "Provide project id and new title\n"; return 1; }
+            int id = std::stoi(argv[3]);
+            auto prev = get_project(id);
+            if (!prev) { std::cerr << "Project " << id << " not found\n"; return 1; }
+            Project updates = *prev;
+            updates.title = argv[4];
+            push_undo("UPDATE", "Project", id, undo_snapshot_project(*prev));
+            if (update_project(id, updates))
+                std::cout << "Project " << id << " updated (operación apilada)\n";
+            else
+                std::cerr << "Update failed\n";
+            return 0;
+        }
+
+        if (sub == "delete") {
+            if (argc < 4) { std::cerr << "Provide project id\n"; return 1; }
+            int id = std::stoi(argv[3]);
+            auto prev = get_project(id);
+            if (!prev) { std::cerr << "Project " << id << " not found\n"; return 1; }
+            push_undo("DELETE", "Project", id, undo_snapshot_project(*prev));
+            if (delete_project(id)) std::cout << "Deleted project " << id << " (operación apilada)\n";
+            else                    std::cerr << "Delete failed\n";
+            return 0;
+        }
+
+        if (sub == "list") {
+            if (argc < 4) { std::cerr << "Provide group_id\n"; return 1; }
+            int gid = std::stoi(argv[3]);
+            auto ids = projects_of_group(gid);
+            if (ids.empty()) {
+                std::cout << "(no projects in group " << gid << ")\n";
+            } else {
+                std::cout << "Proyectos del grupo " << gid << " (" << ids.size() << "):\n";
+                for (int pid : ids) {
+                    auto p = get_project(pid);
+                    if (p) std::cout << "  ID: " << p->id << "  | " << p->title << "  | " << p->status << "\n";
+                }
+            }
+            return 0;
+        }
+
+        if (sub == "link" || sub == "unlink") {
+            if (argc < 5) { std::cerr << "Provide group_id and project_id\n"; return 1; }
+            int gid = std::stoi(argv[3]);
+            int pid = std::stoi(argv[4]);
+            std::string pair = std::to_string(gid) + ":" + std::to_string(pid);
+            if (sub == "link") {
+                if (!link_project_to_group(gid, pid)) { std::cerr << "Link failed (grupo o proyecto inexistente)\n"; return 1; }
+                push_undo("LINK_PROJECT", "Project", pid, pair);
+                std::cout << "Linked project " << pid << " to group " << gid << " (operación apilada)\n";
+            } else {
+                if (!unlink_project_from_group(gid, pid)) { std::cerr << "Unlink failed\n"; return 1; }
+                push_undo("UNLINK_PROJECT", "Project", pid, pair);
+                std::cout << "Unlinked project " << pid << " from group " << gid << " (operación apilada)\n";
+            }
+            return 0;
+        }
+    }
+
     // ---- queue (cola FIFO de validación) ----
     if (cmd == "queue") {
         if (argc < 3) { usage(); return 1; }
@@ -740,6 +843,7 @@ static int dispatch(int argc, char* argv[]) {
                           << " \"" << g.name << "\" (" << g.status << ")"
                           << " → integrantes: " << members_of_group(g.id).size()
                           << " | enlaces producto: " << products_of_group(g.id).size()
+                          << " | proyectos: " << projects_of_group(g.id).size()
                           << " | planes: " << plans_of_group(g.id).size() << "\n";
             }
             std::cout << "  (fin de la lista — " << i << " nodos)\n";
@@ -800,6 +904,16 @@ static int dispatch(int argc, char* argv[]) {
             for (int pid : product_ids) {
                 auto p = get_product(pid);
                 std::cout << "    → product " << pid
+                          << (p ? " (\"" + p->title + "\")" : " (no en memoria)")
+                          << "\n";
+            }
+
+            std::cout << "  Cadena de proyectos (GroupProjectNode → nextInGroup):\n";
+            auto project_ids = projects_of_group(gid);
+            if (project_ids.empty()) std::cout << "    (sin proyectos)\n";
+            for (int pid : project_ids) {
+                auto p = get_project(pid);
+                std::cout << "    → project " << pid
                           << (p ? " (\"" + p->title + "\")" : " (no en memoria)")
                           << "\n";
             }

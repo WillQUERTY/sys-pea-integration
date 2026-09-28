@@ -10,6 +10,7 @@
 #include "services/validation_queue.h"
 #include "services/undo_stack.h"
 #include "services/work_plan_service.h"
+#include "services/project_service.h"
 
 #ifdef _WIN32
 #include <windows.h>
@@ -19,6 +20,7 @@
 
 #include <cstdio>
 #include <iostream>
+#include <sstream>
 #include <string>
 #include <utility>
 #include <vector>
@@ -584,6 +586,62 @@ bool load_from_db(const std::string& connection_string) {
         SQLFreeHandle(SQL_HANDLE_STMT, stmt);
     }
 
+    // Load projects (lista global de ProjectNode). El id RAM se reasigna al
+    // de BD para que sync/delete por id funcionen (igual que WorkPlan).
+    {
+        SQLHSTMT stmt;
+        SQLAllocHandle(SQL_HANDLE_STMT, dbc, &stmt);
+        SQLExecDirect(stmt, (SQLCHAR*)
+            "SELECT id, title, summary, project_type, start_date, end_date, status, funding_type, budget, principal_investigator_id FROM Project ORDER BY id",
+            SQL_NTS);
+        SQLINTEGER pid, pi_id;
+        double budget;
+        SQLCHAR title[1024], summary[4096], ptype[128], sdate[64], edate[64], status[64], ftype[128];
+        SQLLEN i1, i2, i3, i4, i5, i6, i7, i8, i9, i10;
+        SQLBindCol(stmt, 1, SQL_C_SLONG, &pid, 0, &i1);
+        SQLBindCol(stmt, 2, SQL_C_CHAR, title, sizeof(title), &i2);
+        SQLBindCol(stmt, 3, SQL_C_CHAR, summary, sizeof(summary), &i3);
+        SQLBindCol(stmt, 4, SQL_C_CHAR, ptype, sizeof(ptype), &i4);
+        SQLBindCol(stmt, 5, SQL_C_CHAR, sdate, sizeof(sdate), &i5);
+        SQLBindCol(stmt, 6, SQL_C_CHAR, edate, sizeof(edate), &i6);
+        SQLBindCol(stmt, 7, SQL_C_CHAR, status, sizeof(status), &i7);
+        SQLBindCol(stmt, 8, SQL_C_CHAR, ftype, sizeof(ftype), &i8);
+        SQLBindCol(stmt, 9, SQL_C_DOUBLE, &budget, 0, &i9);
+        SQLBindCol(stmt, 10, SQL_C_SLONG, &pi_id, 0, &i10);
+        while (SQL_SUCCEEDED(SQLFetch(stmt))) {
+            Project p;
+            p.id          = (i1 != SQL_NULL_DATA) ? pid : 0;
+            p.title       = (i2 != SQL_NULL_DATA) ? cp1252_to_utf8((char*)title) : "";
+            p.summary     = (i3 != SQL_NULL_DATA) ? cp1252_to_utf8((char*)summary) : "";
+            p.project_type = (i4 != SQL_NULL_DATA) ? cp1252_to_utf8((char*)ptype) : "";
+            p.start_date  = (i5 != SQL_NULL_DATA) ? cp1252_to_utf8((char*)sdate) : "";
+            p.end_date    = (i6 != SQL_NULL_DATA) ? cp1252_to_utf8((char*)edate) : "";
+            p.status      = (i7 != SQL_NULL_DATA) ? cp1252_to_utf8((char*)status) : "active";
+            p.funding_type = (i8 != SQL_NULL_DATA) ? cp1252_to_utf8((char*)ftype) : "";
+            p.budget      = (i9 != SQL_NULL_DATA) ? budget : 0.0;
+            p.principal_investigator_id = (i10 != SQL_NULL_DATA) ? pi_id : 0;
+            create_project(p);
+        }
+        SQLFreeHandle(SQL_HANDLE_STMT, stmt);
+    }
+
+    // Load group-project links (multilista Grupo -> proyectos)
+    {
+        SQLHSTMT stmt;
+        SQLAllocHandle(SQL_HANDLE_STMT, dbc, &stmt);
+        SQLExecDirect(stmt, (SQLCHAR*)
+            "SELECT group_id, project_id FROM GroupProject",
+            SQL_NTS);
+        SQLINTEGER gid, pid;
+        SQLLEN i1, i2;
+        SQLBindCol(stmt, 1, SQL_C_SLONG, &gid, 0, &i1);
+        SQLBindCol(stmt, 2, SQL_C_SLONG, &pid, 0, &i2);
+        while (SQL_SUCCEEDED(SQLFetch(stmt))) {
+            link_project_to_group(gid, pid);
+        }
+        SQLFreeHandle(SQL_HANDLE_STMT, stmt);
+    }
+
     // Reconstruir la cola FIFO de validacion desde los items 'pending'.
     // RAM-only (vq_enqueue directo): NO usar vq_enqueue_db aqui porque los
     // items ya existen en la BD; reinsertarlos los duplicaria.
@@ -617,6 +675,8 @@ bool load_from_db(const std::string& connection_string) {
               << total_members() << " memberships, "
               << total_product_links() << " product links, "
               << total_work_plans() << " work plans, "
+              << total_projects() << " projects, "
+              << total_project_links() << " project links, "
               << vq_size() << " pending validations from SQL Server.\n";
     return true;
 }
@@ -821,6 +881,80 @@ bool delete_work_plan_from_db(const std::string& conn, int plan_id, bool hard) {
     return exec_sql(dbc, sql);
 }
 
+// Project (Req. 3). Mismo esquema de id estable que WorkPlan: MERGE por id
+// RAM con IDENTITY_INSERT en el INSERT.
+bool sync_project_to_db(const std::string& connection_string, int project_id) {
+    std::optional<Project> p_opt = get_project(project_id);
+    if (!p_opt) return false;
+    Project p = p_opt.value();
+    SQLHDBC dbc = get_or_create_dbc(connection_string);
+    if (!dbc) return false;
+
+    // principal_investigator_id: RAM id -> DB id via external_code del investigador
+    std::string pi_expr = "NULL";
+    if (p.principal_investigator_id > 0)
+        pi_expr = researcher_db_id(p.principal_investigator_id);
+
+    std::ostringstream oss;
+    oss << "SET IDENTITY_INSERT Project ON; "
+        << "MERGE Project AS target "
+        << "USING (SELECT " << p.id << " AS id, '"
+        << escape_sql(utf8_to_cp1252(p.title)) << "' AS title, '"
+        << escape_sql(utf8_to_cp1252(p.summary)) << "' AS summary, '"
+        << escape_sql(utf8_to_cp1252(p.project_type)) << "' AS ptype, "
+        << nullable_date(p.start_date) << " AS sdate, "
+        << nullable_date(p.end_date) << " AS edate, '"
+        << escape_sql(utf8_to_cp1252(p.status)) << "' AS sts, '"
+        << escape_sql(utf8_to_cp1252(p.funding_type)) << "' AS ftype, "
+        << std::to_string(p.budget) << " AS budget, "
+        << pi_expr << " AS pi_id) AS source "
+        << "ON (target.id = source.id) "
+        << "WHEN MATCHED THEN "
+        << "  UPDATE SET title = source.title, summary = source.summary, project_type = source.ptype, start_date = source.sdate, end_date = source.edate, status = source.sts, funding_type = source.ftype, budget = source.budget, principal_investigator_id = source.pi_id, updated_at = GETDATE() "
+        << "WHEN NOT MATCHED THEN "
+        << "  INSERT (id, title, summary, project_type, start_date, end_date, status, funding_type, budget, principal_investigator_id) VALUES (source.id, source.title, source.summary, source.ptype, source.sdate, source.edate, source.sts, source.ftype, source.budget, source.pi_id); "
+        << "SET IDENTITY_INSERT Project OFF;";
+    return exec_sql(dbc, oss.str());
+}
+
+bool delete_project_from_db(const std::string& conn, int project_id, bool hard) {
+    SQLHDBC dbc = get_or_create_dbc(conn);
+    if (!dbc) return false;
+
+    std::string sql = hard
+        ? "DELETE FROM GroupProject WHERE project_id = " + std::to_string(project_id) + "; "
+          "DELETE FROM Project WHERE id = " + std::to_string(project_id) + ";"
+        : "UPDATE Project SET status = 'inactive', updated_at = GETDATE() WHERE id = " + std::to_string(project_id) + ";";
+    return exec_sql(dbc, sql);
+}
+
+// Enlace Grupo <-> Proyecto (tabla GroupProject, UQ por par). Los ids RAM de
+// proyecto coinciden con BD tras load_from_db; el grupo se resuelve por
+// external_code por si su id difiere.
+bool sync_project_link_to_db(const std::string& conn, int group_id, int project_id) {
+    SQLHDBC dbc = get_or_create_dbc(conn);
+    if (!dbc) return false;
+
+    std::string gid = group_db_id(group_id);
+    std::string sql =
+        "IF NOT EXISTS (SELECT 1 FROM GroupProject WHERE group_id = " + gid +
+        " AND project_id = " + std::to_string(project_id) + ") "
+        "INSERT INTO GroupProject (group_id, project_id) VALUES (" + gid +
+        ", " + std::to_string(project_id) + ");";
+    return exec_sql(dbc, sql);
+}
+
+bool delete_project_link_from_db(const std::string& conn, int group_id, int project_id) {
+    SQLHDBC dbc = get_or_create_dbc(conn);
+    if (!dbc) return false;
+
+    std::string gid = group_db_id(group_id);
+    std::string sql =
+        "DELETE FROM GroupProject WHERE group_id = " + gid +
+        " AND project_id = " + std::to_string(project_id) + ";";
+    return exec_sql(dbc, sql);
+}
+
 bool save_to_db(const std::string& connection_string) {
     bool ok = true;
     for (const auto& g : list_groups()) {
@@ -834,9 +968,13 @@ bool save_to_db(const std::string& connection_string) {
         for (const auto& wp : plans_of_group(g.id)) {
             ok &= sync_work_plan_to_db(connection_string, wp.id);
         }
+        for (int pid : projects_of_group(g.id)) {
+            ok &= sync_project_link_to_db(connection_string, g.id, pid);
+        }
     }
     for (const auto& r : list_researchers()) ok &= sync_researcher_to_db(connection_string, r.id);
     for (const auto& p : list_products()) ok &= sync_product_to_db(connection_string, p.id);
+    for (const auto& p : list_projects()) ok &= sync_project_to_db(connection_string, p.id);
     return ok;
 }
 
@@ -847,6 +985,7 @@ bool initialize(InitMode mode, const std::string& source) {
     while (!list_groups().empty()) delete_group(list_groups()[0].id);
     while (!list_researchers().empty()) delete_researcher(list_researchers()[0].id);
     while (!list_products().empty()) delete_product(list_products()[0].id);
+    while (!list_projects().empty()) delete_project(list_projects()[0].id);
     vq_clear();
     undo_clear();
     return true;

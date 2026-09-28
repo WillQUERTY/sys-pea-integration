@@ -12,6 +12,7 @@
 #include "services/undo_stack.h"
 #include "services/validation_queue.h"
 #include "services/work_plan_service.h"
+#include "services/project_service.h"
 
 #include <fstream>
 #include <sstream>
@@ -104,6 +105,20 @@ static int extract_int(const std::string& block, const std::string& key) {
     return neg ? -val : val;
 }
 
+static double extract_double(const std::string& block, const std::string& key) {
+    std::string search = "\"" + key + "\": ";
+    auto pos = block.find(search);
+    if (pos == std::string::npos) return 0.0;
+    pos += search.size();
+    size_t end = pos;
+    while (end < block.size() &&
+           (isdigit((unsigned char)block[end]) || block[end] == '-' ||
+            block[end] == '+' || block[end] == '.' ||
+            block[end] == 'e' || block[end] == 'E')) end++;
+    try { return std::stod(block.substr(pos, end - pos)); }
+    catch (...) { return 0.0; }
+}
+
 // Iterate over the JSON objects of an array section: {"key": [ ... ]}.
 // Calls fn(block) for each { ... } object, returns number of objects parsed.
 template <typename Fn>
@@ -138,6 +153,7 @@ static void clear_all_state() {
     for (const auto& g : list_groups())     delete_group(g.id);
     for (const auto& r : list_researchers()) delete_researcher(r.id);
     for (const auto& p : list_products())  delete_product(p.id);
+    for (const auto& p : list_projects())  delete_project(p.id);
     vq_clear();
     undo_clear();
 }
@@ -231,6 +247,42 @@ bool export_to_file(const std::string& path) {
             out << "    {"
                 << "\"groupId\": "   << g.id << ", "
                 << "\"productId\": " << pid
+                << "}";
+        }
+    }
+    out << "\n  ],\n";
+
+    // Projects (lista global de ProjectNode)
+    out << "  \"projects\": [\n";
+    first = true;
+    for (const auto& p : list_projects()) {
+        if (!first) out << ",\n";
+        first = false;
+        out << "    {"
+            << "\"id\": "               << p.id << ", "
+            << "\"title\": \""          << json_escape(p.title) << "\", "
+            << "\"summary\": \""        << json_escape(p.summary) << "\", "
+            << "\"project_type\": \""   << json_escape(p.project_type) << "\", "
+            << "\"start_date\": \""     << json_escape(p.start_date) << "\", "
+            << "\"end_date\": \""       << json_escape(p.end_date) << "\", "
+            << "\"status\": \""         << json_escape(p.status) << "\", "
+            << "\"funding_type\": \""   << json_escape(p.funding_type) << "\", "
+            << "\"budget\": "           << p.budget << ", "
+            << "\"principal_investigator_id\": " << p.principal_investigator_id
+            << "}";
+    }
+    out << "\n  ],\n";
+
+    // Group-project links (multilista Grupo -> proyectos)
+    out << "  \"groupProjectLinks\": [\n";
+    first = true;
+    for (const auto& g : list_groups()) {
+        for (int pid : projects_of_group(g.id)) {
+            if (!first) out << ",\n";
+            first = false;
+            out << "    {"
+                << "\"groupId\": "   << g.id << ", "
+                << "\"projectId\": " << pid
                 << "}";
         }
     }
@@ -350,6 +402,28 @@ bool load_from_file(const std::string& path) {
     // Group-product links
     for_each_object(content, "groupProductLinks", [](const std::string& block) {
         link_product_to_group(extract_int(block, "groupId"), extract_int(block, "productId"));
+    });
+
+    // Projects (lista global; debe ir antes de los enlaces)
+    for_each_object(content, "projects", [](const std::string& block) {
+        Project p;
+        p.id             = extract_int(block, "id");
+        p.title          = extract_string(block, "title");
+        p.summary        = extract_string(block, "summary");
+        p.project_type   = extract_string(block, "project_type");
+        p.start_date     = extract_string(block, "start_date");
+        p.end_date       = extract_string(block, "end_date");
+        p.status         = extract_string(block, "status");
+        if (p.status.empty()) p.status = "active";
+        p.funding_type   = extract_string(block, "funding_type");
+        p.budget         = extract_double(block, "budget");
+        p.principal_investigator_id = extract_int(block, "principal_investigator_id");
+        create_project(p);
+    });
+
+    // Group-project links
+    for_each_object(content, "groupProjectLinks", [](const std::string& block) {
+        link_project_to_group(extract_int(block, "groupId"), extract_int(block, "projectId"));
     });
 
     // Work plans (recorrido Grupo -> planes reconstruido nodo a nodo)

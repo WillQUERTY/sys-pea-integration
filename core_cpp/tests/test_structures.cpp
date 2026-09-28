@@ -35,6 +35,7 @@ static void reset_state() {
     for (const auto& g : list_groups())      delete_group(g.id);
     for (const auto& r : list_researchers()) delete_researcher(r.id);
     for (const auto& p : list_products())    delete_product(p.id);
+    for (const auto& p : list_projects())    delete_project(p.id);
     vq_clear();
     undo_clear();
 }
@@ -440,6 +441,109 @@ static void test_planes_undo() {
 }
 
 // =====================================================================
+//  PROYECTOS (Req. 3) — lista global + multilista Grupo → proyectos
+// =====================================================================
+
+static int make_project(const char* title) {
+    Project p; p.title = title;
+    return create_project(p).id;
+}
+
+// CRUD standalone sobre la lista global de proyectos.
+static void test_proyectos_crud() {
+    int p1 = make_project("Proyecto A");
+    int p2 = make_project("Proyecto B");
+    CHECK(p1 > 0 && p2 > 0 && p1 != p2, "crear dos proyectos asigna ids distintos");
+    CHECK(list_projects().size() == 2, "la lista global tiene 2 proyectos");
+    CHECK(total_projects() == 2, "total de proyectos = 2");
+
+    auto found = get_project(p1);
+    CHECK(found.has_value() && found->title == "Proyecto A", "get_project encuentra el proyecto");
+    CHECK(found->status == "active", "status por defecto es active");
+
+    Project upd = *found;
+    upd.title = "Proyecto A (rev)";
+    upd.status = "inactive";
+    upd.budget = 1500.5;
+    CHECK(update_project(p1, upd), "update_project devuelve true");
+    CHECK(get_project(p1)->title == "Proyecto A (rev)", "el título quedó modificado");
+    CHECK(get_project(p1)->status == "inactive", "el proyecto quedó desactivado");
+    CHECK(get_project(p1)->budget == 1500.5, "el presupuesto quedó actualizado");
+
+    CHECK(delete_project(p2), "delete_project devuelve true");
+    CHECK(total_projects() == 1, "queda 1 proyecto tras eliminar");
+    CHECK(!delete_project(p2), "eliminar de nuevo devuelve false");
+}
+
+// Enlaces multilista Grupo <-> Proyecto y cascadas.
+static void test_proyectos_enlaces_y_cascada() {
+    int g1 = make_group("G1");
+    int g2 = make_group("G2");
+    int p  = make_project("Proyecto multi-grupo");
+
+    CHECK(link_project_to_group(g1, p) != nullptr, "enlazar a g1 devuelve nodo");
+    CHECK(link_project_to_group(g2, p) != nullptr, "el mismo proyecto enlaza a g2");
+    CHECK(link_project_to_group(g1, p) != nullptr, "re-enlazar no duplica (devuelve el nodo)");
+    CHECK(projects_of_group(g1).size() == 1, "g1 tiene 1 proyecto (sin duplicar)");
+    CHECK(groups_of_project(p).size() == 2, "el proyecto aparece en 2 grupos");
+    CHECK(total_project_links() == 2, "2 enlaces en total");
+
+    // Enlace a grupo o proyecto inexistente falla.
+    CHECK(link_project_to_group(999999, p) == nullptr, "enlazar a grupo inexistente devuelve null");
+    CHECK(link_project_to_group(g1, 999999) == nullptr, "enlazar proyecto inexistente devuelve null");
+
+    // Desenlazar.
+    CHECK(unlink_project_from_group(g2, p), "desenlazar de g2 devuelve true");
+    CHECK(groups_of_project(p).size() == 1, "el proyecto queda solo en g1");
+
+    // Cascada: eliminar el proyecto limpia la cadena del grupo.
+    CHECK(delete_project(p), "eliminar el proyecto devuelve true");
+    CHECK(projects_of_group(g1).empty(), "la cadena de g1 quedó vacía en cascada");
+}
+
+// Undo de CREATE/UPDATE/DELETE/LINK/UNLINK sobre proyectos.
+static void test_proyectos_undo() {
+    int g = make_group("G");
+
+    // CREATE → undo elimina el proyecto.
+    int pid = make_project("Proyecto Nuevo");
+    push_op("CREATE", "Project", pid);
+    CHECK(undo_perform(), "undo de CREATE devuelve true");
+    CHECK(!get_project(pid).has_value(), "DESPUÉS: el proyecto fue eliminado");
+
+    // UPDATE → undo restaura los campos previos.
+    pid = make_project("Título Viejo");
+    push_op("UPDATE", "Project", pid, undo_snapshot_project(*get_project(pid)));
+    Project upd = *get_project(pid);
+    upd.title = "Título Nuevo";
+    update_project(pid, upd);
+    CHECK(get_project(pid)->title == "Título Nuevo", "ANTES: el cambio se aplicó");
+    CHECK(undo_perform(), "undo de UPDATE devuelve true");
+    CHECK(get_project(pid)->title == "Título Viejo", "DESPUÉS: el título volvió al valor previo");
+
+    // DELETE → undo re-crea el proyecto con su id original.
+    push_op("DELETE", "Project", pid, undo_snapshot_project(*get_project(pid)));
+    delete_project(pid);
+    CHECK(!get_project(pid).has_value(), "ANTES: el proyecto fue eliminado");
+    CHECK(undo_perform(), "undo de DELETE devuelve true");
+    CHECK(get_project(pid).has_value() && get_project(pid)->title == "Título Viejo",
+          "DESPUÉS: el proyecto fue restaurado con sus datos");
+
+    // LINK_PROJECT → undo quita el enlace.
+    CHECK(link_project_to_group(g, pid) != nullptr, "ANTES: enlace creado");
+    push_op("LINK_PROJECT", "Project", pid, std::to_string(g) + ":" + std::to_string(pid));
+    CHECK(undo_perform(), "undo de LINK_PROJECT devuelve true");
+    CHECK(projects_of_group(g).empty(), "DESPUÉS: el enlace fue removido");
+
+    // UNLINK_PROJECT → undo re-crea el enlace.
+    CHECK(link_project_to_group(g, pid) != nullptr, "ANTES: enlace re-creado");
+    push_op("UNLINK_PROJECT", "Project", pid, std::to_string(g) + ":" + std::to_string(pid));
+    CHECK(unlink_project_from_group(g, pid), "ANTES: enlace quitado");
+    CHECK(undo_perform(), "undo de UNLINK_PROJECT devuelve true");
+    CHECK(projects_of_group(g).size() == 1, "DESPUÉS: el enlace fue restaurado");
+}
+
+// =====================================================================
 //  PERSISTENCIA — round-trip JSON (exportar → limpiar → cargar)
 // =====================================================================
 
@@ -451,6 +555,8 @@ static void test_persistencia_json_roundtrip() {
     int p  = make_product("P-RT");
     add_member_to_group(g, r);
     link_product_to_group(g, p);
+    int pj = make_project("Proyecto RT");
+    link_project_to_group(g, pj);
     make_plan(g, "Plan RT");
     enqueue_product(p);
     push_op("CREATE", "Group", g);
@@ -468,6 +574,9 @@ static void test_persistencia_json_roundtrip() {
     CHECK(list_products().size() == 1, "el producto se restauró");
     CHECK(members_of_group(g).size() == 1, "la vinculación se restauró");
     CHECK(products_of_group(g).size() == 1, "el enlace producto se restauró");
+    CHECK(list_projects().size() == 1 && list_projects()[0].title == "Proyecto RT",
+          "el proyecto se restauró");
+    CHECK(projects_of_group(g).size() == 1, "el enlace proyecto se restauró");
     CHECK(plans_of_group(g).size() == 1 && plans_of_group(g)[0].title == "Plan RT",
           "el plan de trabajo se restauró");
     CHECK(vq_pending_count() == 1, "la cola se restauró");
@@ -502,6 +611,11 @@ int main() {
     RUN_TEST(test_planes_crud);
     RUN_TEST(test_planes_cascada_al_eliminar_grupo);
     RUN_TEST(test_planes_undo);
+
+    std::cout << "\n--- PROYECTOS (Req. 3) ---\n";
+    RUN_TEST(test_proyectos_crud);
+    RUN_TEST(test_proyectos_enlaces_y_cascada);
+    RUN_TEST(test_proyectos_undo);
 
     std::cout << "\n--- COLA (FIFO de validación) ---\n";
     RUN_TEST(test_cola_fifo_orden_de_llegada);

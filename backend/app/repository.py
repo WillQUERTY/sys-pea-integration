@@ -11,7 +11,7 @@ import unicodedata
 sys.path.append(os.path.dirname(__file__))
 import abpoxx_pybind
 
-from typing import List, Optional, Dict, Any
+from typing import List, Optional, Dict, Any, Tuple
 from .models import Group, Researcher, Product, Project, WorkPlan
 
 logger = logging.getLogger("peai.repository")
@@ -328,6 +328,111 @@ def restore_work_plan(plan_id: int, skip_undo: bool = False) -> bool:
     abpoxx_pybind.update_work_plan(plan_id, proto)
     if _active_connection_string:
         abpoxx_pybind.sync_work_plan_to_db(_active_connection_string, plan_id)
+    return True
+
+# -------------------------------------------------------------------
+# Project CRUD standalone (Req. 3: gestionar proyectos — lista global en el nucleo)
+# -------------------------------------------------------------------
+
+def _to_project_model(p) -> Project:
+    return Project(
+        id=p.id,
+        title=safe_get_str(p, 'title'),
+        summary=safe_get_str(p, 'summary'),
+        project_type=safe_get_str(p, 'project_type'),
+        start_date=safe_get_str(p, 'start_date'),
+        end_date=safe_get_str(p, 'end_date'),
+        status=safe_get_str(p, 'status'),
+        funding_type=safe_get_str(p, 'funding_type'),
+        budget=p.budget or 0.0,
+        principal_investigator_id=p.principal_investigator_id or None
+    )
+
+def _to_project_proto(project: Project, base=None):
+    proto = abpoxx_pybind.Project()
+    proto.id          = base.id if base else 0
+    proto.title       = sanitize_str(project.title if project.title is not None else (base.title if base else ""))
+    proto.summary     = sanitize_str(project.summary if project.summary is not None else (base.summary if base else ""))
+    proto.project_type = sanitize_str(project.project_type if project.project_type is not None else (base.project_type if base else ""))
+    proto.start_date  = sanitize_str(project.start_date if project.start_date is not None else (base.start_date if base else ""))
+    proto.end_date    = sanitize_str(project.end_date if project.end_date is not None else (base.end_date if base else ""))
+    proto.status      = sanitize_str(project.status or (base.status if base else "active"))
+    proto.funding_type = sanitize_str(project.funding_type if project.funding_type is not None else (base.funding_type if base else ""))
+    proto.budget      = project.budget if project.budget is not None else (base.budget if base else 0.0)
+    # El campo C++ es int (0 = sin investigador). None significa "no provisto"
+    # (usa el valor actual); un 0 explicito del cliente si limpia el campo.
+    if project.principal_investigator_id is not None:
+        proto.principal_investigator_id = project.principal_investigator_id
+    else:
+        proto.principal_investigator_id = (base.principal_investigator_id if base else None) or 0
+    return proto
+
+def list_projects(skip: int = 0, limit: int = 20, search: Optional[str] = None,
+                  status: Optional[str] = None) -> Tuple[List[Project], int]:
+    projects = [_to_project_model(p) for p in abpoxx_pybind.list_projects()]
+    if status and status != 'all':
+        projects = [p for p in projects if p.status == status]
+    if search:
+        s = search.lower()
+        projects = [p for p in projects if (p.title and s in p.title.lower())
+                    or (p.project_type and s in p.project_type.lower())]
+    return projects[skip:skip + limit], len(projects)
+
+def get_project(project_id: int) -> Project:
+    p = abpoxx_pybind.get_project(project_id)
+    if p is None:
+        raise KeyError(f"Project {project_id} not found")
+    return _to_project_model(p)
+
+def create_project(project: Project, skip_undo: bool = False) -> Project:
+    proto = _to_project_proto(project)
+    created = abpoxx_pybind.create_project(proto)
+    if not skip_undo:
+        undo_push("CREATE", "Project", created.id)
+    if _active_connection_string:
+        if not abpoxx_pybind.sync_project_to_db(_active_connection_string, created.id):
+            raise RuntimeError(f"Error sincronizando proyecto {created.id} a BD")
+    return get_project(created.id)
+
+def update_project(project_id: int, updates: Project, skip_undo: bool = False) -> Project:
+    prev = get_project(project_id)
+    if not skip_undo:
+        undo_push("UPDATE", "Project", project_id, prev.model_dump_json())
+
+    proto = _to_project_proto(updates, base=prev)
+    proto.id = project_id
+    abpoxx_pybind.update_project(project_id, proto)
+    if _active_connection_string:
+        if not abpoxx_pybind.sync_project_to_db(_active_connection_string, project_id):
+            raise RuntimeError(f"Error sincronizando proyecto {project_id} a BD")
+    return get_project(project_id)
+
+def delete_project(project_id: int, soft: bool = True, skip_undo: bool = False) -> bool:
+    prev = get_project(project_id)
+    if not skip_undo:
+        undo_push("DELETE", "Project", project_id, prev.model_dump_json())
+    if soft:
+        # Baja lógica: status='inactive' (el núcleo aplica todos los campos)
+        proto = _to_project_proto(prev)
+        proto.status = "inactive"
+        abpoxx_pybind.update_project(project_id, proto)
+    else:
+        abpoxx_pybind.delete_project(project_id)
+    if _active_connection_string:
+        if not abpoxx_pybind.delete_project_from_db(_active_connection_string, project_id, not soft):
+            raise RuntimeError(f"Error en delete del proyecto {project_id}")
+    return True
+
+def restore_project(project_id: int, skip_undo: bool = False) -> bool:
+    """Reactiva un proyecto inactivo (inverso del soft-delete)."""
+    prev = get_project(project_id)
+    if not skip_undo:
+        undo_push("RESTORE", "Project", project_id, prev.model_dump_json())
+    proto = _to_project_proto(prev)
+    proto.status = "active"
+    abpoxx_pybind.update_project(project_id, proto)
+    if _active_connection_string:
+        abpoxx_pybind.sync_project_to_db(_active_connection_string, project_id)
     return True
 
 # -------------------------------------------------------------------
@@ -975,6 +1080,8 @@ def undo_perform() -> Dict[str, Any]:
                 update_group(e_id, Group(**data), skip_undo=True)
             elif e_type == "WorkPlan":
                 update_work_plan(e_id, WorkPlan(**data), skip_undo=True)
+            elif e_type == "Project":
+                update_project(e_id, Project(**data), skip_undo=True)
 
         elif op_type in ("DELETE", "RESTORE"):
             data = json.loads(prev_state)
@@ -986,6 +1093,8 @@ def undo_perform() -> Dict[str, Any]:
                 update_group(e_id, Group(**data), skip_undo=True)
             elif e_type == "WorkPlan":
                 update_work_plan(e_id, WorkPlan(**data), skip_undo=True)
+            elif e_type == "Project":
+                update_project(e_id, Project(**data), skip_undo=True)
 
         elif op_type == "VALIDATE":
             data = json.loads(prev_state)
@@ -998,6 +1107,32 @@ def undo_perform() -> Dict[str, Any]:
         elif op_type == "UNLINK_MEMBER":
             gid, rid = map(int, prev_state.split(":"))
             add_member_to_group(gid, rid)
+
+        elif op_type == "UNLINK_PROJECT":
+            gid, pid = map(int, prev_state.split(":"))
+            if abpoxx_pybind.get_project(pid) is not None:
+                abpoxx_pybind.link_project_to_group(gid, pid)
+                if _active_connection_string:
+                    abpoxx_pybind.sync_project_link_to_db(_active_connection_string, gid, pid)
+
+        elif op_type == "LINK_PROJECT":
+            gid, pid = map(int, prev_state.split(":"))
+            abpoxx_pybind.unlink_project_from_group(gid, pid)
+            if _active_connection_string:
+                abpoxx_pybind.delete_project_link_from_db(_active_connection_string, gid, pid)
+
+        elif op_type == "CREATE":
+            # El undo de un CREATE es eliminar lo creado (borrado físico).
+            if e_type == "Product":
+                delete_product(e_id, soft=False, skip_undo=True)
+            elif e_type == "Researcher":
+                delete_researcher(e_id, soft=False, skip_undo=True)
+            elif e_type == "Group":
+                delete_group(e_id, soft=False, skip_undo=True)
+            elif e_type == "WorkPlan":
+                delete_work_plan(e_id, soft=False, skip_undo=True)
+            elif e_type == "Project":
+                delete_project(e_id, soft=False, skip_undo=True)
 
         if _active_connection_string:
             abpoxx_pybind.insert_audit_log_db(
@@ -1079,44 +1214,38 @@ def get_dashboard_stats() -> dict:
     return json.loads(abpoxx_pybind.get_dashboard_stats_json(_active_connection_string))
 
 def get_group_projects(group_id: int) -> List[Project]:
-    if not _active_connection_string: return []
-    return [
-        Project(
-            id=p.id,
-            title=safe_get_str(p, 'title'),
-            summary=safe_get_str(p, 'summary'),
-            start_date=safe_get_str(p, 'start_date'),
-            end_date=safe_get_str(p, 'end_date'),
-            status=safe_get_str(p, 'status'),
-            project_type=safe_get_str(p, 'project_type'),
-            funding_type=safe_get_str(p, 'funding_type'),
-            budget=p.budget or 0.0,
-            principal_investigator_id=p.principal_investigator_id
-        )
-        for p in abpoxx_pybind.get_group_projects_db(_active_connection_string, group_id)
-    ]
+    get_group(group_id)  # 404 si no existe
+    return [_to_project_model(abpoxx_pybind.get_project(pid))
+            for pid in abpoxx_pybind.projects_of_group(group_id)
+            if abpoxx_pybind.get_project(pid) is not None]
 
 def get_group_research_lines(group_id: int) -> List[str]:
     if not _active_connection_string: return []
     return abpoxx_pybind.get_group_research_lines_db(_active_connection_string, group_id)
 
 def link_project_to_group(group_id: int, project: Project) -> int:
-    if not _active_connection_string: raise Exception("No DB connection")
-    proto = abpoxx_pybind.Project()
-    proto.title = sanitize_str(project.title)
-    proto.summary = sanitize_str(project.summary)
-    proto.start_date = sanitize_str(project.start_date)
-    proto.end_date = sanitize_str(project.end_date)
-    proto.status = sanitize_str(project.status)
-    proto.project_type = sanitize_str(project.project_type)
-    proto.funding_type = sanitize_str(project.funding_type)
-    proto.budget = project.budget or 0.0
-    proto.principal_investigator_id = project.principal_investigator_id or 0
-    return abpoxx_pybind.link_project_to_group_db(_active_connection_string, group_id, proto)
+    """Enlaza un proyecto a un grupo (Req. 3). Si el proyecto no existe en
+    RAM, se crea primero (comportamiento historico del endpoint)."""
+    get_group(group_id)  # 404 si no existe
+    pid = project.id
+    if not pid or abpoxx_pybind.get_project(pid) is None:
+        pid = create_project(project).id
+    if not abpoxx_pybind.link_project_to_group(group_id, pid):
+        raise KeyError(f"No se pudo enlazar el proyecto {pid} al grupo {group_id}")
+    undo_push("LINK_PROJECT", "Project", pid, f"{group_id}:{pid}")
+    if _active_connection_string:
+        if not abpoxx_pybind.sync_project_link_to_db(_active_connection_string, group_id, pid):
+            raise RuntimeError(f"Error sincronizando enlace proyecto {pid} a BD")
+    return pid
 
 def unlink_project_from_group(group_id: int, project_id: int):
-    if not _active_connection_string: raise Exception("No DB connection")
-    abpoxx_pybind.unlink_project_from_group_db(_active_connection_string, group_id, project_id)
+    get_group(group_id)  # 404 si no existe
+    if abpoxx_pybind.get_project(project_id) is None:
+        raise KeyError(f"Project {project_id} not found")
+    undo_push("UNLINK_PROJECT", "Project", project_id, f"{group_id}:{project_id}")
+    abpoxx_pybind.unlink_project_from_group(group_id, project_id)
+    if _active_connection_string:
+        abpoxx_pybind.delete_project_link_from_db(_active_connection_string, group_id, project_id)
 
 def link_research_line_to_group(group_id: int, line_name: str) -> int:
     if not _active_connection_string: raise Exception("No DB connection")

@@ -22,6 +22,7 @@ import { Route as AuthenticatedValidationQueueIndexRouteImport } from './routes/
 import { Route as AuthenticatedUndoIndexRouteImport } from './routes/_authenticated/undo/index'
 import { Route as AuthenticatedSettingsIndexRouteImport } from './routes/_authenticated/settings/index'
 import { Route as AuthenticatedResearchersIndexRouteImport } from './routes/_authenticated/researchers/index'
+import { Route as AuthenticatedProjectsIndexRouteImport } from './routes/_authenticated/projects/index'
 import { Route as AuthenticatedProductsIndexRouteImport } from './routes/_authenticated/products/index'
 import { Route as AuthenticatedImportIndexRouteImport } from './routes/_authenticated/import/index'
 import { Route as AuthenticatedGroupsIndexRouteImport } from './routes/_authenticated/groups/index'
@@ -100,6 +101,12 @@ const AuthenticatedResearchersIndexRoute =
   AuthenticatedResearchersIndexRouteImport.update({
     id: '/researchers/',
     path: '/researchers/',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
+const AuthenticatedProjectsIndexRoute =
+  AuthenticatedProjectsIndexRouteImport.update({
+    id: '/projects/',
+    path: '/projects/',
     getParentRoute: () => AuthenticatedRouteRoute,
   } as any)
 const AuthenticatedProductsIndexRoute =
@@ -187,6 +194,7 @@ export interface FileRoutesByFullPath {
   '/groups/': typeof AuthenticatedGroupsIndexRoute
   '/import/': typeof AuthenticatedImportIndexRoute
   '/products/': typeof AuthenticatedProductsIndexRoute
+  '/projects/': typeof AuthenticatedProjectsIndexRoute
   '/researchers/': typeof AuthenticatedResearchersIndexRoute
   '/settings/': typeof AuthenticatedSettingsIndexRoute
   '/undo/': typeof AuthenticatedUndoIndexRoute
@@ -210,6 +218,7 @@ export interface FileRoutesByTo {
   '/groups': typeof AuthenticatedGroupsIndexRoute
   '/import': typeof AuthenticatedImportIndexRoute
   '/products': typeof AuthenticatedProductsIndexRoute
+  '/projects': typeof AuthenticatedProjectsIndexRoute
   '/researchers': typeof AuthenticatedResearchersIndexRoute
   '/settings': typeof AuthenticatedSettingsIndexRoute
   '/undo': typeof AuthenticatedUndoIndexRoute
@@ -237,6 +246,7 @@ export interface FileRoutesById {
   '/_authenticated/groups/': typeof AuthenticatedGroupsIndexRoute
   '/_authenticated/import/': typeof AuthenticatedImportIndexRoute
   '/_authenticated/products/': typeof AuthenticatedProductsIndexRoute
+  '/_authenticated/projects/': typeof AuthenticatedProjectsIndexRoute
   '/_authenticated/researchers/': typeof AuthenticatedResearchersIndexRoute
   '/_authenticated/settings/': typeof AuthenticatedSettingsIndexRoute
   '/_authenticated/undo/': typeof AuthenticatedUndoIndexRoute
@@ -264,6 +274,7 @@ export interface FileRouteTypes {
     | '/groups/'
     | '/import/'
     | '/products/'
+    | '/projects/'
     | '/researchers/'
     | '/settings/'
     | '/undo/'
@@ -287,6 +298,7 @@ export interface FileRouteTypes {
     | '/groups'
     | '/import'
     | '/products'
+    | '/projects'
     | '/researchers'
     | '/settings'
     | '/undo'
@@ -313,6 +325,7 @@ export interface FileRouteTypes {
     | '/_authenticated/groups/'
     | '/_authenticated/import/'
     | '/_authenticated/products/'
+    | '/_authenticated/projects/'
     | '/_authenticated/researchers/'
     | '/_authenticated/settings/'
     | '/_authenticated/undo/'
@@ -419,6 +432,13 @@ declare module '@tanstack/react-router' {
       path: '/researchers'
       fullPath: '/researchers/'
       preLoaderRoute: typeof AuthenticatedResearchersIndexRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/projects/': {
+      id: '/_authenticated/projects/'
+      path: '/projects'
+      fullPath: '/projects/'
+      preLoaderRoute: typeof AuthenticatedProjectsIndexRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
     '/_authenticated/products/': {
@@ -546,6 +566,7 @@ interface AuthenticatedRouteRouteChildren {
   AuthenticatedGroupsIndexRoute: typeof AuthenticatedGroupsIndexRoute
   AuthenticatedImportIndexRoute: typeof AuthenticatedImportIndexRoute
   AuthenticatedProductsIndexRoute: typeof AuthenticatedProductsIndexRoute
+  AuthenticatedProjectsIndexRoute: typeof AuthenticatedProjectsIndexRoute
   AuthenticatedResearchersIndexRoute: typeof AuthenticatedResearchersIndexRoute
   AuthenticatedValidationQueueIndexRoute: typeof AuthenticatedValidationQueueIndexRoute
 }
@@ -561,6 +582,7 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedGroupsIndexRoute: AuthenticatedGroupsIndexRoute,
   AuthenticatedImportIndexRoute: AuthenticatedImportIndexRoute,
   AuthenticatedProductsIndexRoute: AuthenticatedProductsIndexRoute,
+  AuthenticatedProjectsIndexRoute: AuthenticatedProjectsIndexRoute,
   AuthenticatedResearchersIndexRoute: AuthenticatedResearchersIndexRoute,
   AuthenticatedValidationQueueIndexRoute:
     AuthenticatedValidationQueueIndexRoute,

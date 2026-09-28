@@ -1005,6 +1005,7 @@ para probar distintos escenarios.
 | Gestionar investigadores | `Researcher` | `/api/researchers` | IT-RES-001 | captura + respuesta |
 | Gestionar productos | `Product` | `/api/products` | IT-PRD-001 | captura + respuesta |
 | Gestionar planes | `WorkPlan` | `groups/{id}/plans`, `plans/{id}` | UT-PLN-001 | prueba automática + respuesta |
+| Gestionar proyectos | `Project` | `/api/projects`, `groups/{id}/projects` | UT-PRJ-001 | prueba automática + respuesta |
 | Vinculación temporal | `RV-001`, `RV-002` | grupos/memberships | UT-MEM-002 | prueba automática |
 | Producto-grupo | `RPG-001` | products/group-links | UT-LNK-001 | prueba automática |
 | Lista | `LinkedList<T>` | CLI structures | UT-LST-001 | salida consola |
@@ -1038,6 +1039,9 @@ para probar distintos escenarios.
 - Crear, editar y eliminar planes de un grupo (UT-PLN-001).
 - Liberar la cadena de planes al eliminar el grupo (cascada).
 - Deshacer creación, edición y borrado de planes (pila).
+- Crear, consultar, editar y eliminar proyectos de la lista global (UT-PRJ-001).
+- Enlazar y desenlazar proyectos de grupos; cascada al eliminar proyecto o grupo.
+- Deshacer creación, edición, borrado, enlace y desenlace de proyectos (pila).
 
 ### 41.2 Reglas de dominio
 
@@ -1197,7 +1201,7 @@ Pendientes de crear para la entrega:
 - [x] Multilista implementada manualmente.
 - [x] Pila funcional.
 - [x] Cola FIFO funcional.
-- [x] CRUD completo (incluye planes de trabajo, T-08).
+- [x] CRUD completo (incluye planes de trabajo y proyectos, T-08 y Req. 3).
 - [x] pybind11 funcional.
 - [x] FastAPI funcional.
 - [x] React funcional.
@@ -1279,4 +1283,4 @@ Alcance ajustado por las decisiones del equipo (sección 26.1): D-01 entrega amb
 
 La afirmación de cumplimiento total dependerá de completar la implementación y reunir las evidencias enumeradas en la matriz de trazabilidad y en la lista de comprobación.
 
-> **Estado de implementación (2026-09-27):** T-08 (gestión de planes) está implementado de punta a punta: `PlanNode` en la multilista C++, `work_plan_service`, persistencia JSON y SQL Server (MERGE por id estable), pybind11, endpoints REST (`/groups/{id}/plans`, `/plans/{id}`), pestaña "Planes" en el detalle de grupo en React, comandos `plans` en `pea_cli` y pruebas unitarias (113/113 en verde). Brechas de código restantes: CRUD independiente de proyectos, periodo de observación personalizado en la UI, lectura/actualización individual de membresías en C++ y pruebas automatizadas del backend (hoy solo cubren los importadores).
+> **Estado de implementación (2026-09-27):** T-08 (gestión de planes) está implementado de punta a punta: `PlanNode` en la multilista C++, `work_plan_service`, persistencia JSON y SQL Server (MERGE por id estable), pybind11, endpoints REST (`/groups/{id}/plans`, `/plans/{id}`), pestaña "Planes" en el detalle de grupo en React, comandos `plans` en `pea_cli` y pruebas unitarias. El CRUD independiente de proyectos (Requerimiento 3) también está completo de punta a punta: `ProjectNode` en la lista global C++, `project_service`, persistencia JSON y SQL Server (MERGE por id estable), pybind11, endpoints REST (`/api/projects` con paginación/búsqueda/estado, `/groups/{id}/projects`), página "Proyectos" en React, comandos `projects` en `pea_cli` y pruebas unitarias (154/154 en verde, verificadas end-to-end contra SQL Server). Brechas de código restantes: periodo de observación personalizado en la UI, lectura/actualización individual de membresías en C++ y pruebas automatizadas del backend (hoy solo cubren los importadores).

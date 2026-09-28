@@ -52,6 +52,7 @@ std::string undo_snapshot_group(const Group& g);
 std::string undo_snapshot_researcher(const Researcher& r);
 std::string undo_snapshot_product(const Product& p);
 std::string undo_snapshot_work_plan(const WorkPlan& wp);
+std::string undo_snapshot_project(const Project& p);
 
 } // namespace peai
 

@@ -148,6 +148,26 @@ PYBIND11_MODULE(abpoxx_pybind, m) {
     m.def("delete_work_plan", &peai::delete_work_plan, "Delete work plan by id");
     m.def("total_work_plans", &peai::total_work_plans);
 
+    // ---- Project CRUD (Req. 3: proyectos standalone) ----
+    m.def("create_project", &peai::create_project, "Create a project (id auto-assigned)");
+    m.def("get_project",    &peai::get_project,    "Get project by id (returns None if not found)");
+    m.def("list_projects",  &peai::list_projects,  "List all projects");
+    m.def("update_project", &peai::update_project, "Update project fields by id");
+    m.def("delete_project", &peai::delete_project, "Delete project by id (unlinks from groups)");
+    m.def("total_projects", &peai::total_projects);
+
+    // ---- Multilista: project links (Group <-> Project) ----
+    // OJO: la lambda debe devolver bool; una lambda void retorna None en Python
+    // y el caller (repository) interpreta None como fallo del enlace.
+    m.def("link_project_to_group",    [](int g, int p){ return peai::link_project_to_group(g, p) != nullptr; },
+          "Link a project to a group (RAM); false if group/project missing");
+    m.def("projects_of_group",        &peai::projects_of_group,
+          "List project ids linked to a group");
+    m.def("groups_of_project",        &peai::groups_of_project,
+          "List group ids linked to a project");
+    m.def("unlink_project_from_group",&peai::unlink_project_from_group,
+          "Unlink a project from a group (RAM)");
+
     // ---- Struct: UndoOperation (Stack) ----
     py::class_<peai::UndoOperation>(m, "UndoOperation")
         .def(py::init<>())
@@ -231,6 +251,8 @@ PYBIND11_MODULE(abpoxx_pybind, m) {
     m.def("sync_product_link_to_db",       &peai::sync_product_link_to_db,       "Sync a group product link to DB");
     m.def("sync_product_author_to_db",     &peai::sync_product_author_to_db,     "Sync a product author link to DB");
     m.def("sync_work_plan_to_db",          &peai::sync_work_plan_to_db,          "Sync a group work plan to DB");
+    m.def("sync_project_to_db",            &peai::sync_project_to_db,            "Sync a project to DB");
+    m.def("sync_project_link_to_db",       &peai::sync_project_link_to_db,       "Sync a group-project link to DB");
 
     // Architectural consolidation: the core owns ALL SQL
     m.def("delete_group_from_db",      &peai::delete_group_from_db,      "Soft/hard delete of a group in DB");
@@ -239,6 +261,8 @@ PYBIND11_MODULE(abpoxx_pybind, m) {
     m.def("delete_membership_from_db",    &peai::delete_membership_from_db,    "Delete a group membership link in DB");
     m.def("delete_product_link_from_db",  &peai::delete_product_link_from_db,  "Delete a group-product link in DB");
     m.def("delete_work_plan_from_db",     &peai::delete_work_plan_from_db,     "Soft/hard delete of a work plan in DB");
+    m.def("delete_project_from_db",       &peai::delete_project_from_db,       "Soft/hard delete of a project in DB");
+    m.def("delete_project_link_from_db",  &peai::delete_project_link_from_db,  "Delete a group-project link in DB");
     m.def("set_product_validation_db",    &peai::set_product_validation_db,    "Transactional product validation (Product + GroupProductLink + ValidationQueueItem + AuditLog)");
     m.def("insert_audit_log_db",          &peai::insert_audit_log_db,          "Insert an AuditLog row");
     m.def("insert_import_record_db",      &peai::insert_import_record_db,      "Insert an ImportRecord row");

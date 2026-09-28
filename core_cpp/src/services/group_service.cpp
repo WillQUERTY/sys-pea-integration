@@ -9,6 +9,7 @@
 #include "services/undo_stack.h"
 #include "services/validation_queue.h"
 #include "services/work_plan_service.h"
+#include "services/project_service.h"
 #include <iostream>
 #include <iomanip>
 #include <algorithm>
@@ -125,6 +126,10 @@ bool delete_group(int id) {
             // Free product link chain
             GroupProductNode* p = cur->firstProduct;
             while (p) { auto* tmp = p; p = p->nextInGroup; delete tmp; }
+
+            // Free project link chain (multilista Grupo -> proyectos)
+            GroupProjectNode* pj = cur->firstProject;
+            while (pj) { auto* tmp = pj; pj = pj->nextInGroup; delete tmp; }
 
             // Free work plan chain (multilista Grupo -> planes)
             PlanNode* pl = cur->firstPlan;
@@ -325,6 +330,7 @@ void print_summary() {
     std::cout << "| Productos validados               | " << std::setw(5) << valid           << " |\n";
     std::cout << "| Productos pendientes              | " << std::setw(5) << pending         << " |\n";
     std::cout << "| Planes de trabajo               | " << std::setw(5) << total_work_plans() << " |\n";
+    std::cout << "| Proyectos registrados           | " << std::setw(5) << total_projects() << " |\n";
     std::cout << "| Vinculaciones (memberships)      | " << std::setw(5) << total_members()   << " |\n";
     std::cout << "| Enlaces grupo-producto            | " << std::setw(5) << total_product_links() << " |\n";
     std::cout << "| Cola de validación (pendientes)   | " << std::setw(5) << vq_pending_count() << " |\n";

@@ -20,8 +20,12 @@ bool sync_membership_to_db(const std::string& connection_string, int group_id, i
 bool sync_membership_details_to_db(const std::string& connection_string, int group_id, int researcher_id, const std::string& role, const std::string& start_date, const std::string& end_date);
 bool sync_product_link_to_db(const std::string& connection_string, int group_id, int product_id);
 bool sync_product_author_to_db(const std::string& connection_string, int product_id, int researcher_id, int author_order = 1);
-// WorkPlan (T-08): MERGE por (grupo resuelto por external_code, titulo).
+// WorkPlan (T-08): MERGE por id RAM (estable tras load_from_db; los nuevos
+// se insertan con IDENTITY_INSERT usando el id RAM).
 bool sync_work_plan_to_db(const std::string& connection_string, int plan_id);
+// Project (Req. 3): mismo esquema de id estable que WorkPlan.
+bool sync_project_to_db(const std::string& connection_string, int project_id);
+bool sync_project_link_to_db(const std::string& conn, int group_id, int project_id);
 
 // ---- Option A Refactor ----
 std::string get_dashboard_stats_json(const std::string& connection_string);
@@ -44,6 +48,8 @@ bool delete_product_from_db(const std::string& conn, int prod_id, bool hard);
 bool delete_membership_from_db(const std::string& conn, int group_id, int researcher_id);
 bool delete_product_link_from_db(const std::string& conn, int group_id, int product_id);
 bool delete_work_plan_from_db(const std::string& conn, int plan_id, bool hard);
+bool delete_project_from_db(const std::string& conn, int project_id, bool hard);
+bool delete_project_link_from_db(const std::string& conn, int group_id, int project_id);
 // Compound, transactional: Product + GroupProductLink + ValidationQueueItem + AuditLog
 bool set_product_validation_db(const std::string& conn, int product_id, const std::string& validation_status, int quality_category_id, const std::string& reason);
 bool insert_audit_log_db(const std::string& conn, const std::string& entity_type, int entity_id, const std::string& action, const std::string& changed_by, const std::string& details);

@@ -95,6 +95,38 @@ export async function unlinkProject(groupId: number, projectId: number) {
   const { data } = await api.delete(`/groups/${groupId}/projects/${projectId}`)
   return data
 }
+
+// --- Projects (Req. 3: CRUD standalone) ---
+export async function listProjects(params?: {
+  skip?: number;
+  limit?: number;
+  search?: string;
+  status?: string;
+}) {
+  const { data } = await api.get<PagedResponse<Project>>('/projects', { params })
+  return data
+}
+export async function getProject(id: number) {
+  const { data } = await api.get<Project>(`/projects/${id}`)
+  return data
+}
+export async function createProject(project: Partial<Project>) {
+  const { data } = await api.post<Project>('/projects', project)
+  return data
+}
+export async function updateProject(id: number, project: Partial<Project>) {
+  const { data } = await api.put<Project>(`/projects/${id}`, project)
+  return data
+}
+export async function deleteProject(id: number, soft: boolean = true) {
+  const { data } = await api.delete(`/projects/${id}`, { params: { soft } })
+  return data
+}
+export async function restoreProject(id: number) {
+  const { data } = await api.post(`/projects/${id}/restore`)
+  return data
+}
+
 // --- Work Plans (T-08) ---
 export async function getGroupPlans(groupId: number) {
   const { data } = await api.get<WorkPlan[]>(`/groups/${groupId}/plans`)
