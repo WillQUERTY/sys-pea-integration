@@ -178,7 +178,12 @@ export function ResearcherDetail() {
               <ArrowLeft className='h-4 w-4' />
             </Link>
           </Button>
-          <h1 className='text-sm font-medium'>Perfil del Investigador</h1>
+          <div className='flex items-center gap-2'>
+            <h1 className='text-sm font-semibold'>Ficha del Investigador</h1>
+            <Badge variant='outline' className='text-[10px] font-normal text-muted-foreground'>
+              CvLAC
+            </Badge>
+          </div>
         </div>
         <div className='ms-auto flex items-center space-x-4'>
           <ThemeSwitch />
@@ -190,8 +195,8 @@ export function ResearcherDetail() {
       <Main className='p-0 sm:p-6'>
         {/* Cover & Profile Header */}
         <div className='relative mb-8 rounded-b-none sm:rounded-2xl overflow-hidden border border-border/50 bg-card shadow-sm'>
-          <div className='h-32 bg-gradient-to-r from-primary/20 to-secondary/20 relative'>
-            <div className='absolute inset-0 bg-[url("https://www.transparenttextures.com/patterns/cubes.png")] opacity-10' />
+          <div className='h-32 bg-gradient-to-r from-primary/15 via-background to-secondary/15 relative'>
+            <div className='absolute inset-0 bg-radial from-transparent to-card/50' />
           </div>
           
           <div className='px-6 pb-6 pt-0 relative'>
@@ -207,12 +212,12 @@ export function ResearcherDetail() {
                 <h1 className='text-2xl font-bold'>{researcher.first_names} {researcher.last_names}</h1>
                 <div className='flex flex-wrap gap-2 mt-2'>
                   {researcher.classification_records && (
-                    <Badge variant='secondary' className='text-xs font-normal bg-secondary/10 text-secondary max-w-64 truncate'>
+                    <Badge variant='outline' className='text-xs font-semibold border-violet-500/30 bg-violet-500/10 text-violet-700 dark:text-violet-300 max-w-64 truncate'>
                       {researcher.classification_records}
                     </Badge>
                   )}
                   {researcher.highest_education_level && (
-                    <Badge variant='outline' className='text-xs font-normal'>
+                    <Badge variant='outline' className='text-xs font-normal border-primary/30 bg-primary/5 text-primary'>
                       {researcher.highest_education_level}
                     </Badge>
                   )}

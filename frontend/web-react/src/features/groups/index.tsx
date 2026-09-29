@@ -6,6 +6,7 @@ import { Plus, MoreHorizontal, Pencil, Trash2, RotateCcw } from 'lucide-react'
 import { listGroups, deleteGroup, restoreGroup } from '@/lib/api'
 import type { Group } from '@/lib/types'
 import { useDebouncedValue } from '@/hooks/use-debounced-value'
+import { parseMincienciasClassification } from '@/lib/utils'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import {
@@ -131,12 +132,19 @@ export function Groups() {
     {
       key: 'classification',
       header: 'Clasificación',
-      cell: (g) =>
-        g.classification ? (
-          <Badge variant='outline'>{g.classification}</Badge>
-        ) : (
-          <span className='text-muted-foreground'>—</span>
-        ),
+      cell: (g) => {
+        if (!g.classification) return <span className='text-muted-foreground'>—</span>
+        const info = parseMincienciasClassification(g.classification)
+        return (
+          <Badge
+            variant='outline'
+            className={`text-xs font-semibold px-2 py-0.5 ${info.badgeVariant}`}
+            title={g.classification}
+          >
+            {info.badgeText}
+          </Badge>
+        )
+      },
     },
     {
       key: 'actions',

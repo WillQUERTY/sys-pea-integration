@@ -73,3 +73,85 @@ export function getDisplayNameInitials(displayName: string): string {
   const last = parts[parts.length - 1]?.[0] ?? ''
   return (first + last).toUpperCase()
 }
+
+/**
+ * Normaliza las cadenas de clasificación de GrupLAC / Minciencias
+ * (que con frecuencia vienen como "Bcon vigencia hasta la publicación de los resultados..."
+ * o "A1 con vigencia...") a códigos limpios, etiquetas legibles y estilos temáticos.
+ */
+export function parseMincienciasClassification(raw?: string | null) {
+  if (!raw) {
+    return {
+      code: 'Sin clasificar',
+      badgeText: 'Sin clasificar',
+      tier: 'No reconocido',
+      colorClass: 'bg-slate-400',
+      badgeVariant: 'border-slate-500/30 text-slate-700 dark:text-slate-300 bg-slate-500/10',
+      priority: 99,
+      rawText: '',
+    }
+  }
+
+  const clean = raw.trim()
+
+  let code = 'Sin clasificar'
+  let tier = 'Institucional'
+  let colorClass = 'bg-slate-400'
+  let badgeVariant = 'border-slate-500/30 text-slate-700 dark:text-slate-300 bg-slate-500/10'
+  let priority = 50
+
+  if (/^(?:CAT(?:EGOR[IÍ]A)?\.?\s*)?A1(\b|CON|\s|$)/i.test(clean) || /\bA1\b/i.test(clean)) {
+    code = 'A1'
+    tier = 'Máxima Excelencia'
+    colorClass = 'bg-amber-500'
+    badgeVariant = 'border-amber-500/40 text-amber-700 dark:text-amber-300 bg-amber-500/10'
+    priority = 1
+  } else if (/^(?:CAT(?:EGOR[IÍ]A)?\.?\s*)?A(\b|CON|\s|$)/i.test(clean) || /\bCAT(?:EGOR[IÍ]A)?\s+A\b/i.test(clean)) {
+    code = 'A'
+    tier = 'Nivel Avanzado'
+    colorClass = 'bg-emerald-500'
+    badgeVariant = 'border-emerald-500/40 text-emerald-700 dark:text-emerald-300 bg-emerald-500/10'
+    priority = 2
+  } else if (/^(?:CAT(?:EGOR[IÍ]A)?\.?\s*)?B(\b|CON|\s|$)/i.test(clean) || /\bCAT(?:EGOR[IÍ]A)?\s+B\b/i.test(clean)) {
+    code = 'B'
+    tier = 'Consolidado'
+    colorClass = 'bg-blue-500'
+    badgeVariant = 'border-blue-500/40 text-blue-700 dark:text-blue-300 bg-blue-500/10'
+    priority = 3
+  } else if (/^(?:CAT(?:EGOR[IÍ]A)?\.?\s*)?C(\b|CON|\s|$)/i.test(clean) || /\bCAT(?:EGOR[IÍ]A)?\s+C\b/i.test(clean)) {
+    code = 'C'
+    tier = 'En Formación'
+    colorClass = 'bg-indigo-500'
+    badgeVariant = 'border-indigo-500/40 text-indigo-700 dark:text-indigo-300 bg-indigo-500/10'
+    priority = 4
+  } else if (/NO\s+RECONOCIDO|SIN\s+CLASIFICAR/i.test(clean)) {
+    code = 'Sin clasificar'
+    tier = 'No categorizado'
+    colorClass = 'bg-slate-400'
+    badgeVariant = 'border-slate-500/30 text-slate-700 dark:text-slate-300 bg-slate-500/10'
+    priority = 6
+  } else if (/RECONOCIDO/i.test(clean)) {
+    code = 'Reconocido'
+    tier = 'Aval Institucional'
+    colorClass = 'bg-teal-500'
+    badgeVariant = 'border-teal-500/40 text-teal-700 dark:text-teal-300 bg-teal-500/10'
+    priority = 5
+  } else {
+    code = clean.length > 12 ? clean.slice(0, 10) + '…' : clean
+    tier = 'Institucional'
+    priority = 10
+  }
+
+  const badgeText = ['A1', 'A', 'B', 'C'].includes(code) ? `Cat. ${code}` : code
+
+  return {
+    code,
+    badgeText,
+    tier,
+    colorClass,
+    badgeVariant,
+    priority,
+    rawText: clean,
+  }
+}
+

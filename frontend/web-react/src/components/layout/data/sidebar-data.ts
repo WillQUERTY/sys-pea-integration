@@ -1,17 +1,11 @@
 import {
-  LayoutDashboard,
+  Compass,
   Users,
   UserRound,
   FlaskConical,
   Lightbulb,
   ClipboardCheck,
   Upload,
-  Bell,
-  Monitor,
-  Palette,
-  Settings,
-  UserCog,
-  Wrench,
   Atom,
   History,
 } from 'lucide-react'
@@ -19,101 +13,65 @@ import { type SidebarData } from '../types'
 
 export const sidebarData: SidebarData = {
   user: {
-    name: 'PEA-i',
-    email: 'adithperez@unicesar.edu.co',
+    name: 'Portal Institucional',
+    email: 'investigacion@unicesar.edu.co',
     avatar: '',
   },
   teams: [
     {
       name: 'PEA-i',
       logo: Atom,
-      plan: 'Taller 2 · Estructura de Datos',
+      plan: 'Universidad Popular del Cesar',
     },
   ],
   navGroups: [
     {
-      title: 'General',
+      title: 'Exploración Abierta',
       items: [
         {
-          title: 'Dashboard',
+          title: 'Portal Principal',
           url: '/',
-          icon: LayoutDashboard,
+          icon: Compass,
         },
         {
-          title: 'Grupos',
+          title: 'Grupos de Investigación',
           url: '/groups',
           icon: Users,
         },
         {
-          title: 'Investigadores',
+          title: 'Directorio Investigadores',
           url: '/researchers',
           icon: UserRound,
         },
         {
-          title: 'Productos',
+          title: 'Producción Científica',
           url: '/products',
           icon: FlaskConical,
         },
         {
-          title: 'Proyectos',
+          title: 'Proyectos de I+D',
           url: '/projects',
           icon: Lightbulb,
         },
       ],
     },
     {
-      title: 'Procesos',
+      title: 'Gestión Institucional',
       items: [
         {
-          title: 'Cola de Validación',
-          url: '/validation-queue',
-          icon: ClipboardCheck,
-        },
-        {
-          title: 'Importar',
+          title: 'Importar GrupLAC / CvLAC',
           url: '/import',
           icon: Upload,
         },
         {
-          title: 'Historial / Deshacer',
+          title: 'Cola de Validación FIFO',
+          url: '/validation-queue',
+          icon: ClipboardCheck,
+        },
+        {
+          title: 'Historial & Deshacer',
           url: '/undo',
           icon: History,
-        },
-      ],
-    },
-    {
-      title: 'Otros',
-      items: [
-        {
-          title: 'Ajustes',
-          icon: Settings,
-          items: [
-            {
-              title: 'Perfil',
-              url: '/settings',
-              icon: UserCog,
-            },
-            {
-              title: 'Cuenta',
-              url: '/settings/account',
-              icon: Wrench,
-            },
-            {
-              title: 'Apariencia',
-              url: '/settings/appearance',
-              icon: Palette,
-            },
-            {
-              title: 'Notificaciones',
-              url: '/settings/notifications',
-              icon: Bell,
-            },
-            {
-              title: 'Pantalla',
-              url: '/settings/display',
-              icon: Monitor,
-            },
-          ],
         },
       ],
     },

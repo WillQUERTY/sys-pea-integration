@@ -304,6 +304,11 @@ export function Products() {
                     }}
                   />
                 </div>
+                {customStart && customEnd && Number(customStart) > Number(customEnd) && (
+                  <p className='text-xs font-medium text-destructive'>
+                    ⚠️ El año inicial ({customStart}) no puede ser mayor que el año final ({customEnd}).
+                  </p>
+                )}
                 <p className='text-xs text-muted-foreground'>
                   Filtra por año de obtención del producto (Requerimiento 10).
                 </p>

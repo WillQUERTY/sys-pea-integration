@@ -30,6 +30,7 @@ import {
 } from '@/lib/api'
 import type { Researcher } from '@/lib/types'
 import type { Group, WorkPlan } from '@/lib/types'
+import { parseMincienciasClassification } from '@/lib/utils'
 
 import { Header } from '@/components/layout/header'
 import { Main } from '@/components/layout/main'
@@ -42,7 +43,7 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog'
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Badge } from '@/components/ui/badge'
 import {
@@ -56,9 +57,25 @@ import {
 import { DataTable } from '@/components/data-table'
 
 export function ValidationBadge({ status }: { status?: string | null }) {
-  if (status === 'valid') return <Badge className='bg-green-600 text-white hover:bg-green-700'>Validado</Badge>
-  if (status === 'rejected') return <Badge variant='destructive'>Rechazado</Badge>
-  return <Badge variant='secondary'>Pendiente</Badge>
+  if (status === 'valid') {
+    return (
+      <Badge variant='outline' className='border-emerald-500/40 bg-emerald-500/15 text-emerald-700 dark:text-emerald-300 font-semibold text-xs'>
+        Validado
+      </Badge>
+    )
+  }
+  if (status === 'rejected') {
+    return (
+      <Badge variant='outline' className='border-rose-500/40 bg-rose-500/15 text-rose-700 dark:text-rose-300 font-semibold text-xs'>
+        Rechazado
+      </Badge>
+    )
+  }
+  return (
+    <Badge variant='outline' className='border-amber-500/40 bg-amber-500/15 text-amber-700 dark:text-amber-300 font-semibold text-xs'>
+      Pendiente
+    </Badge>
+  )
 }
 
 export function GroupDetail() {
@@ -68,6 +85,7 @@ export function GroupDetail() {
   const groupId = Number(id)
 
   // Ventana de observación del informe PDF (Requerimiento 10): presets o rango
+  const [pdfDialogOpen, setPdfDialogOpen] = useState(false)
   const [reportWindow, setReportWindow] = useState('all')
   const [reportStart, setReportStart] = useState('')
   const [reportEnd, setReportEnd] = useState('')
@@ -416,8 +434,8 @@ export function GroupDetail() {
       <Main className='p-0 sm:p-6'>
         {/* Cover & Profile Header */}
         <div className='relative mb-8 rounded-b-none sm:rounded-2xl overflow-hidden border border-border/50 bg-card shadow-sm'>
-          <div className='h-32 bg-gradient-to-r from-blue-500/20 to-purple-500/20 relative'>
-            <div className='absolute inset-0 bg-[url("https://www.transparenttextures.com/patterns/cubes.png")] opacity-10' />
+          <div className='h-32 bg-gradient-to-r from-primary/15 via-background to-secondary/15 relative'>
+            <div className='absolute inset-0 bg-radial from-transparent to-card/50' />
           </div>
           
           <div className='px-6 pb-6 pt-0 relative'>
@@ -432,11 +450,18 @@ export function GroupDetail() {
               <div className='flex-1 pb-1'>
                 <h1 className='text-2xl font-bold line-clamp-1'>{group.name}</h1>
                 <div className='flex flex-wrap items-center gap-2 mt-2'>
-                  {group.classification && (
-                    <Badge variant='secondary' className='text-xs font-semibold bg-primary/10 text-primary'>
-                      Categoría {group.classification}
-                    </Badge>
-                  )}
+                  {group.classification && (() => {
+                    const classInfo = parseMincienciasClassification(group.classification)
+                    return (
+                      <Badge
+                        variant='outline'
+                        className={`text-xs font-bold px-2.5 py-0.5 ${classInfo.badgeVariant}`}
+                        title={group.classification}
+                      >
+                        {classInfo.badgeText} · {classInfo.tier}
+                      </Badge>
+                    )
+                  })()}
                   {group.institution && (
                     <span className='text-sm text-muted-foreground font-medium flex items-center gap-1'>
                       <Building2 className="h-3 w-3" />
@@ -449,55 +474,15 @@ export function GroupDetail() {
                 </div>
               </div>
               
-              <div className='pb-1 w-full sm:w-auto flex flex-col sm:flex-row gap-2'>
-                <Select value={reportWindow} onValueChange={setReportWindow}>
-                  <SelectTrigger
-                    className='w-full sm:w-[180px] rounded-xl shadow-sm'
-                    title='Ventana de observación de la producción (Requerimiento 10)'
-                  >
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value='all'>Toda la producción</SelectItem>
-                    <SelectItem value='2'>Últimos 2 años</SelectItem>
-                    <SelectItem value='5'>Últimos 5 años</SelectItem>
-                    <SelectItem value='10'>Últimos 10 años</SelectItem>
-                    <SelectItem value='custom'>Rango personalizado…</SelectItem>
-                  </SelectContent>
-                </Select>
-                {reportWindow === 'custom' && (
-                  <div className='flex items-center gap-2'>
-                    <Input
-                      type='number'
-                      inputMode='numeric'
-                      placeholder='Desde'
-                      value={reportStart}
-                      onChange={(e) => setReportStart(e.target.value)}
-                      className='w-24'
-                      aria-label='Año inicial del informe'
-                    />
-                    <span className='text-sm text-muted-foreground'>–</span>
-                    <Input
-                      type='number'
-                      inputMode='numeric'
-                      placeholder='Hasta'
-                      value={reportEnd}
-                      onChange={(e) => setReportEnd(e.target.value)}
-                      className='w-24'
-                      aria-label='Año final del informe'
-                    />
-                  </div>
-                )}
+              <div className='pb-1 w-full sm:w-auto flex items-center gap-2.5'>
                 <Button
                   variant='outline'
-                  asChild
-                  className='rounded-xl shadow-sm'
-                  title='Informe PDF del grupo (estilo GrupLAC) con la ventana de observación seleccionada'
+                  onClick={() => setPdfDialogOpen(true)}
+                  className='rounded-xl shadow-sm border-primary/20 hover:border-primary/40 bg-card/60 backdrop-blur-sm'
+                  title='Configurar ventana de observación y generar informe PDF oficial (Requerimiento 10)'
                 >
-                  <a href={groupReportPdfUrl(groupId, reportWindowParams)} target='_blank' rel='noopener noreferrer'>
-                    <FileDown className='mr-2 h-4 w-4' />
-                    Informe PDF
-                  </a>
+                  <FileDown className='mr-2 h-4 w-4 text-primary' />
+                  Informe PDF
                 </Button>
                 <Button
                   onClick={handleSubmit}
@@ -511,6 +496,178 @@ export function GroupDetail() {
             </div>
           </div>
         </div>
+
+        {/* Dialog para Configurar y Generar Informe PDF (Requerimiento 10) */}
+        <Dialog open={pdfDialogOpen} onOpenChange={setPdfDialogOpen}>
+          <DialogContent className='sm:max-w-[520px] rounded-2xl'>
+            <DialogHeader>
+              <div className='flex items-center gap-2.5 mb-1'>
+                <div className='p-2.5 rounded-xl bg-primary/10 text-primary'>
+                  <FileDown className='h-5 w-5' />
+                </div>
+                <div>
+                  <DialogTitle className='text-lg font-bold'>Informe Ejecutivo GrupLAC</DialogTitle>
+                  <p className='text-xs text-muted-foreground'>Requerimiento 10 · Ventana de Observación Temporal</p>
+                </div>
+              </div>
+              <DialogDescription className='text-xs text-muted-foreground pt-1'>
+                Genera el reporte institucional en PDF para <span className='font-semibold text-foreground'>{group.name}</span> ({group.external_code}), delimitando la producción científica y proyectos según los lineamientos de Minciencias.
+              </DialogDescription>
+            </DialogHeader>
+
+            <div className='space-y-4 py-2'>
+              <div className='space-y-2'>
+                <Label className='text-xs font-semibold uppercase tracking-wider text-muted-foreground'>
+                  Ventana de observación de la producción
+                </Label>
+                <Select value={reportWindow} onValueChange={setReportWindow}>
+                  <SelectTrigger className='w-full rounded-xl'>
+                    <SelectValue placeholder='Seleccione una ventana...' />
+                  </SelectTrigger>
+                  <SelectContent className='rounded-xl'>
+                    <SelectItem value='all'>
+                      <div className='py-0.5 text-left'>
+                        <span className='font-medium block'>Toda la producción</span>
+                        <span className='text-[11px] text-muted-foreground block'>Histórico completo sin restricciones de año</span>
+                      </div>
+                    </SelectItem>
+                    <SelectItem value='2'>
+                      <div className='py-0.5 text-left'>
+                        <span className='font-medium block'>Últimos 2 años</span>
+                        <span className='text-[11px] text-muted-foreground block'>Monitoreo de producción reciente</span>
+                      </div>
+                    </SelectItem>
+                    <SelectItem value='5'>
+                      <div className='py-0.5 text-left'>
+                        <span className='font-medium block'>Últimos 5 años</span>
+                        <span className='text-[11px] text-muted-foreground block'>Ventana estándar de convocatorias Minciencias</span>
+                      </div>
+                    </SelectItem>
+                    <SelectItem value='10'>
+                      <div className='py-0.5 text-left'>
+                        <span className='font-medium block'>Últimos 10 años</span>
+                        <span className='text-[11px] text-muted-foreground block'>Trayectoria científica consolidada</span>
+                      </div>
+                    </SelectItem>
+                    <SelectItem value='custom'>
+                      <div className='py-0.5 text-left'>
+                        <span className='font-medium block'>Rango de años personalizado…</span>
+                        <span className='text-[11px] text-muted-foreground block'>Definir año inicial y final manualmente</span>
+                      </div>
+                    </SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              {reportWindow === 'custom' && (
+                <div className='p-4 rounded-xl border border-border/60 bg-muted/30 space-y-3 animate-in fade-in-50 duration-200'>
+                  <div className='flex items-center justify-between'>
+                    <Label className='text-xs font-semibold text-foreground'>
+                      Definir Rango de Años (Desde – Hasta)
+                    </Label>
+                    <span className='text-[10px] text-muted-foreground'>Ej. 2018 a 2024</span>
+                  </div>
+                  <div className='grid grid-cols-2 gap-3'>
+                    <div className='space-y-1.5'>
+                      <Label htmlFor='report-start' className='text-xs text-muted-foreground'>
+                        Año inicial (Desde)
+                      </Label>
+                      <Input
+                        id='report-start'
+                        type='number'
+                        inputMode='numeric'
+                        placeholder='Ej. 2018'
+                        min='1970'
+                        max={new Date().getFullYear()}
+                        value={reportStart}
+                        onChange={(e) => setReportStart(e.target.value)}
+                        className='rounded-lg'
+                      />
+                    </div>
+                    <div className='space-y-1.5'>
+                      <Label htmlFor='report-end' className='text-xs text-muted-foreground'>
+                        Año final (Hasta)
+                      </Label>
+                      <Input
+                        id='report-end'
+                        type='number'
+                        inputMode='numeric'
+                        placeholder='Ej. 2024'
+                        min='1970'
+                        max={new Date().getFullYear()}
+                        value={reportEnd}
+                        onChange={(e) => setReportEnd(e.target.value)}
+                        className='rounded-lg'
+                      />
+                    </div>
+                  </div>
+                  {reportStart && reportEnd && Number(reportStart) > Number(reportEnd) && (
+                    <p className='text-xs font-medium text-destructive flex items-center gap-1.5'>
+                      ⚠️ El año inicial ({reportStart}) no puede ser mayor que el año final ({reportEnd}).
+                    </p>
+                  )}
+                  {(!reportStart || !reportEnd) && (
+                    <p className='text-[11px] text-muted-foreground'>
+                      * Complete ambos años para filtrar la producción por este rango exacto.
+                    </p>
+                  )}
+                </div>
+              )}
+
+              {/* Resumen del alcance del reporte */}
+              <div className='p-3 rounded-xl bg-primary/5 border border-primary/10 text-xs space-y-1.5'>
+                <div className='font-semibold text-foreground flex items-center justify-between'>
+                  <span>Alcance del reporte a descargar:</span>
+                  <Badge
+                    variant='outline'
+                    className={`text-[11px] font-medium ${
+                      reportWindow === 'custom' && reportStart && reportEnd && Number(reportStart) > Number(reportEnd)
+                        ? 'border-destructive/40 text-destructive bg-destructive/10'
+                        : 'border-primary/30 text-primary'
+                    }`}
+                  >
+                    {reportWindow === 'all'
+                      ? 'Histórico completo'
+                      : reportWindow === 'custom'
+                        ? reportStart && reportEnd
+                          ? Number(reportStart) > Number(reportEnd)
+                            ? 'Rango inválido'
+                            : `${reportStart} – ${reportEnd}`
+                          : 'Rango pendiente'
+                        : `Últimos ${reportWindow} años`}
+                  </Badge>
+                </div>
+                <p className='text-muted-foreground text-[11px] leading-relaxed'>
+                  El archivo PDF contendrá la ficha técnica, categorización Minciencias, integrantes y producción científica filtrada por la ventana de observación seleccionada.
+                </p>
+              </div>
+            </div>
+
+            <DialogFooter className='gap-2 sm:gap-0'>
+              <Button
+                variant='outline'
+                onClick={() => setPdfDialogOpen(false)}
+                className='rounded-xl'
+              >
+                Cancelar
+              </Button>
+              <Button
+                disabled={
+                  reportWindow === 'custom' &&
+                  (!reportStart || !reportEnd || Number(reportStart) > Number(reportEnd))
+                }
+                onClick={() => {
+                  window.open(groupReportPdfUrl(groupId, reportWindowParams), '_blank')
+                  setPdfDialogOpen(false)
+                }}
+                className='rounded-xl shadow-md'
+              >
+                <FileDown className='mr-2 h-4 w-4' />
+                Descargar Informe PDF
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
 
         {/* Tabs */}
         <Tabs defaultValue="perfil" className="space-y-6">
