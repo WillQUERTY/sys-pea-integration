@@ -121,7 +121,28 @@ bool delete_group(int id) {
 
             // Free membership chain
             MembershipNode* m = cur->firstMember;
-            while (m) { auto* tmp = m; m = m->nextInGroup; delete tmp; }
+            while (m) {
+                auto* tmp = m;
+                m = m->nextInGroup;
+
+                // Multilista: desenlazar de la cadena del investigador
+                ResearcherNode* rn = find_researcher_node(tmp->data.researcherId);
+                if (rn) {
+                    MembershipNode* prevR = nullptr;
+                    MembershipNode* rcur  = rn->firstMembership;
+                    while (rcur) {
+                        if (rcur == tmp) break;
+                        prevR = rcur;
+                        rcur  = rcur->nextForResearcher;
+                    }
+                    if (rcur) {
+                        if (prevR) prevR->nextForResearcher = tmp->nextForResearcher;
+                        else       rn->firstMembership     = tmp->nextForResearcher;
+                    }
+                }
+
+                delete tmp;
+            }
 
             // Free product link chain
             GroupProductNode* p = cur->firstProduct;
@@ -149,6 +170,10 @@ bool delete_group(int id) {
 // =====================================================================
 
 MembershipNode* add_member_to_group(int group_id, int researcher_id) {
+    return add_member_to_group(group_id, researcher_id, "Investigador", "", "");
+}
+
+MembershipNode* add_member_to_group(int group_id, int researcher_id, const std::string& role, const std::string& start_date, const std::string& end_date) {
     GroupNode* gn = find_group_node(group_id);
     if (!gn) return nullptr;
 
@@ -159,12 +184,53 @@ MembershipNode* add_member_to_group(int group_id, int researcher_id) {
         check = check->nextInGroup;
     }
 
-    auto* node             = new MembershipNode();
+    auto* node              = new MembershipNode();
     node->data.membershipId = _nextMembershipId++;
+    node->data.groupId      = group_id;
     node->data.researcherId = researcher_id;
-    node->nextInGroup       = gn->firstMember;   // prepend
+    node->data.role         = role.empty() ? "Investigador" : role;
+    node->data.start_date   = start_date;
+    node->data.end_date     = end_date;
+    node->nextInGroup       = gn->firstMember;   // prepend to group list
     gn->firstMember         = node;
+    
+    // Multilista: enlazar al frente de la cadena del investigador
+    ResearcherNode* rn = find_researcher_node(researcher_id);
+    if (rn) {
+        node->nextForResearcher = rn->firstMembership;
+        rn->firstMembership     = node;
+    } else {
+        node->nextForResearcher = nullptr;
+    }
+
     return node;
+}
+
+std::optional<Membership> membership_details(int group_id, int researcher_id) {
+    GroupNode* gn = find_group_node(group_id);
+    if (!gn) return std::nullopt;
+    MembershipNode* m = gn->firstMember;
+    while (m) {
+        if (m->data.researcherId == researcher_id) return m->data;
+        m = m->nextInGroup;
+    }
+    return std::nullopt;
+}
+
+bool update_membership(int group_id, int researcher_id, const std::string& role, const std::string& start_date, const std::string& end_date) {
+    GroupNode* gn = find_group_node(group_id);
+    if (!gn) return false;
+    MembershipNode* m = gn->firstMember;
+    while (m) {
+        if (m->data.researcherId == researcher_id) {
+            m->data.role = role;
+            m->data.start_date = start_date;
+            m->data.end_date = end_date;
+            return true;
+        }
+        m = m->nextInGroup;
+    }
+    return false;
 }
 
 std::vector<int> members_of_group(int group_id) {
@@ -178,17 +244,12 @@ std::vector<int> members_of_group(int group_id) {
 
 std::vector<int> groups_of_researcher(int researcher_id) {
     std::vector<int> ids;
-    GroupNode* cur = _groupHead;
-    while (cur) {
-        MembershipNode* m = cur->firstMember;
-        while (m) {
-            if (m->data.researcherId == researcher_id) {
-                ids.push_back(cur->data.id);
-                break;
-            }
-            m = m->nextInGroup;
-        }
-        cur = cur->nextGroup;
+    ResearcherNode* rn = find_researcher_node(researcher_id);
+    if (!rn) return ids;
+    MembershipNode* m = rn->firstMembership;
+    while (m) {
+        ids.push_back(m->data.groupId);
+        m = m->nextForResearcher;
     }
     return ids;
 }
@@ -201,8 +262,26 @@ bool remove_member_from_group(int group_id, int researcher_id) {
     MembershipNode* cur  = gn->firstMember;
     while (cur) {
         if (cur->data.researcherId == researcher_id) {
+            // Unlink from group list
             if (prev) prev->nextInGroup = cur->nextInGroup;
-            else      gn->firstMember = cur->nextInGroup;
+            else      gn->firstMember   = cur->nextInGroup;
+
+            // Multilista: desenlazar de la cadena del investigador
+            ResearcherNode* rn = find_researcher_node(researcher_id);
+            if (rn) {
+                MembershipNode* prevR = nullptr;
+                MembershipNode* rcur  = rn->firstMembership;
+                while (rcur) {
+                    if (rcur == cur) break;
+                    prevR = rcur;
+                    rcur  = rcur->nextForResearcher;
+                }
+                if (rcur) {
+                    if (prevR) prevR->nextForResearcher = cur->nextForResearcher;
+                    else       rn->firstMembership     = cur->nextForResearcher;
+                }
+            }
+
             delete cur;
             return true;
         }

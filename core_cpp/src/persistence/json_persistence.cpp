@@ -211,10 +211,20 @@ bool export_to_file(const std::string& path) {
         for (int rid : members_of_group(g.id)) {
             if (!first) out << ",\n";
             first = false;
+            auto det = membership_details(g.id, rid);
             out << "    {"
                 << "\"groupId\": "      << g.id << ", "
-                << "\"researcherId\": " << rid
-                << "}";
+                << "\"researcherId\": " << rid << ", ";
+            if (det) {
+                out << "\"role\": \"" << json_escape(det->role) << "\", "
+                    << "\"start_date\": \"" << json_escape(det->start_date) << "\", "
+                    << "\"end_date\": \"" << json_escape(det->end_date) << "\"";
+            } else {
+                out << "\"role\": \"Investigador\", "
+                    << "\"start_date\": \"\", "
+                    << "\"end_date\": \"\"";
+            }
+            out << "}";
         }
     }
     out << "\n  ],\n";
@@ -381,7 +391,11 @@ bool load_from_file(const std::string& path) {
 
     // Memberships
     for_each_object(content, "memberships", [](const std::string& block) {
-        add_member_to_group(extract_int(block, "groupId"), extract_int(block, "researcherId"));
+        std::string role = extract_string(block, "role");
+        if (role.empty()) role = "Investigador";
+        std::string start_date = extract_string(block, "start_date");
+        std::string end_date = extract_string(block, "end_date");
+        add_member_to_group(extract_int(block, "groupId"), extract_int(block, "researcherId"), role, start_date, end_date);
     });
 
     // Products

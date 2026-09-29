@@ -2,6 +2,7 @@
 // Researcher CRUD and multilista traversal.
 
 #include "services/researcher_service.h"
+#include "services/group_service.h"
 
 namespace peai {
 
@@ -12,7 +13,7 @@ static int             _nextResearcherId = 1;
 //  Internal helpers
 // =====================================================================
 
-static ResearcherNode* find_researcher_node(int id) {
+ResearcherNode* find_researcher_node(int id) {
     ResearcherNode* cur = _researcherHead;
     while (cur) {
         if (cur->data.id == id) return cur;
@@ -94,9 +95,20 @@ bool delete_researcher(int id) {
     ResearcherNode* cur  = _researcherHead;
     while (cur) {
         if (cur->data.id == id) {
+            // Multilista: limpiar todas las membresias asociadas en grupos
+            // (se ejecuta mientras cur sigue en _researcherHead para que find_researcher_node funcione)
+            while (cur->firstMembership) {
+                int gid = cur->firstMembership->data.groupId;
+                if (!remove_member_from_group(gid, id)) {
+                    auto* tmp = cur->firstMembership;
+                    cur->firstMembership = cur->firstMembership->nextForResearcher;
+                    delete tmp;
+                }
+            }
+
             if (prev) prev->nextResearcher = cur->nextResearcher;
             else      _researcherHead = cur->nextResearcher;
-            // TODO: Also cleanup any memberships in groups pointing to this researcher
+
             delete cur;
             return true;
         }

@@ -22,6 +22,7 @@ int total_researchers();
 
 // ---- Internal access (used by persistence layers) ----
 ResearcherNode* get_researcher_head();
+ResearcherNode* find_researcher_node(int id);
 
 } // namespace peai
 

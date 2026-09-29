@@ -525,14 +525,21 @@ bool load_from_db(const std::string& connection_string) {
         SQLHSTMT stmt;
         SQLAllocHandle(SQL_HANDLE_STMT, dbc, &stmt);
         SQLExecDirect(stmt, (SQLCHAR*)
-            "SELECT group_id, researcher_id FROM GroupMembership",
+            "SELECT group_id, researcher_id, role, start_date, end_date FROM GroupMembership",
             SQL_NTS);
         SQLINTEGER gid, rid;
-        SQLLEN i1, i2;
+        SQLCHAR role[128], sdate[64], edate[64];
+        SQLLEN i1, i2, i3, i4, i5;
         SQLBindCol(stmt, 1, SQL_C_SLONG, &gid, 0, &i1);
         SQLBindCol(stmt, 2, SQL_C_SLONG, &rid, 0, &i2);
+        SQLBindCol(stmt, 3, SQL_C_CHAR, role, sizeof(role), &i3);
+        SQLBindCol(stmt, 4, SQL_C_CHAR, sdate, sizeof(sdate), &i4);
+        SQLBindCol(stmt, 5, SQL_C_CHAR, edate, sizeof(edate), &i5);
         while (SQL_SUCCEEDED(SQLFetch(stmt))) {
-            add_member_to_group(gid, rid);
+            std::string r_str = (i3 != SQL_NULL_DATA) ? cp1252_to_utf8((char*)role) : "Investigador";
+            std::string s_str = (i4 != SQL_NULL_DATA) ? cp1252_to_utf8((char*)sdate) : "";
+            std::string e_str = (i5 != SQL_NULL_DATA) ? cp1252_to_utf8((char*)edate) : "";
+            add_member_to_group(gid, rid, r_str, s_str, e_str);
         }
         SQLFreeHandle(SQL_HANDLE_STMT, stmt);
     }
@@ -960,7 +967,12 @@ bool save_to_db(const std::string& connection_string) {
     for (const auto& g : list_groups()) {
         ok &= sync_group_to_db(connection_string, g.id);
         for (int rid : members_of_group(g.id)) {
-            ok &= sync_membership_to_db(connection_string, g.id, rid);
+            auto det = membership_details(g.id, rid);
+            if (det) {
+                ok &= sync_membership_details_to_db(connection_string, g.id, rid, det->role, det->start_date, det->end_date);
+            } else {
+                ok &= sync_membership_to_db(connection_string, g.id, rid);
+            }
         }
         for (int pid : products_of_group(g.id)) {
             ok &= sync_product_link_to_db(connection_string, g.id, pid);

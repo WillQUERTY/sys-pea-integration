@@ -264,7 +264,7 @@ async def add_member_endpoint(group_id: int, researcher_id: int, req: AddMemberR
 
 @router.get("/groups/{group_id}/memberships", tags=["Groups"])
 async def list_group_memberships(group_id: int):
-    """Memberships of a group with role and dates (read from SQL Server)."""
+    """Memberships of a group with role and dates (read from RAM C++ multilist)."""
     try:
         repository.get_group(group_id)
     except KeyError:

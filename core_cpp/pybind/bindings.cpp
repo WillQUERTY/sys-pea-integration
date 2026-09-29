@@ -11,6 +11,17 @@ namespace py = pybind11;
 PYBIND11_MODULE(abpoxx_pybind, m) {
     m.doc() = "PEA-i core library — Python bindings (pybind11)";
 
+    // ---- Struct: Membership ----
+    py::class_<Membership>(m, "Membership")
+        .def(py::init<>())
+        .def_readwrite("membership_id", &Membership::membershipId)
+        .def_readwrite("group_id",      &Membership::groupId)
+        .def_readwrite("researcher_id", &Membership::researcherId)
+        .def_readwrite("role",          &Membership::role)
+        .def_readwrite("start_date",    &Membership::start_date)
+        .def_readwrite("end_date",      &Membership::end_date)
+        .def_readwrite("status",        &Membership::status);
+
     // ---- Struct: Group ----
     py::class_<Group>(m, "Group")
         .def(py::init<>())
@@ -213,8 +224,13 @@ PYBIND11_MODULE(abpoxx_pybind, m) {
     m.def("vq_remove",        &peai::vq_remove,        "Remove a specific queue item by id");
 
     // ---- Multilista: membership ----
-    m.def("add_member_to_group",      [](int g, int r){peai::add_member_to_group(g, r);},
-          "Link a researcher to a group");
+    m.def("add_member_to_group",      [](int g, int r, std::string role, std::string start, std::string end){return peai::add_member_to_group(g, r, role, start, end) != nullptr;},
+          py::arg("group_id"), py::arg("researcher_id"), py::arg("role")="Investigador", py::arg("start_date")="", py::arg("end_date")="",
+          "Link a researcher to a group with details");
+    m.def("membership_details",       &peai::membership_details,
+          "Get membership details");
+    m.def("update_membership",        &peai::update_membership,
+          "Update membership role and dates in RAM");
     m.def("members_of_group",         &peai::members_of_group,
           "List researcher ids in a group");
     m.def("groups_of_researcher",     &peai::groups_of_researcher,

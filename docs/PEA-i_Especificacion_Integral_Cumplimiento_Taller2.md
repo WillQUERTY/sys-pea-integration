@@ -196,7 +196,7 @@ La aplicación integrada es la entrega (D-01): no sustituye a las dos soluciones
 | T-04 | Gestionar investigadores | C++ + API + React | CRUD funcional | Cubierto |
 | T-05 | Gestionar productos por grupo | Multilista + SQL | Consulta por grupo | Cubierto |
 | T-06 | Gestionar productos por investigador | Autorías + multilista | Consulta por investigador | Cubierto |
-| T-07 | Gestionar integrantes del grupo | `GroupMembership` | Periodos y CRUD | Cubierto |
+| T-07 | Gestionar integrantes del grupo | `GroupMembership` | Periodos y CRUD | Cubierto e implementado (RAM, BD, Undo) |
 | T-08 | Gestionar planes | `WorkPlan` | CRUD y asociación | Cubierto |
 | T-09 | Gestionar información personal | `Researcher` | Formulario protegido | Cubierto |
 | T-10 | Identificar entradas y salidas | Catálogo formal | Sección 31 | Cubierto |
@@ -1042,6 +1042,7 @@ para probar distintos escenarios.
 - Crear, consultar, editar y eliminar proyectos de la lista global (UT-PRJ-001).
 - Enlazar y desenlazar proyectos de grupos; cascada al eliminar proyecto o grupo.
 - Deshacer creación, edición, borrado, enlace y desenlace de proyectos (pila).
+- Lectura y actualización de detalles de membresías, y deshacer UPDATE_MEMBERSHIP (UT-MEM-002).
 
 ### 41.2 Reglas de dominio
 
@@ -1284,4 +1285,4 @@ Alcance ajustado por las decisiones del equipo (sección 26.1): D-01 entrega amb
 
 La afirmación de cumplimiento total dependerá de completar la implementación y reunir las evidencias enumeradas en la matriz de trazabilidad y en la lista de comprobación.
 
-> **Estado de implementación (2026-09-27):** T-08 (gestión de planes) está implementado de punta a punta: `PlanNode` en la multilista C++, `work_plan_service`, persistencia JSON y SQL Server (MERGE por id estable), pybind11, endpoints REST (`/groups/{id}/plans`, `/plans/{id}`), pestaña "Planes" en el detalle de grupo en React, comandos `plans` en `pea_cli` y pruebas unitarias. El CRUD independiente de proyectos (Requerimiento 3) también está completo de punta a punta: `ProjectNode` en la lista global C++, `project_service`, persistencia JSON y SQL Server (MERGE por id estable), pybind11, endpoints REST (`/api/projects` con paginación/búsqueda/estado, `/groups/{id}/projects`), página "Proyectos" en React, comandos `projects` en `pea_cli` y pruebas unitarias (154/154 en verde, verificadas end-to-end contra SQL Server). El periodo de observación personalizado (T-26 / HU-07) está cubierto en toda la pila: rango arbitrario `start_year`–`end_year` y "últimos N años" (`window_years`) en `/products`, CLI `products by-year`, e informe PDF de grupo con selector de ventana en la UI que muestra la ventana aplicada y filtra la producción por año de obtención. Brechas de código restantes: lectura/actualización individual de membresías en C++ y pruebas automatizadas del backend (hoy solo cubren los importadores).
+> **Estado de implementación (2026-09-27):** T-08 (gestión de planes) está implementado de punta a punta: `PlanNode` en la multilista C++, `work_plan_service`, persistencia JSON y SQL Server (MERGE por id estable), pybind11, endpoints REST (`/groups/{id}/plans`, `/plans/{id}`), pestaña "Planes" en el detalle de grupo en React, comandos `plans` en `pea_cli` y pruebas unitarias. El CRUD independiente de proyectos (Requerimiento 3) también está completo de punta a punta: `ProjectNode` en la lista global C++, `project_service`, persistencia JSON y SQL Server (MERGE por id estable), pybind11, endpoints REST (`/api/projects` con paginación/búsqueda/estado, `/groups/{id}/projects`), página "Proyectos" en React, comandos `projects` en `pea_cli` y pruebas unitarias (154/154 en verde, verificadas end-to-end contra SQL Server). El periodo de observación personalizado (T-26 / HU-07) está cubierto en toda la pila: rango arbitrario `start_year`–`end_year` y "últimos N años" (`window_years`) en `/products`, CLI `products by-year`, e informe PDF de grupo con selector de ventana en la UI que muestra la ventana aplicada y filtra la producción por año de obtención. T-07 (Membresías con rol/fechas) ya está completamente integrado en el núcleo C++, RAM, persistencia (JSON/SQL) y deshacer, cerrando así la brecha de datos en la multilista (158/158 pruebas en verde). Brechas de código restantes: pruebas automatizadas del backend (hoy solo cubren los importadores).

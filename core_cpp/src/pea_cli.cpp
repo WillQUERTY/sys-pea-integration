@@ -381,9 +381,30 @@ static int dispatch(int argc, char* argv[]) {
             if (ids.empty()) {
                 std::cout << "(no members in group " << gid << ")\n";
             } else {
-                std::cout << "Researchers in group " << gid << ": ";
-                for (int id : ids) std::cout << id << " ";
-                std::cout << "\n";
+                std::cout << "Researchers in group " << gid << ":\n";
+                for (int id : ids) {
+                    auto det = membership_details(gid, id);
+                    if (det) {
+                        std::cout << "  ID " << id << " (" << det->role << ", " << det->start_date << " - " << det->end_date << ")\n";
+                    } else {
+                        std::cout << "  ID " << id << "\n";
+                    }
+                }
+            }
+            return 0;
+        }
+
+        if (sub == "update") {
+            if (argc < 8) { std::cerr << "Provide group_id, researcher_id, role, start_date, end_date\n"; return 1; }
+            int gid = std::stoi(argv[3]);
+            int rid = std::stoi(argv[4]);
+            auto prev = membership_details(gid, rid);
+            if (!prev) { std::cerr << "Link not found\n"; return 1; }
+            push_undo("UPDATE_MEMBERSHIP", "GroupMembership", prev->membershipId, std::to_string(gid) + ":" + std::to_string(rid) + "\x1F" + prev->role + "\x1F" + prev->start_date + "\x1F" + prev->end_date);
+            if (update_membership(gid, rid, argv[5], argv[6], argv[7])) {
+                std::cout << "Membership updated (operación apilada)\n";
+            } else {
+                std::cerr << "Update failed\n";
             }
             return 0;
         }
@@ -392,9 +413,13 @@ static int dispatch(int argc, char* argv[]) {
             if (argc < 5) { std::cerr << "Provide group_id and researcher_id\n"; return 1; }
             int gid = std::stoi(argv[3]);
             int rid = std::stoi(argv[4]);
+            auto prev = membership_details(gid, rid);
             if (remove_member_from_group(gid, rid)) {
-                push_undo("UNLINK_MEMBER", "GroupMembership", gid,
-                          std::to_string(gid) + ":" + std::to_string(rid));
+                if (prev) {
+                    push_undo("UNLINK_MEMBER", "GroupMembership", gid, std::to_string(gid) + ":" + std::to_string(rid) + "\x1F" + prev->role + "\x1F" + prev->start_date + "\x1F" + prev->end_date);
+                } else {
+                    push_undo("UNLINK_MEMBER", "GroupMembership", gid, std::to_string(gid) + ":" + std::to_string(rid));
+                }
                 std::cout << "Removed researcher " << rid << " from group " << gid
                           << " (operación apilada)\n";
             } else {

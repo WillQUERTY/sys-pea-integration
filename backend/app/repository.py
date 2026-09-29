@@ -856,27 +856,42 @@ def get_product_catalogs() -> dict:
 # -------------------------------------------------------------------
 
 def add_member_to_group(group_id: int, researcher_id: int, role: str = "Investigador", start_date: str = "", end_date: str = ""):
-    abpoxx_pybind.add_member_to_group(group_id, researcher_id)
+    abpoxx_pybind.add_member_to_group(group_id, researcher_id, role, start_date, end_date)
     if _active_connection_string:
         abpoxx_pybind.sync_membership_details_to_db(_active_connection_string, group_id, researcher_id, role, start_date, end_date)
 
 def get_group_members_detailed(group_id: int) -> list:
-    """Membresias del grupo con rol y fechas (leido de SQL Server)."""
-    if not _active_connection_string:
-        return []
-    rows = json.loads(abpoxx_pybind.members_of_group_details_json(_active_connection_string, group_id))
-    by_code = {r.external_code: r for r in abpoxx_pybind.list_researchers()}
-    for row in rows:
-        r = by_code.get(row.get("researcher_external_code") or "")
-        row["researcher_id"] = r.id if r else None
-        row["researcher_name"] = f"{r.first_names} {r.last_names}".strip() if r else ""
+    """Membresias del grupo con rol y fechas (leido de RAM)."""
+    members = abpoxx_pybind.members_of_group(group_id)
+    rows = []
+    for rid in members:
+        det = abpoxx_pybind.membership_details(group_id, rid)
+        r = abpoxx_pybind.get_researcher(rid)
+        if det and r:
+            rows.append({
+                "group_id": group_id,
+                "researcher_id": rid,
+                "researcher_external_code": r.external_code,
+                "researcher_name": f"{r.first_names} {r.last_names}".strip(),
+                "role": det.role,
+                "start_date": det.start_date,
+                "end_date": det.end_date,
+                "status": det.status
+            })
     return rows
 
-def update_member(group_id: int, researcher_id: int, role: str, start_date: str = "", end_date: str = ""):
-    """Actualiza rol y fechas de una membresia existente (upsert en BD)."""
+def update_member(group_id: int, researcher_id: int, role: str, start_date: str = "", end_date: str = "", skip_undo: bool = False):
+    """Actualiza rol y fechas de una membresia existente (RAM y upsert en BD)."""
     members = abpoxx_pybind.members_of_group(group_id)
     if researcher_id not in members:
         raise KeyError(f"Researcher {researcher_id} is not a member of group {group_id}")
+    
+    prev = abpoxx_pybind.membership_details(group_id, researcher_id)
+    if prev and not skip_undo:
+        undo_push("UPDATE_MEMBERSHIP", "GroupMembership", prev.membership_id, f"{group_id}:{researcher_id}\x1F{prev.role}\x1F{prev.start_date}\x1F{prev.end_date}")
+
+    abpoxx_pybind.update_membership(group_id, researcher_id, role, start_date, end_date)
+
     if _active_connection_string:
         if not abpoxx_pybind.sync_membership_details_to_db(_active_connection_string, group_id, researcher_id, role, start_date, end_date):
             raise RuntimeError("No se pudo actualizar la membresia en la base de datos")
@@ -1003,7 +1018,11 @@ def undo_pop():
     return abpoxx_pybind.undo_pop()
 
 def remove_member_from_group(group_id: int, researcher_id: int):
-    undo_push("UNLINK_MEMBER", "GroupMembership", group_id, f"{group_id}:{researcher_id}")
+    prev = abpoxx_pybind.membership_details(group_id, researcher_id)
+    if prev:
+        undo_push("UNLINK_MEMBER", "GroupMembership", group_id, f"{group_id}:{researcher_id}\x1F{prev.role}\x1F{prev.start_date}\x1F{prev.end_date}")
+    else:
+        undo_push("UNLINK_MEMBER", "GroupMembership", group_id, f"{group_id}:{researcher_id}")
     abpoxx_pybind.remove_member_from_group(group_id, researcher_id)
     if _active_connection_string:
         if not abpoxx_pybind.delete_membership_from_db(_active_connection_string, group_id, researcher_id):
@@ -1101,13 +1120,25 @@ def undo_perform() -> Dict[str, Any]:
             data = json.loads(prev_state)
             set_product_validation(e_id, data.get("validation_status", "pending"), data.get("quality_category_id"))
 
+        elif op_type == "UPDATE_MEMBERSHIP":
+            parts = prev_state.split("\x1F")
+            gid, rid = map(int, parts[0].split(":"))
+            role = parts[1] if len(parts) > 1 else "Investigador"
+            start_date = parts[2] if len(parts) > 2 else ""
+            end_date = parts[3] if len(parts) > 3 else ""
+            update_member(gid, rid, role, start_date, end_date, skip_undo=True)
+
         elif op_type == "UNLINK_PRODUCT":
             gid, pid = map(int, prev_state.split(":"))
             link_product_to_group(gid, pid)
 
         elif op_type == "UNLINK_MEMBER":
-            gid, rid = map(int, prev_state.split(":"))
-            add_member_to_group(gid, rid)
+            parts = prev_state.split("\x1F")
+            gid, rid = map(int, parts[0].split(":"))
+            role = parts[1] if len(parts) > 1 else "Investigador"
+            start_date = parts[2] if len(parts) > 2 else ""
+            end_date = parts[3] if len(parts) > 3 else ""
+            add_member_to_group(gid, rid, role, start_date, end_date)
 
         elif op_type == "UNLINK_PROJECT":
             gid, pid = map(int, prev_state.split(":"))

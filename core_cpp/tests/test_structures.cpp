@@ -163,6 +163,33 @@ static void test_multilista_enlaces_integrantes() {
     CHECK(!remove_member_from_group(g, r1), "desenlazar de nuevo devuelve false");
 }
 
+// Leer y actualizar detalles de membresía, y undo de UPDATE_MEMBERSHIP.
+static void test_multilista_membresia_detalles() {
+    int g = make_group("G");
+    int r = make_researcher("R");
+
+    // Add with details
+    add_member_to_group(g, r, "Director", "2020", "2024");
+    auto det = membership_details(g, r);
+    CHECK(det.has_value() && det->role == "Director", "los detalles se guardan en el nodo");
+
+    // Update
+    UndoOperation op;
+    op.operation_type = "UPDATE_MEMBERSHIP";
+    op.entity_type = "GroupMembership";
+    op.entity_id = det->membershipId;
+    op.previous_state = std::to_string(g) + ":" + std::to_string(r) + "\x1f" "Director" "\x1f" "2020" "\x1f" "2024";
+    undo_push(op);
+    update_membership(g, r, "Asesor", "2021", "2025");
+    auto det2 = membership_details(g, r);
+    CHECK(det2->role == "Asesor", "el update cambia el rol en RAM");
+
+    // Undo
+    CHECK(undo_perform(), "undo de UPDATE_MEMBERSHIP devuelve true");
+    auto det3 = membership_details(g, r);
+    CHECK(det3->role == "Director", "undo restaura el rol previo");
+}
+
 // Recorrido inverso de la multilista: investigador→grupos.
 static void test_multilista_recorrido_investigador_a_grupos() {
     int g1 = make_group("G1");
@@ -596,6 +623,7 @@ int main() {
 
     std::cout << "\n--- MULTILISTA (grupo ↔ integrantes / productos) ---\n";
     RUN_TEST(test_multilista_enlaces_integrantes);
+    RUN_TEST(test_multilista_membresia_detalles);
     RUN_TEST(test_multilista_recorrido_investigador_a_grupos);
     RUN_TEST(test_multilista_enlaces_productos_y_cascada);
 

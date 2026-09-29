@@ -22,6 +22,9 @@ bool                 delete_group(int id);
 
 // ---- Multilista: membership links (Group <-> Researcher) ----
 MembershipNode*      add_member_to_group(int group_id, int researcher_id);
+MembershipNode*      add_member_to_group(int group_id, int researcher_id, const std::string& role, const std::string& start_date, const std::string& end_date);
+std::optional<Membership> membership_details(int group_id, int researcher_id);
+bool                 update_membership(int group_id, int researcher_id, const std::string& role, const std::string& start_date, const std::string& end_date);
 std::vector<int>     members_of_group(int group_id);
 std::vector<int>     groups_of_researcher(int researcher_id);
 bool                 remove_member_from_group(int group_id, int researcher_id);

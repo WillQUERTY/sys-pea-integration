@@ -383,13 +383,19 @@ bool undo_perform() {
         t == "LINK_PRODUCT" || t == "UNLINK_PRODUCT" ||
         t == "LINK_PROJECT" || t == "UNLINK_PROJECT") {
         int gid = 0, other = 0;
-        if (!parse_pair(prev, gid, other)) {
-            std::cerr << "[UNDO] " << t << ": previous_state corrupto ('" << prev << "')\n";
-            return false;
+        auto f = split_snapshot(prev);
+        if (!parse_pair(f[0], gid, other)) {
+            if (!parse_pair(prev, gid, other)) {
+                std::cerr << "[UNDO] " << t << ": previous_state corrupto ('" << prev << "')\n";
+                return false;
+            }
         }
         bool ok = false;
         if      (t == "LINK_MEMBER")    ok = remove_member_from_group(gid, other);
-        else if (t == "UNLINK_MEMBER")  ok = add_member_to_group(gid, other) != nullptr;
+        else if (t == "UNLINK_MEMBER") {
+            if (f.size() >= 4) ok = add_member_to_group(gid, other, f[1], f[2], f[3]) != nullptr;
+            else               ok = add_member_to_group(gid, other) != nullptr;
+        }
         else if (t == "LINK_PRODUCT")   ok = unlink_product_from_group(gid, other);
         else if (t == "UNLINK_PRODUCT") ok = link_product_to_group(gid, other) != nullptr;
         else if (t == "LINK_PROJECT")   ok = unlink_project_from_group(gid, other);
@@ -397,6 +403,20 @@ bool undo_perform() {
         std::cout << "[UNDO] " << t << " (" << gid << ":" << other << ")"
                   << (ok ? " revertido.\n" : " (el enlace ya no estaba en el estado esperado).\n");
         return ok;
+    }
+
+    if (t == "UPDATE_MEMBERSHIP") {
+        auto f = split_snapshot(prev);
+        if (f.size() >= 4) {
+            int gid = 0, rid = 0;
+            if (parse_pair(f[0], gid, rid)) {
+                update_membership(gid, rid, f[1], f[2], f[3]);
+                std::cout << "[UNDO] UPDATE_MEMBERSHIP revertido.\n";
+                return true;
+            }
+        }
+        std::cerr << "[UNDO] UPDATE_MEMBERSHIP: previous_state corrupto.\n";
+        return false;
     }
 
     // VALIDATE → restore the prior validation_status of the product.

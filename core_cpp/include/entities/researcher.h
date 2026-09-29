@@ -23,10 +23,12 @@ struct Researcher {
     std::string status = "active";
 };
 
+struct MembershipNode;
+
 struct ResearcherNode {
     Researcher      data;
-    ResearcherNode* nextResearcher = nullptr;
-    // For later: pointers to cross-chains (e.g., memberships) could be added here
+    ResearcherNode* nextResearcher  = nullptr;
+    MembershipNode* firstMembership = nullptr; // multilista: cross-chain head across groups
 };
 
 #endif // PEAI_ENTITIES_RESEARCHER_H
