@@ -25,6 +25,7 @@ import {
   addProductAuthor,
   removeProductAuthor,
   listResearchers,
+  getProductCatalogs,
 } from '@/lib/api'
 
 import { Header } from '@/components/layout/header'
@@ -48,6 +49,7 @@ import {
 } from '@/components/ui/dialog'
 
 import { ValidationBadge } from '@/features/groups/detail'
+import { ValidateProductDialog } from '@/features/products/validate-product-dialog'
 
 function Field({ label, value, mono = false }: { label: string; value?: React.ReactNode; mono?: boolean }) {
   return (
@@ -80,6 +82,14 @@ export function ProductDetail() {
   const [authorOrder, setAuthorOrder] = useState('1')
   const [extName, setExtName] = useState('')
   const [extIdentifier, setExtIdentifier] = useState('')
+  // Estado del diálogo "Validar" (modelo 2024: exige tipología + categoría)
+  const [validateOpen, setValidateOpen] = useState(false)
+
+  // Catálogo 2024: resolver familia/tipología/categoría por id
+  const { data: catalogs } = useQuery({
+    queryKey: ['product-catalogs'],
+    queryFn: getProductCatalogs,
+  })
 
   const { data: pickerResults } = useQuery({
     queryKey: ['researchers', 'picker', authorSearch],
@@ -137,11 +147,11 @@ export function ProductDetail() {
     onError: (e) => toast.error(e instanceof Error ? e.message : 'Error al desvincular autor'),
   })
 
-  const validateMutation = useMutation({
-    mutationFn: (status: 'valid' | 'rejected') =>
-      validateProduct(productId, status, 'Decisión desde la ficha del producto'),
-    onSuccess: (data) => {
-      toast.success(`Producto ${data.validation_status === 'valid' ? 'validado' : 'rechazado'}`)
+  const rejectMutation = useMutation({
+    mutationFn: () =>
+      validateProduct(productId, 'rejected', 'Decisión desde la ficha del producto'),
+    onSuccess: () => {
+      toast.success('Producto rechazado')
       invalidate()
     },
     onError: (e) => toast.error(e instanceof Error ? e.message : 'Error al validar'),
@@ -192,6 +202,17 @@ export function ProductDetail() {
   const year = product.year ?? (String(product.publication_date ?? product.obtained_date ?? '').slice(0, 4) || null)
   const isValid = (product.validation_status ?? 'pending') === 'valid'
 
+  // Resolución de nombres del catálogo 2024 (los ids crudos no dicen nada)
+  const subtype = (catalogs?.subtypes ?? []).find((s) => s.id === product.subtype_id)
+  const family = (catalogs?.families ?? []).find(
+    (f) => f.id === (product.family_id ?? subtype?.family_id)
+  )
+  const quality = (catalogs?.quality_categories ?? []).find(
+    (c) => c.id === product.quality_category_id
+  )
+  const labeled = (code?: string | null, name?: string | null) =>
+    code && name ? `${code} — ${name}` : (name ?? '—')
+
   return (
     <>
       <Header>
@@ -234,16 +255,15 @@ export function ProductDetail() {
                 <>
                   <Button
                     size='sm'
-                    onClick={() => validateMutation.mutate('valid')}
-                    disabled={validateMutation.isPending}
+                    onClick={() => setValidateOpen(true)}
                   >
                     <CheckCircle2 className='mr-2 h-4 w-4' /> Validar
                   </Button>
                   <Button
                     size='sm'
                     variant='destructive'
-                    onClick={() => validateMutation.mutate('rejected')}
-                    disabled={validateMutation.isPending}
+                    onClick={() => rejectMutation.mutate()}
+                    disabled={rejectMutation.isPending}
                   >
                     <XCircle className='mr-2 h-4 w-4' /> Rechazar
                   </Button>
@@ -301,9 +321,28 @@ export function ProductDetail() {
               <Field label='Año' value={year} />
               <Field label='Fecha de obtención' value={product.obtained_date} />
               <Field label='Fecha de publicación' value={product.publication_date} />
-              <Field label='Familia (id)' value={product.family_id} />
-              <Field label='Subtipo (id)' value={product.subtype_id} />
-              <Field label='Categoría de calidad (id)' value={product.quality_category_id} />
+              <Field
+                label='Familia'
+                value={family ? labeled(family.code, family.name) : '—'}
+              />
+              <Field
+                label='Tipología 2024'
+                value={
+                  subtype
+                    ? labeled(subtype.code, subtype.name)
+                    : 'Sin clasificar (reclasificar en el formulario)'
+                }
+              />
+              <Field
+                label='Categoría de calidad'
+                value={
+                  quality
+                    ? `${labeled(quality.code, quality.name)}${
+                        quality.weight != null ? ` · peso ${quality.weight}` : ''
+                      }`
+                    : '—'
+                }
+              />
             </div>
           </div>
 
@@ -507,6 +546,13 @@ export function ProductDetail() {
             </DialogFooter>
           </DialogContent>
         </Dialog>
+
+        {/* Diálogo: validar con categoría de calidad 2024 (exige tipología) */}
+        <ValidateProductDialog
+          open={validateOpen}
+          onOpenChange={setValidateOpen}
+          product={product}
+        />
       </Main>
     </>
   )

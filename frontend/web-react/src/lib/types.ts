@@ -109,7 +109,7 @@ export interface GruplacPreviewMember {
 export interface GruplacPreviewProduct {
   title: string
   section: string
-  subtype_name: string
+  subtype_code: string | null // tipologia 2024 (ART/SF/...); null = sin clasificar
   year?: number | null
   doi?: string | null
   external_code?: string
@@ -124,6 +124,7 @@ export interface GruplacPreview {
   members: GruplacPreviewMember[]
   products: GruplacPreviewProduct[]
   projects: { title: string; year?: number | null }[]
+  skipped_sections: string[]
   warnings: string[]
   counts: { members: number; products: number; projects: number; research_lines: number }
 }

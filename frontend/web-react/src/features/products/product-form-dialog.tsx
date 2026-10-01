@@ -138,6 +138,15 @@ export function ProductFormDialog({ open, onOpenChange, product }: Props) {
   const availableSubtypes = (catalogs?.subtypes ?? []).filter(
     (s) => !formData.family_id || s.family_id === formData.family_id
   )
+  // Modelo 2024: la categoría pertenece a una tipología (par. 3.6). Sin
+  // tipología seleccionada no hay categorías; en el fallback C++ (filas sin
+  // subtype_id) se degrada mostrando todas.
+  const catsHaveSubtype = (catalogs?.quality_categories ?? []).some((c) => c.subtype_id != null)
+  const availableCategories = (catalogs?.quality_categories ?? []).filter((c) =>
+    !catsHaveSubtype || c.subtype_id === formData.subtype_id
+  )
+  const withCode = (code: string | null | undefined, name: string) =>
+    code ? `${code} — ${name}` : name
 
   // Sync state when editing
   useEffect(() => {
@@ -300,22 +309,40 @@ export function ProductFormDialog({ open, onOpenChange, product }: Props) {
             <div className='grid grid-cols-1 gap-4 sm:grid-cols-3'>
               <CatalogPicker
                 label='Familia'
-                options={catalogs?.families ?? []}
+                options={(catalogs?.families ?? []).map((f) => ({
+                  id: f.id,
+                  name: withCode(f.code, f.name),
+                }))}
                 value={formData.family_id ?? undefined}
-                onChange={(id) => set({ family_id: id, subtype_id: undefined })}
+                onChange={(id) =>
+                  set({ family_id: id, subtype_id: undefined, quality_category_id: undefined })
+                }
               />
               <CatalogPicker
-                label='Subtipo'
-                options={availableSubtypes}
+                label='Tipología 2024'
+                options={availableSubtypes.map((s) => ({
+                  id: s.id,
+                  name: withCode(s.code, s.name),
+                }))}
                 value={formData.subtype_id ?? undefined}
-                onChange={(id) => set({ subtype_id: id })}
+                onChange={(id) => set({ subtype_id: id, quality_category_id: undefined })}
               />
-              <CatalogPicker
-                label='Categoría de calidad'
-                options={catalogs?.quality_categories ?? []}
-                value={formData.quality_category_id ?? undefined}
-                onChange={(id) => set({ quality_category_id: id })}
-              />
+              <div className='grid gap-2'>
+                <CatalogPicker
+                  label='Categoría de calidad'
+                  options={availableCategories.map((c) => ({
+                    id: c.id,
+                    name: withCode(c.code, c.name),
+                  }))}
+                  value={formData.quality_category_id ?? undefined}
+                  onChange={(id) => set({ quality_category_id: id })}
+                />
+                {!formData.subtype_id && catsHaveSubtype && (
+                  <p className='text-xs text-muted-foreground'>
+                    Selecciona primero la tipología: las categorías dependen de ella (par. 3.6).
+                  </p>
+                )}
+              </div>
             </div>
 
             <div className='grid gap-2'>

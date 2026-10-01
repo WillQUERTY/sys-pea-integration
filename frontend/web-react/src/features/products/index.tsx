@@ -3,9 +3,10 @@ import { Link } from '@tanstack/react-router'
 import { useQuery, useMutation, useQueryClient, keepPreviousData } from '@tanstack/react-query'
 import { toast } from 'sonner'
 import { Plus, MoreHorizontal, Pencil, Trash2, ClipboardCheck, RotateCcw } from 'lucide-react'
-import { listProducts, deleteProduct, enqueueValidation, restoreProduct } from '@/lib/api'
+import { listProducts, deleteProduct, enqueueValidation, restoreProduct, getProductCatalogs } from '@/lib/api'
 import type { Product } from '@/lib/types'
 import { useDebouncedValue } from '@/hooks/use-debounced-value'
+import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import {
@@ -76,10 +77,39 @@ export function Products() {
     status: 'all',
     record_status: 'active',
     window: 'all',
+    family: 'all',
   })
   // Ventana personalizada (Req. 10): rango explícito desde–hasta
   const [customStart, setCustomStart] = useState('')
   const [customEnd, setCustomEnd] = useState('')
+
+  // Catálogo 2024: columna Tipología y opciones del filtro de familia.
+  const { data: catalogs } = useQuery({
+    queryKey: ['product-catalogs'],
+    queryFn: getProductCatalogs,
+  })
+  const subtypeById = useMemo(
+    () => new Map((catalogs?.subtypes ?? []).map((s) => [s.id, s])),
+    [catalogs]
+  )
+  const productFilters2024 = useMemo<DataFilter[]>(
+    () => [
+      ...productFilters,
+      {
+        key: 'family',
+        label: 'Familia 2024',
+        defaultValue: 'all',
+        options: [
+          { value: 'all', label: 'Todas las familias' },
+          ...(catalogs?.families ?? []).map((f) => ({
+            value: String(f.id),
+            label: f.code ? `${f.code} — ${f.name}` : f.name,
+          })),
+        ],
+      },
+    ],
+    [catalogs]
+  )
 
   const params = useMemo(
     () => ({
@@ -88,6 +118,7 @@ export function Products() {
       search: debouncedSearch.trim() || undefined,
       validation_status: filterValues.status !== 'all' ? filterValues.status : undefined,
       status: filterValues.record_status !== 'all' ? filterValues.record_status : undefined,
+      family_id: filterValues.family !== 'all' ? Number(filterValues.family) : undefined,
       window_years:
         filterValues.window !== 'all' && filterValues.window !== 'custom'
           ? Number(filterValues.window)
@@ -177,6 +208,24 @@ export function Products() {
       ),
     },
     {
+      key: 'subtype',
+      header: 'Tipología',
+      searchable: (p) => {
+        const s = p.subtype_id ? subtypeById.get(p.subtype_id) : undefined
+        return s ? `${s.code ?? ''} ${s.name}` : ''
+      },
+      cell: (p) => {
+        const s = p.subtype_id ? subtypeById.get(p.subtype_id) : undefined
+        return s ? (
+          <Badge variant='outline' className='font-mono text-xs' title={s.name}>
+            {s.code ?? s.name}
+          </Badge>
+        ) : (
+          <span className='text-xs text-muted-foreground'>sin clasificar</span>
+        )
+      },
+    },
+    {
       key: 'doi',
       header: 'DOI',
       searchable: (p) => p.doi ?? '',
@@ -243,7 +292,7 @@ export function Products() {
         </DropdownMenu>
       ),
     },
-  ], [delMutation, restoreMutation, enqueueMutation])
+  ], [delMutation, restoreMutation, enqueueMutation, subtypeById])
 
   return (
     <>
@@ -275,7 +324,7 @@ export function Products() {
           loading={products.isLoading}
           rowKey={(p) => p.id ?? p.external_code}
           searchPlaceholder='Buscar por título o DOI…'
-          filters={productFilters}
+          filters={productFilters2024}
           filterExtra={
             filterValues.window === 'custom' ? (
               <div className='space-y-1.5'>

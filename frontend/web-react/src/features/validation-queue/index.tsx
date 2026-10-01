@@ -1,9 +1,9 @@
-import { useMemo } from 'react'
+import { useMemo, useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { Link } from '@tanstack/react-router'
 import { toast } from 'sonner'
 import { listValidationQueue, processNextValidation, validateProduct, cancelValidationItem, listProducts } from '@/lib/api'
-import type { ValidationQueueItem } from '@/lib/types'
+import type { Product, ValidationQueueItem } from '@/lib/types'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import {
@@ -20,6 +20,7 @@ import { Main } from '@/components/layout/main'
 import { ProfileDropdown } from '@/components/profile-dropdown'
 import { Search } from '@/components/search'
 import { ThemeSwitch } from '@/components/theme-switch'
+import { ValidateProductDialog } from '@/features/products/validate-product-dialog'
 
 const statusFilters: DataFilter[] = [
   {
@@ -38,18 +39,21 @@ const statusFilters: DataFilter[] = [
 export function ValidationQueue() {
   const queryClient = useQueryClient()
   const queue = useQuery({ queryKey: ['validation-queue'], queryFn: listValidationQueue })
-  // mapa id→título para la cola: necesita un catálogo amplio (core en RAM).
+  // mapa id→producto para la cola: necesita un catálogo amplio (core en RAM).
   // TODO: exponer el título desde el endpoint de la cola y eliminar este fetch.
   const products = useQuery({ queryKey: ['products', 'catalog'], queryFn: () => listProducts({ limit: 5000 }) })
 
-  // id -> titulo, para que la tabla busque y muestre el titulo del producto
-  const titleById = useMemo(() => {
-    const map = new Map<number, string>()
+  // id -> producto completo (el diálogo de validación necesita subtype_id)
+  const productsById = useMemo(() => {
+    const map = new Map<number, Product>()
     for (const p of products.data?.items ?? []) {
-      if (p.id != null) map.set(p.id, p.title)
+      if (p.id != null) map.set(p.id, p)
     }
     return map
   }, [products.data])
+
+  // Producto en validación a través del diálogo 2024 (exige tipología+categoría)
+  const [validatingProduct, setValidatingProduct] = useState<Product | null>(null)
 
   const invalidate = () => {
     queryClient.invalidateQueries({ queryKey: ['validation-queue'] })
@@ -65,11 +69,11 @@ export function ValidationQueue() {
     onError: (e) => toast.error(e instanceof Error ? e.message : 'Error al procesar'),
   })
 
-  const validate = useMutation({
-    mutationFn: ({ id, status }: { id: number; status: 'valid' | 'rejected' }) =>
-      validateProduct(id, status, 'Decisión desde la cola de validación'),
+  const reject = useMutation({
+    mutationFn: (id: number) =>
+      validateProduct(id, 'rejected', 'Decisión desde la cola de validación'),
     onSuccess: () => {
-      toast.success('Producto actualizado')
+      toast.success('Producto rechazado')
       invalidate()
     },
     onError: (e) => toast.error(e instanceof Error ? e.message : 'Error al validar'),
@@ -95,14 +99,14 @@ export function ValidationQueue() {
       key: 'product',
       header: 'Producto',
       className: 'max-w-[480px]',
-      searchable: (item) => titleById.get(item.product_id) ?? `producto ${item.product_id}`,
+      searchable: (item) => productsById.get(item.product_id)?.title ?? `producto ${item.product_id}`,
       cell: (item) => (
         <Link
           to='/products/$id'
           params={{ id: String(item.product_id) }}
           className='block truncate font-medium text-primary hover:underline'
         >
-          {titleById.get(item.product_id) ?? `Producto #${item.product_id}`}
+          {productsById.get(item.product_id)?.title ?? `Producto #${item.product_id}`}
         </Link>
       ),
     },
@@ -137,16 +141,24 @@ export function ValidationQueue() {
             <Button
               size='sm'
               variant='outline'
-              disabled={validate.isPending}
-              onClick={() => validate.mutate({ id: item.product_id, status: 'valid' })}
+              disabled={reject.isPending}
+              onClick={() =>
+                setValidatingProduct(
+                  productsById.get(item.product_id) ?? {
+                    id: item.product_id,
+                    external_code: '',
+                    title: `Producto #${item.product_id}`,
+                  }
+                )
+              }
             >
               Validar
             </Button>
             <Button
               size='sm'
               variant='destructive'
-              disabled={validate.isPending}
-              onClick={() => validate.mutate({ id: item.product_id, status: 'rejected' })}
+              disabled={reject.isPending}
+              onClick={() => reject.mutate(item.product_id)}
             >
               Rechazar
             </Button>
@@ -162,7 +174,7 @@ export function ValidationQueue() {
           </div>
         ) : null,
     },
-  ], [titleById, validate.isPending, cancelItem.isPending])
+  ], [productsById, reject.isPending, cancelItem.isPending])
 
   const pending = (queue.data ?? []).filter((i) => i.status === 'pending')
 
@@ -214,6 +226,14 @@ export function ValidationQueue() {
           </CardContent>
         </Card>
       </Main>
+
+      <ValidateProductDialog
+        open={validatingProduct !== null}
+        onOpenChange={(o) => {
+          if (!o) setValidatingProduct(null)
+        }}
+        product={validatingProduct}
+      />
     </>
   )
 }

@@ -44,6 +44,23 @@ export function GruplacPreviewCard({ preview }: { preview: GruplacPreview }) {
           </Alert>
         )}
 
+        {preview.skipped_sections?.length > 0 && (
+          <Alert>
+            <AlertTitle>Secciones sin tipología 2024</AlertTitle>
+            <AlertDescription>
+              Estas secciones de GrupLAC no tienen equivalente en el modelo 2024 y sus
+              filas no se importarán como productos:
+              <ul className='list-disc ps-4'>
+                {preview.skipped_sections.slice(0, 10).map((s, i) => (
+                  <li key={i} className='font-mono text-xs'>
+                    {s}
+                  </li>
+                ))}
+              </ul>
+            </AlertDescription>
+          </Alert>
+        )}
+
         <div>
           <h3 className='mb-2 text-sm font-semibold'>Integrantes</h3>
           <Table>
@@ -80,7 +97,7 @@ export function GruplacPreviewCard({ preview }: { preview: GruplacPreview }) {
               {preview.products.slice(0, 15).map((p, i) => (
                 <TableRow key={i}>
                   <TableCell className='max-w-[420px] truncate font-medium'>{p.title}</TableCell>
-                  <TableCell className='text-xs'>{p.subtype_name}</TableCell>
+                  <TableCell className='font-mono text-xs'>{p.subtype_code ?? 'sin clasificar'}</TableCell>
                   <TableCell>{p.year ?? '—'}</TableCell>
                 </TableRow>
               ))}
