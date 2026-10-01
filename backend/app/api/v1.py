@@ -878,6 +878,9 @@ async def import_cvlac_endpoint(req: CvlacImportRequest):
     from ..cvlac_scraper import CvParser, CvCommitService
     conn_str = repository._active_connection_string or "Driver={ODBC Driver 17 for SQL Server};Server=localhost;Database=peai;Trusted_Connection=yes;"
     cv = CvParser.parse_text(req.text)
+    # Si el usuario pegó el HTML crudo de la página, parse_text ya lo procesa con
+    # el extractor DOM; si pegó texto plano, el ORCID no se puede recuperar (el
+    # código solo vive en el href del ancla).
     if req.target_group_code:
         cv.target_group_code = req.target_group_code
     result = CvCommitService.commit_cvlac(cv, conn_str)

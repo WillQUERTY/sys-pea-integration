@@ -359,6 +359,7 @@ class TestCommit2024DB(unittest.TestCase):
                       "Las secciones sin mapeo quedan documentadas en el job")
 
 
+@unittest.skipUnless(os.environ.get("PEAI_TEST_DB"), "Requiere SQL Server local: export PEAI_TEST_DB=1")
 class TestCommitCvlacColaDB(unittest.TestCase):
     """Commit CvLAC: todo producto (ART/CAP_LIB/EC) entra a la cola de validación.
 
@@ -382,6 +383,7 @@ class TestCommitCvlacColaDB(unittest.TestCase):
         cls.cv = CvData(
             name="Investigador De Prueba Cvlac",
             external_code=cls.CV_CODE,
+            orcid="0000-0002-2149-1625",
             target_group_code=cls.CV_GROUP_CODE,
             articles=[CvArticle(title="Articulo cvlac de prueba cola",
                                 authors=["Investigador De Prueba Cvlac"], year=2023)],
@@ -455,6 +457,21 @@ class TestCommitCvlacColaDB(unittest.TestCase):
         cur = self.conn.cursor()
         for code in self.codes:
             self.assertEqual(self._items_pendientes(cur, code), 1)
+
+    def test_orcid_se_persiste_y_no_se_borra_en_reimport(self):
+        self._commit()
+        cur = self.conn.cursor()
+        cur.execute("SELECT orcid FROM Researcher WHERE external_code = ?", self.CV_CODE)
+        self.assertEqual(cur.fetchone()[0], "0000-0002-2149-1625",
+                         "El ORCID del CvLAC debe quedar en la ficha del investigador")
+
+        # Reimport sin ORCID (p. ej. CvLAC sin ancla orcid.org): no debe borrarlo.
+        import dataclasses
+        CvCommitService.commit_cvlac(
+            dataclasses.replace(self.cv, orcid=""), self.CONN_STR, reload_ram=False)
+        cur.execute("SELECT orcid FROM Researcher WHERE external_code = ?", self.CV_CODE)
+        self.assertEqual(cur.fetchone()[0], "0000-0002-2149-1625",
+                         "Un reimport sin ORCID no debe borrar el ya registrado")
 
 
 if __name__ == "__main__":

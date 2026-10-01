@@ -3,16 +3,19 @@ backend/app/cvlac_scraper.py
 Extractor Estructural y Servicio de Persistencia para hojas de vida CvLAC (Minciencias).
 Permite ingerir perfiles de investigadores individuales y sus productos cientificos,
 en cumplimiento de los requerimientos de Taller 2 EdD (Requerimientos 4 y 7).
+Soporta detección de aval institucional en convocatoria previa (marca ✓ / chulo.jpg).
 """
 
 import re
+import json
 import hashlib
 import logging
 from dataclasses import dataclass, field
 from typing import Optional, List, Dict, Any
+from bs4 import BeautifulSoup
 import pyodbc
 from . import repository
-from .scraper import GruplacNormalizer
+from .scraper import GruplacNormalizer, GruplacHttpClient as SourceValidator
 
 logger = logging.getLogger("peai.cvlac")
 
@@ -23,13 +26,11 @@ CVLAC_URL_TEMPLATE = (
 
 def fetch_cvlac_text(cod_rh: str) -> str:
     """
-    Descarga la página pública del CvLAC para un cod_rh y devuelve su texto
-    plano, listo para CvParser.parse_text. Reutiliza la validación de dominio
+    Descarga la página pública del CvLAC para un cod_rh y devuelve su contenido
+    HTML completo para CvParser.parse. Reutiliza la validación de dominio
     del módulo scraper (solo hosts Minciencias permitidos).
     """
     import requests
-    from bs4 import BeautifulSoup
-    from .scraper import GruplacHttpClient as SourceValidator
 
     normalized = "".join(c for c in (cod_rh or "") if c.isdigit()).zfill(10)
     if len(normalized) != 10:
@@ -46,14 +47,14 @@ def fetch_cvlac_text(cod_rh: str) -> str:
     resp.raise_for_status()
     # Scienti no siempre declara charset; forzar detección (las páginas vienen en Latin-1)
     resp.encoding = resp.apparent_encoding or "latin-1"
+    html_content = resp.text
 
-    soup = BeautifulSoup(resp.text, "html.parser")
-    text = soup.get_text(separator="\n")
-    if "Nombre" not in text or len(text) < 200:
+    if "Nombre" not in html_content or len(html_content) < 200:
         raise ValueError(
             "La página CvLAC no devolvió una hoja de vida válida (posible bloqueo o cod_rh inexistente)."
         )
-    return text
+    return html_content
+
 
 @dataclass
 class CvArticle:
@@ -66,6 +67,8 @@ class CvArticle:
     issue: str = ""
     pages: str = ""
     doi: str = ""
+    is_endorsed: bool = False
+
 
 @dataclass
 class CvBookChapter:
@@ -75,6 +78,27 @@ class CvBookChapter:
     isbn: str = ""
     year: Optional[int] = None
     pages: str = ""
+    is_endorsed: bool = False
+
+
+@dataclass
+class CvBook:
+    title: str
+    authors: List[str]
+    isbn: str = ""
+    year: Optional[int] = None
+    editorial: str = ""
+    is_endorsed: bool = False
+
+
+@dataclass
+class CvSoftware:
+    title: str
+    authors: List[str]
+    year: Optional[int] = None
+    country: str = ""
+    is_endorsed: bool = False
+
 
 @dataclass
 class CvEvent:
@@ -88,6 +112,8 @@ class CvEvent:
     product_type: str = "Ponencia"
     role: str = "Ponente"
     year: Optional[int] = None
+    is_endorsed: bool = False
+
 
 @dataclass
 class CvProject:
@@ -97,6 +123,8 @@ class CvProject:
     end_date: str = ""
     summary: str = ""
     year: Optional[int] = None
+    is_endorsed: bool = False
+
 
 @dataclass
 class CvData:
@@ -104,20 +132,269 @@ class CvData:
     citation_name: str = ""
     nationality: str = "Colombiana"
     gender: str = ""
+    category: str = ""
+    is_par_evaluador: bool = False
     external_code: str = ""
+    orcid: str = ""
     highest_education_level: str = "Maestría"
     education_records: str = ""
-    target_group_code: str = "COL0011545"  # Grupo de Óptica e Informática de la UPC
+    target_group_code: str = "COL0011545"  # Grupo de Óptica e Informática de la UPC por defecto
     articles: List[CvArticle] = field(default_factory=list)
     book_chapters: List[CvBookChapter] = field(default_factory=list)
+    books: List[CvBook] = field(default_factory=list)
+    software: List[CvSoftware] = field(default_factory=list)
     events: List[CvEvent] = field(default_factory=list)
     projects: List[CvProject] = field(default_factory=list)
 
 
 class CvParser:
     @classmethod
+    def parse_html(cls, html: str) -> CvData:
+        soup = BeautifulSoup(html, "html.parser")
+
+        def clean(s: Optional[str]) -> str:
+            if not s:
+                return ""
+            return " ".join(s.replace("\xa0", " ").split()).strip()
+
+        def get_field(label: str) -> str:
+            td = soup.find(lambda t: t.name == "td" and clean(t.get_text()).lower() == label.lower())
+            if td:
+                nxt = td.find_next_sibling("td")
+                if nxt:
+                    return clean(nxt.get_text())
+            return ""
+
+        name = get_field("Nombre") or "Investigador Sin Nombre"
+        cit_name = get_field("Nombre en citaciones")
+        nationality = get_field("Nacionalidad") or "Colombiana"
+        gender = get_field("Sexo") or "Desconocido"
+        category = get_field("Categoría") or get_field("Categoria")
+        is_par = bool(soup.find(string=re.compile(r"Par evaluador reconocido por Minciencias", re.I)))
+
+        # El ORCID viene como hipervínculo (<a href="https://orcid.org/0000-0002-...">):
+        # el texto plano solo conserva la etiqueta "Open Researcher and Contributor
+        # ID (ORCID)", así que el código hay que leerlo del href del ancla.
+        orcid = ""
+        orcid_a = soup.find("a", href=re.compile(r"orcid\.org/", re.I))
+        if orcid_a:
+            m_orcid = re.search(r"(\d{4}-\d{4}-\d{4}-\d{3}[\dXx])", orcid_a.get("href", ""))
+            if m_orcid:
+                orcid = m_orcid.group(1).upper()
+
+        # Formación académica
+        edu_entries = []
+        edu_a = soup.find("a", attrs={"name": "formacion_acad"})
+        if edu_a:
+            edu_tbl = edu_a.find_next("table")
+            if edu_tbl:
+                for tr in edu_tbl.find_all("tr"):
+                    tds = tr.find_all("td")
+                    if len(tds) >= 2:
+                        txt = clean(tds[1].get_text(separator=" - "))
+                        if txt:
+                            edu_entries.append(txt)
+
+        highest_edu = "Pregrado"
+        full_edu_str = " | ".join(edu_entries)
+        if "Doctorado" in full_edu_str:
+            highest_edu = "Doctorado"
+        elif "Maestr" in full_edu_str:
+            highest_edu = "Maestría"
+        elif "Especializaci" in full_edu_str:
+            highest_edu = "Especialización"
+
+        cod_ext = f"CVLAC-{hashlib.md5(name.encode('utf-8')).hexdigest()[:10].upper()}"
+
+        cv = CvData(
+            name=name,
+            citation_name=cit_name,
+            nationality=nationality,
+            gender=gender,
+            category=category,
+            is_par_evaluador=is_par,
+            external_code=cod_ext,
+            orcid=orcid,
+            highest_education_level=highest_edu,
+            education_records="; ".join(edu_entries) if edu_entries else "Universidad Popular del Cesar"
+        )
+
+        def extract_items_from_anchor(anchor_name: str, keyword: str = ""):
+            anchor = soup.find("a", attrs={"name": anchor_name})
+            if not anchor:
+                return []
+            tbl = anchor.find_next("table")
+            if not tbl:
+                return []
+            rows = tbl.find_all("tr")
+            results = []
+            i = 0
+            while i < len(rows):
+                r = rows[i]
+                li = r.find("li")
+                b = r.find("b")
+                header_el = li or b
+                if header_el:
+                    header_txt = clean(header_el.get_text()).lower()
+                    if not keyword or keyword.lower() in header_txt:
+                        has_chulo = bool(r.find("img", src=lambda s: s and "chulo" in s.lower()))
+                        if i + 1 < len(rows):
+                            bquote = rows[i + 1].find("blockquote")
+                            if bquote:
+                                results.append((has_chulo, clean(bquote.get_text())))
+                                i += 1
+                i += 1
+            return results
+
+        # 1. Artículos
+        for has_chulo, txt in extract_items_from_anchor("articulos"):
+            m_title = re.search(r'"([^"]+)"', txt)
+            if m_title:
+                title = m_title.group(1).strip()
+                before = txt[:m_title.start()].strip().rstrip(",")
+                authors = [clean(a) for a in before.split(",") if clean(a)]
+            else:
+                parts = txt.split(". En:")
+                if len(parts) > 1:
+                    title = clean(parts[0].split(",")[-1])
+                    authors = [clean(a) for a in parts[0].split(",")[:-1] if clean(a)]
+                else:
+                    title = txt[:150]
+                    authors = [clean(a) for a in txt.split(",")[:2] if clean(a)]
+
+            m_j = re.search(r'\.\s*En:\s*(?:[^A-Za-z0-9]*[A-Za-z]+)?\s*([^,\n\r]+?)\s*ISSN:', txt)
+            journal = clean(m_j.group(1)) if m_j else ""
+
+            m_issn = re.search(r'ISSN:\s*([0-9Xx\-]+)', txt)
+            issn = m_issn.group(1).strip() if m_issn else ""
+
+            m_y = re.search(r',\s*(\d{4})\s*,', txt)
+            if not m_y:
+                m_y = re.search(r'\b(19\d{2}|20\d{2})\b', txt)
+            year = int(m_y.group(1)) if m_y else None
+
+            m_doi = re.search(r'DOI:\s*([^\s,]+)', txt)
+            doi = m_doi.group(1).strip() if m_doi else ""
+
+            cv.articles.append(CvArticle(
+                title=title,
+                authors=authors,
+                journal=journal,
+                issn=issn,
+                year=year,
+                doi=doi,
+                is_endorsed=has_chulo
+            ))
+
+        # 2. Capítulos de libro
+        for has_chulo, txt in extract_items_from_anchor("capitulos"):
+            m_title = re.search(r'"([^"]+)"', txt)
+            title = m_title.group(1).strip() if m_title else txt[:150]
+            before = txt[:m_title.start()].strip().rstrip(",") if m_title else ""
+            authors = [clean(a) for a in before.split(",") if clean(a)]
+            m_isbn = re.search(r'ISBN:\s*([0-9Xx\-]+)', txt)
+            isbn = m_isbn.group(1).strip() if m_isbn else ""
+            m_y = re.search(r'\b(19\d{2}|20\d{2})\b', txt)
+            year = int(m_y.group(1)) if m_y else None
+            cv.book_chapters.append(CvBookChapter(
+                title=title,
+                authors=authors,
+                isbn=isbn,
+                year=year,
+                is_endorsed=has_chulo
+            ))
+
+        # 3. Libros
+        for has_chulo, txt in extract_items_from_anchor("libros"):
+            m_title = re.search(r'"([^"]+)"', txt)
+            title = m_title.group(1).strip() if m_title else txt[:150]
+            before = txt[:m_title.start()].strip().rstrip(",") if m_title else ""
+            authors = [clean(a) for a in before.split(",") if clean(a)]
+            m_isbn = re.search(r'ISBN:\s*([0-9Xx\-]+)', txt)
+            isbn = m_isbn.group(1).strip() if m_isbn else ""
+            m_y = re.search(r'\b(19\d{2}|20\d{2})\b', txt)
+            year = int(m_y.group(1)) if m_y else None
+            cv.books.append(CvBook(
+                title=title,
+                authors=authors,
+                isbn=isbn,
+                year=year,
+                is_endorsed=has_chulo
+            ))
+
+        # 4. Software
+        for has_chulo, txt in extract_items_from_anchor("software", keyword="softwares"):
+            lines = [l.strip() for l in txt.split(",") if l.strip()]
+            title = lines[1] if len(lines) > 1 else txt[:150]
+            authors = [lines[0]] if lines else []
+            m_y = re.search(r'\b(19\d{2}|20\d{2})\b', txt)
+            year = int(m_y.group(1)) if m_y else None
+            cv.software.append(CvSoftware(
+                title=title,
+                authors=authors,
+                year=year,
+                is_endorsed=has_chulo
+            ))
+
+        # 5. Proyectos
+        h3_proj = soup.find(lambda t: t.name == "h3" and "proyecto" in t.get_text().lower())
+        if h3_proj:
+            p_tbl = h3_proj.find_parent("table")
+            if p_tbl:
+                for tr in p_tbl.find_all("tr")[1:]:
+                    txt = clean(tr.get_text(separator=" | "))
+                    if "Tipo de proyecto:" not in txt:
+                        continue
+                    m_type = re.search(r"Tipo de proyecto:\s*\|\s*([^|]+)", txt)
+                    p_type = clean(m_type.group(1)) if m_type else "Investigación y desarrollo"
+                    m_y = re.search(r"\b(19\d{2}|20\d{2})\b", txt)
+                    year_val = int(m_y.group(1)) if m_y else None
+                    parts = txt.split("|")
+                    title_p = ""
+                    for idx, p in enumerate(parts):
+                        if "Tipo de proyecto:" in p and idx + 2 < len(parts):
+                            cand = clean(parts[idx + 2])
+                            if cand and not cand.startswith("Inicio:") and not cand.startswith("Duración"):
+                                title_p = cand
+                                break
+                    if not title_p and len(parts) > 3:
+                        title_p = clean(parts[3])
+                    if title_p:
+                        cv.projects.append(CvProject(
+                            title=title_p[:400],
+                            project_type=p_type[:100],
+                            summary=txt[:1000],
+                            year=year_val
+                        ))
+        if not cv.projects:
+            proj_blocks = re.split(r'Tipo de proyecto:\s*', html)
+            if len(proj_blocks) > 1:
+                for pb in proj_blocks[1:]:
+                    clean_pb = clean(BeautifulSoup(pb, "html.parser").get_text())
+                    lines_p = [l.strip() for l in clean_pb.splitlines() if l.strip()]
+                    if not lines_p:
+                        continue
+                    p_type = lines_p[0]
+                    title_p = lines_p[1] if len(lines_p) > 1 else ""
+                    m_y = re.search(r"\b(19\d{2}|20\d{2})\b", clean_pb)
+                    year_val = int(m_y.group(1)) if m_y else None
+                    if title_p and not title_p.startswith("Inicio:"):
+                        cv.projects.append(CvProject(
+                            title=title_p[:400],
+                            project_type=p_type[:100],
+                            summary=clean_pb[:1000],
+                            year=year_val
+                        ))
+
+        return cv
+
+    @classmethod
     def parse_text(cls, text: str) -> CvData:
-        # 1. Datos personales
+        # Si el texto es o contiene HTML, delegar en el extractor DOM
+        if "<html" in text.lower() or "<!doctype" in text.lower() or "<table" in text.lower():
+            return cls.parse_html(text)
+
+        # Fallback de compatibilidad para texto plano no estructurado
         name_match = re.search(r"Nombre\s+([A-Za-zÁÉÍÓÚáéíóúñÑ\s]+?)(?=\r?\n|Nombre en citaciones|$)", text)
         name = name_match.group(1).strip() if name_match else "Camila Andrea Noreña Julio"
 
@@ -130,7 +407,6 @@ class CvParser:
         sexo_match = re.search(r"Sexo\s+([A-Za-z]+)", text)
         gender = sexo_match.group(1).strip() if sexo_match else "Femenino"
 
-        # Formación académica
         edu_entries = []
         if "Maestría" in text:
             edu_entries.append("Maestría en Ciencias Físicas - Universidad Popular del Cesar")
@@ -149,8 +425,6 @@ class CvParser:
             education_records="; ".join(edu_entries) if edu_entries else "Universidad Popular del Cesar"
         )
 
-        # 2. Artículos en revistas
-        # Buscar bloques de artículos
         art_match = re.search(
             r'Producción bibliográfica\s*-\s*Artículo[^\n]*\n([A-ZÁÉÍÓÚÑ\s,]+?),\s*\"([^\"]+)\"\s*\.\s*En:\s*([^\n]+)\s*\n([^\n]+?)\s*ISSN:\s*([\d\-]+)[^\n]*\n([^\n]+)',
             text
@@ -178,7 +452,6 @@ class CvParser:
                 doi=doi
             ))
 
-        # 3. Capítulos de libro
         cap_match = re.search(
             r'Tipo:\s*Capítulo de libro\s*\n([A-ZÁÉÍÓÚÑ\s,]+?),\s*\"([^\"]+)\"\s*([^,\n]+?)\.\s*En:[^\n]*?ISBN:\s*([\d\-]+)[^\n]*?(\d{4})',
             text
@@ -198,7 +471,6 @@ class CvParser:
                 year=year_val
             ))
 
-        # 4. Eventos científicos
         if "Eventos científicos" in text:
             events_part = text[text.find("Eventos científicos"):]
             if "Artículos" in events_part:
@@ -228,7 +500,6 @@ class CvParser:
                             year=year_val
                         ))
 
-        # 5. Proyectos
         proj_blocks = re.split(r'Tipo de proyecto:\s*', text)
         for pb in proj_blocks[1:]:
             lines_p = [l.strip() for l in pb.splitlines() if l.strip()]
@@ -251,13 +522,14 @@ class CvParser:
 
         return cv
 
+    @classmethod
+    def parse(cls, html_or_text: str) -> CvData:
+        return cls.parse_text(html_or_text)
+
 
 class CvCommitService:
     @classmethod
     def commit_cvlac(cls, cv: CvData, db_conn_str: str, reload_ram: bool = True) -> Dict[str, Any]:
-        # reload_ram=False en la cascada paralela: recargar la RAM nativa C++ por
-        # cada CvLAC desde varios hilos bloqueaba/corrompía el núcleo compartido;
-        # el orquestador recarga una sola vez al final.
         logger.info(f"Iniciando ingesta transaccional CvLAC para: {cv.name} ({cv.external_code})")
         conn = pyodbc.connect(db_conn_str, autocommit=False)
         cur = conn.cursor()
@@ -286,23 +558,23 @@ class CvCommitService:
             cur.execute("""
                 IF NOT EXISTS (SELECT 1 FROM Researcher WHERE external_code = ?)
                 BEGIN
-                    INSERT INTO Researcher (external_code, first_names, last_names, nationality, country_of_residence, highest_education_level, education_records, status)
-                    VALUES (?, ?, ?, ?, 'Colombia', ?, ?, 'active');
+                    INSERT INTO Researcher (external_code, first_names, last_names, nationality, country_of_residence, orcid, highest_education_level, education_records, classification_records, status)
+                    VALUES (?, ?, ?, ?, 'Colombia', ?, ?, ?, ?, 'active');
                 END
                 ELSE
                 BEGIN
                     UPDATE Researcher
-                    SET first_names = ?, last_names = ?, nationality = ?, highest_education_level = ?, education_records = ?
+                    SET first_names = ?, last_names = ?, nationality = ?, orcid = CASE WHEN ? <> '' THEN ? ELSE orcid END, highest_education_level = ?, education_records = ?, classification_records = COALESCE(?, classification_records)
                     WHERE external_code = ?;
                 END
             """, cv.external_code,
-                 cv.external_code, first_names, last_names, cv.nationality, cv.highest_education_level, cv.education_records,
-                 first_names, last_names, cv.nationality, cv.highest_education_level, cv.education_records, cv.external_code)
+                 cv.external_code, first_names, last_names, cv.nationality, cv.orcid, cv.highest_education_level, cv.education_records, cv.category or None,
+                 first_names, last_names, cv.nationality, cv.orcid, cv.orcid, cv.highest_education_level, cv.education_records, cv.category or None, cv.external_code)
 
             cur.execute("SELECT id FROM Researcher WHERE external_code = ?", cv.external_code)
             researcher_id = cur.fetchone()[0]
 
-            # 3. Vincular a ResearchGroup (COL0011545 - Grupo de optica e informatica)
+            # 3. Vincular a ResearchGroup
             cur.execute("SELECT id FROM ResearchGroup WHERE external_code = ?", cv.target_group_code)
             group_row = cur.fetchone()
             db_group_id = group_row[0] if group_row else None
@@ -316,9 +588,6 @@ class CvCommitService:
                     END
                 """, db_group_id, researcher_id, db_group_id, researcher_id)
 
-            # Modelo 2024: resolver tipologias por CODIGO desde BD (Revision §20:
-            # sin IDs magicos). La calidad la asigna el validador humano despues;
-            # aqui todo producto entra con quality_category_id NULL.
             cur.execute("SELECT id, family_id, code FROM ProductSubtype WHERE code IS NOT NULL")
             subtype_by_code = {row[2]: (row[1], row[0]) for row in cur.fetchall()}
             missing = {"ART", "CAP_LIB", "EC"} - set(subtype_by_code)
@@ -328,9 +597,6 @@ class CvCommitService:
                     "Ejecuta database/seed_catalog_2024.py antes de importar CvLAC."
                 )
 
-            # Mapa canónico título+año -> product_id de lo ya existente en el grupo.
-            # Reconciliación cross-source: si el GrupLAC ya trajo el producto sin DOI
-            # (o con DOI distinto por typo), el CvLAC lo reutiliza en vez de duplicar.
             canon_map: Dict[str, int] = {}
             if db_group_id:
                 cur.execute("""
@@ -341,31 +607,29 @@ class CvCommitService:
                 for row in cur.fetchall():
                     canon_map[f"{GruplacNormalizer.normalized_name_key(row[1])}|{row[2] or ''}"] = row[0]
 
-            def _find_or_insert_product(p_code: str, title: str, year, doi, subtype_id: int, family_id: int) -> int:
+            def _find_or_insert_product(p_code: str, title: str, year, doi, subtype_id: int, family_id: int, evidence: Optional[str] = None) -> int:
                 nonlocal new_products
-                cur.execute("SELECT id, doi FROM Product WHERE external_code = ?", p_code)
+                cur.execute("SELECT id, doi, evidence FROM Product WHERE external_code = ?", p_code)
                 row = cur.fetchone()
                 if row:
-                    # Backfill de DOI si el registro previo no lo tenía
-                    if doi and not row[1]:
-                        cur.execute("UPDATE Product SET doi = ? WHERE id = ?", doi, row[0])
+                    if (doi and not row[1]) or (evidence and not row[2]):
+                        cur.execute("UPDATE Product SET doi = COALESCE(doi, ?), evidence = COALESCE(evidence, ?) WHERE id = ?", doi, evidence, row[0])
                     return row[0]
                 canon_key = f"{GruplacNormalizer.normalized_name_key(title)}|{year or ''}"
                 existing_id = canon_map.get(canon_key)
                 if existing_id:
-                    if doi:
-                        cur.execute("UPDATE Product SET doi = COALESCE(doi, ?) WHERE id = ?", doi, existing_id)
+                    if doi or evidence:
+                        cur.execute("UPDATE Product SET doi = COALESCE(doi, ?), evidence = COALESCE(evidence, ?) WHERE id = ?", doi, evidence, existing_id)
                     return existing_id
+                spec_attrs = json.dumps({"minciencias_endorsed": True}) if (evidence and "✓" in evidence) else None
                 try:
                     cur.execute("""
-                        INSERT INTO Product (external_code, title, family_id, subtype_id, year, doi, validation_status, created_at)
+                        INSERT INTO Product (external_code, title, family_id, subtype_id, year, doi, validation_status, evidence, specialized_attributes, created_at)
                         OUTPUT INSERTED.id
-                        VALUES (?, ?, ?, ?, ?, ?, 'pending', GETDATE());
-                    """, p_code, title[:500], family_id, subtype_id, year, doi or None)
+                        VALUES (?, ?, ?, ?, ?, ?, 'pending', ?, ?, GETDATE());
+                    """, p_code, title[:500], family_id, subtype_id, year, doi or None, evidence, spec_attrs)
                     new_id = cur.fetchone()[0]
                 except pyodbc.IntegrityError:
-                    # Carrera entre workers paralelos: otro hilo insertó el mismo
-                    # producto entre nuestro SELECT y el INSERT. Releer y reutilizar.
                     cur.execute("SELECT id FROM Product WHERE external_code = ?", p_code)
                     new_id = cur.fetchone()[0]
                 canon_map[canon_key] = new_id
@@ -373,10 +637,6 @@ class CvCommitService:
                 return new_id
 
             def _enqueue_validation(p_id: int) -> None:
-                # Cola de validación institucional (idempotente, mismo patrón que el
-                # commit GrupLAC): sin este item el producto queda 'pending' pero
-                # invisible en la cola y el validador no podría asignarle la
-                # categoría de calidad del modelo 2024.
                 cur.execute("""
                     IF NOT EXISTS (SELECT 1 FROM ValidationQueueItem WHERE product_id = ? AND status = 'pending')
                     BEGIN
@@ -392,16 +652,17 @@ class CvCommitService:
             for art in cv.articles:
                 total_records += 1
                 fam_id, subtype_id = subtype_by_code["ART"]
-                # Código canónico compartido con GrupLAC: mismo producto detectado
-                # en ambas fuentes reconcilia en una sola fila (dedupe cross-source).
                 p_code = GruplacNormalizer.product_external_code(art.title, art.year, art.doi)
                 clean_title = art.title[:500]
-                p_id = _find_or_insert_product(p_code, art.title, art.year, art.doi, subtype_id, fam_id)
+                evidence = "Avalado y validado para la Convocatoria Nacional Minciencias (marca ✓ en CvLAC)" if art.is_endorsed else None
+                p_id = _find_or_insert_product(p_code, art.title, art.year, art.doi, subtype_id, fam_id, evidence=evidence)
                 _enqueue_validation(p_id)
 
-                # Autores: Camila es institucional, los demás son externos
                 for idx, auth_name in enumerate(art.authors, start=1):
-                    is_main = cv.name.upper() in auth_name.upper() or "NORENA" in auth_name.upper() or "NOREÑA" in auth_name.upper()
+                    norm_auth = GruplacNormalizer.normalized_name_key(auth_name)
+                    norm_cv = GruplacNormalizer.normalized_name_key(cv.name)
+                    norm_cit = GruplacNormalizer.normalized_name_key(cv.citation_name)
+                    is_main = (norm_auth == norm_cv) or (norm_cit and norm_auth == norm_cit) or (norm_cv and norm_cv in norm_auth) or (norm_auth and norm_auth in norm_cv)
                     if is_main:
                         cur.execute("""
                             IF NOT EXISTS (SELECT 1 FROM ProductAuthor WHERE product_id = ? AND researcher_id = ?)
@@ -419,7 +680,6 @@ class CvCommitService:
                             END
                         """, p_id, auth_name, p_id, auth_name, idx)
 
-                # Multilista propuesta a grupo
                 if db_group_id:
                     cur.execute("""
                         IF NOT EXISTS (SELECT 1 FROM GroupProductLink WHERE group_id = ? AND product_id = ?)
@@ -440,10 +700,10 @@ class CvCommitService:
                 fam_id, subtype_id = subtype_by_code["CAP_LIB"]
                 p_code = GruplacNormalizer.product_external_code(cap.title, cap.year)
                 clean_title = cap.title[:500]
-                p_id = _find_or_insert_product(p_code, cap.title, cap.year, None, subtype_id, fam_id)
+                evidence = "Avalado y validado para la Convocatoria Nacional Minciencias (marca ✓ en CvLAC)" if cap.is_endorsed else None
+                p_id = _find_or_insert_product(p_code, cap.title, cap.year, None, subtype_id, fam_id, evidence=evidence)
                 _enqueue_validation(p_id)
 
-                # Autor Camila
                 cur.execute("""
                     IF NOT EXISTS (SELECT 1 FROM ProductAuthor WHERE product_id = ? AND researcher_id = ?)
                     BEGIN
@@ -466,13 +726,70 @@ class CvCommitService:
                     VALUES (?, 'Product', ?, 'created', ?, 'Capítulo de libro desde CvLAC', GETDATE());
                 """, job_id, p_code, clean_title[:200])
 
-            # 6. Insertar Eventos Científicos (Ponencias y Pósters)
+            # 6. Insertar Libros (si existe tipología LIB)
+            if "LIB" in subtype_by_code:
+                for bk in cv.books:
+                    total_records += 1
+                    fam_id, subtype_id = subtype_by_code["LIB"]
+                    p_code = GruplacNormalizer.product_external_code(bk.title, bk.year)
+                    clean_title = bk.title[:500]
+                    evidence = "Avalado y validado para la Convocatoria Nacional Minciencias (marca ✓ en CvLAC)" if bk.is_endorsed else None
+                    p_id = _find_or_insert_product(p_code, bk.title, bk.year, None, subtype_id, fam_id, evidence=evidence)
+                    _enqueue_validation(p_id)
+
+                    cur.execute("""
+                        IF NOT EXISTS (SELECT 1 FROM ProductAuthor WHERE product_id = ? AND researcher_id = ?)
+                        BEGIN
+                            INSERT INTO ProductAuthor (product_id, researcher_id, author_order, match_status)
+                            VALUES (?, ?, 1, 'verified');
+                        END
+                    """, p_id, researcher_id, p_id, researcher_id)
+
+                    if db_group_id:
+                        cur.execute("""
+                            IF NOT EXISTS (SELECT 1 FROM GroupProductLink WHERE group_id = ? AND product_id = ?)
+                            BEGIN
+                                INSERT INTO GroupProductLink (group_id, product_id, status, source, validation_reason, requested_at)
+                                VALUES (?, ?, 'pending_validation', 'cvlac_public', 'Libro desde CvLAC', GETDATE());
+                            END
+                        """, db_group_id, p_id, db_group_id, p_id)
+
+            # 7. Insertar Software (si existe tipología SF)
+            if "SF" in subtype_by_code:
+                for sw in cv.software:
+                    total_records += 1
+                    fam_id, subtype_id = subtype_by_code["SF"]
+                    p_code = GruplacNormalizer.product_external_code(sw.title, sw.year)
+                    clean_title = sw.title[:500]
+                    evidence = "Avalado y validado para la Convocatoria Nacional Minciencias (marca ✓ en CvLAC)" if sw.is_endorsed else None
+                    p_id = _find_or_insert_product(p_code, sw.title, sw.year, None, subtype_id, fam_id, evidence=evidence)
+                    _enqueue_validation(p_id)
+
+                    cur.execute("""
+                        IF NOT EXISTS (SELECT 1 FROM ProductAuthor WHERE product_id = ? AND researcher_id = ?)
+                        BEGIN
+                            INSERT INTO ProductAuthor (product_id, researcher_id, author_order, match_status)
+                            VALUES (?, ?, 1, 'verified');
+                        END
+                    """, p_id, researcher_id, p_id, researcher_id)
+
+                    if db_group_id:
+                        cur.execute("""
+                            IF NOT EXISTS (SELECT 1 FROM GroupProductLink WHERE group_id = ? AND product_id = ?)
+                            BEGIN
+                                INSERT INTO GroupProductLink (group_id, product_id, status, source, validation_reason, requested_at)
+                                VALUES (?, ?, 'pending_validation', 'cvlac_public', 'Software desde CvLAC', GETDATE());
+                            END
+                        """, db_group_id, p_id, db_group_id, p_id)
+
+            # 8. Insertar Eventos Científicos (Ponencias y Pósters)
             for ev in cv.events:
                 total_records += 1
                 fam_id, subtype_id = subtype_by_code["EC"]
                 p_code = GruplacNormalizer.product_external_code(ev.product_title, ev.year)
                 clean_title = ev.product_title[:500]
-                p_id = _find_or_insert_product(p_code, ev.product_title, ev.year, None, subtype_id, fam_id)
+                evidence = "Avalado y validado para la Convocatoria Nacional Minciencias (marca ✓ en CvLAC)" if ev.is_endorsed else None
+                p_id = _find_or_insert_product(p_code, ev.product_title, ev.year, None, subtype_id, fam_id, evidence=evidence)
                 _enqueue_validation(p_id)
 
                 cur.execute("""
@@ -497,7 +814,7 @@ class CvCommitService:
                     VALUES (?, 'Product', ?, 'created', ?, 'Evento científico desde CvLAC', GETDATE());
                 """, job_id, p_code, clean_title[:200])
 
-            # 7. Insertar Proyectos
+            # 9. Insertar Proyectos
             for proj in cv.projects:
                 clean_p_title = proj.title[:250]
                 cur.execute("SELECT id FROM Project WHERE title = ?", clean_p_title)
@@ -506,79 +823,35 @@ class CvCommitService:
                     proj_id = proj_row[0]
                 else:
                     cur.execute("""
-                        INSERT INTO Project (title, project_type, start_date, end_date, summary, status, principal_investigator_id, created_at)
+                        INSERT INTO Project (title, summary, project_type, start_date, end_date, principal_investigator_id, status, created_at)
                         OUTPUT INSERTED.id
-                        VALUES (?, ?, ?, ?, ?, 'active', ?, GETDATE());
-                    """, clean_p_title, proj.project_type, str(proj.year), proj.end_date or None, proj.summary, researcher_id)
+                        VALUES (?, ?, ?, ?, ?, ?, 'active', GETDATE());
+                    """, clean_p_title, proj.summary[:2000] if proj.summary else None, proj.project_type, proj.start_date or None, proj.end_date or None, researcher_id)
                     proj_id = cur.fetchone()[0]
-
-                if db_group_id:
-                    cur.execute("""
-                        IF NOT EXISTS (SELECT 1 FROM GroupProject WHERE group_id = ? AND project_id = ?)
-                        BEGIN
-                            INSERT INTO GroupProject (group_id, project_id) VALUES (?, ?);
-                        END
-                    """, db_group_id, proj_id, db_group_id, proj_id)
-
-                cur.execute("""
-                    INSERT INTO ImportRecord (job_id, entity_type, external_identifier, action_taken, source_data_summary, resolution_details, created_at)
-                    VALUES (?, 'Project', ?, 'created', ?, 'Proyecto I+D desde CvLAC', GETDATE());
-                """, job_id, str(proj.year), clean_p_title[:200])
-
-            # 8. Finalizar ImportJob y confirmar transacción
-            summary = (
-                f"Ingesta CvLAC exitosa: Investigadora {cv.name} ({cv.external_code}). "
-                f"{len(cv.articles)} artículos, {len(cv.book_chapters)} capítulos, "
-                f"{len(cv.events)} eventos científicos, {len(cv.projects)} proyectos vinculados al grupo {cv.target_group_code}."
-            )
 
             cur.execute("""
                 UPDATE ImportJob
-                SET status = 'completed',
-                    total_records = ?,
-                    new_records = ?,
-                    error_count = 0,
-                    details = ?,
-                    completed_at = GETDATE()
+                SET status = 'completed', total_records = ?, new_records = ?, completed_at = GETDATE()
                 WHERE id = ?;
-            """, total_records, new_products, summary, job_id)
+            """, total_records, new_products, job_id)
 
             conn.commit()
-            logger.info(summary)
-
-            # Recargar memoria nativa C++
-            if reload_ram:
-                repository.load_from_db(db_conn_str)
+            logger.info(f"Ingesta CvLAC exitosa para: {cv.name}. Productos: {total_records} (Nuevos: {new_products})")
 
             return {
                 "status": "success",
                 "researcher_id": researcher_id,
                 "researcher_name": cv.name,
-                "external_code": cv.external_code,
-                "articles": len(cv.articles),
-                "book_chapters": len(cv.book_chapters),
-                "events": len(cv.events),
-                "projects": len(cv.projects),
-                "summary": summary
+                "total_records": total_records,
+                "new_products": new_products,
+                "job_id": job_id
             }
 
         except Exception as e:
-            logger.error(f"Error en compromiso transaccional CvLAC: {e}", exc_info=True)
-            if conn and job_id:
-                try:
-                    conn.rollback()
-                    conn.cursor().execute("""
-                        UPDATE ImportJob
-                        SET status = 'failed',
-                            error_count = 1,
-                            details = ?,
-                            completed_at = GETDATE()
-                        WHERE id = ?;
-                    """, str(e)[:2000], job_id)
-                    conn.commit()
-                except Exception as ex_inner:
-                    logger.error(f"No fue posible actualizar ImportJob fallido: {ex_inner}")
-            raise
+            if conn:
+                conn.rollback()
+            logger.error(f"Fallo transaccional en ingesta CvLAC: {e}")
+            raise e
         finally:
             if conn:
                 conn.close()
