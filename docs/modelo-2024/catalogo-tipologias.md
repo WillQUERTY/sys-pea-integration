@@ -36,8 +36,8 @@ Generado automáticamente desde `database/catalog_2024.json` con `database/rende
 | `ART_B` | Calidad B | A | 3 | - |
 | `ART_OPEN_C` | Calidad C - revista de acceso abierto | A | 2 | - |
 | `ART_C` | Calidad C | A | 1,5 | - |
-| `ART_OPEN_D` | Calidad D - revista de acceso abierto ⚠️ | B | 1 | 5 |
-| `ART_D` | Calidad D ⚠️ | B | 0,9 | - |
+| `ART_OPEN_D` | Calidad D - revista de acceso abierto | B | 10 | 5 |
+| `ART_D` | Calidad D | B | 9 | - |
 
 ### Notas científicas (`N`, 2.2.1.2)
 
@@ -56,7 +56,7 @@ Generado automáticamente desde `database/catalog_2024.json` con `database/rende
 | `LIB_A1` | Calidad A1 - primer cuartil de citaciones | TOP | 10 | 300 |
 | `LIB_A` | Calidad A - segundo cuartil | TOP | 9 | - |
 | `LIB_B` | Calidad B - tercer cuartil | A | 8 | - |
-| `LIB_C` | Calidad C - cuarto cuartil o sin citaciones ⚠️ | B | 1 | 15 |
+| `LIB_C` | Calidad C - cuarto cuartil o sin citaciones | B | 10 | 15 |
 
 ### Capítulos en libro resultado de investigación (`CAP_LIB`, 2.2.1.4)
 
@@ -65,7 +65,7 @@ Generado automáticamente desde `database/catalog_2024.json` con `database/rende
 | `CAP_LIB_A1` | Calidad A1 - primer cuartil de citaciones | TOP | 10 | 60 |
 | `CAP_LIB_A` | Calidad A - segundo cuartil | TOP | 9 | - |
 | `CAP_LIB_B` | Calidad B - tercer cuartil | A | 8 | - |
-| `CAP_LIB_C` | Calidad C - cuarto cuartil o sin citaciones ⚠️ | B | 1 | 3 |
+| `CAP_LIB_C` | Calidad C - cuarto cuartil o sin citaciones | B | 10 | 3 |
 
 ### Patente de invención (`PAT_INV`, 2.2.1.5)
 
@@ -556,14 +556,9 @@ Generado automáticamente desde `database/catalog_2024.json` con `database/rende
 |---|---|---|---|---|
 | `APO` | Iniciativa reconocida en la comunidad de pares del Programa Ondas | FRH-B | 10 | 30 |
 
-## ⚠️ Valores pendientes de verificación contra el PDF original
+## Pesos verificados contra el PDF oficial
 
-La conversión del PDF a markdown perdió comas decimales en algunas tablas. Estos valores se infirieron por consistencia de las series y **deben confirmarse contra el PDF oficial**:
-
-- `ART_OPEN_D` (Artículos de investigación): sembrado como **1**. La conversión del PDF muestra 10; se infiere 1,0 para mantener la serie decreciente (10/9,5/6/5,5/3,5/3/2/1,5/1,0). Verificar contra el PDF original.
-- `ART_D` (Artículos de investigación): sembrado como **0,9**. La conversión del PDF muestra 9; se infiere 0,9 por consistencia con la serie. Verificar contra el PDF original.
-- `LIB_C` (Libros resultados de investigación): sembrado como **1**. La conversión del PDF muestra 10; se infiere 1,0 (la serie 10/9/8/1,0 deja los pesos finales monótonos: 3000/2700/2400/300). Verificar contra el PDF original.
-- `CAP_LIB_C` (Capítulos en libro resultado de investigación): sembrado como **1**. La conversión del PDF muestra 10; se infiere 1,0 (consistencia con la serie y con LIB_C). Verificar contra el PDF original.
+Todos los pesos relativos (Anexo 1) están verificados contra la transcripción literal del PDF en `docs/catalogo_oficial_pesos_minciencias_2024.md` (páginas 131–169) y los pesos globales contra la Tabla 6. Nota: el PDF muestra `ART_OPEN_D`=10, `ART_D`=9, `LIB_C`=10 y `CAP_LIB_C`=10 **literalmente** (rompe la serie decreciente); se transcriben como fuente documental, sin normalizar.
 
 Para corregir un peso: editar `database/catalog_2024.json` y volver a correr `python database/seed_catalog_2024.py` (upsert idempotente) y este generador.
 

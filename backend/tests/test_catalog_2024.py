@@ -33,12 +33,12 @@ EXPECTED_TOTAL_CATEGORIES = sum(c for _, c in EXPECTED_FAMILY_COUNTS.values())  
 # Spot-checks de pesos (Anexo 1 + Tabla 6): código -> (weight, global_weight, clase)
 EXPECTED_WEIGHTS = {
     "ART_OPEN_A1": (10, 100, "TOP"),
-    "ART_D": (0.9, None, "B"),        # needs_review: verificado contra la serie
+    "ART_D": (9, None, "B"),          # literal del PDF (verificado, pág. 133)
     "SF": (8, 35, "B"),
     "LIB_A1": (10, 300, "TOP"),
-    "LIB_C": (1, 15, "B"),            # needs_review
+    "LIB_C": (10, 15, "B"),           # literal del PDF (verificado, pág. 138)
     "CAP_LIB_A1": (10, 60, "TOP"),
-    "CAP_LIB_C": (1, 3, "B"),        # needs_review
+    "CAP_LIB_C": (10, 3, "B"),        # literal del PDF (verificado, pág. 141)
     "PA1": (10, 500, "TOP"),          # patente de invención vía PCT
 }
 
@@ -140,18 +140,25 @@ class TestCatalogJson(unittest.TestCase):
                 f"{cat['code']}: peso global inválido",
             )
 
-    def test_needs_review_documentado(self):
-        """Los pesos inferidos deben quedar marcados para verificación contra el PDF."""
+    def test_sin_needs_review_pendientes(self):
+        """Todos los pesos ya fueron verificados contra el PDF oficial.
+
+        Los 4 valores inferidos en la conversión inicial (ART_OPEN_D, ART_D,
+        LIB_C, CAP_LIB_C) quedaron confirmados como literales del PDF en
+        docs/catalogo_oficial_pesos_minciencias_2024.md (páginas 131-169):
+        el documento oficial rompe la serie decreciente y se transcribe
+        literal. Si en el futuro aparece un needs_review nuevo, debe traer
+        nota que explique la inferencia.
+        """
         marcadas = [
-            c["code"] for _, _, c in flatten(self.doc)
+            c for _, _, c in flatten(self.doc)
             if c is not None and c.get("needs_review")
         ]
-        for code in ("ART_OPEN_D", "ART_D", "LIB_C", "CAP_LIB_C"):
-            self.assertIn(code, marcadas, f"{code} debe estar marcado needs_review")
         self.assertTrue(all(
-            "notes" in c for _, _, c in flatten(self.doc)
-            if c is not None and c.get("needs_review")
+            "notes" in c for c in marcadas
         ), "Toda categoría needs_review debe explicar la inferencia en notes")
+        self.assertEqual([c["code"] for c in marcadas], [],
+                         "No deben quedar pesos pendientes de verificación")
 
 
 @unittest.skipUnless(os.environ.get("PEAI_TEST_DB"), "Requiere SQL Server local: export PEAI_TEST_DB=1")

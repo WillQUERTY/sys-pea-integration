@@ -172,18 +172,31 @@ def main():
                     f"{fmt_w(cat['weight'])} | {fmt_w(cat.get('global_weight'))} |")
             add("")
 
-    add("## ⚠️ Valores pendientes de verificación contra el PDF original")
-    add("")
-    add("La conversión del PDF a markdown perdió comas decimales en algunas tablas. "
-        "Estos valores se infirieron por consistencia de las series y **deben "
-        "confirmarse contra el PDF oficial**:")
-    add("")
-    for fam in families:
-        for sub in fam["subtypes"]:
-            for cat in sub["categories"]:
-                if cat.get("needs_review"):
-                    add(f"- `{cat['code']}` ({sub['name']}): sembrado como "
-                        f"**{fmt_w(cat['weight'])}**. {cat['notes']}")
+    pendientes = [
+        (sub, cat)
+        for sub in (s for fam in families for s in fam["subtypes"])
+        for cat in sub["categories"]
+        if cat.get("needs_review")
+    ]
+    if pendientes:
+        add("## ⚠️ Valores pendientes de verificación contra el PDF original")
+        add("")
+        add("La conversión del PDF a markdown perdió comas decimales en algunas tablas. "
+            "Estos valores se infirieron por consistencia de las series y **deben "
+            "confirmarse contra el PDF oficial**:")
+        add("")
+        for sub, cat in pendientes:
+            add(f"- `{cat['code']}` ({sub['name']}): sembrado como "
+                f"**{fmt_w(cat['weight'])}**. {cat['notes']}")
+    else:
+        add("## Pesos verificados contra el PDF oficial")
+        add("")
+        add("Todos los pesos relativos (Anexo 1) están verificados contra la "
+            "transcripción literal del PDF en `docs/catalogo_oficial_pesos_minciencias_2024.md` "
+            "(páginas 131–169) y los pesos globales contra la Tabla 6. "
+            "Nota: el PDF muestra `ART_OPEN_D`=10, `ART_D`=9, `LIB_C`=10 y `CAP_LIB_C`=10 "
+            "**literalmente** (rompe la serie decreciente); se transcriben como fuente "
+            "documental, sin normalizar.")
     add("")
     add("Para corregir un peso: editar `database/catalog_2024.json` y volver a correr "
         "`python database/seed_catalog_2024.py` (upsert idempotente) y este generador.")

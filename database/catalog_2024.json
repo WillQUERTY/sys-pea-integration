@@ -32,8 +32,8 @@
             { "code": "ART_B", "label": "Calidad B", "measurement_class": "A", "weight": 3, "global_weight": null, "sort_order": 6 },
             { "code": "ART_OPEN_C", "label": "Calidad C - revista de acceso abierto", "measurement_class": "A", "weight": 2, "global_weight": null, "sort_order": 7 },
             { "code": "ART_C", "label": "Calidad C", "measurement_class": "A", "weight": 1.5, "global_weight": null, "sort_order": 8 },
-            { "code": "ART_OPEN_D", "label": "Calidad D - revista de acceso abierto", "measurement_class": "B", "weight": 1, "global_weight": 5, "sort_order": 9, "needs_review": true, "notes": "La conversión del PDF muestra 10; se infiere 1,0 para mantener la serie decreciente (10/9,5/6/5,5/3,5/3/2/1,5/1,0). Verificar contra el PDF original." },
-            { "code": "ART_D", "label": "Calidad D", "measurement_class": "B", "weight": 0.9, "global_weight": null, "sort_order": 10, "needs_review": true, "notes": "La conversión del PDF muestra 9; se infiere 0,9 por consistencia con la serie. Verificar contra el PDF original." }
+            { "code": "ART_OPEN_D", "label": "Calidad D - revista de acceso abierto", "measurement_class": "B", "weight": 10, "global_weight": 5, "sort_order": 9, "notes": "Valor literal del PDF (10), verificado en docs/catalogo_oficial_pesos_minciencias_2024.md (pág. 133). El documento oficial rompe la serie decreciente: se transcribe literal, no se normaliza." },
+            { "code": "ART_D", "label": "Calidad D", "measurement_class": "B", "weight": 9, "global_weight": null, "sort_order": 10, "notes": "Valor literal del PDF (9), verificado en docs/catalogo_oficial_pesos_minciencias_2024.md (pág. 133). El documento oficial rompe la serie decreciente: se transcribe literal, no se normaliza." }
           ]
         },
         {
@@ -58,7 +58,7 @@
             { "code": "LIB_A1", "label": "Calidad A1 - primer cuartil de citaciones", "measurement_class": "TOP", "weight": 10, "global_weight": 300, "sort_order": 1 },
             { "code": "LIB_A", "label": "Calidad A - segundo cuartil", "measurement_class": "TOP", "weight": 9, "global_weight": null, "sort_order": 2 },
             { "code": "LIB_B", "label": "Calidad B - tercer cuartil", "measurement_class": "A", "weight": 8, "global_weight": null, "sort_order": 3 },
-            { "code": "LIB_C", "label": "Calidad C - cuarto cuartil o sin citaciones", "measurement_class": "B", "weight": 1, "global_weight": 15, "sort_order": 4, "needs_review": true, "notes": "La conversión del PDF muestra 10; se infiere 1,0 (la serie 10/9/8/1,0 deja los pesos finales monótonos: 3000/2700/2400/300). Verificar contra el PDF original." }
+            { "code": "LIB_C", "label": "Calidad C - cuarto cuartil o sin citaciones", "measurement_class": "B", "weight": 10, "global_weight": 15, "sort_order": 4, "notes": "Valor literal del PDF (10), verificado en docs/catalogo_oficial_pesos_minciencias_2024.md (pág. 138). El documento oficial rompe la serie decreciente: se transcribe literal, no se normaliza." }
           ]
         },
         {
@@ -70,7 +70,7 @@
             { "code": "CAP_LIB_A1", "label": "Calidad A1 - primer cuartil de citaciones", "measurement_class": "TOP", "weight": 10, "global_weight": 60, "sort_order": 1 },
             { "code": "CAP_LIB_A", "label": "Calidad A - segundo cuartil", "measurement_class": "TOP", "weight": 9, "global_weight": null, "sort_order": 2 },
             { "code": "CAP_LIB_B", "label": "Calidad B - tercer cuartil", "measurement_class": "A", "weight": 8, "global_weight": null, "sort_order": 3 },
-            { "code": "CAP_LIB_C", "label": "Calidad C - cuarto cuartil o sin citaciones", "measurement_class": "B", "weight": 1, "global_weight": 3, "sort_order": 4, "needs_review": true, "notes": "La conversión del PDF muestra 10; se infiere 1,0 (consistencia con la serie y con LIB_C). Verificar contra el PDF original." }
+            { "code": "CAP_LIB_C", "label": "Calidad C - cuarto cuartil o sin citaciones", "measurement_class": "B", "weight": 10, "global_weight": 3, "sort_order": 4, "notes": "Valor literal del PDF (10), verificado en docs/catalogo_oficial_pesos_minciencias_2024.md (pág. 141). El documento oficial rompe la serie decreciente: se transcribe literal, no se normaliza." }
           ]
         },
         {
