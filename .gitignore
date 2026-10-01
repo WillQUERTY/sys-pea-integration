@@ -30,3 +30,6 @@ dist/
 
 # Build alterno C++
 build2/
+
+# Logs de uvicorn (workflow de smoke local)
+docs/_uvicorn*.log

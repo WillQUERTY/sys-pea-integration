@@ -7,32 +7,49 @@
 USE peai;
 GO
 
+-- Los indices filtrados de la seccion 5 exigen QUOTED_IDENTIFIER ON.
+-- sqlcmd lo trae OFF por defecto; pyodbc/ODBC lo ponen ON solos.
+SET QUOTED_IDENTIFIER ON;
+GO
+
 -- =====================================================================
 -- 1. Tablas de catalogos (Minciencias)
 -- =====================================================================
 
--- Familia de producto
+-- Familia de producto (modelo 2024: code GNC/DTI/ASC/DPC/FRH)
 IF NOT EXISTS (SELECT * FROM sysobjects WHERE name='ProductFamily' AND xtype='U')
 CREATE TABLE ProductFamily (
-    id   INT IDENTITY(1,1) PRIMARY KEY,
-    name NVARCHAR(200) NOT NULL UNIQUE
+    id         INT IDENTITY(1,1) PRIMARY KEY,
+    code       NVARCHAR(50)  NULL,
+    name       NVARCHAR(200) NOT NULL UNIQUE,
+    sort_order INT           NULL
 );
 GO
 
--- Subtipo de producto
+-- Subtipo de producto (tipologias 2024: ART/SF/EC/...)
 IF NOT EXISTS (SELECT * FROM sysobjects WHERE name='ProductSubtype' AND xtype='U')
 CREATE TABLE ProductSubtype (
-    id        INT IDENTITY(1,1) PRIMARY KEY,
-    family_id INT NOT NULL REFERENCES ProductFamily(id) ON DELETE CASCADE,
-    name      NVARCHAR(200) NOT NULL
+    id         INT IDENTITY(1,1) PRIMARY KEY,
+    family_id  INT NOT NULL REFERENCES ProductFamily(id) ON DELETE CASCADE,
+    code       NVARCHAR(50)  NULL,
+    name       NVARCHAR(200) NOT NULL,
+    model_ref  NVARCHAR(100) NULL,   -- numeral del documento 2024 (p.ej. 2.2.1.1)
+    sort_order INT           NULL
 );
 GO
 
--- Categoria de calidad de producto
+-- Categoria de calidad (categorias por tipologia, Anexo 1 del modelo 2024).
+-- name = etiqueta visible (SE REPITE entre tipologias: la unicidad es por code).
 IF NOT EXISTS (SELECT * FROM sysobjects WHERE name='QualityCategory' AND xtype='U')
 CREATE TABLE QualityCategory (
-    id   INT IDENTITY(1,1) PRIMARY KEY,
-    name NVARCHAR(100) NOT NULL UNIQUE
+    id                INT IDENTITY(1,1) PRIMARY KEY,
+    code              NVARCHAR(50)   NULL,
+    name              NVARCHAR(300)  NOT NULL,
+    subtype_id        INT            NULL REFERENCES ProductSubtype(id) ON DELETE CASCADE,
+    measurement_class NVARCHAR(50)   NULL,   -- TOP/A/B/ASC/DPC/FRH-A/FRH-B (par. 3.7)
+    weight            DECIMAL(10,2)  NULL,  -- peso relativo (Anexo 1)
+    global_weight     DECIMAL(10,2)  NULL,  -- peso global (Tabla 6, par. 3.6)
+    sort_order        INT            NULL
 );
 GO
 
@@ -260,124 +277,118 @@ CREATE TABLE ValidationQueueItem (
 GO
 
 -- =====================================================================
--- 5. Semillas iniciales de catalogos oficiales Minciencias
+-- 5. Catalogos Minciencias 2024: extension idempotente de columnas
 -- =====================================================================
+-- Los catalogos NO se siembran aqui. Fuente unica del catalogo 2024:
+--     database/catalog_2024.json  ->  database/seed_catalog_2024.py (upsert)
+-- Este bloque solo agrega a una BD existente las columnas nuevas (en una BD
+-- nueva, los CREATE TABLE de la seccion 1 ya las traen y todo esto es no-op).
 
--- Familias de productos
-IF NOT EXISTS (SELECT 1 FROM ProductFamily)
+-- ProductFamily: codigo corto + orden del modelo
+IF NOT EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID('ProductFamily') AND name = 'code')
 BEGIN
-    INSERT INTO ProductFamily (name) VALUES
-        (N'Productos de nuevo conocimiento'),
-        (N'Productos de desarrollo tecnologico e innovacion'),
-        (N'Productos de apropiacion social del conocimiento'),
-        (N'Productos de formacion de recurso humano'),
-        (N'Produccion en arte arquitectura y diseno');
+    ALTER TABLE ProductFamily ADD code NVARCHAR(50) NULL;
 END
 GO
 
--- Subtipos de productos
-IF NOT EXISTS (SELECT 1 FROM ProductSubtype)
+IF NOT EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID('ProductFamily') AND name = 'sort_order')
 BEGIN
-    DECLARE @f1 INT = (SELECT id FROM ProductFamily WHERE name LIKE N'%nuevo conocimiento%');
-    DECLARE @f2 INT = (SELECT id FROM ProductFamily WHERE name LIKE N'%desarrollo tecnologico%');
-    DECLARE @f3 INT = (SELECT id FROM ProductFamily WHERE name LIKE N'%apropiacion social%');
-    DECLARE @f4 INT = (SELECT id FROM ProductFamily WHERE name LIKE N'%formacion de recurso%');
-    DECLARE @f5 INT = (SELECT id FROM ProductFamily WHERE name LIKE N'%arte arquitectura%');
-
-    -- Subtipos familia 1 (nuevo conocimiento)
-    IF @f1 IS NOT NULL
-    BEGIN
-        INSERT INTO ProductSubtype (family_id, name) VALUES
-            (@f1, N'Articulos de investigacion'),
-            (@f1, N'Libros resultado de investigacion'),
-            (@f1, N'Capitulos de libro resultado de investigacion'),
-            (@f1, N'Variedades vegetales y nueva raza animal'),
-            (@f1, N'Documentos de trabajo'),
-            (@f1, N'Otros articulos publicados'),
-            (@f1, N'Demas trabajos'),
-            (@f1, N'Notas cientificas'),
-            (@f1, N'Libros de formacion'),
-            (@f1, N'Otros libros publicados'),
-            (@f1, N'Manuales y guias especializadas');
-    END
-
-    -- Subtipos familia 2 (desarrollo tecnologico e innovacion)
-    IF @f2 IS NOT NULL
-    BEGIN
-        INSERT INTO ProductSubtype (family_id, name) VALUES
-            (@f2, N'Patentes de invencion o modelo de utilidad'),
-            (@f2, N'Software con registro de soporte logico'),
-            (@f2, N'Prototipos industriales y plantas piloto'),
-            (@f2, N'Secretos empresariales e innovaciones'),
-            (@f2, N'Innovaciones en procesos y procedimientos'),
-            (@f2, N'Innovaciones generadas en la gestion empresarial'),
-            (@f2, N'Empresas de base tecnologica'),
-            (@f2, N'Otros productos tecnologicos'),
-            (@f2, N'Disenos industriales'),
-            (@f2, N'Esquemas de trazados de circuito integrado'),
-            (@f2, N'Productos nutraceuticos'),
-            (@f2, N'Regulaciones y normas'),
-            (@f2, N'Signos distintivos');
-    END
-
-    -- Subtipos familia 3 (apropiacion social)
-    IF @f3 IS NOT NULL
-    BEGIN
-        INSERT INTO ProductSubtype (family_id, name) VALUES
-            (@f3, N'Eventos cientificos con memorias'),
-            (@f3, N'Informes tecnicos finales de investigacion'),
-            (@f3, N'Estrategias de divulgacion y comunicacion publica'),
-            (@f3, N'Generacion de contenido virtual'),
-            (@f3, N'Producciones audiovisuales'),
-            (@f3, N'Generacion de recursos graficos'),
-            (@f3, N'Generacion de contenido de audio'),
-            (@f3, N'Generacion de contenido multimedia'),
-            (@f3, N'Generacion de contenido impreso'),
-            (@f3, N'Libros de divulgacion'),
-            (@f3, N'Estrategias pedagogicas para el fomento a la CTI'),
-            (@f3, N'Desarrollo web'),
-            (@f3, N'Otra publicacion divulgativa'),
-            (@f3, N'Ediciones'),
-            (@f3, N'Espacios de participacion ciudadana'),
-            (@f3, N'Consultorias cientifico-tecnologicas'),
-            (@f3, N'Procesos de apropiacion social'),
-            (@f3, N'Cartas mapas o similares'),
-            (@f3, N'Talleres de creacion'),
-            (@f3, N'Traducciones');
-    END
-
-    -- Subtipos familia 4 (formacion de recurso humano)
-    IF @f4 IS NOT NULL
-    BEGIN
-        INSERT INTO ProductSubtype (family_id, name) VALUES
-            (@f4, N'Tesis de doctorado dirigidas y aprobadas'),
-            (@f4, N'Trabajos de grado de maestria dirigidos'),
-            (@f4, N'Trabajos de grado de pregrado dirigidos'),
-            (@f4, N'Cursos de corta duracion dictados'),
-            (@f4, N'Cursos de formacion y extension'),
-            (@f4, N'Programas academicos de formacion'),
-            (@f4, N'Jurados y comisiones evaluadoras'),
-            (@f4, N'Comites de evaluacion'),
-            (@f4, N'Asesorias al Programa Ondas'),
-            (@f4, N'Monografias de conclusion de curso'),
-            (@f4, N'Trabajos dirigidos/tutorias de otro tipo');
-    END
-
-    -- Subtipos familia 5 (arte, arquitectura y diseno)
-    IF @f5 IS NOT NULL
-    BEGIN
-        INSERT INTO ProductSubtype (family_id, name) VALUES
-            (@f5, N'Produccion en arte arquitectura y diseno');
-    END
+    ALTER TABLE ProductFamily ADD sort_order INT NULL;
 END
 GO
 
--- Categorias de calidad
-IF NOT EXISTS (SELECT 1 FROM QualityCategory)
+-- ProductSubtype: codigo de tipologia 2024, numeral del documento y orden
+IF NOT EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID('ProductSubtype') AND name = 'code')
 BEGIN
-    INSERT INTO QualityCategory (name) VALUES
-        (N'A1'), (N'A'), (N'B'), (N'C'), (N'D'),
-        (N'Reconocido'), (N'No reconocido');
+    ALTER TABLE ProductSubtype ADD code NVARCHAR(50) NULL;
+END
+GO
+
+IF NOT EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID('ProductSubtype') AND name = 'model_ref')
+BEGIN
+    ALTER TABLE ProductSubtype ADD model_ref NVARCHAR(100) NULL;
+END
+GO
+
+IF NOT EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID('ProductSubtype') AND name = 'sort_order')
+BEGIN
+    ALTER TABLE ProductSubtype ADD sort_order INT NULL;
+END
+GO
+
+-- QualityCategory: categoria por tipologia (Anexo 1 del modelo 2024).
+-- code = clave (ART_A1, ...); name = etiqueta visible, que se repite entre
+-- tipologias ("Calidad A1" existe en varias), por eso la unicidad va en code.
+IF NOT EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID('QualityCategory') AND name = 'code')
+BEGIN
+    ALTER TABLE QualityCategory ADD code NVARCHAR(50) NULL;
+END
+GO
+
+IF NOT EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID('QualityCategory') AND name = 'subtype_id')
+BEGIN
+    ALTER TABLE QualityCategory ADD subtype_id INT NULL REFERENCES ProductSubtype(id) ON DELETE CASCADE;
+END
+GO
+
+IF NOT EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID('QualityCategory') AND name = 'measurement_class')
+BEGIN
+    ALTER TABLE QualityCategory ADD measurement_class NVARCHAR(50) NULL;
+END
+GO
+
+IF NOT EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID('QualityCategory') AND name = 'weight')
+BEGIN
+    ALTER TABLE QualityCategory ADD weight DECIMAL(10,2) NULL;
+END
+GO
+
+IF NOT EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID('QualityCategory') AND name = 'global_weight')
+BEGIN
+    ALTER TABLE QualityCategory ADD global_weight DECIMAL(10,2) NULL;
+END
+GO
+
+IF NOT EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID('QualityCategory') AND name = 'sort_order')
+BEGIN
+    ALTER TABLE QualityCategory ADD sort_order INT NULL;
+END
+GO
+
+-- Retirar el UNIQUE heredado sobre QualityCategory.name (las etiquetas 2024 se
+-- repiten entre tipologias) y ensanchar la columna para las etiquetas largas.
+-- (QUOTENAME se aplica en el SELECT: EXEC(...) solo concatena literales/variables)
+DECLARE @qc_uc NVARCHAR(200);
+SELECT @qc_uc = QUOTENAME(name) FROM sys.indexes WHERE object_id = OBJECT_ID('QualityCategory') AND is_unique_constraint = 1;
+IF @qc_uc IS NOT NULL
+BEGIN
+    EXEC('ALTER TABLE QualityCategory DROP CONSTRAINT ' + @qc_uc);
+END
+GO
+
+IF EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID('QualityCategory') AND name = 'name' AND max_length < 600)
+BEGIN
+    ALTER TABLE QualityCategory ALTER COLUMN name NVARCHAR(300) NOT NULL;
+END
+GO
+
+-- Unicidad real del catalogo 2024: el codigo (indice filtrado, tolera NULLs
+-- de filas legacy hasta el reset)
+IF NOT EXISTS (SELECT * FROM sys.indexes WHERE name = 'UQ_ProductFamily_code' AND object_id = OBJECT_ID('ProductFamily'))
+BEGIN
+    CREATE UNIQUE INDEX UQ_ProductFamily_code ON ProductFamily(code) WHERE code IS NOT NULL;
+END
+GO
+
+IF NOT EXISTS (SELECT * FROM sys.indexes WHERE name = 'UQ_ProductSubtype_code' AND object_id = OBJECT_ID('ProductSubtype'))
+BEGIN
+    CREATE UNIQUE INDEX UQ_ProductSubtype_code ON ProductSubtype(code) WHERE code IS NOT NULL;
+END
+GO
+
+IF NOT EXISTS (SELECT * FROM sys.indexes WHERE name = 'UQ_QualityCategory_code' AND object_id = OBJECT_ID('QualityCategory'))
+BEGIN
+    CREATE UNIQUE INDEX UQ_QualityCategory_code ON QualityCategory(code) WHERE code IS NOT NULL;
 END
 GO
 

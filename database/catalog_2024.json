@@ -1,0 +1,784 @@
+{
+  "version": "2024",
+  "source": {
+    "document": "Modelo de Medición de Grupos de Investigación, Desarrollo Tecnológico o de Innovación y de Reconocimiento de Investigadores del SNCTI, Año 2024",
+    "code": "M601PR04G01",
+    "document_version": "02",
+    "references": "Anexo 1 (secciones 4.1-4.5, pesos relativos), Tabla 6 (sección 3.6, pesos globales), sección 3.7 (clases de medición)",
+    "local_copy": "docs/converted (1).md"
+  },
+  "notes": [
+    "weight = peso relativo (Anexo 1). global_weight = peso global de la Tabla 6 cuando el documento la lista para ese código; null en caso contrario.",
+    "Peso individual final de un producto = peso global (Tabla 6, alta calidad del subtipo) x peso relativo de la categoría (fórmula de la sección 3.6).",
+    "Categorías con needs_review=true: la conversión del PDF perdió comas decimales; el valor sembrado es el inferido por consistencia de la serie y debe verificarse contra el PDF original."
+  ],
+  "families": [
+    {
+      "code": "GNC",
+      "name": "Generación de Nuevo Conocimiento",
+      "sort_order": 1,
+      "subtypes": [
+        {
+          "code": "ART",
+          "name": "Artículos de investigación",
+          "model_ref": "2.2.1.1",
+          "sort_order": 1,
+          "categories": [
+            { "code": "ART_OPEN_A1", "label": "Calidad A1 - revista de acceso abierto", "measurement_class": "TOP", "weight": 10, "global_weight": 100, "sort_order": 1 },
+            { "code": "ART_A1", "label": "Calidad A1", "measurement_class": "TOP", "weight": 9.5, "global_weight": null, "sort_order": 2 },
+            { "code": "ART_OPEN_A2", "label": "Calidad A2 - revista de acceso abierto", "measurement_class": "TOP", "weight": 6, "global_weight": null, "sort_order": 3 },
+            { "code": "ART_A2", "label": "Calidad A2", "measurement_class": "TOP", "weight": 5.5, "global_weight": null, "sort_order": 4 },
+            { "code": "ART_OPEN_B", "label": "Calidad B - revista de acceso abierto", "measurement_class": "A", "weight": 3.5, "global_weight": null, "sort_order": 5 },
+            { "code": "ART_B", "label": "Calidad B", "measurement_class": "A", "weight": 3, "global_weight": null, "sort_order": 6 },
+            { "code": "ART_OPEN_C", "label": "Calidad C - revista de acceso abierto", "measurement_class": "A", "weight": 2, "global_weight": null, "sort_order": 7 },
+            { "code": "ART_C", "label": "Calidad C", "measurement_class": "A", "weight": 1.5, "global_weight": null, "sort_order": 8 },
+            { "code": "ART_OPEN_D", "label": "Calidad D - revista de acceso abierto", "measurement_class": "B", "weight": 1, "global_weight": 5, "sort_order": 9, "needs_review": true, "notes": "La conversión del PDF muestra 10; se infiere 1,0 para mantener la serie decreciente (10/9,5/6/5,5/3,5/3/2/1,5/1,0). Verificar contra el PDF original." },
+            { "code": "ART_D", "label": "Calidad D", "measurement_class": "B", "weight": 0.9, "global_weight": null, "sort_order": 10, "needs_review": true, "notes": "La conversión del PDF muestra 9; se infiere 0,9 por consistencia con la serie. Verificar contra el PDF original." }
+          ]
+        },
+        {
+          "code": "N",
+          "name": "Notas científicas",
+          "model_ref": "2.2.1.2",
+          "sort_order": 2,
+          "categories": [
+            { "code": "N_A1", "label": "Calidad A1", "measurement_class": "B", "weight": 10, "global_weight": 4, "sort_order": 1 },
+            { "code": "N_A2", "label": "Calidad A2", "measurement_class": "B", "weight": 8.5, "global_weight": null, "sort_order": 2 },
+            { "code": "N_B", "label": "Calidad B", "measurement_class": "B", "weight": 7, "global_weight": null, "sort_order": 3 },
+            { "code": "N_C", "label": "Calidad C", "measurement_class": "B", "weight": 5.5, "global_weight": null, "sort_order": 4 },
+            { "code": "N_D", "label": "Calidad D", "measurement_class": "B", "weight": 2, "global_weight": null, "sort_order": 5 }
+          ]
+        },
+        {
+          "code": "LIB",
+          "name": "Libros resultados de investigación",
+          "model_ref": "2.2.1.3",
+          "sort_order": 3,
+          "categories": [
+            { "code": "LIB_A1", "label": "Calidad A1 - primer cuartil de citaciones", "measurement_class": "TOP", "weight": 10, "global_weight": 300, "sort_order": 1 },
+            { "code": "LIB_A", "label": "Calidad A - segundo cuartil", "measurement_class": "TOP", "weight": 9, "global_weight": null, "sort_order": 2 },
+            { "code": "LIB_B", "label": "Calidad B - tercer cuartil", "measurement_class": "A", "weight": 8, "global_weight": null, "sort_order": 3 },
+            { "code": "LIB_C", "label": "Calidad C - cuarto cuartil o sin citaciones", "measurement_class": "B", "weight": 1, "global_weight": 15, "sort_order": 4, "needs_review": true, "notes": "La conversión del PDF muestra 10; se infiere 1,0 (la serie 10/9/8/1,0 deja los pesos finales monótonos: 3000/2700/2400/300). Verificar contra el PDF original." }
+          ]
+        },
+        {
+          "code": "CAP_LIB",
+          "name": "Capítulos en libro resultado de investigación",
+          "model_ref": "2.2.1.4",
+          "sort_order": 4,
+          "categories": [
+            { "code": "CAP_LIB_A1", "label": "Calidad A1 - primer cuartil de citaciones", "measurement_class": "TOP", "weight": 10, "global_weight": 60, "sort_order": 1 },
+            { "code": "CAP_LIB_A", "label": "Calidad A - segundo cuartil", "measurement_class": "TOP", "weight": 9, "global_weight": null, "sort_order": 2 },
+            { "code": "CAP_LIB_B", "label": "Calidad B - tercer cuartil", "measurement_class": "A", "weight": 8, "global_weight": null, "sort_order": 3 },
+            { "code": "CAP_LIB_C", "label": "Calidad C - cuarto cuartil o sin citaciones", "measurement_class": "B", "weight": 1, "global_weight": 3, "sort_order": 4, "needs_review": true, "notes": "La conversión del PDF muestra 10; se infiere 1,0 (consistencia con la serie y con LIB_C). Verificar contra el PDF original." }
+          ]
+        },
+        {
+          "code": "PAT_INV",
+          "name": "Patente de invención",
+          "model_ref": "2.2.1.5",
+          "sort_order": 5,
+          "categories": [
+            { "code": "PA1", "label": "Obtenida vía PCT, con producto o contrato", "measurement_class": "TOP", "weight": 10, "global_weight": 500, "sort_order": 1 },
+            { "code": "PA2", "label": "Obtenida vía tradicional, con producto o contrato", "measurement_class": "TOP", "weight": 7, "global_weight": null, "sort_order": 2 },
+            { "code": "PA3", "label": "Obtenida vía PCT, sin producto y sin contrato", "measurement_class": "A", "weight": 6, "global_weight": null, "sort_order": 3 },
+            { "code": "PA4", "label": "Obtenida vía tradicional, sin producto y sin contrato", "measurement_class": "A", "weight": 5.5, "global_weight": null, "sort_order": 4 },
+            { "code": "PB1", "label": "Solicitada vía PCT, concepto favorable (búsqueda, preliminar y fondo), con contrato de explotación", "measurement_class": "B", "weight": 5, "global_weight": null, "sort_order": 5 },
+            { "code": "PB2", "label": "Solicitada vía PCT, concepto favorable parcial, con contrato o con examen de fondo favorable", "measurement_class": "B", "weight": 3.5, "global_weight": null, "sort_order": 6 },
+            { "code": "PB3", "label": "Solicitada vía tradicional, concepto favorable de fondo y con contrato", "measurement_class": "B", "weight": 3, "global_weight": null, "sort_order": 7 },
+            { "code": "PB4", "label": "Solicitada vía PCT, favorable en búsqueda y preliminar, sin contrato", "measurement_class": "B", "weight": 2.6, "global_weight": null, "sort_order": 8 },
+            { "code": "PB5", "label": "Solicitada vía tradicional, favorable de fondo, sin contrato", "measurement_class": "B", "weight": 2.5, "global_weight": null, "sort_order": 9 },
+            { "code": "PC", "label": "Solicitada, con contrato de explotación con empresa innovadora (DANE)", "measurement_class": "B", "weight": 1.8, "global_weight": null, "sort_order": 10 }
+          ]
+        },
+        {
+          "code": "MOD_UTIL",
+          "name": "Modelo de utilidad",
+          "model_ref": "2.2.1.5",
+          "sort_order": 6,
+          "categories": [
+            { "code": "MA1", "label": "Obtenido vía PCT, con producto o contrato", "measurement_class": "TOP", "weight": 6, "global_weight": 500, "sort_order": 1 },
+            { "code": "MA2", "label": "Obtenido vía tradicional, con producto o contrato", "measurement_class": "TOP", "weight": 4.2, "global_weight": null, "sort_order": 2 },
+            { "code": "MA3", "label": "Obtenido vía PCT, sin producto y sin contrato", "measurement_class": "A", "weight": 3.6, "global_weight": null, "sort_order": 3 },
+            { "code": "MA4", "label": "Obtenido vía tradicional, sin producto y sin contrato", "measurement_class": "A", "weight": 3.33, "global_weight": null, "sort_order": 4 },
+            { "code": "MB1", "label": "Solicitado vía PCT, concepto favorable (búsqueda, preliminar y fondo), con contrato", "measurement_class": "B", "weight": 3, "global_weight": null, "sort_order": 5 },
+            { "code": "MB2", "label": "Solicitado vía PCT, concepto favorable parcial, con contrato o examen de fondo favorable", "measurement_class": "B", "weight": 2.1, "global_weight": null, "sort_order": 6 },
+            { "code": "MB3", "label": "Solicitado vía tradicional, concepto favorable de fondo y con contrato", "measurement_class": "B", "weight": 1.8, "global_weight": null, "sort_order": 7 },
+            { "code": "MB4", "label": "Solicitado vía PCT, favorable en búsqueda y preliminar, sin contrato", "measurement_class": "B", "weight": 1.7, "global_weight": null, "sort_order": 8 },
+            { "code": "MB5", "label": "Solicitado vía tradicional, favorable de fondo, sin contrato", "measurement_class": "B", "weight": 1.5, "global_weight": null, "sort_order": 9 },
+            { "code": "MC", "label": "Solicitado, con contrato de explotación con empresa innovadora (DANE)", "measurement_class": "B", "weight": 1.1, "global_weight": null, "sort_order": 10 }
+          ]
+        },
+        {
+          "code": "VV",
+          "name": "Variedades vegetales",
+          "model_ref": "2.2.1.6.1",
+          "sort_order": 7,
+          "categories": [
+            { "code": "VV_A1", "label": "Ciclo largo obtenida, inscrita en registro nacional y con ventas (ICA)", "measurement_class": "TOP", "weight": 10, "global_weight": 300, "sort_order": 1 },
+            { "code": "VV_A2", "label": "Ciclo largo obtenida e inscrita en registro nacional", "measurement_class": "TOP", "weight": 8, "global_weight": null, "sort_order": 2 },
+            { "code": "VV_A3", "label": "Ciclo largo obtenida", "measurement_class": "A", "weight": 5, "global_weight": null, "sort_order": 3 },
+            { "code": "VV_A4", "label": "Ciclo largo en proceso de solicitud", "measurement_class": "A", "weight": 2.5, "global_weight": null, "sort_order": 4 },
+            { "code": "VV_B1", "label": "Ciclo corto obtenida, inscrita y con ventas (ICA)", "measurement_class": "B", "weight": 5, "global_weight": null, "sort_order": 5 },
+            { "code": "VV_B2", "label": "Ciclo corto obtenida e inscrita", "measurement_class": "B", "weight": 4, "global_weight": null, "sort_order": 6 },
+            { "code": "VV_B3", "label": "Ciclo corto obtenida", "measurement_class": "B", "weight": 2.5, "global_weight": null, "sort_order": 7 },
+            { "code": "VV_B4", "label": "Ciclo corto en proceso de solicitud", "measurement_class": "B", "weight": 1, "global_weight": null, "sort_order": 8 }
+          ]
+        },
+        {
+          "code": "NRA",
+          "name": "Nuevas razas animales",
+          "model_ref": "2.2.1.6.2",
+          "sort_order": 8,
+          "categories": [
+            { "code": "VA_A", "label": "Nueva raza obtenida (certificado de bioseguridad ICA)", "measurement_class": "TOP", "weight": 10, "global_weight": 300, "sort_order": 1 }
+          ]
+        },
+        {
+          "code": "PMR",
+          "name": "Poblaciones mejoradas de razas pecuarias",
+          "model_ref": "2.2.1.6.3",
+          "sort_order": 9,
+          "categories": [
+            { "code": "VA_B", "label": "Población mejorada con registro del Ministerio de Agricultura", "measurement_class": "TOP", "weight": 5, "global_weight": 300, "sort_order": 1 }
+          ]
+        },
+        {
+          "code": "AAD",
+          "name": "Productos resultados de la creación o investigación-creación (artes, arquitectura y diseño)",
+          "model_ref": "2.2.1.7",
+          "sort_order": 10,
+          "categories": [
+            { "code": "AAD_A1", "label": "Premio o distinción internacional, trayectoria del evento >10 años", "measurement_class": "TOP", "weight": 10, "global_weight": 100, "sort_order": 1 },
+            { "code": "AAD_A", "label": "Premio nacional (>8 años) o selección internacional (>8 años)", "measurement_class": "TOP", "weight": 8, "global_weight": null, "sort_order": 2 },
+            { "code": "AAD_B", "label": "Premio local (>6 años) o selección nacional (>6 años)", "measurement_class": "A", "weight": 6, "global_weight": null, "sort_order": 3 },
+            { "code": "AAD_C", "label": "Selección para presentación pública, impacto local", "measurement_class": "B", "weight": 4, "global_weight": null, "sort_order": 4 }
+          ]
+        }
+      ]
+    },
+    {
+      "code": "DTI",
+      "name": "Desarrollo Tecnológico e Innovación",
+      "sort_order": 2,
+      "subtypes": [
+        {
+          "code": "DI",
+          "name": "Diseños industriales",
+          "model_ref": "2.2.2.1.1",
+          "sort_order": 1,
+          "categories": [
+            { "code": "DI_A", "label": "Con contrato de fabricación, explotación o comercialización", "measurement_class": "A", "weight": 10, "global_weight": 35, "sort_order": 1 },
+            { "code": "DI_B", "label": "Sin contrato de fabricación, explotación o comercialización", "measurement_class": "B", "weight": 5, "global_weight": null, "sort_order": 2 }
+          ]
+        },
+        {
+          "code": "ECI",
+          "name": "Esquemas de circuito integrado",
+          "model_ref": "2.2.2.1.2",
+          "sort_order": 2,
+          "categories": [
+            { "code": "ECI", "label": "Con contrato de fabricación, explotación o comercialización", "measurement_class": "A", "weight": 4, "global_weight": 35, "sort_order": 1 }
+          ]
+        },
+        {
+          "code": "SF",
+          "name": "Softwares",
+          "model_ref": "2.2.2.1.3",
+          "sort_order": 3,
+          "categories": [
+            { "code": "SF", "label": "Registrado ante la DNDA, con certificación de la entidad productora", "measurement_class": "B", "weight": 8, "global_weight": 35, "sort_order": 1 }
+          ]
+        },
+        {
+          "code": "PP",
+          "name": "Plantas piloto",
+          "model_ref": "2.2.2.1.4",
+          "sort_order": 4,
+          "categories": [
+            { "code": "PP", "label": "Planta piloto registrada", "measurement_class": "A", "weight": 4, "global_weight": 35, "sort_order": 1 }
+          ]
+        },
+        {
+          "code": "PI",
+          "name": "Prototipos industriales",
+          "model_ref": "2.2.2.1.5",
+          "sort_order": 5,
+          "categories": [
+            { "code": "PI", "label": "Prototipo industrial registrado", "measurement_class": "A", "weight": 4, "global_weight": 35, "sort_order": 1 }
+          ]
+        },
+        {
+          "code": "SD",
+          "name": "Signos distintivos",
+          "model_ref": "2.2.2.1.6",
+          "sort_order": 6,
+          "categories": [
+            { "code": "SD", "label": "Registro ante la Superintendencia de Industria y Comercio", "measurement_class": "A", "weight": 4, "global_weight": 35, "sort_order": 1 }
+          ]
+        },
+        {
+          "code": "PN",
+          "name": "Productos nutracéuticos",
+          "model_ref": "2.2.2.1.7",
+          "sort_order": 7,
+          "categories": [
+            { "code": "PN", "label": "Con registro INVIMA", "measurement_class": "B", "weight": 6, "global_weight": 35, "sort_order": 1 }
+          ]
+        },
+        {
+          "code": "CC",
+          "name": "Colecciones científicas",
+          "model_ref": "2.2.2.1.8",
+          "sort_order": 8,
+          "categories": [
+            { "code": "CC", "label": "Colección con curaduría vigente certificada", "measurement_class": "B", "weight": 10, "global_weight": 35, "sort_order": 1 }
+          ]
+        },
+        {
+          "code": "NRC",
+          "name": "Nuevos registros científicos",
+          "model_ref": "2.2.2.1.9",
+          "sort_order": 9,
+          "categories": [
+            { "code": "NRC_A", "label": "Publicado en artículo científico A1, A2, B, C o D", "measurement_class": "B", "weight": 8, "global_weight": 35, "sort_order": 1 },
+            { "code": "NRC_B", "label": "Otros nuevos registros científicos certificados", "measurement_class": "B", "weight": 5, "global_weight": null, "sort_order": 2 }
+          ]
+        },
+        {
+          "code": "SE",
+          "name": "Secreto empresarial",
+          "model_ref": "2.2.2.2.1",
+          "sort_order": 10,
+          "categories": [
+            { "code": "SE", "label": "Con contrato de licenciamiento y medidas de confidencialidad", "measurement_class": "A", "weight": 5, "global_weight": 100, "sort_order": 1 }
+          ]
+        },
+        {
+          "code": "EBT",
+          "name": "Empresas de base tecnológica",
+          "model_ref": "2.2.2.2.2",
+          "sort_order": 11,
+          "categories": [
+            { "code": "EBT_A", "label": "Spin-off", "measurement_class": "A", "weight": 10, "global_weight": 100, "sort_order": 1 },
+            { "code": "EBT_B", "label": "Start-up", "measurement_class": "B", "weight": 8, "global_weight": null, "sort_order": 2 }
+          ]
+        },
+        {
+          "code": "ICC",
+          "name": "Empresas creativas y culturales",
+          "model_ref": "2.2.2.2.3",
+          "sort_order": 12,
+          "categories": [
+            { "code": "ICC_A", "label": "Con productos o servicios en el mercado", "measurement_class": "A", "weight": 10, "global_weight": 100, "sort_order": 1 },
+            { "code": "ICC_B", "label": "Sin productos o servicios en el mercado", "measurement_class": "B", "weight": 4, "global_weight": null, "sort_order": 2 }
+          ]
+        },
+        {
+          "code": "IG",
+          "name": "Innovaciones generadas en la gestión empresarial",
+          "model_ref": "2.2.2.2.5",
+          "sort_order": 13,
+          "categories": [
+            { "code": "IG_A1", "label": "Organizacional, en grandes empresas", "measurement_class": "A", "weight": 10, "global_weight": 100, "sort_order": 1 },
+            { "code": "IG_A2", "label": "Organizacional, en medianas y pequeñas empresas", "measurement_class": "A", "weight": 6, "global_weight": null, "sort_order": 2 },
+            { "code": "IG_B1", "label": "En comercialización, en grandes empresas", "measurement_class": "B", "weight": 5, "global_weight": null, "sort_order": 3 },
+            { "code": "IG_B2", "label": "En comercialización, en medianas y pequeñas empresas", "measurement_class": "B", "weight": 3, "global_weight": null, "sort_order": 4 }
+          ]
+        },
+        {
+          "code": "IPP",
+          "name": "Innovaciones en procedimientos (procesos) y servicios",
+          "model_ref": "2.2.2.2.6",
+          "sort_order": 14,
+          "categories": [
+            { "code": "IPP", "label": "Con certificado de implementación en empresa", "measurement_class": "B", "weight": 5, "global_weight": 100, "sort_order": 1 }
+          ]
+        },
+        {
+          "code": "RNL",
+          "name": "Regulaciones, normas, reglamentos o legislaciones",
+          "model_ref": "2.2.2.3",
+          "sort_order": 15,
+          "categories": [
+            { "code": "RNL_A", "label": "Implementación a nivel internacional", "measurement_class": "TOP", "weight": 10, "global_weight": 100, "sort_order": 1 },
+            { "code": "RNL_B", "label": "Implementación a nivel nacional", "measurement_class": "A", "weight": 8, "global_weight": null, "sort_order": 2 }
+          ]
+        },
+        {
+          "code": "RNR",
+          "name": "Normatividad del espectro radioeléctrico",
+          "model_ref": "2.2.2.3",
+          "sort_order": 16,
+          "categories": [
+            { "code": "RNR", "label": "Con certificación de la Agencia Nacional del Espectro", "measurement_class": "A", "weight": 8, "global_weight": null, "sort_order": 1 }
+          ]
+        },
+        {
+          "code": "RNT",
+          "name": "Normas técnicas",
+          "model_ref": "2.2.2.3",
+          "sort_order": 17,
+          "categories": [
+            { "code": "RNT", "label": "Norma técnica", "measurement_class": "B", "weight": 7, "global_weight": null, "sort_order": 1 }
+          ]
+        },
+        {
+          "code": "RNPC",
+          "name": "Guías de práctica clínica",
+          "model_ref": "2.2.2.3",
+          "sort_order": 18,
+          "categories": [
+            { "code": "RNPC", "label": "Guía de práctica clínica publicada (ISBN)", "measurement_class": "B", "weight": 7, "global_weight": 100, "sort_order": 1 }
+          ]
+        },
+        {
+          "code": "GMCF",
+          "name": "Guías de manejo clínico forense",
+          "model_ref": "2.2.2.3",
+          "sort_order": 19,
+          "categories": [
+            { "code": "GMCF", "label": "Guía de manejo clínico forense publicada", "measurement_class": "B", "weight": 7, "global_weight": 100, "sort_order": 1 }
+          ]
+        },
+        {
+          "code": "MADV",
+          "name": "Manuales y modelos de atención diferencial a víctimas",
+          "model_ref": "2.2.2.3",
+          "sort_order": 20,
+          "categories": [
+            { "code": "MADV", "label": "Manual o modelo publicado", "measurement_class": "B", "weight": 7, "global_weight": 100, "sort_order": 1 }
+          ]
+        },
+        {
+          "code": "PAU",
+          "name": "Protocolos de atención a usuarios/víctimas (pacientes)",
+          "model_ref": "2.2.2.3",
+          "sort_order": 21,
+          "categories": [
+            { "code": "PAU", "label": "Protocolo publicado", "measurement_class": "B", "weight": 7, "global_weight": 100, "sort_order": 1 }
+          ]
+        },
+        {
+          "code": "PVE",
+          "name": "Protocolos de vigilancia epidemiológica",
+          "model_ref": "2.2.2.3",
+          "sort_order": 22,
+          "categories": [
+            { "code": "PVE", "label": "Protocolo publicado", "measurement_class": "B", "weight": 7, "global_weight": 100, "sort_order": 1 }
+          ]
+        },
+        {
+          "code": "AL",
+          "name": "Acuerdos de ley",
+          "model_ref": "2.2.2.3",
+          "sort_order": 23,
+          "categories": [
+            { "code": "AL", "label": "Con certificación de la Secretaría del Senado", "measurement_class": "B", "weight": 8, "global_weight": 100, "sort_order": 1 }
+          ]
+        },
+        {
+          "code": "RNPL",
+          "name": "Proyectos de ley",
+          "model_ref": "2.2.2.3",
+          "sort_order": 24,
+          "categories": [
+            { "code": "RNPL", "label": "Con certificación de la Secretaría del Senado", "measurement_class": "B", "weight": 6, "global_weight": 100, "sort_order": 1 }
+          ]
+        },
+        {
+          "code": "CT",
+          "name": "Conceptos técnicos",
+          "model_ref": "2.2.2.4",
+          "sort_order": 25,
+          "categories": [
+            { "code": "CT", "label": "Concepto técnico emitido con oficio remisorio", "measurement_class": "B", "weight": 10, "global_weight": 15, "sort_order": 1 }
+          ]
+        },
+        {
+          "code": "MR",
+          "name": "Registros de acuerdos de licencia para explotación de obras de I+C en artes, arquitectura y diseño",
+          "model_ref": "2.2.2.5",
+          "sort_order": 26,
+          "categories": [
+            { "code": "MR", "label": "Obra licenciada con registro ante la DNDA", "measurement_class": "B", "weight": 10, "global_weight": 14, "sort_order": 1 }
+          ]
+        }
+      ]
+    },
+    {
+      "code": "ASC",
+      "name": "Apropiación Social del Conocimiento",
+      "sort_order": 3,
+      "subtypes": [
+        {
+          "code": "FIS",
+          "name": "Procesos de apropiación social del conocimiento para el fortalecimiento o solución de asuntos de interés social",
+          "model_ref": "2.2.3.3.1.1",
+          "sort_order": 1,
+          "categories": [
+            { "code": "FIS", "label": "Proceso con certificación de la comunidad u organización que avala", "measurement_class": "ASC", "weight": 10, "global_weight": 200, "sort_order": 1 }
+          ]
+        },
+        {
+          "code": "GPP",
+          "name": "Procesos de apropiación social del conocimiento para la generación de insumos de política pública y normatividad",
+          "model_ref": "2.2.3.3.1.2",
+          "sort_order": 2,
+          "categories": [
+            { "code": "GPP_A", "label": "Documento o acto normativo con aplicación nacional", "measurement_class": "ASC", "weight": 10, "global_weight": 200, "sort_order": 1 },
+            { "code": "GPP_B", "label": "Aplicación regional o sectorial", "measurement_class": "ASC", "weight": 7, "global_weight": null, "sort_order": 2 },
+            { "code": "GPP_C", "label": "Aplicación local", "measurement_class": "ASC", "weight": 5, "global_weight": null, "sort_order": 3 }
+          ]
+        },
+        {
+          "code": "FCP",
+          "name": "Procesos de apropiación social del conocimiento para el fortalecimiento de cadenas productivas",
+          "model_ref": "2.2.3.3.1.3",
+          "sort_order": 3,
+          "categories": [
+            { "code": "FCP_A", "label": "Con pequeños productores, cooperativas y asociaciones campesinas", "measurement_class": "ASC", "weight": 10, "global_weight": 200, "sort_order": 1 },
+            { "code": "FCP_B", "label": "Con pymes y pequeñas empresas", "measurement_class": "ASC", "weight": 5, "global_weight": null, "sort_order": 2 },
+            { "code": "FCP_C", "label": "Con empresas del sector productivo", "measurement_class": "ASC", "weight": 3, "global_weight": null, "sort_order": 3 }
+          ]
+        },
+        {
+          "code": "TCCG",
+          "name": "Procesos de apropiación social del conocimiento resultado del trabajo conjunto entre un Centro de Ciencia y un grupo de investigación",
+          "model_ref": "2.2.3.3.1.4",
+          "sort_order": 4,
+          "categories": [
+            { "code": "TCCG_A", "label": "Centro de Ciencia reconocido por 5 años", "measurement_class": "ASC", "weight": 10, "global_weight": 200, "sort_order": 1 },
+            { "code": "TCCG_B", "label": "Centro de Ciencia reconocido por 3 años", "measurement_class": "ASC", "weight": 7, "global_weight": null, "sort_order": 2 },
+            { "code": "TCCG_C", "label": "Centro de Ciencia reconocido por 1 año", "measurement_class": "ASC", "weight": 4, "global_weight": null, "sort_order": 3 },
+            { "code": "TCCG_D", "label": "Centro de Ciencia caracterizado por Minciencias", "measurement_class": "ASC", "weight": 1, "global_weight": null, "sort_order": 4 }
+          ]
+        }
+      ]
+    },
+    {
+      "code": "DPC",
+      "name": "Divulgación Pública de la Ciencia",
+      "sort_order": 4,
+      "subtypes": [
+        {
+          "code": "EC",
+          "name": "Eventos científicos con componente de apropiación",
+          "model_ref": "2.2.3.4.1.1",
+          "sort_order": 1,
+          "categories": [
+            { "code": "EC_A", "label": "Presentación de ponencia, póster o capítulo en memorias", "measurement_class": "DPC", "weight": 10, "global_weight": 100, "sort_order": 1 },
+            { "code": "EC_B", "label": "Organización del evento", "measurement_class": "DPC", "weight": 6, "global_weight": null, "sort_order": 2 }
+          ]
+        },
+        {
+          "code": "RC",
+          "name": "Participaciones en redes de conocimiento",
+          "model_ref": "2.2.3.4.1.2",
+          "sort_order": 2,
+          "categories": [
+            { "code": "RC_A", "label": "El grupo creó y lidera la red", "measurement_class": "DPC", "weight": 10, "global_weight": 100, "sort_order": 1 },
+            { "code": "RC_B", "label": "El grupo participa en la red", "measurement_class": "DPC", "weight": 6, "global_weight": null, "sort_order": 2 }
+          ]
+        },
+        {
+          "code": "TC",
+          "name": "Talleres de creación",
+          "model_ref": "2.2.3.4.1.3",
+          "sort_order": 3,
+          "categories": [
+            { "code": "TC_A", "label": "Evento internacional con selección y verificación de resultados", "measurement_class": "DPC", "weight": 10, "global_weight": 100, "sort_order": 1 },
+            { "code": "TC_B", "label": "Evento nacional con selección y verificación", "measurement_class": "DPC", "weight": 8, "global_weight": null, "sort_order": 2 },
+            { "code": "TC_C", "label": "Evento local con selección", "measurement_class": "DPC", "weight": 6, "global_weight": null, "sort_order": 3 }
+          ]
+        },
+        {
+          "code": "ECA",
+          "name": "Eventos artísticos, de arquitectura o de diseño con componentes de apropiación",
+          "model_ref": "2.2.3.4.1.4",
+          "sort_order": 4,
+          "categories": [
+            { "code": "ECA_A", "label": "Participante", "measurement_class": "DPC", "weight": 8, "global_weight": 100, "sort_order": 1 },
+            { "code": "ECA_B", "label": "Organizador", "measurement_class": "DPC", "weight": 6, "global_weight": null, "sort_order": 2 }
+          ]
+        },
+        {
+          "code": "WP",
+          "name": "Documentos de trabajo (working papers)",
+          "model_ref": "2.2.3.4.1.5",
+          "sort_order": 5,
+          "categories": [
+            { "code": "WP", "label": "Documento publicado (página web o DOI)", "measurement_class": "DPC", "weight": 10, "global_weight": 100, "sort_order": 1 }
+          ]
+        },
+        {
+          "code": "NSG",
+          "name": "Nuevas secuencias genéticas",
+          "model_ref": "2.2.3.4.1.6",
+          "sort_order": 6,
+          "categories": [
+            { "code": "NSG", "label": "Secuencia incluida en base de datos científica certificada", "measurement_class": "DPC", "weight": 10, "global_weight": 100, "sort_order": 1 }
+          ]
+        },
+        {
+          "code": "ERL",
+          "name": "Ediciones de revista o libro de divulgación científica",
+          "model_ref": "2.2.3.4.1.7",
+          "sort_order": 7,
+          "categories": [
+            { "code": "ERL", "label": "Edición de revista o libro de divulgación (ISSN/ISBN)", "measurement_class": "DPC", "weight": 6, "global_weight": 100, "sort_order": 1 }
+          ]
+        },
+        {
+          "code": "IFI",
+          "name": "Informes finales de investigación",
+          "model_ref": "2.2.3.4.1.8",
+          "sort_order": 8,
+          "categories": [
+            { "code": "IFI", "label": "Informe final de proyecto de investigación", "measurement_class": "DPC", "weight": 2, "global_weight": 100, "sort_order": 1 }
+          ]
+        },
+        {
+          "code": "INF",
+          "name": "Informes técnicos",
+          "model_ref": "2.2.3.4.1.9",
+          "sort_order": 9,
+          "categories": [
+            { "code": "INF", "label": "Informe usado por una entidad para la toma de decisiones", "measurement_class": "DPC", "weight": 5, "global_weight": 100, "sort_order": 1 }
+          ]
+        },
+        {
+          "code": "CON_CT",
+          "name": "Consultorías científico-tecnológicas",
+          "model_ref": "2.2.3.4.1.10",
+          "sort_order": 10,
+          "categories": [
+            { "code": "CON_CT", "label": "Consultoría con contrato y certificación de la entidad", "measurement_class": "DPC", "weight": 7.5, "global_weight": 100, "sort_order": 1 }
+          ]
+        },
+        {
+          "code": "CON_AAD",
+          "name": "Consultorías en arte, arquitectura y diseño",
+          "model_ref": "2.2.3.4.1.11",
+          "sort_order": 11,
+          "categories": [
+            { "code": "CON_AAD", "label": "Consultoría con contrato y certificación de la IES", "measurement_class": "DPC", "weight": 7.5, "global_weight": 100, "sort_order": 1 }
+          ]
+        },
+        {
+          "code": "PEE",
+          "name": "Publicaciones editoriales no especializadas",
+          "model_ref": "2.2.3.4.2.1.1",
+          "sort_order": 12,
+          "categories": [
+            { "code": "PEE_A1", "label": "Circulación nacional, con enfoque diferencial", "measurement_class": "DPC", "weight": 10, "global_weight": 100, "sort_order": 1 },
+            { "code": "PEE_A2", "label": "Circulación nacional, sin enfoque diferencial", "measurement_class": "DPC", "weight": 8, "global_weight": null, "sort_order": 2 },
+            { "code": "PEE_B1", "label": "Circulación regional/departamental, con enfoque diferencial", "measurement_class": "DPC", "weight": 7, "global_weight": null, "sort_order": 3 },
+            { "code": "PEE_B2", "label": "Circulación regional/departamental, sin enfoque diferencial", "measurement_class": "DPC", "weight": 5, "global_weight": null, "sort_order": 4 },
+            { "code": "PEE_C1", "label": "Circulación ciudadana/comunitaria/local, con enfoque diferencial", "measurement_class": "DPC", "weight": 5, "global_weight": null, "sort_order": 5 },
+            { "code": "PEE_C2", "label": "Circulación ciudadana/comunitaria/local, sin enfoque diferencial", "measurement_class": "DPC", "weight": 3, "global_weight": null, "sort_order": 6 }
+          ]
+        },
+        {
+          "code": "PCD",
+          "name": "Producciones de contenido digital",
+          "model_ref": "2.2.3.4.2.1.2",
+          "sort_order": 13,
+          "categories": [
+            { "code": "PCD_A1", "label": "Circulación nacional, con enfoque diferencial", "measurement_class": "DPC", "weight": 10, "global_weight": 100, "sort_order": 1 },
+            { "code": "PCD_A2", "label": "Circulación nacional, sin enfoque diferencial", "measurement_class": "DPC", "weight": 8, "global_weight": null, "sort_order": 2 },
+            { "code": "PCD_B1", "label": "Circulación regional/departamental, con enfoque diferencial", "measurement_class": "DPC", "weight": 7, "global_weight": null, "sort_order": 3 },
+            { "code": "PCD_B2", "label": "Circulación regional/departamental, sin enfoque diferencial", "measurement_class": "DPC", "weight": 5, "global_weight": null, "sort_order": 4 },
+            { "code": "PCD_C1", "label": "Circulación ciudadana/comunitaria/local, con enfoque diferencial", "measurement_class": "DPC", "weight": 5, "global_weight": null, "sort_order": 5 },
+            { "code": "PCD_C2", "label": "Circulación ciudadana/comunitaria/local, sin enfoque diferencial", "measurement_class": "DPC", "weight": 3, "global_weight": null, "sort_order": 6 }
+          ]
+        },
+        {
+          "code": "TRM",
+          "name": "Producción de estrategias y contenidos transmedia",
+          "model_ref": "2.2.3.4.2.1.3",
+          "sort_order": 14,
+          "categories": [
+            { "code": "TRM_A1", "label": "Circulación nacional, con enfoque diferencial", "measurement_class": "DPC", "weight": 10, "global_weight": 100, "sort_order": 1 },
+            { "code": "TRM_A2", "label": "Circulación nacional, sin enfoque diferencial", "measurement_class": "DPC", "weight": 8, "global_weight": null, "sort_order": 2 },
+            { "code": "TRM_B1", "label": "Circulación regional/departamental, con enfoque diferencial", "measurement_class": "DPC", "weight": 7, "global_weight": null, "sort_order": 3 },
+            { "code": "TRM_B2", "label": "Circulación regional/departamental, sin enfoque diferencial", "measurement_class": "DPC", "weight": 5, "global_weight": null, "sort_order": 4 },
+            { "code": "TRM_C1", "label": "Circulación ciudadana/comunitaria/local, con enfoque diferencial", "measurement_class": "DPC", "weight": 5, "global_weight": null, "sort_order": 5 },
+            { "code": "TRM_C2", "label": "Circulación ciudadana/comunitaria/local, sin enfoque diferencial", "measurement_class": "DPC", "weight": 3, "global_weight": null, "sort_order": 6 }
+          ]
+        },
+        {
+          "code": "DW",
+          "name": "Desarrollos web",
+          "model_ref": "2.2.3.4.2.1.4",
+          "sort_order": 15,
+          "categories": [
+            { "code": "DW_A1", "label": "Circulación nacional, con enfoque diferencial", "measurement_class": "DPC", "weight": 10, "global_weight": 100, "sort_order": 1 },
+            { "code": "DW_A2", "label": "Circulación nacional, sin enfoque diferencial", "measurement_class": "DPC", "weight": 8, "global_weight": null, "sort_order": 2 },
+            { "code": "DW_B1", "label": "Circulación regional/departamental, con enfoque diferencial", "measurement_class": "DPC", "weight": 7, "global_weight": null, "sort_order": 3 },
+            { "code": "DW_B2", "label": "Circulación regional/departamental, sin enfoque diferencial", "measurement_class": "DPC", "weight": 5, "global_weight": null, "sort_order": 4 },
+            { "code": "DW_C1", "label": "Circulación ciudadana/comunitaria/local, con enfoque diferencial", "measurement_class": "DPC", "weight": 5, "global_weight": null, "sort_order": 5 },
+            { "code": "DW_C2", "label": "Circulación ciudadana/comunitaria/local, sin enfoque diferencial", "measurement_class": "DPC", "weight": 3, "global_weight": null, "sort_order": 6 }
+          ]
+        },
+        {
+          "code": "LIB_FOR",
+          "name": "Libros de formación",
+          "model_ref": "2.2.3.4.3.1",
+          "sort_order": 16,
+          "notes": "La categoría Q1 (LIB_FOR1) cuenta para la clase de medición B según la sección 3.7.3, aunque la tipología pertenece a DPC. Los pesos relativos de Q1 y Q2 aparecen ambos como 10 en la conversión: verificar contra el PDF original (con los pesos globales de la Tabla 6, 60 y 100, el peso final de Q2 quedaría por encima del de Q1).",
+          "categories": [
+            { "code": "LIB_FOR1", "label": "Primer cuartil de citaciones (Q1)", "measurement_class": "B", "weight": 10, "global_weight": 60, "sort_order": 1 },
+            { "code": "LIB_FOR2", "label": "Segundo cuartil de citaciones (Q2)", "measurement_class": "DPC", "weight": 10, "global_weight": 100, "sort_order": 2 },
+            { "code": "LIB_FOR3", "label": "Tercer cuartil de citaciones (Q3)", "measurement_class": "DPC", "weight": 8, "global_weight": null, "sort_order": 3 }
+          ]
+        },
+        {
+          "code": "BOL",
+          "name": "Boletines divulgativos de resultado de investigación",
+          "model_ref": "2.2.3.4.3.2",
+          "sort_order": 17,
+          "categories": [
+            { "code": "BOL", "label": "Boletín publicado por una institución", "measurement_class": "DPC", "weight": 3, "global_weight": 100, "sort_order": 1 }
+          ]
+        },
+        {
+          "code": "LIB_DIV",
+          "name": "Libros de divulgación de investigación y/o compilación de divulgación",
+          "model_ref": "2.2.3.4.3.3",
+          "sort_order": 18,
+          "categories": [
+            { "code": "LIB_DIV", "label": "Libro de divulgación validado por certificación institucional", "measurement_class": "DPC", "weight": 10, "global_weight": 100, "sort_order": 1 }
+          ]
+        },
+        {
+          "code": "GC",
+          "name": "Generación de contenidos (a partir de artículos, notas científicas o capítulos)",
+          "model_ref": "2.2.3.4.3",
+          "sort_order": 19,
+          "categories": [
+            { "code": "GC", "label": "Contenido generado a partir de productos 2.2.1.1, 2.2.1.2 o 2.2.1.4", "measurement_class": "DPC", "weight": 4, "global_weight": 100, "sort_order": 1 }
+          ]
+        },
+        {
+          "code": "MAN_GUI",
+          "name": "Manuales y guías especializadas",
+          "model_ref": "2.2.3.4.3.4",
+          "sort_order": 20,
+          "categories": [
+            { "code": "MAN_GUI", "label": "Manual o guía derivada de proyecto de investigación, validada institucionalmente", "measurement_class": "DPC", "weight": 2, "global_weight": 100, "sort_order": 1 }
+          ]
+        },
+        {
+          "code": "LIB_CRE",
+          "name": "Libros de creación (tipología piloto)",
+          "model_ref": "2.2.3.4.3.5",
+          "sort_order": 21,
+          "notes": "Tipología piloto en el modelo 2024: el Anexo 1 indica 'No aplica' para categoría y peso. Se registra sin categorías de calidad.",
+          "categories": [
+            { "code": "LIB_CRE", "label": "Libro resultado de creación (piloto - sin peso en la medición 2024)", "measurement_class": null, "weight": null, "global_weight": null, "sort_order": 1 }
+          ]
+        }
+      ]
+    },
+    {
+      "code": "FRH",
+      "name": "Formación de Recurso Humano para la CTeI",
+      "sort_order": 5,
+      "subtypes": [
+        {
+          "code": "TD",
+          "name": "Direcciones de tesis de doctorado",
+          "model_ref": "2.2.4.1",
+          "sort_order": 1,
+          "categories": [
+            { "code": "TD_A", "label": "Tesis con distinción (laureada, meritoria)", "measurement_class": "FRH-A", "weight": 10, "global_weight": 160, "sort_order": 1 },
+            { "code": "TD_B", "label": "Tesis aprobada", "measurement_class": "FRH-A", "weight": 5, "global_weight": null, "sort_order": 2 }
+          ]
+        },
+        {
+          "code": "TM",
+          "name": "Direcciones de trabajo de grado de maestría",
+          "model_ref": "2.2.4.2",
+          "sort_order": 2,
+          "categories": [
+            { "code": "TM_A", "label": "Trabajo de grado con distinción (laureado, meritorio)", "measurement_class": "FRH-B", "weight": 10, "global_weight": 70, "sort_order": 1 },
+            { "code": "TM_B", "label": "Trabajo de grado aprobado", "measurement_class": "FRH-B", "weight": 5, "global_weight": null, "sort_order": 2 }
+          ]
+        },
+        {
+          "code": "TP",
+          "name": "Direcciones de trabajo de pregrado",
+          "model_ref": "2.2.4.3",
+          "sort_order": 3,
+          "categories": [
+            { "code": "TP_A", "label": "Trabajo de grado con distinción", "measurement_class": "FRH-B", "weight": 10, "global_weight": 20, "sort_order": 1 },
+            { "code": "TP_B", "label": "Trabajo de grado aprobado", "measurement_class": "FRH-B", "weight": 5, "global_weight": null, "sort_order": 2 }
+          ]
+        },
+        {
+          "code": "PID",
+          "name": "Proyectos de investigación y desarrollo",
+          "model_ref": "2.2.4.4",
+          "sort_order": 4,
+          "categories": [
+            { "code": "PID_A", "label": "Financiación externa internacional", "measurement_class": "FRH-B", "weight": 10, "global_weight": 50, "sort_order": 1 },
+            { "code": "PID_B", "label": "Financiación externa nacional", "measurement_class": "FRH-B", "weight": 6, "global_weight": null, "sort_order": 2 },
+            { "code": "PID_C", "label": "Financiación interna de la(s) institución(es) que avala(n)", "measurement_class": "FRH-B", "weight": 2, "global_weight": null, "sort_order": 3 }
+          ]
+        },
+        {
+          "code": "PIC",
+          "name": "Proyectos de investigación-creación",
+          "model_ref": "2.2.4.4",
+          "sort_order": 5,
+          "categories": [
+            { "code": "PIC_A", "label": "Financiación externa internacional", "measurement_class": "FRH-B", "weight": 10, "global_weight": 50, "sort_order": 1 },
+            { "code": "PIC_B", "label": "Financiación externa nacional", "measurement_class": "FRH-B", "weight": 6, "global_weight": null, "sort_order": 2 },
+            { "code": "PIC_C", "label": "Financiación interna de la(s) institución(es) que avala(n)", "measurement_class": "FRH-B", "weight": 2, "global_weight": null, "sort_order": 3 }
+          ]
+        },
+        {
+          "code": "PF",
+          "name": "Proyectos de investigación, desarrollo e innovación (ID+I) con formación",
+          "model_ref": "2.2.4.4",
+          "sort_order": 6,
+          "categories": [
+            { "code": "PF_A", "label": "Proyecto ejecutado con investigadores en empresas", "measurement_class": "FRH-B", "weight": 10, "global_weight": 50, "sort_order": 1 },
+            { "code": "PF_B", "label": "Proyecto ejecutado con jóvenes investigadores en empresas", "measurement_class": "FRH-B", "weight": 8, "global_weight": null, "sort_order": 2 }
+          ]
+        },
+        {
+          "code": "PE",
+          "name": "Proyectos de extensión y de responsabilidad social en CTeI",
+          "model_ref": "2.2.4.5",
+          "sort_order": 7,
+          "categories": [
+            { "code": "PE", "label": "Proyecto de extensión financiado o solidario", "measurement_class": "FRH-B", "weight": 10, "global_weight": 100, "sort_order": 1 }
+          ]
+        },
+        {
+          "code": "AP",
+          "name": "Apoyos a la creación de programas y cursos de formación de investigadores",
+          "model_ref": "2.2.4.6",
+          "sort_order": 8,
+          "categories": [
+            { "code": "AP_A", "label": "Apoyo a la creación de programas de doctorado", "measurement_class": "FRH-A", "weight": 10, "global_weight": 100, "sort_order": 1 },
+            { "code": "AP_B", "label": "Apoyo a la creación de programas de maestría", "measurement_class": "FRH-B", "weight": 8, "global_weight": null, "sort_order": 2 },
+            { "code": "AP_C", "label": "Apoyo a la creación de cursos de programa de doctorado", "measurement_class": "FRH-A", "weight": 5, "global_weight": 100, "sort_order": 3 },
+            { "code": "AP_D", "label": "Apoyo a la creación de cursos de programa de maestría", "measurement_class": "FRH-B", "weight": 3, "global_weight": null, "sort_order": 4 }
+          ]
+        },
+        {
+          "code": "APO",
+          "name": "Acompañamientos y asesorías de línea temática del Programa Ondas",
+          "model_ref": "2.2.4.7",
+          "sort_order": 9,
+          "categories": [
+            { "code": "APO", "label": "Iniciativa reconocida en la comunidad de pares del Programa Ondas", "measurement_class": "FRH-B", "weight": 10, "global_weight": 30, "sort_order": 1 }
+          ]
+        }
+      ]
+    }
+  ]
+}
