@@ -69,7 +69,7 @@ class ScrapedProduct:
     title: str
     raw_text: str
     section: str
-    subtype_name: str  # Se resuelve a family_id/subtype_id desde BD en commit (Revision §20)
+    subtype_code: Optional[str]  # tipologia 2024 (ART/SF/...); None = sin clasificar (Revision §20)
     doi: Optional[str] = None
     issn: Optional[str] = None
     isbn: Optional[str] = None
@@ -98,6 +98,7 @@ class ScrapedGroupData:
     research_lines: List[str] = field(default_factory=list)
     work_plan_text: str = ""
     warnings: List[str] = field(default_factory=list)
+    skipped_sections: List[str] = field(default_factory=list)  # headers sin mapeo 2024 -> ImportJob.details
 
 
 # =====================================================================
@@ -250,6 +251,138 @@ class GruplacNormalizer:
             "raw_value": norm,
             "valid": True
         }
+
+
+# =====================================================================
+# 3.5. Mapeo de secciones GrupLAC -> tipologías del modelo 2024
+# =====================================================================
+# Constantes a nivel de módulo para que los tests (test_gruplac_scraper_2024)
+# verifiquen el invariante SECTION_MAP ⊆ catalog_2024.json.
+#
+# None = sección reconocida SIN equivalente 2024: se importa con subtipo
+# NULL (ImportRecord 'unclassified_subtype') para reclasificar manualmente.
+# Las secciones que ni siquiera están listadas van a skipped_sections ->
+# ImportJob.details. Los IDs se resuelven desde la BD en commit (Revisión
+# §20: sin números mágicos). El orden importa: patrones específicos antes
+# que los genéricos (p.ej. "otros articulos" antes que "articulos"; los
+# "contenido *" antes que "generacion de contenido").
+#
+# match_key normaliza tildes/puntuación, pero NO el mojibake de doble
+# encoding con el que Scienti sirve algunas páginas: "comités" llega como
+# "comitas" una vez normalizado (verificado contra docs/AITICE-PAGE.html,
+# preview Fase 6), y por eso existe el patrón "comitas" aparte de "comites".
+SECTION_MAP = [
+    # --- FRH: Formacion de recurso humano ---
+    ("trabajos dirigidos", "TD"),    # refinado por fila (TD/TM/TP)
+    ("tesis", "TD"),                 # refinado por fila (TD/TM/TP)
+    ("asesorias al programa ondas", "APO"),
+    # --- DPC: Divulgacion publica de la ciencia ---
+    ("contenido virtual", "PCD"),    # 2024 unifica los formatos digitales
+    ("audiovisual", "PCD"),
+    ("recursos graficos", "PCD"),
+    ("contenido de audio", "PCD"),
+    ("contenido multimedia", "PCD"),
+    ("contenido digital", "PCD"),    # "Producciones de contenido digital - Sonoro"
+    ("contenido impreso", "PEE"),
+    ("publicaciones editoriales no especializadas", "PEE"),  # nombre exacto del Anexo 1
+    ("generacion de contenido", "GC"),     # DESPUES de los contenidos especificos
+    ("libros de divulgacion", "LIB_DIV"),
+    ("libros de formacion", "LIB_FOR"),
+    ("manuales y guias", "MAN_GUI"),
+    ("desarrollo web", "DW"),
+    ("estrategias de comunicacion", "TRM"),
+    ("produccion de estrategias", "TRM"),
+    ("estrategias y contenidos", "TRM"),
+    ("ediciones", "ERL"),
+    ("informe final", "IFI"),
+    ("informes de investigacion", "IFI"),
+    ("informes tecnicos", "INF"),
+    ("consultorias", "CON_CT"),     # 2024 las ubica en DPC
+    ("secuencias geneticas", "NSG"),
+    ("boletines", "BOL"),
+    ("redes de conocimiento", "RC"),
+    ("talleres de creacion", "TC"),          # DPC en 2024
+    ("documentos de trabajo", "WP"),         # DPC en 2024
+    ("eventos artisticos", "ECA"),           # DPC en 2024 (trabajo artistico)
+    ("eventos", "EC"),
+    # --- GNC: Generacion de nuevo conocimiento ---
+    ("otros articulos", None),          # catch-all dudoso -> sin clasificar
+    ("articulos", "ART"),
+    ("notas cientificas", "N"),
+    ("otros libros", None),             # catch-all dudoso
+    ("libros publicados", "LIB"),
+    ("capitulos", "CAP_LIB"),
+    ("nuevas variedades", "VV"),
+    ("nuevas razas", "NRA"),
+    ("poblaciones mejoradas", "PMR"),
+    ("patente", "PAT_INV"),             # refinado por fila (MOD_UTIL)
+    ("obras o productos", "AAD"),       # arte ahora vive en GNC/DPC
+    ("produccion en arte", "AAD"),
+    # --- DTI: Desarrollo tecnologico e innovacion ---
+    ("software", "SF"),
+    ("prototipo", "PI"),
+    ("planta piloto", "PP"),
+    ("plantas piloto", "PP"),
+    ("disenos industriales", "DI"),
+    ("esquemas de trazados", "ECI"),
+    ("productos nutraceuticos", "PN"),
+    ("signos distintivos", "SD"),
+    ("colecciones cientificas", "CC"),
+    ("nuevos registros", "NRC"),
+    ("secreto empresarial", "SE"),
+    ("empresas de base tecnologica", "EBT"),
+    ("empresas creativas", "ICC"),
+    ("innovaciones en procesos", "IPP"),
+    ("innovaciones generadas", "IG"),
+    ("regulaciones y normas", "RNL"),
+    ("protocolos de vigilancia epidemiologica", "PVE"),  # tipologia exacta del Anexo 1
+    ("reglamentos tecnicos", "RNL"),   # los reglamentos amparan en RNL (2.2.2.3)
+    ("guias de practica clinica", "RNPC"),
+    ("proyectos de ley", "RNPL"),
+    ("conceptos tecnicos", "CT"),
+    # --- ASC: Apropiacion social del conocimiento ---
+    ("centro de ciencia", "TCCG"),     # trabajo conjunto con centros de ciencia (2.2.3.3.1.4)
+    # --- Secciones reconocidas SIN equivalente 2024 (importan NULL) ---
+    ("demas trabajos", None),
+    ("estrategias pedagogicas", None),        # sin equivalente como producto
+    ("otra publicacion divulgativa", None),
+    ("participacion ciudadana", None),        # no existe en Anexo 1 2024
+    ("proceso de apropiacion social", None),  # ambigua: FIS/GPP/FCP/TCCG
+    ("procesos de apropiacion social", None),
+    ("cartas mapas o similares", None),
+    ("traducciones", None),
+    ("otros productos tecnologicos", None),
+    ("curso de corta duracion", None),        # dictar cursos no es producto 2024
+    ("curso de doctorado", None),
+    ("curso de maestria", None),
+    ("curso especializado de extension", None),
+    ("otro programa academico", None),        # formacion del investigador
+    ("programa academico", None),
+    ("jurado", None),                         # actividad de evaluador
+    ("comites", None),
+    ("actividades como evaluador", None),     # actividad del evaluador, no producto 2024
+    ("comitas", None),   # mojibake de 'comites' en el HTML de Scienti (doble encoding)
+]
+
+# Tablas estructurales de la página (no productos): datos básicos,
+# instituciones, plan, líneas, integrantes y proyectos se procesan en los
+# bloques 1-6/7; los banners de las grandes secciones de GrupLAC no traen
+# filas de producto (verificado contra la página real de AITICE). Se
+# excluyen del registro de secciones sin mapeo para no ensuciar el resumen
+# del job.
+STRUCTURAL_HEADERS = (
+    "datos basicos",
+    "instituciones",
+    "plan estrat",
+    "lineas de investigacion",
+    "integrantes del grupo",
+    "proyectos",
+    "produccion bibliografica",
+    "produccion tecnica y tecnologica",
+    "produccion de formacion y extension",
+    "apropiacion social y divulgacion publica de la ciencia",
+    "actividades de formacion",
+)
 
 
 # =====================================================================
@@ -505,92 +638,32 @@ class GruplacHtmlParser:
         # 6. Extracción Estructural de Productos
         # -------------------------------------------------------------
         products: List[ScrapedProduct] = []
-
-        # Mapeo seccion GrupLAC -> nombre de subtipo del catalogo Minciencias.
-        # Los IDs se resuelven desde la BD en commit (Revision §20: sin numeros magicos).
-        # El orden importa: patrones especificos primero (p.ej. "otros articulos"
-        # antes que "articulos"). match_key normaliza tildes/puntuacion.
-        SECTION_MAP = [
-            # --- Formacion de recurso humano / actividades como evaluador ---
-            ("trabajos dirigidos", "Tesis de doctorado dirigidas y aprobadas"),  # refinado por fila
-            ("tesis", "Tesis de doctorado dirigidas y aprobadas"),
-            ("curso de corta duracion", "Cursos de corta duracion dictados"),
-            ("curso de doctorado", "Cursos de formacion y extension"),
-            ("curso de maestria", "Cursos de formacion y extension"),
-            ("curso especializado de extension", "Cursos de formacion y extension"),
-            ("otro programa academico", "Programas academicos de formacion"),
-            ("programa academico", "Programas academicos de formacion"),
-            ("jurado", "Jurados y comisiones evaluadoras"),
-            ("comites", "Comites de evaluacion"),
-            ("asesorias al programa ondas", "Asesorias al Programa Ondas"),
-            # --- Apropiacion social del conocimiento ---
-            ("contenido virtual", "Generacion de contenido virtual"),
-            ("audiovisual", "Producciones audiovisuales"),
-            ("recursos graficos", "Generacion de contenido multimedia"),
-            ("contenido de audio", "Generacion de contenido multimedia"),
-            ("contenido multimedia", "Generacion de contenido multimedia"),
-            ("contenido impreso", "Generacion de contenido impreso"),
-            ("libros de divulgacion", "Libros de divulgacion"),
-            ("estrategias pedagogicas", "Estrategias pedagogicas para el fomento a la CTI"),
-            ("estrategias de comunicacion", "Estrategias de divulgacion y comunicacion publica"),
-            ("produccion de estrategias", "Estrategias de divulgacion y comunicacion publica"),
-            ("estrategias y contenidos", "Estrategias de divulgacion y comunicacion publica"),
-            ("desarrollo web", "Desarrollo web"),
-            ("otra publicacion divulgativa", "Otra publicacion divulgativa"),
-            ("ediciones", "Ediciones"),
-            ("participacion ciudadana", "Espacios de participacion ciudadana"),
-            ("consultorias", "Consultorias cientifico-tecnologicas"),
-            ("proceso de apropiacion social", "Procesos de apropiacion social"),
-            ("procesos de apropiacion social", "Procesos de apropiacion social"),
-            ("informes de investigacion", "Informes tecnicos finales de investigacion"),
-            ("informes tecnicos", "Informes tecnicos finales de investigacion"),
-            ("cartas mapas o similares", "Cartas mapas o similares"),
-            ("talleres de creacion", "Talleres de creacion"),
-            ("traducciones", "Traducciones"),
-            # --- Nuevo conocimiento ---
-            ("otros articulos", "Otros articulos publicados"),
-            ("articulos", "Articulos de investigacion"),
-            ("documentos de trabajo", "Documentos de trabajo"),
-            ("demas trabajos", "Demas trabajos"),
-            ("notas cientificas", "Notas cientificas"),
-            ("libros de formacion", "Libros de formacion"),
-            ("otros libros", "Otros libros publicados"),
-            ("libros publicados", "Libros resultado de investigacion"),
-            ("capitulos", "Capitulos de libro resultado de investigacion"),
-            ("manuales y guias", "Manuales y guias especializadas"),
-            ("nuevas variedades", "Variedades vegetales y nueva raza animal"),
-            # --- Desarrollo tecnologico e innovacion ---
-            ("software", "Software con registro de soporte logico"),
-            ("prototipo", "Prototipos industriales y plantas piloto"),
-            ("innovaciones en procesos", "Innovaciones en procesos y procedimientos"),
-            ("innovaciones generadas", "Innovaciones generadas en la gestion empresarial"),
-            ("empresas de base tecnologica", "Empresas de base tecnologica"),
-            ("otros productos tecnologicos", "Otros productos tecnologicos"),
-            ("disenos industriales", "Disenos industriales"),
-            ("esquemas de trazados", "Esquemas de trazados de circuito integrado"),
-            ("productos nutraceuticos", "Productos nutraceuticos"),
-            ("regulaciones y normas", "Regulaciones y normas"),
-            ("signos distintivos", "Signos distintivos"),
-            ("eventos artisticos", "Produccion en arte arquitectura y diseno"),
-            ("produccion en arte", "Produccion en arte arquitectura y diseno"),
-            ("obras o productos", "Produccion en arte arquitectura y diseno"),
-            ("eventos", "Eventos cientificos con memorias"),
-        ]
+        skipped_sections: List[str] = []
+        # Mapeo de secciones y exclusiones estructurales: ver SECTION_MAP /
+        # STRUCTURAL_HEADERS a nivel de módulo (sección 3.5), definidos ahí
+        # para que los tests validen el invariante SECTION_MAP ⊆ catálogo.
 
         for table in tables:
             rows = table.find_all("tr")
             if not rows: continue
             header = GruplacNormalizer.match_key(rows[0].get_text(strip=True))
 
-            subtype_name = None
+            subtype_code: Optional[str] = None
             section_label = ""
-            for pattern, sub_name in SECTION_MAP:
+            section_matched = False
+            for pattern, code in SECTION_MAP:
                 if pattern in header:
-                    subtype_name = sub_name
+                    subtype_code = code
                     section_label = pattern
+                    section_matched = True
                     break
 
-            if subtype_name is None:
+            if not section_matched:
+                # Seccion sin ningun patron conocido: registrarla para el
+                # resumen del job (ImportJob.details) en vez de omitirla muda.
+                if not any(s in header for s in STRUCTURAL_HEADERS) \
+                        and header not in skipped_sections:
+                    skipped_sections.append(header)
                 continue
 
             for row in rows[2:]:
@@ -673,15 +746,24 @@ class GruplacHtmlParser:
                     tipo_idx = 1 if re.match(r"^\d+\.-\s*$", lines[0]) and len(lines) > 1 else 0
                     t = GruplacNormalizer.match_key(lines[tipo_idx])
                     if "doctorado" in t:
-                        subtype_name = "Tesis de doctorado dirigidas y aprobadas"
+                        subtype_code = "TD"
                     elif "maestr" in t:
-                        subtype_name = "Trabajos de grado de maestria dirigidos"
+                        subtype_code = "TM"
                     elif "pregrado" in t:
-                        subtype_name = "Trabajos de grado de pregrado dirigidos"
-                    elif "monograf" in t:
-                        subtype_name = "Monografias de conclusion de curso"
+                        subtype_code = "TP"
                     else:
-                        subtype_name = "Trabajos dirigidos/tutorias de otro tipo"
+                        # Monografias y "otro tipo" no son tipologia 2024.
+                        subtype_code = None
+
+                # Refinamiento por fila: las patentes de modelo de utilidad son
+                # tipologia propia en 2024 (MOD_UTIL); el resto de la seccion
+                # es PAT_INV. La asignacion es exhaustiva: sin el 'else' la
+                # fila heredaba el codigo de la fila anterior (una seccion con
+                # un modelo de utilidad al inicio marcaba TODAS como MOD_UTIL).
+                if section_label == "patente":
+                    subtype_code = "MOD_UTIL" \
+                        if "modelo de utilidad" in GruplacNormalizer.match_key(full_text) \
+                        else "PAT_INV"
 
                 # Extracción estructurada de DOI, ISSN, ISBN
                 doi = cls.extract_labeled_value(lines, "DOI")
@@ -711,7 +793,7 @@ class GruplacHtmlParser:
                     title=title,
                     raw_text=full_text,
                     section=section_label,
-                    subtype_name=subtype_name,
+                    subtype_code=subtype_code,
                     doi=doi or None,
                     issn=issn or None,
                     isbn=isbn or None,
@@ -772,7 +854,8 @@ class GruplacHtmlParser:
             projects=projects,
             research_lines=research_lines,
             work_plan_text=plan_text,
-            warnings=warnings
+            warnings=warnings,
+            skipped_sections=skipped_sections
         )
 
 
@@ -792,6 +875,7 @@ class GruplacCommitService:
         extracted_products = len(data.products)
         matched_products = 0
         created_products = 0
+        unclassified_products = 0
         total_records = 0
         new_records = 0
         member_authors_count = 0
@@ -850,16 +934,13 @@ class GruplacCommitService:
                     WHERE id = ?;
                 """, data.group["name"], " | ".join(data.institutions), data.group.get("classification", ""), data.group.get("email", ""), data.group.get("website", ""), data.group.get("city", ""), data.group.get("department", ""), data.group.get("declared_creation_date", ""), data.group.get("knowledge_area", ""), db_group_id)
 
-            # 2.1 Resolver catalogos desde BD por nombre (Revision §20: sin IDs magicos)
-            cur.execute("SELECT s.id, s.family_id, s.name FROM ProductSubtype s")
+            # 2.1 Resolver catalogos desde BD por CODIGO 2024 (Revision §20:
+            # sin IDs magicos). El codigo es la clave del modelo 2024; los
+            # rows con code NULL son legado y no deben matchear jamas.
+            cur.execute("SELECT id, family_id, code FROM ProductSubtype WHERE code IS NOT NULL")
             subtype_lookup: Dict[str, Any] = {}
             for s_row in cur.fetchall():
-                s_key = " ".join(GruplacNormalizer.normalize(s_row[2]).lower().split())
-                subtype_lookup[s_key] = (s_row[1], s_row[0])  # (family_id, subtype_id)
-
-            cur.execute("SELECT id FROM QualityCategory WHERE name = N'No reconocido'")
-            qc_row = cur.fetchone()
-            default_quality_category_id = qc_row[0] if qc_row else None
+                subtype_lookup[s_row[2]] = (s_row[1], s_row[0])  # (family_id, subtype_id)
 
             # 3. Persistir Miembros y GroupMembership de forma idempotente
             members_by_key: Dict[str, int] = {}
@@ -925,16 +1006,21 @@ class GruplacCommitService:
                 prod_id = None
                 p_action = "matched"
 
-                # Resolver subtipo por nombre contra catalogo BD
-                sub_key = " ".join(GruplacNormalizer.normalize(p.subtype_name).lower().split())
-                resolved = subtype_lookup.get(sub_key)
+                # Resolver tipologia 2024 por codigo contra catalogo BD.
+                # p.subtype_code None = seccion reconocida sin equivalente 2024
+                # (o fila de refinamiento sin tipo): se importa sin clasificar
+                # para reclasificar manualmente en la cola.
+                resolved = subtype_lookup.get(p.subtype_code) if p.subtype_code else None
                 if resolved:
                     fam_id, sub_id = resolved
                 else:
                     fam_id, sub_id = None, None
-                    warn_msg = f"SUBTYPE_NOT_FOUND: '{p.subtype_name}' no existe en ProductSubtype; producto '{p.title[:80]}' queda sin clasificar."
-                    logger.warning(warn_msg)
-                    p.warnings.append(warn_msg)
+                    unclassified_products += 1
+                    if p.subtype_code:
+                        # Codigo conocido que no existe en BD: problema de catalogo.
+                        warn_msg = f"SUBTYPE_CODE_NOT_FOUND: '{p.subtype_code}' no existe en ProductSubtype; producto '{p.title[:80]}' queda sin clasificar."
+                        logger.warning(warn_msg)
+                        p.warnings.append(warn_msg)
 
                 cur.execute("SELECT id FROM Product WHERE external_code = ?", p.external_code)
                 p_row = cur.fetchone()
@@ -943,10 +1029,10 @@ class GruplacCommitService:
                     matched_products += 1
                 else:
                     cur.execute("""
-                        INSERT INTO Product (external_code, title, description, family_id, subtype_id, quality_category_id, obtained_date, publication_date, validation_status, doi, issn, isbn, year, status)
+                        INSERT INTO Product (external_code, title, description, family_id, subtype_id, obtained_date, publication_date, validation_status, doi, issn, isbn, year, status)
                         OUTPUT INSERTED.id
-                        VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'pending', ?, ?, ?, ?, 'active');
-                    """, p.external_code, GruplacNormalizer.normalize(p.title)[:490], GruplacNormalizer.normalize(p.raw_text)[:2000], fam_id, sub_id, default_quality_category_id, str(p.year) if p.year else "", str(p.year) if p.year else "", p.doi, p.issn, p.isbn, p.year)
+                        VALUES (?, ?, ?, ?, ?, ?, ?, 'pending', ?, ?, ?, ?, 'active');
+                    """, p.external_code, GruplacNormalizer.normalize(p.title)[:490], GruplacNormalizer.normalize(p.raw_text)[:2000], fam_id, sub_id, str(p.year) if p.year else "", str(p.year) if p.year else "", p.doi, p.issn, p.isbn, p.year)
                     prod_id = cur.fetchone()[0]
                     new_records += 1
                     created_products += 1
@@ -971,10 +1057,13 @@ class GruplacCommitService:
                 """, db_group_id, prod_id, db_group_id, prod_id)
 
                 if job_id:
+                    # 'unclassified_subtype' marca los productos que quedaron
+                    # sin tipologia 2024 y deben reclasificarse a mano.
+                    rec_action = p_action if sub_id else "unclassified_subtype"
                     cur.execute("""
                         INSERT INTO ImportRecord (job_id, entity_type, external_identifier, action_taken, source_data_summary, resolution_details, created_at)
                         VALUES (?, 'Product', ?, ?, ?, ?, GETDATE());
-                    """, job_id, p.external_code, p_action, p.title[:200], f"Subtipo: {p.subtype_name} (id={sub_id}) | Año: {p.year} | DOI: {p.doi or 'N/A'}")
+                    """, job_id, p.external_code, rec_action, p.title[:200], f"Tipologia: {p.subtype_code or 'sin clasificar'} (id={sub_id}) | Ano: {p.year} | DOI: {p.doi or 'N/A'}")
 
                 # 5.1 Persistir Autores (ProductAuthor) sin crear Researchers fantasma
                 for a_idx, author in enumerate(p.authors, start=1):
@@ -1065,10 +1154,15 @@ class GruplacCommitService:
             # 8. Conciliación final y Auditoría
             reconciliation_summary = (
                 f"Conciliación: {extracted_products} productos extraídos "
-                f"({matched_products} encontrados en BD, {created_products} nuevos en pending). "
+                f"({matched_products} encontrados en BD, {created_products} nuevos en pending, "
+                f"{unclassified_products} sin tipología 2024 para reclasificar). "
                 f"{len(data.members)} miembros. {len(data.projects)} proyectos. "
                 f"{member_authors_count} autorías institucionales, {external_authors_count} coautores externos (sin investigadores ficticios)."
             )
+            if data.skipped_sections:
+                reconciliation_summary += (
+                    f" Secciones sin mapeo 2024: {', '.join(data.skipped_sections)}."
+                )
 
             if conn and job_id:
                 cur = conn.cursor()
@@ -1162,7 +1256,7 @@ def build_preview(scraped_data: ScrapedGroupData) -> Dict[str, Any]:
             {
                 "title": p.title,
                 "section": p.section,
-                "subtype_name": p.subtype_name,
+                "subtype_code": p.subtype_code,
                 "year": p.year,
                 "doi": p.doi,
                 "external_code": p.external_code,
@@ -1172,6 +1266,7 @@ def build_preview(scraped_data: ScrapedGroupData) -> Dict[str, Any]:
         "projects": [
             {"title": pr.title, "year": pr.year} for pr in scraped_data.projects
         ],
+        "skipped_sections": scraped_data.skipped_sections,
         "warnings": scraped_data.warnings,
         "counts": {
             "members": len(scraped_data.members),

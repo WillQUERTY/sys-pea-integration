@@ -10,6 +10,13 @@ CONN = ("Driver={ODBC Driver 17 for SQL Server};Server=localhost;"
 html = open(os.path.join(os.path.dirname(__file__), "..", "docs", "AITICE-PAGE.html"),
             encoding="utf-8", errors="replace").read()
 data = GruplacHtmlParser().parse(html, source_url="local:AITICE-PAGE.html")
+
+# El snapshot local de la pagina no incluye el codigo COL del grupo: el parser
+# caeria al placeholder COL0000000, que colisionaria con futuros reimports de
+# otros grupos. Codigo oficial de AITICE segun datos abiertos de Minciencias
+# (gruplac nro=2668, ver backend/tests/test_datos_abiertos_grupos.py).
+data.group["external_code"] = "COL0043834"
+
 print(f"Extraidos: {len(data.products)} productos, {len(data.members)} miembros, "
       f"{len(data.projects)} proyectos")
 

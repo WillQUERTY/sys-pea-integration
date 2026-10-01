@@ -12,16 +12,27 @@ class PagedResponse(BaseModel, Generic[T]):
 
 class ProductFamily(BaseModel):
     id: Optional[int] = None
+    code: Optional[str] = None          # modelo 2024: GNC/DTI/ASC/DPC/FRH
     name: str
+    sort_order: Optional[int] = None
 
 class ProductSubtype(BaseModel):
     id: Optional[int] = None
     family_id: int
+    code: Optional[str] = None          # tipologia 2024 (ART/SF/EC/...)
     name: str
+    model_ref: Optional[str] = None     # numeral del documento 2024 (p.ej. 2.2.1.1)
+    sort_order: Optional[int] = None
 
 class QualityCategory(BaseModel):
     id: Optional[int] = None
+    code: Optional[str] = None          # clave 2024 (ART_A1, ...); name es la etiqueta visible
     name: str
+    subtype_id: Optional[int] = None    # tipologia a la que aplica (NULL = legado)
+    measurement_class: Optional[str] = None  # TOP/A/B/ASC/DPC/FRH-A/FRH-B (par. 3.7)
+    weight: Optional[float] = None      # peso relativo (Anexo 1)
+    global_weight: Optional[float] = None   # peso global (Tabla 6, par. 3.6)
+    sort_order: Optional[int] = None
 
 class Group(BaseModel):
     id: Optional[int] = None

@@ -3,9 +3,11 @@ import os
 import json
 import logging
 import unicodedata
-# NOTA ARQUITECTONICA: este modulo NO usa pyodbc. Toda la persistencia SQL
-# vive en el nucleo C++ (abpoxx_pybind, db_persistence.cpp). La unica
-# excepcion documentada es la ingesta masiva del scraper.
+# NOTA ARQUITECTONICA: este modulo NO usa pyodbc para escritura. Toda la
+# persistencia SQL vive en el nucleo C++ (abpoxx_pybind, db_persistence.cpp).
+# Excepciones documentadas (read-only): la ingesta masiva del scraper y el
+# enriquecimiento del catalogo 2024 en get_product_catalogs (columnas code/
+# subtype_id/measurement_class/weight que el nucleo aun no conoce).
 
 # Ensure the native extension can be found
 sys.path.append(os.path.dirname(__file__))
@@ -845,11 +847,62 @@ def set_product_validation(
 
     return get_product(prod_id)
 
+def _get_product_catalogs_pyodbc(conn_str: str) -> dict:
+    """Catalogos con las columnas del modelo 2024 (lectura read-only).
+
+    Excepcion pyodbc documentada: el nucleo C++ no conoce code/subtype_id/
+    measurement_class/weight, y recompilarlo por un SELECT no compensa.
+    Devuelve lo mismo que el C++ + campos 2024, en el orden del modelo
+    (sort_order), no alfabetico.
+    """
+    import pyodbc  # import tardio: si falta el driver, el fallback C++ sigue vivo
+
+    cn = pyodbc.connect(conn_str, autocommit=True)
+    try:
+        cur = cn.cursor()
+        families = [
+            {"id": r.id, "code": r.code, "name": r.name, "sort_order": r.sort_order}
+            for r in cur.execute(
+                "SELECT id, code, name, sort_order FROM ProductFamily "
+                "ORDER BY ISNULL(sort_order, 9999), name").fetchall()
+        ]
+        subtypes = [
+            {"id": r.id, "family_id": r.family_id, "code": r.code, "name": r.name,
+             "model_ref": r.model_ref, "sort_order": r.sort_order}
+            for r in cur.execute(
+                "SELECT id, family_id, code, name, model_ref, sort_order "
+                "FROM ProductSubtype ORDER BY ISNULL(sort_order, 9999), name").fetchall()
+        ]
+        quality_categories = [
+            {"id": r.id, "code": r.code, "name": r.name, "subtype_id": r.subtype_id,
+             "measurement_class": r.measurement_class,
+             "weight": float(r.weight) if r.weight is not None else None,
+             "global_weight": float(r.global_weight) if r.global_weight is not None else None,
+             "sort_order": r.sort_order}
+            for r in cur.execute(
+                "SELECT id, code, name, subtype_id, measurement_class, weight, "
+                "global_weight, sort_order FROM QualityCategory "
+                "ORDER BY ISNULL(subtype_id, 0), ISNULL(sort_order, 9999), name").fetchall()
+        ]
+        return {"families": families, "subtypes": subtypes,
+                "quality_categories": quality_categories}
+    finally:
+        cn.close()
+
 def get_product_catalogs() -> dict:
-    """Catalogs (families/subtypes/quality categories) read from SQL Server."""
+    """Catalogs (families/subtypes/quality categories) read from SQL Server.
+
+    Enriquecido con las columnas del modelo 2024 via pyodbc; si pyodbc
+    falla, degrada al JSON del nucleo C++ (campos basicos, sin pesos).
+    """
     if not _active_connection_string:
         return {"families": [], "subtypes": [], "quality_categories": []}
-    return json.loads(abpoxx_pybind.get_product_catalogs_json(_active_connection_string))
+    try:
+        return _get_product_catalogs_pyodbc(_active_connection_string)
+    except Exception:
+        logger.warning("Enriquecimiento pyodbc de catalogos fallo; fallback a C++.",
+                       exc_info=True)
+        return json.loads(abpoxx_pybind.get_product_catalogs_json(_active_connection_string))
 
 # -------------------------------------------------------------------
 # Multilista Link Operations (Write-Through)

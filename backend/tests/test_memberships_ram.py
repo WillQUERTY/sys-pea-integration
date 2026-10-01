@@ -1,4 +1,3 @@
-import pytest
 from backend.app import repository
 from backend.app.repository import abpoxx_pybind as pb
 

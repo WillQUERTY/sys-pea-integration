@@ -316,9 +316,17 @@ class CvCommitService:
                     END
                 """, db_group_id, researcher_id, db_group_id, researcher_id)
 
-            cur.execute("SELECT id, name FROM QualityCategory")
-            quality_map = {row[1]: row[0] for row in cur.fetchall()}
-            default_cat_id = quality_map.get("Sin Clasificar", 1)
+            # Modelo 2024: resolver tipologias por CODIGO desde BD (Revision §20:
+            # sin IDs magicos). La calidad la asigna el validador humano despues;
+            # aqui todo producto entra con quality_category_id NULL.
+            cur.execute("SELECT id, family_id, code FROM ProductSubtype WHERE code IS NOT NULL")
+            subtype_by_code = {row[2]: (row[1], row[0]) for row in cur.fetchall()}
+            missing = {"ART", "CAP_LIB", "EC"} - set(subtype_by_code)
+            if missing:
+                raise ValueError(
+                    f"Catálogo 2024 incompleto: faltan tipologías {sorted(missing)}. "
+                    "Ejecuta database/seed_catalog_2024.py antes de importar CvLAC."
+                )
 
             # Mapa canónico título+año -> product_id de lo ya existente en el grupo.
             # Reconciliación cross-source: si el GrupLAC ya trajo el producto sin DOI
@@ -333,7 +341,7 @@ class CvCommitService:
                 for row in cur.fetchall():
                     canon_map[f"{GruplacNormalizer.normalized_name_key(row[1])}|{row[2] or ''}"] = row[0]
 
-            def _find_or_insert_product(p_code: str, title: str, year, doi, subtype_id: int, family_id: int = 1) -> int:
+            def _find_or_insert_product(p_code: str, title: str, year, doi, subtype_id: int, family_id: int) -> int:
                 nonlocal new_products
                 cur.execute("SELECT id, doi FROM Product WHERE external_code = ?", p_code)
                 row = cur.fetchone()
@@ -350,10 +358,10 @@ class CvCommitService:
                     return existing_id
                 try:
                     cur.execute("""
-                        INSERT INTO Product (external_code, title, family_id, subtype_id, year, doi, validation_status, quality_category_id, created_at)
+                        INSERT INTO Product (external_code, title, family_id, subtype_id, year, doi, validation_status, created_at)
                         OUTPUT INSERTED.id
-                        VALUES (?, ?, ?, ?, ?, ?, 'pending', ?, GETDATE());
-                    """, p_code, title[:500], family_id, subtype_id, year, doi or None, default_cat_id)
+                        VALUES (?, ?, ?, ?, ?, ?, 'pending', GETDATE());
+                    """, p_code, title[:500], family_id, subtype_id, year, doi or None)
                     new_id = cur.fetchone()[0]
                 except pyodbc.IntegrityError:
                     # Carrera entre workers paralelos: otro hilo insertó el mismo
@@ -364,23 +372,18 @@ class CvCommitService:
                 new_products += 1
                 return new_id
 
-            # Subtipos
-            # Subtipo 1 = Articulos de investigacion (family 1)
-            # Subtipo 3 = Capitulos de libro resultado de investigacion (family 1)
-            # Subtipo 9 = Eventos cientificos con memorias (family 3)
-
             total_records = 0
             new_products = 0
 
             # 4. Insertar Artículos
             for art in cv.articles:
                 total_records += 1
-                subtype_id = 1  # Articulos de investigacion
+                fam_id, subtype_id = subtype_by_code["ART"]
                 # Código canónico compartido con GrupLAC: mismo producto detectado
                 # en ambas fuentes reconcilia en una sola fila (dedupe cross-source).
                 p_code = GruplacNormalizer.product_external_code(art.title, art.year, art.doi)
                 clean_title = art.title[:500]
-                p_id = _find_or_insert_product(p_code, art.title, art.year, art.doi, subtype_id)
+                p_id = _find_or_insert_product(p_code, art.title, art.year, art.doi, subtype_id, fam_id)
 
                 # Autores: Camila es institucional, los demás son externos
                 for idx, auth_name in enumerate(art.authors, start=1):
@@ -420,10 +423,10 @@ class CvCommitService:
             # 5. Insertar Capítulos de libro
             for cap in cv.book_chapters:
                 total_records += 1
-                subtype_id = 3  # Capitulos de libro
+                fam_id, subtype_id = subtype_by_code["CAP_LIB"]
                 p_code = GruplacNormalizer.product_external_code(cap.title, cap.year)
                 clean_title = cap.title[:500]
-                p_id = _find_or_insert_product(p_code, cap.title, cap.year, None, subtype_id)
+                p_id = _find_or_insert_product(p_code, cap.title, cap.year, None, subtype_id, fam_id)
 
                 # Autor Camila
                 cur.execute("""
@@ -451,10 +454,10 @@ class CvCommitService:
             # 6. Insertar Eventos Científicos (Ponencias y Pósters)
             for ev in cv.events:
                 total_records += 1
-                subtype_id = 9  # Eventos cientificos con memorias (family 3)
+                fam_id, subtype_id = subtype_by_code["EC"]
                 p_code = GruplacNormalizer.product_external_code(ev.product_title, ev.year)
                 clean_title = ev.product_title[:500]
-                p_id = _find_or_insert_product(p_code, ev.product_title, ev.year, None, subtype_id, family_id=3)
+                p_id = _find_or_insert_product(p_code, ev.product_title, ev.year, None, subtype_id, fam_id)
 
                 cur.execute("""
                     IF NOT EXISTS (SELECT 1 FROM ProductAuthor WHERE product_id = ? AND researcher_id = ?)

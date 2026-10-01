@@ -91,12 +91,12 @@ class TestExternalCodes(unittest.TestCase):
         from backend.app.scraper import ScrapedAuthor, ScrapedProduct
         code = GruplacNormalizer.product_external_code("Evento X", 2020)
         p1 = ScrapedProduct(
-            title="Evento X", raw_text="corto", section="s", subtype_name="st",
+            title="Evento X", raw_text="corto", section="s", subtype_code="st",
             year=2020, authors=[ScrapedAuthor(display_name="A Uno")], external_code=code,
         )
         p2 = ScrapedProduct(
             title="Evento X", raw_text="texto mucho mas largo con detalle", section="s",
-            subtype_name="st", year=2020, doi="10.1/xyz",
+            subtype_code="st", year=2020, doi="10.1/xyz",
             authors=[ScrapedAuthor(display_name="A Uno"), ScrapedAuthor(display_name="B Dos")],
             external_code=code,
         )
@@ -154,11 +154,12 @@ class TestParseFixture(unittest.TestCase):
             GruplacNormalizer.normalized_name_key("Juan Perez Garcia")
         )
 
-    def test_productos_extraidos_con_subtipo_nombre(self):
+    def test_productos_extraidos_con_subtipo_codigo(self):
         self.assertEqual(len(self.data.products), 2)
         for p in self.data.products:
-            # Revisión §20: el DTO lleva el NOMBRE del subtipo, no un ID mágico
-            self.assertEqual(p.subtype_name, "Articulos de investigacion")
+            # Modelo 2024: el DTO lleva el CODIGO de tipologia (ART/SF/...),
+            # resuelto a ID en commit; nunca IDs magicos.
+            self.assertEqual(p.subtype_code, "ART")
             self.assertFalse(hasattr(p, "family_id"), "El DTO no debe llevar IDs mágicos de catálogo")
 
     def test_producto_con_doi(self):
