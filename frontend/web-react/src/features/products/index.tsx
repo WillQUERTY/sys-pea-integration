@@ -188,15 +188,33 @@ export function Products() {
       header: 'Título',
       className: 'max-w-[520px]',
       searchable: (p) => p.title,
-      cell: (p) => (
-        <Link
-          to='/products/$id'
-          params={{ id: String(p.id) }}
-          className='block truncate font-medium text-primary hover:underline'
-        >
-          {p.title}
-        </Link>
-      ),
+      cell: (p) => {
+        const isEndorsed = Boolean(
+          p.evidence?.toLowerCase().includes('avalado') ||
+          p.evidence?.includes('✓') ||
+          (p.specialized_attributes && p.specialized_attributes.includes('"minciencias_endorsed": true'))
+        )
+        return (
+          <div className='flex items-center gap-2'>
+            <Link
+              to='/products/$id'
+              params={{ id: String(p.id) }}
+              className='block truncate font-medium text-primary hover:underline'
+            >
+              {p.title}
+            </Link>
+            {isEndorsed && (
+              <Badge
+                variant='outline'
+                className='shrink-0 border-emerald-500/40 bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 text-xs'
+                title='Avalado y validado en la convocatoria previa de Minciencias'
+              >
+                ✓ Avalado
+              </Badge>
+            )}
+          </div>
+        )
+      },
     },
     {
       key: 'year',

@@ -89,6 +89,13 @@ export function ValidateProductDialog({ open, onOpenChange, product }: Props) {
         </DialogHeader>
 
         <div className='grid gap-4 py-2'>
+          {product.evidence && (product.evidence.toLowerCase().includes('avalado') || product.evidence.includes('✓')) && (
+            <div className='flex items-center gap-2 rounded-md border border-emerald-500/30 bg-emerald-500/10 px-3 py-2 text-xs text-emerald-800 dark:text-emerald-300'>
+              <span className='font-semibold'>✓ Aval Minciencias:</span>
+              <span className='line-clamp-2'>{product.evidence}</span>
+            </div>
+          )}
+
           {family && subtype ? (
             <div className='flex flex-wrap items-center gap-2 text-sm'>
               <span className='text-muted-foreground'>Tipología 2024:</span>

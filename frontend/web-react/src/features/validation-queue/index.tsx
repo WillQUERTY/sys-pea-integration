@@ -100,15 +100,34 @@ export function ValidationQueue() {
       header: 'Producto',
       className: 'max-w-[480px]',
       searchable: (item) => productsById.get(item.product_id)?.title ?? `producto ${item.product_id}`,
-      cell: (item) => (
-        <Link
-          to='/products/$id'
-          params={{ id: String(item.product_id) }}
-          className='block truncate font-medium text-primary hover:underline'
-        >
-          {productsById.get(item.product_id)?.title ?? `Producto #${item.product_id}`}
-        </Link>
-      ),
+      cell: (item) => {
+        const prod = productsById.get(item.product_id)
+        const isEndorsed = Boolean(
+          prod?.evidence?.toLowerCase().includes('avalado') ||
+          prod?.evidence?.includes('✓') ||
+          (prod?.specialized_attributes && prod.specialized_attributes.includes('"minciencias_endorsed": true'))
+        )
+        return (
+          <div className='flex items-center gap-2'>
+            <Link
+              to='/products/$id'
+              params={{ id: String(item.product_id) }}
+              className='block truncate font-medium text-primary hover:underline'
+            >
+              {prod?.title ?? `Producto #${item.product_id}`}
+            </Link>
+            {isEndorsed && (
+              <Badge
+                variant='outline'
+                className='shrink-0 border-emerald-500/40 bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 text-xs'
+                title='Avalado y validado en la convocatoria previa de Minciencias'
+              >
+                ✓ Avalado
+              </Badge>
+            )}
+          </div>
+        )
+      },
     },
     {
       key: 'enqueued_at',

@@ -7,6 +7,7 @@ Conforme a la especificacion en docs/PEA-i_Revision_Tecnica_Scraper_Gruplac.md.
 import os
 import sys
 import re
+import json
 import hashlib
 import logging
 import unicodedata
@@ -78,6 +79,7 @@ class ScrapedProduct:
     source_url: str = ""
     external_code: str = ""
     warnings: List[str] = field(default_factory=list)
+    is_endorsed: bool = False  # Marca chulo_0.jpg / chulo_1.jpg: avalado en convocatoria previa
 
 
 @dataclass
@@ -474,6 +476,7 @@ class GruplacHtmlParser:
             base.issn = base.issn or existing.issn
             base.isbn = base.isbn or existing.isbn
             base.year = base.year or existing.year
+            base.is_endorsed = base.is_endorsed or existing.is_endorsed
             # Recalcular el código canónico: si la fusión aportó un DOI, el código
             # pasa a ser PRD_DOI_* y así reconcilia con la fuente CvLAC.
             base.external_code = GruplacNormalizer.product_external_code(base.title, base.year, base.doi or "")
@@ -788,6 +791,7 @@ class GruplacHtmlParser:
                 author_names = [a.display_name for a in scraped_authors]
 
                 p_ext_code = GruplacNormalizer.product_external_code(title, year, doi, authors=author_names)
+                is_endorsed = bool(row.find("img", src=lambda s: s and "chulo" in s.lower()))
 
                 products.append(ScrapedProduct(
                     title=title,
@@ -800,7 +804,8 @@ class GruplacHtmlParser:
                     year=year,
                     authors=scraped_authors,
                     source_url=source_url,
-                    external_code=p_ext_code
+                    external_code=p_ext_code,
+                    is_endorsed=is_endorsed
                 ))
 
         # -------------------------------------------------------------
@@ -1022,17 +1027,22 @@ class GruplacCommitService:
                         logger.warning(warn_msg)
                         p.warnings.append(warn_msg)
 
-                cur.execute("SELECT id FROM Product WHERE external_code = ?", p.external_code)
+                evidence = "Avalado y validado para la Convocatoria Nacional Minciencias (marca ✓ en GrupLAC)" if p.is_endorsed else None
+                spec_attrs = json.dumps({"minciencias_endorsed": True}) if p.is_endorsed else None
+
+                cur.execute("SELECT id, evidence FROM Product WHERE external_code = ?", p.external_code)
                 p_row = cur.fetchone()
                 if p_row:
                     prod_id = p_row[0]
                     matched_products += 1
+                    if p.is_endorsed and not p_row[1]:
+                        cur.execute("UPDATE Product SET evidence = ?, specialized_attributes = COALESCE(specialized_attributes, ?) WHERE id = ?", evidence, spec_attrs, prod_id)
                 else:
                     cur.execute("""
-                        INSERT INTO Product (external_code, title, description, family_id, subtype_id, obtained_date, publication_date, validation_status, doi, issn, isbn, year, status)
+                        INSERT INTO Product (external_code, title, description, family_id, subtype_id, obtained_date, publication_date, validation_status, doi, issn, isbn, year, evidence, specialized_attributes, status)
                         OUTPUT INSERTED.id
-                        VALUES (?, ?, ?, ?, ?, ?, ?, 'pending', ?, ?, ?, ?, 'active');
-                    """, p.external_code, GruplacNormalizer.normalize(p.title)[:490], GruplacNormalizer.normalize(p.raw_text)[:2000], fam_id, sub_id, str(p.year) if p.year else "", str(p.year) if p.year else "", p.doi, p.issn, p.isbn, p.year)
+                        VALUES (?, ?, ?, ?, ?, ?, ?, 'pending', ?, ?, ?, ?, ?, ?, 'active');
+                    """, p.external_code, GruplacNormalizer.normalize(p.title)[:490], GruplacNormalizer.normalize(p.raw_text)[:2000], fam_id, sub_id, str(p.year) if p.year else "", str(p.year) if p.year else "", p.doi, p.issn, p.isbn, p.year, evidence, spec_attrs)
                     prod_id = cur.fetchone()[0]
                     new_records += 1
                     created_products += 1
@@ -1261,6 +1271,7 @@ def build_preview(scraped_data: ScrapedGroupData) -> Dict[str, Any]:
                 "doi": p.doi,
                 "external_code": p.external_code,
                 "authors": [a.display_name for a in p.authors],
+                "is_endorsed": p.is_endorsed,
             } for p in scraped_data.products
         ],
         "projects": [
@@ -1271,6 +1282,7 @@ def build_preview(scraped_data: ScrapedGroupData) -> Dict[str, Any]:
         "counts": {
             "members": len(scraped_data.members),
             "products": len(scraped_data.products),
+            "endorsed_products": sum(1 for p in scraped_data.products if p.is_endorsed),
             "projects": len(scraped_data.projects),
             "research_lines": len(scraped_data.research_lines),
         }
