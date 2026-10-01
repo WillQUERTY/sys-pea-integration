@@ -372,6 +372,19 @@ class CvCommitService:
                 new_products += 1
                 return new_id
 
+            def _enqueue_validation(p_id: int) -> None:
+                # Cola de validación institucional (idempotente, mismo patrón que el
+                # commit GrupLAC): sin este item el producto queda 'pending' pero
+                # invisible en la cola y el validador no podría asignarle la
+                # categoría de calidad del modelo 2024.
+                cur.execute("""
+                    IF NOT EXISTS (SELECT 1 FROM ValidationQueueItem WHERE product_id = ? AND status = 'pending')
+                    BEGIN
+                        INSERT INTO ValidationQueueItem (product_id, status, assigned_to, enqueued_at)
+                        VALUES (?, 'pending', '', GETDATE());
+                    END
+                """, p_id, p_id)
+
             total_records = 0
             new_products = 0
 
@@ -384,6 +397,7 @@ class CvCommitService:
                 p_code = GruplacNormalizer.product_external_code(art.title, art.year, art.doi)
                 clean_title = art.title[:500]
                 p_id = _find_or_insert_product(p_code, art.title, art.year, art.doi, subtype_id, fam_id)
+                _enqueue_validation(p_id)
 
                 # Autores: Camila es institucional, los demás son externos
                 for idx, auth_name in enumerate(art.authors, start=1):
@@ -427,6 +441,7 @@ class CvCommitService:
                 p_code = GruplacNormalizer.product_external_code(cap.title, cap.year)
                 clean_title = cap.title[:500]
                 p_id = _find_or_insert_product(p_code, cap.title, cap.year, None, subtype_id, fam_id)
+                _enqueue_validation(p_id)
 
                 # Autor Camila
                 cur.execute("""
@@ -458,6 +473,7 @@ class CvCommitService:
                 p_code = GruplacNormalizer.product_external_code(ev.product_title, ev.year)
                 clean_title = ev.product_title[:500]
                 p_id = _find_or_insert_product(p_code, ev.product_title, ev.year, None, subtype_id, fam_id)
+                _enqueue_validation(p_id)
 
                 cur.execute("""
                     IF NOT EXISTS (SELECT 1 FROM ProductAuthor WHERE product_id = ? AND researcher_id = ?)

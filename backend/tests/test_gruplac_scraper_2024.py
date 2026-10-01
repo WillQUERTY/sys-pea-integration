@@ -16,13 +16,18 @@ Cubre:
 - Commit contra SQL Server (PEAI_TEST_DB=1): tipología resuelta por código,
   quality_category_id NULL (la asigna el validador humano) y auditoría
   'unclassified_subtype' + ImportJob.details.
+- Commit CvLAC (PEAI_TEST_DB=1): todo producto ART/CAP_LIB/EC entra a la cola
+  de validación (brecha detectada en el import real de GISICO, 2026-09-30).
 """
 
 import json
 import os
 import unittest
 
-from backend.app.scraper import GruplacHtmlParser, GruplacCommitService, build_preview, SECTION_MAP
+from backend.app.scraper import (
+    GruplacHtmlParser, GruplacCommitService, GruplacNormalizer, build_preview, SECTION_MAP,
+)
+from backend.app.cvlac_scraper import CvArticle, CvBookChapter, CvCommitService, CvData, CvEvent
 
 HERE = os.path.dirname(__file__)
 FIXTURE_PATH = os.path.join(HERE, "fixtures", "gruplac_group_basic.html")
@@ -352,6 +357,104 @@ class TestCommit2024DB(unittest.TestCase):
         self.assertIn("sin tipología 2024 para reclasificar", details)
         self.assertIn("seccion desconocida del futuro", details,
                       "Las secciones sin mapeo quedan documentadas en el job")
+
+
+class TestCommitCvlacColaDB(unittest.TestCase):
+    """Commit CvLAC: todo producto (ART/CAP_LIB/EC) entra a la cola de validación.
+
+    Brecha detectada en el import real de GISICO (2026-09-30): los productos
+    creados por la cascada CvLAC quedaban 'pending' pero sin ValidationQueueItem
+    —invisibles en la cola, así que el validador no podía asignarles la
+    categoría de calidad del modelo 2024 (par. 3.6).
+    """
+
+    CONN_STR = os.environ.get(
+        "PEAI_SQLSERVER_CONNECTION",
+        "Driver={ODBC Driver 17 for SQL Server};Server=localhost;Database=peai;Trusted_Connection=yes;"
+    )
+    CV_GROUP_CODE = "COL9999802"
+    CV_CODE = "CVLAC-TEST-2024"
+    CV_SOURCE = "cvlac://Investigador_De_Prueba_Cvlac"
+
+    @classmethod
+    def setUpClass(cls):
+        import pyodbc
+        cls.cv = CvData(
+            name="Investigador De Prueba Cvlac",
+            external_code=cls.CV_CODE,
+            target_group_code=cls.CV_GROUP_CODE,
+            articles=[CvArticle(title="Articulo cvlac de prueba cola",
+                                authors=["Investigador De Prueba Cvlac"], year=2023)],
+            book_chapters=[CvBookChapter(title="Capitulo cvlac de prueba cola",
+                                         authors=["Investigador De Prueba Cvlac"], year=2022)],
+            events=[CvEvent(event_name="Evento cvlac de prueba cola",
+                            product_title="Ponencia cvlac de prueba cola", year=2024)],
+        )
+        # Mismos códigos canónicos que computa commit_cvlac (artículo con doi="").
+        cls.codes = [
+            GruplacNormalizer.product_external_code("Articulo cvlac de prueba cola", 2023, ""),
+            GruplacNormalizer.product_external_code("Capitulo cvlac de prueba cola", 2022),
+            GruplacNormalizer.product_external_code("Ponencia cvlac de prueba cola", 2024),
+        ]
+        cls.conn = pyodbc.connect(cls.CONN_STR, autocommit=True)
+        cls._cleanup()
+        cls.conn.cursor().execute(
+            "INSERT INTO ResearchGroup (external_code, name, status) VALUES (?, 'GRUPO FIXTURE CVLAC 2024', 'active')",
+            cls.CV_GROUP_CODE,
+        )
+
+    @classmethod
+    def tearDownClass(cls):
+        cls._cleanup()
+        cls.conn.close()
+
+    @classmethod
+    def _cleanup(cls):
+        """Elimina todo rastro del fixture (cascadas + borrado explícito)."""
+        cur = cls.conn.cursor()
+        cur.execute("DELETE FROM ImportJob WHERE source_url = ?", cls.CV_SOURCE)
+        cur.execute("DELETE FROM Researcher WHERE external_code = ?", cls.CV_CODE)
+        cur.execute("DELETE FROM ResearchGroup WHERE external_code = ?", cls.CV_GROUP_CODE)
+        for code in cls.codes:
+            cur.execute("DELETE FROM Product WHERE external_code = ?", code)
+
+    def _commit(self):
+        # reload_ram=False: el núcleo nativo C++ no participa en esta prueba.
+        return CvCommitService.commit_cvlac(self.cv, self.CONN_STR, reload_ram=False)
+
+    def _items_pendientes(self, cur, external_code):
+        cur.execute("""
+            SELECT COUNT(*) FROM ValidationQueueItem v
+            JOIN Product p ON p.id = v.product_id
+            WHERE p.external_code = ? AND v.status = 'pending'
+        """, external_code)
+        return cur.fetchone()[0]
+
+    def test_productos_cvlac_entran_a_la_cola_de_validacion(self):
+        result = self._commit()
+        self.assertEqual(result["status"], "success")
+
+        cur = self.conn.cursor()
+        for code, tip in zip(self.codes, ("ART", "CAP_LIB", "EC")):
+            cur.execute("""
+                SELECT p.validation_status, p.quality_category_id, s.code
+                FROM Product p JOIN ProductSubtype s ON s.id = p.subtype_id
+                WHERE p.external_code = ?
+            """, code)
+            row = cur.fetchone()
+            self.assertIsNotNone(row, "El commit CvLAC debe crear el producto")
+            self.assertEqual(tuple(row), ("pending", None, tip),
+                             "CvLAC entra pending, con su tipología 2024 por código y "
+                             "SIN categoría de calidad (la asigna el validador humano)")
+            self.assertEqual(self._items_pendientes(cur, code), 1,
+                             "Sin item de cola el producto es invisible para el validador")
+
+    def test_encolado_es_idempotente_en_reimport(self):
+        self._commit()
+        self._commit()  # reimport: productos matched, no debe duplicar el item
+        cur = self.conn.cursor()
+        for code in self.codes:
+            self.assertEqual(self._items_pendientes(cur, code), 1)
 
 
 if __name__ == "__main__":
