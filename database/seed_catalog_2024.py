@@ -17,8 +17,8 @@ import pyodbc
 
 ROOT = pathlib.Path(__file__).resolve().parent
 CATALOG = ROOT / "catalog_2024.json"
-CONN = ("Driver={ODBC Driver 17 for SQL Server};Server=localhost;"
-        "Database=peai;Trusted_Connection=yes;")
+CONN = ("Driver={ODBC Driver 18 for SQL Server};Server=127.0.0.1;"
+        "Database=peai;UID=sa;PWD=***REMOVED***;TrustServerCertificate=yes;")
 
 REQUIRED_COLUMNS = {
     "ProductFamily": {"code", "sort_order"},

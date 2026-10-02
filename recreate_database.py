@@ -12,8 +12,8 @@ import pyodbc
 from backend.app import repository, datos_abiertos
 from backend.app.scraper import scrape_gruplac
 
-MASTER_CONN_STR = "Driver={ODBC Driver 17 for SQL Server};Server=localhost;Database=master;Trusted_Connection=yes;"
-PEAI_CONN_STR = "Driver={ODBC Driver 17 for SQL Server};Server=localhost;Database=peai;Trusted_Connection=yes;"
+MASTER_CONN_STR = "Driver={ODBC Driver 18 for SQL Server};Server=127.0.0.1;Database=master;UID=sa;PWD=***REMOVED***;TrustServerCertificate=yes;"
+PEAI_CONN_STR = "Driver={ODBC Driver 18 for SQL Server};Server=127.0.0.1;Database=peai;UID=sa;PWD=***REMOVED***;TrustServerCertificate=yes;"
 SCHEMA_PATH = os.path.join(os.path.dirname(__file__), "database", "init_schema.sql")
 PEA_DATA_PATH = os.path.join(os.path.dirname(__file__), "pea_data.json")
 GRUPLAC_URL = "https://scienti.minciencias.gov.co/gruplac/jsp/visualiza/visualizagr.jsp?nro=00000000002093"
