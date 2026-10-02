@@ -151,13 +151,10 @@ async def enqueue_validation_item(req: EnqueueValidationRequest):
     repository.vq_enqueue(req.product_id, req.assigned_to or "")
     return {"status": "success", "product_id": req.product_id, "queue_size": repository.vq_size()}
 
-@router.post("/system/validation-queue/process-next", tags=["Validation Queue"])
-async def process_next_validation_item():
-    """Process and dequeue the next pending product in the FIFO queue."""
-    processed = repository.vq_process_next()
-    if not processed:
-        raise HTTPException(status_code=400, detail="La cola de validación está vacía o no hay ítems pendientes.")
-    return {"status": "success", "remaining_pending": repository.vq_pending_count()}
+# Nota: no existe deliberadamente un endpoint «process-next». Marcar válido un
+# producto sin la asignación humana de tipología y categoría de calidad viola
+# el §3.6 del Modelo de Medición 2024; cada ítem se procesa uno a uno vía
+# validar-producto (set_product_validation, transaccional en BD).
 
 @router.delete("/system/validation-queue/{item_id}", tags=["Validation Queue"])
 async def cancel_validation_item(item_id: int):

@@ -344,12 +344,6 @@ export async function listValidationQueue() {
   const { data } = await api.get<ValidationQueueItem[]>('/system/validation-queue')
   return data
 }
-export async function processNextValidation() {
-  const { data } = await api.post<{ status: string; remaining_pending: number }>(
-    '/system/validation-queue/process-next'
-  )
-  return data
-}
 export async function cancelValidationItem(itemId: number) {
   const { data } = await api.delete<{ status: string; item_id: number }>(
     `/system/validation-queue/${itemId}`

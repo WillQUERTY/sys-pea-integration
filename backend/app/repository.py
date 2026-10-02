@@ -1265,9 +1265,6 @@ def vq_front():
 def vq_dequeue():
     return abpoxx_pybind.vq_dequeue()
 
-def vq_process_next() -> bool:
-    return abpoxx_pybind.vq_process_next()
-
 def vq_list():
     return abpoxx_pybind.vq_list()
 

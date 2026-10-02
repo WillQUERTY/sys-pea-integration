@@ -2,7 +2,7 @@ import { useMemo, useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { Link } from '@tanstack/react-router'
 import { toast } from 'sonner'
-import { listValidationQueue, processNextValidation, validateProduct, cancelValidationItem, listProducts } from '@/lib/api'
+import { listValidationQueue, validateProduct, cancelValidationItem, listProducts } from '@/lib/api'
 import type { Product, ValidationQueueItem } from '@/lib/types'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -60,14 +60,17 @@ export function ValidationQueue() {
     queryClient.invalidateQueries({ queryKey: ['products'] })
   }
 
-  const processNext = useMutation({
-    mutationFn: processNextValidation,
-    onSuccess: (r) => {
-      toast.success(`Procesado. Pendientes restantes: ${r.remaining_pending}`)
-      invalidate()
-    },
-    onError: (e) => toast.error(e instanceof Error ? e.message : 'Error al procesar'),
-  })
+  // §3.6: un ítem solo se valida en el diálogo (tipología + categoría de
+  // calidad), nunca en un clic. Sirve tanto para la fila como para el
+  // «siguiente pendiente».
+  const openValidation = (item: ValidationQueueItem) =>
+    setValidatingProduct(
+      productsById.get(item.product_id) ?? {
+        id: item.product_id,
+        external_code: '',
+        title: `Producto #${item.product_id}`,
+      }
+    )
 
   const reject = useMutation({
     mutationFn: (id: number) =>
@@ -161,15 +164,7 @@ export function ValidationQueue() {
               size='sm'
               variant='outline'
               disabled={reject.isPending}
-              onClick={() =>
-                setValidatingProduct(
-                  productsById.get(item.product_id) ?? {
-                    id: item.product_id,
-                    external_code: '',
-                    title: `Producto #${item.product_id}`,
-                  }
-                )
-              }
+              onClick={() => openValidation(item)}
             >
               Validar
             </Button>
@@ -216,8 +211,15 @@ export function ValidationQueue() {
               Estructura FIFO (Requerimiento 13): el primero en entrar es el primero en procesarse.
             </p>
           </div>
-          <Button onClick={() => processNext.mutate()} disabled={processNext.isPending || pending.length === 0}>
-            Procesar siguiente (FIFO)
+          <Button
+            onClick={() => {
+              const next = pending[0]
+              if (next) openValidation(next)
+            }}
+            disabled={pending.length === 0}
+            title='Abre el diálogo de validación del primer ítem pendiente (FIFO); nunca valida en un clic'
+          >
+            Abrir siguiente pendiente
           </Button>
         </div>
 
