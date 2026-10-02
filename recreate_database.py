@@ -2,7 +2,7 @@
 recreate_database.py
 Script maestro para recrear completamente la base de datos peai desde cero,
 aplicar el esquema oficial actualizado, sembrar el catálogo Minciencias 2024
-y ejecutar la ingesta atómica exclusivamente para el grupo AITICE (COL0043834).
+y ejecutar la ingesta atómica exclusivamente para AITICE y Grupo de Óptica e Informática.
 """
 
 import os
@@ -15,8 +15,21 @@ from backend.app.scraper import scrape_gruplac
 MASTER_CONN_STR = "Driver={ODBC Driver 18 for SQL Server};Server=127.0.0.1;Database=master;UID=sa;PWD=***REMOVED***;TrustServerCertificate=yes;"
 PEAI_CONN_STR = "Driver={ODBC Driver 18 for SQL Server};Server=127.0.0.1;Database=peai;UID=sa;PWD=***REMOVED***;TrustServerCertificate=yes;"
 SCHEMA_PATH = os.path.join(os.path.dirname(__file__), "database", "init_schema.sql")
-AITICE_GRUPLAC_URL = "https://scienti.minciencias.gov.co/gruplac/jsp/visualiza/visualizagr.jsp?nro=00000000002668"
-AITICE_HTML_PATH = os.path.join(os.path.dirname(__file__), "docs", "AITICE-PAGE.html")
+
+TARGET_GROUPS = [
+    {
+        "name": "AITICE",
+        "url": "https://scienti.minciencias.gov.co/gruplac/jsp/visualiza/visualizagr.jsp?nro=00000000002668",
+        "code": "COL0043834",
+        "local_html": os.path.join(os.path.dirname(__file__), "docs", "AITICE-PAGE.html"),
+    },
+    {
+        "name": "Grupo de óptica e informática",
+        "url": "https://scienti.minciencias.gov.co/gruplac/jsp/visualiza/visualizagr.jsp?nro=00000000002093",
+        "code": "COL0002093",
+        "local_html": None,
+    },
+]
 
 
 def recreate_sql_database():
@@ -70,36 +83,40 @@ def seed_catalog():
 
 def run_ingestion():
     print("=================================================================")
-    print("PASO 4: Ingesta atómica de Minciencias GrupLAC para AITICE")
-    print(f"URL: {AITICE_GRUPLAC_URL}")
+    print("PASO 4: Ingesta atómica de Minciencias GrupLAC")
+    print(f"        Grupos a importar: {len(TARGET_GROUPS)}")
     print("=================================================================")
     # Inicializar repositorio conectado a la BD recién creada
     repository.initialize(repository.InitMode.Database, PEAI_CONN_STR)
     repository._active_connection_string = PEAI_CONN_STR
 
-    try:
-        print("  -> Descargando e ingiriendo AITICE en vivo desde Scienti...")
-        result = scrape_gruplac(AITICE_GRUPLAC_URL, PEAI_CONN_STR, enrich_cvlac=True)
-    except Exception as e:
-        print(f"  [AVISO] No se pudo descargar en vivo desde Scienti ({e}).")
-        if os.path.exists(AITICE_HTML_PATH):
-            print(f"  -> Usando snapshot local {AITICE_HTML_PATH}...")
-            from backend.app.scraper import GruplacHtmlParser, GruplacCommitService
-            with open(AITICE_HTML_PATH, "r", encoding="utf-8", errors="replace") as f:
-                html = f.read()
-            data = GruplacHtmlParser.parse(html, source_url=AITICE_GRUPLAC_URL)
-            data.group["external_code"] = "COL0043834"
-            result = GruplacCommitService.commit(data, db_conn_str=PEAI_CONN_STR)
-        else:
-            raise
+    for idx, grp in enumerate(TARGET_GROUPS, start=1):
+        print(f"\n--- [{idx}/{len(TARGET_GROUPS)}] Ingestando: {grp['name']} ({grp['code']}) ---")
+        print(f"URL: {grp['url']}")
+        try:
+            print("  -> Descargando e ingiriendo en vivo desde Scienti...")
+            result = scrape_gruplac(grp["url"], PEAI_CONN_STR, enrich_cvlac=True)
+        except Exception as e:
+            print(f"  [AVISO] No se pudo descargar en vivo desde Scienti ({e}).")
+            if grp.get("local_html") and os.path.exists(grp["local_html"]):
+                print(f"  -> Usando snapshot local {grp['local_html']}...")
+                from backend.app.scraper import GruplacHtmlParser, GruplacCommitService
+                with open(grp["local_html"], "r", encoding="utf-8", errors="replace") as f:
+                    html = f.read()
+                data = GruplacHtmlParser.parse(html, source_url=grp["url"])
+                data.group["external_code"] = grp["code"]
+                result = GruplacCommitService.commit(data, db_conn_str=PEAI_CONN_STR)
+            else:
+                print(f"  [ERROR] Falló la ingesta del grupo {grp['name']}: {e}")
+                continue
 
-    print(f"  [OK] Ingesta de AITICE finalizada con éxito:")
-    print(f"       Total procesados: {result.get('total_records')}")
-    print(f"       Nuevos: {result.get('new_records')}")
-    print(f"       {result.get('reconciliation_summary')}")
-    enr = result.get("cvlac_enrichment")
-    if enr:
-        print(f"       CvLAC: {enr['enriched']} integrantes enriquecidos, {enr['failed']} fallidos")
+        print(f"  [OK] Ingesta de {grp['name']} finalizada con éxito:")
+        print(f"       Total procesados: {result.get('total_records')}")
+        print(f"       Nuevos: {result.get('new_records')}")
+        print(f"       {result.get('reconciliation_summary')}")
+        enr = result.get("cvlac_enrichment")
+        if enr:
+            print(f"       CvLAC: {enr['enriched']} integrantes enriquecidos, {enr['failed']} fallidos")
 
 
 def enrich_from_open_data():
