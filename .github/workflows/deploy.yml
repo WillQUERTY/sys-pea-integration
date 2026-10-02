@@ -24,7 +24,7 @@ jobs:
           cd /var/www/sys-pea-integration
           
           # 1. Actualizar el código
-          echo "1. Obteniendo últimos cambios de GitHub..."
+          echo "1. Obteniendo últimos cambios de GitHub (rama main)..."
           git fetch --all
           git reset --hard origin/main
           
