@@ -663,7 +663,7 @@ class CvCommitService:
                 ELSE
                 BEGIN
                     UPDATE Researcher
-                    SET first_names = ?, last_names = ?, nationality = ?, orcid = CASE WHEN ? <> '' THEN ? ELSE orcid END, highest_education_level = ?, education_records = ?, classification_records = COALESCE(?, classification_records)
+                    SET first_names = ?, last_names = ?, nationality = ?, orcid = CASE WHEN ? <> '' THEN ? ELSE orcid END, highest_education_level = ?, education_records = ?, classification_records = COALESCE(?, classification_records), status = 'active'
                     WHERE external_code = ?;
                 END
             """, cv.external_code,
@@ -685,7 +685,11 @@ class CvCommitService:
                         INSERT INTO GroupMembership (group_id, researcher_id, role, status)
                         VALUES (?, ?, 'Investigador', 'active');
                     END
-                """, db_group_id, researcher_id, db_group_id, researcher_id)
+                    ELSE
+                    BEGIN
+                        UPDATE GroupMembership SET status = 'active' WHERE group_id = ? AND researcher_id = ?;
+                    END
+                """, db_group_id, researcher_id, db_group_id, researcher_id, db_group_id, researcher_id)
 
             cur.execute("SELECT id, family_id, code FROM ProductSubtype WHERE code IS NOT NULL")
             subtype_by_code = {row[2]: (row[1], row[0]) for row in cur.fetchall()}

@@ -937,7 +937,7 @@ class GruplacCommitService:
                 db_group_id = row[0]
                 cur.execute("""
                     UPDATE ResearchGroup
-                    SET name = ?, institution = ?, classification = ?, email = ?, website = ?, city = ?, department = ?, declared_creation_date = ?, knowledge_area = ?
+                    SET name = ?, institution = ?, classification = ?, email = ?, website = ?, city = ?, department = ?, declared_creation_date = ?, knowledge_area = ?, status = 'active'
                     WHERE id = ?;
                 """, data.group["name"], " | ".join(data.institutions), data.group.get("classification", ""), data.group.get("email", ""), data.group.get("website", ""), data.group.get("city", ""), data.group.get("department", ""), data.group.get("declared_creation_date", ""), data.group.get("knowledge_area", ""), db_group_id)
 
@@ -962,6 +962,7 @@ class GruplacCommitService:
                 r_row = cur.fetchone()
                 if r_row:
                     existing_res_id = r_row[0]
+                    cur.execute("UPDATE Researcher SET status = 'active' WHERE id = ?", existing_res_id)
                     action = "matched"
                 else:
                     cur.execute("""
@@ -984,7 +985,7 @@ class GruplacCommitService:
                     END
                     ELSE
                     BEGIN
-                        UPDATE GroupMembership SET role = ?, start_date = ?, end_date = ?
+                        UPDATE GroupMembership SET role = ?, start_date = ?, end_date = ?, status = 'active'
                         WHERE group_id = ? AND researcher_id = ?;
                     END
                 """, db_group_id, existing_res_id, db_group_id, existing_res_id, m.role or "Investigador", m.start_date or "", m.end_date or "", m.role or "Investigador", m.start_date or "", m.end_date or "", db_group_id, existing_res_id)
