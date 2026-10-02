@@ -14,7 +14,7 @@ import type {
   UndoOperation,
 } from './types'
 
-const baseURL = import.meta.env.VITE_API_URL ?? 'http://localhost:8000/api/v1'
+const baseURL = import.meta.env.VITE_API_URL ?? '/api/v1'
 
 export const api = axios.create({ baseURL, timeout: 120_000 })
 

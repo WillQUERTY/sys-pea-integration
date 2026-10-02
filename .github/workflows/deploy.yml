@@ -1,0 +1,57 @@
+name: Deploy to Ubuntu Server
+
+on:
+  push:
+    branches:
+      - main  # Se ejecutará automáticamente cuando hagas push a la rama main
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Deploy via SSH
+      uses: appleboy/ssh-action@v1.0.0
+      with:
+        host: ${{ secrets.SERVER_IP }}
+        username: ${{ secrets.SERVER_USERNAME }}
+        key: ${{ secrets.SERVER_SSH_KEY }}
+        script: |
+          echo "=========================================="
+          echo "🚀 INICIANDO DESPLIEGUE EN EL SERVIDOR"
+          echo "=========================================="
+          
+          cd /var/www/sys-pea-integration
+          
+          # 1. Actualizar el código
+          echo "1. Obteniendo últimos cambios de GitHub..."
+          git fetch --all
+          git reset --hard origin/main
+          
+          # 2. Recompilar el núcleo de C++
+          echo "2. Compilando núcleo C++..."
+          cd core_cpp/build_linux
+          cmake -DCMAKE_BUILD_TYPE=Release ..
+          make
+          cp *.so ../../backend/app/
+          cd ../../
+          
+          # 3. Actualizar Backend (Python)
+          echo "3. Actualizando dependencias de Python..."
+          cd backend
+          source venv/bin/activate
+          pip install -r requirements.txt
+          cd ..
+          
+          # 4. Construir Frontend (React)
+          echo "4. Construyendo versión de producción de React..."
+          cd frontend/web-react
+          npm install
+          npm run build
+          cd ../../
+          
+          # 5. Reiniciar los servicios
+          echo "5. Reiniciando API FastAPI..."
+          systemctl restart fastapi_pea
+          
+          echo "✅ DESPLIEGUE COMPLETADO EXITOSAMENTE"
