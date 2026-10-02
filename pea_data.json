@@ -60,7 +60,6 @@
     {"id": 58, "external_code": "COL0218897", "name": "GIESLE", "acronym": "", "description": "", "classification": "", "status": "active"},
     {"id": 60, "external_code": "COL0000000", "name": "GIIRA", "acronym": "", "description": "", "classification": "", "status": "active"},
     {"id": 61, "external_code": "COL0002093", "name": "Grupo de óptica e informática", "acronym": "", "description": "", "classification": "Acon vigencia hasta la publicación de los resultados de la siguiente convocatoria", "status": "active"},
-    {"id": 62, "external_code": "COL0002668", "name": "AITICE", "acronym": "", "description": "", "classification": "Bcon vigencia hasta la publicación de los resultados de la siguiente convocatoria", "status": "active"},
     {"id": 66, "external_code": "COL0043834", "name": "AITICE", "acronym": "", "description": "", "classification": "", "status": "active"}
   ],
   "researchers": [

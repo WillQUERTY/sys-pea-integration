@@ -1,8 +1,8 @@
 """
 recreate_database.py
 Script maestro para recrear completamente la base de datos peai desde cero,
-aplicar el esquema oficial actualizado, sembrar catalogos y grupos UPC desde pea_data.json,
-y ejecutar la ingesta atomica mediante el importador refactorizado.
+aplicar el esquema oficial actualizado, sembrar el catálogo Minciencias 2024
+y ejecutar la ingesta atómica exclusivamente para el grupo AITICE (COL0043834).
 """
 
 import os
@@ -15,8 +15,8 @@ from backend.app.scraper import scrape_gruplac
 MASTER_CONN_STR = "Driver={ODBC Driver 18 for SQL Server};Server=127.0.0.1;Database=master;UID=sa;PWD=***REMOVED***;TrustServerCertificate=yes;"
 PEAI_CONN_STR = "Driver={ODBC Driver 18 for SQL Server};Server=127.0.0.1;Database=peai;UID=sa;PWD=***REMOVED***;TrustServerCertificate=yes;"
 SCHEMA_PATH = os.path.join(os.path.dirname(__file__), "database", "init_schema.sql")
-PEA_DATA_PATH = os.path.join(os.path.dirname(__file__), "pea_data.json")
-GRUPLAC_URL = "https://scienti.minciencias.gov.co/gruplac/jsp/visualiza/visualizagr.jsp?nro=00000000002093"
+AITICE_GRUPLAC_URL = "https://scienti.minciencias.gov.co/gruplac/jsp/visualiza/visualizagr.jsp?nro=00000000002668"
+AITICE_HTML_PATH = os.path.join(os.path.dirname(__file__), "docs", "AITICE-PAGE.html")
 
 
 def recreate_sql_database():
@@ -53,43 +53,47 @@ def apply_schema():
     with pyodbc.connect(PEAI_CONN_STR, autocommit=True) as conn:
         cur = conn.cursor()
         for idx, batch in enumerate(batches, start=1):
-            # Omitir comandos USE peai redundantes
             clean_b = re.sub(r"(?i)^\s*USE\s+peai\s*;?", "", batch).strip()
             if clean_b:
                 cur.execute(clean_b)
     print(f"  [OK] Esquema ejecutado ({len(batches)} lotes DDL procesados).")
 
 
-def seed_upc_groups():
+def seed_catalog():
     print("=================================================================")
-    print("PASO 3: Sembrando grupos base de la UPC desde pea_data.json")
+    print("PASO 3: Sembrando catálogo oficial Minciencias 2024")
     print("=================================================================")
-    # Inicializar memoria nativa C++
-    repository.initialize(repository.InitMode.Empty)
-    
-    # Cargar 60 grupos base de la UPC en RAM nativa
-    loaded = repository.load_from_file(PEA_DATA_PATH)
-    groups = repository.list_groups()
-    print(f"  -> Grupos cargados en memoria RAM: {len(groups)}")
-    
-    # Sincronizar hacia SQL Server
-    saved = repository.save_to_db(PEAI_CONN_STR)
-    print(f"  [OK] Grupos sincronizados a SQL Server: {saved}")
+    from database.seed_catalog_2024 import main as seed_catalog_main
+    seed_catalog_main()
+    print("  [OK] Catálogo 2024 sembrado exitosamente.")
 
 
 def run_ingestion():
     print("=================================================================")
-    print("PASO 4: Ingesta atómica de Minciencias GrupLAC")
-    print(f"URL: {GRUPLAC_URL}")
+    print("PASO 4: Ingesta atómica de Minciencias GrupLAC para AITICE")
+    print(f"URL: {AITICE_GRUPLAC_URL}")
     print("=================================================================")
     # Inicializar repositorio conectado a la BD recién creada
     repository.initialize(repository.InitMode.Database, PEAI_CONN_STR)
     repository._active_connection_string = PEAI_CONN_STR
 
-    # Enriquecimiento en cascada: tras importar el grupo, se descarga el CvLAC
-    # de cada integrante con cod_rh (1 req/seg; los fallos quedan como warnings).
-    result = scrape_gruplac(GRUPLAC_URL, PEAI_CONN_STR, enrich_cvlac=True)
-    print(f"  [OK] Ingesta finalizada con éxito:")
+    try:
+        print("  -> Descargando e ingiriendo AITICE en vivo desde Scienti...")
+        result = scrape_gruplac(AITICE_GRUPLAC_URL, PEAI_CONN_STR, enrich_cvlac=True)
+    except Exception as e:
+        print(f"  [AVISO] No se pudo descargar en vivo desde Scienti ({e}).")
+        if os.path.exists(AITICE_HTML_PATH):
+            print(f"  -> Usando snapshot local {AITICE_HTML_PATH}...")
+            from backend.app.scraper import GruplacHtmlParser, GruplacCommitService
+            with open(AITICE_HTML_PATH, "r", encoding="utf-8", errors="replace") as f:
+                html = f.read()
+            data = GruplacHtmlParser.parse(html, source_url=AITICE_GRUPLAC_URL)
+            data.group["external_code"] = "COL0043834"
+            result = GruplacCommitService.commit(data, db_conn_str=PEAI_CONN_STR)
+        else:
+            raise
+
+    print(f"  [OK] Ingesta de AITICE finalizada con éxito:")
     print(f"       Total procesados: {result.get('total_records')}")
     print(f"       Nuevos: {result.get('new_records')}")
     print(f"       {result.get('reconciliation_summary')}")
@@ -102,8 +106,6 @@ def enrich_from_open_data():
     print("=================================================================")
     print("PASO 4b: Enriquecimiento desde datos abiertos (datos.gov.co / Socrata)")
     print("=================================================================")
-    # Rellena formación, clasificación Minciencias, nacionalidad y residencia
-    # de los investigadores reconocidos en convocatorias, usando su cod_rh.
     summary = datos_abiertos.enrich_all(only_missing=True)
     print(f"  [OK] Procesados: {summary['processed']} | Enriquecidos: {summary['enriched']} | "
           f"Sin registro: {summary['not_found']} | Ya al día: {summary['up_to_date']}")
@@ -126,7 +128,6 @@ def verify_report():
         print(f"  TOTAL TABLAS: {len(tables)} | TOTAL REGISTROS: {total_all}")
         print("=================================================================")
 
-        # Métricas de conciliación específicas
         print("MÉTRICAS DE GOBERNANZA:")
         cur.execute("SELECT status, source, COUNT(*) FROM GroupProductLink GROUP BY status, source")
         for r in cur.fetchall():
@@ -147,7 +148,7 @@ def notify_running_api():
     try:
         import requests
         resp = requests.post(
-            "http://localhost:8000/api/v1/system/initialize/database",
+            "http://127.0.0.1:8000/api/v1/system/initialize/database",
             json={"connection_string": PEAI_CONN_STR},
             timeout=120,
         )
@@ -159,7 +160,7 @@ def notify_running_api():
 if __name__ == "__main__":
     recreate_sql_database()
     apply_schema()
-    seed_upc_groups()
+    seed_catalog()
     run_ingestion()
     enrich_from_open_data()
     verify_report()

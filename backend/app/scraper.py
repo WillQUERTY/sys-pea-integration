@@ -532,7 +532,11 @@ class GruplacHtmlParser:
             m_nro = re.search(r"nro=([0-9]+)", source_url)
             if m_nro:
                 nro_clean = m_nro.group(1).lstrip("0")
-                group_code = f"COL{nro_clean.zfill(7)}"
+                # Caso especial AITICE: nro interno Scienti 2668 corresponde al código oficial COL0043834
+                if nro_clean == "2668":
+                    group_code = "COL0043834"
+                else:
+                    group_code = f"COL{nro_clean.zfill(7)}"
 
         leader_name = basic_data.get("lider", basic_data.get("lider del grupo", ""))
 
