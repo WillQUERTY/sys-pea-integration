@@ -63,7 +63,11 @@ std::optional<ValidationQueueItem> vq_dequeue() {
 static std::string now_iso() {
     std::time_t t = std::time(nullptr);
     std::tm tm{};
+#ifdef _WIN32
     localtime_s(&tm, &t);
+#else
+    localtime_r(&t, &tm);
+#endif
     char buf[20];
     std::strftime(buf, sizeof buf, "%Y-%m-%dT%H:%M:%S", &tm);
     return buf;
