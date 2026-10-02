@@ -546,7 +546,7 @@ async def list_researchers_endpoint(
         all_res = [r for r in all_res if r.classification_records == category]
     if search:
         s = search.lower()
-        all_res = [r for r in all_res if s in r.first_names.lower() or s in r.last_names.lower() or s in r.external_code.lower()]
+        all_res = [r for r in all_res if s in r.first_names.lower() or s in r.last_names.lower() or s in r.external_code.lower() or s in (r.orcid or "").lower()]
     total = len(all_res)
     return PagedResponse(items=all_res[skip : skip + limit], total=total, skip=skip, limit=limit)
 

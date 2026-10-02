@@ -1,6 +1,6 @@
 import { useState, useMemo, useEffect } from 'react'
 import { useQuery, useMutation, useQueryClient, keepPreviousData } from '@tanstack/react-query'
-import { Link } from '@tanstack/react-router'
+import { Link, useSearch } from '@tanstack/react-router'
 import { toast } from 'sonner'
 import { Plus, MoreHorizontal, Pencil, Trash2, RotateCcw } from 'lucide-react'
 import { listGroups, deleteGroup, restoreGroup } from '@/lib/api'
@@ -31,8 +31,13 @@ export function Groups() {
   const [editingGroup, setEditingGroup] = useState<Group | null>(null)
 
   // Estado server-side: búsqueda (debounced), página y filtros
-  const [search, setSearch] = useState('')
+  // El término llega por URL desde el hero-search del dashboard
+  const urlSearch = useSearch({ from: '/_authenticated/groups/' })
+  const [search, setSearch] = useState(urlSearch.search ?? '')
   const debouncedSearch = useDebouncedValue(search, 300)
+  useEffect(() => {
+    if (urlSearch.search !== undefined) setSearch(urlSearch.search)
+  }, [urlSearch.search])
   const [page, setPage] = useState(0)
   const [pageSize, setPageSize] = useState(10)
   const [filterValues, setFilterValues] = useState<Record<string, string>>({

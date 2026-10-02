@@ -26,7 +26,7 @@ import {
   linkProduct, unlinkProduct, listProducts,
   getGroupMemberships, updateMember,
   getGroupPlans, createPlan, updatePlan, deletePlan,
-  groupReportPdfUrl
+  groupReportPdfUrl, getProductCatalogs
 } from '@/lib/api'
 import type { Researcher } from '@/lib/types'
 import type { Group, WorkPlan } from '@/lib/types'
@@ -55,6 +55,7 @@ import {
 } from '@/components/ui/select'
 
 import { DataTable } from '@/components/data-table'
+import { isEndorsed, EndorsedBadge } from '@/features/products/endorsed'
 
 export function ValidationBadge({ status }: { status?: string | null }) {
   if (status === 'valid') {
@@ -116,6 +117,16 @@ export function GroupDetail() {
     queryKey: ['groups', groupId, 'products'],
     queryFn: () => getGroupProducts(groupId),
   })
+
+  // Catálogo 2024: resolver la tipología por id en la tabla de productos
+  const { data: catalogs } = useQuery({
+    queryKey: ['product-catalogs'],
+    queryFn: getProductCatalogs,
+  })
+  const subtypeById = useMemo(
+    () => new Map((catalogs?.subtypes ?? []).map((s) => [s.id, s])),
+    [catalogs]
+  )
 
   const { data: projects, isLoading: isLoadingProjects } = useQuery({
     queryKey: ['groups', groupId, 'projects'],
@@ -1095,12 +1106,37 @@ export function GroupDetail() {
                   header: 'Título del Producto',
                   searchable: (p) => p.title,
                   className: 'max-w-[400px]',
-                  cell: (p) => <span className='block truncate font-medium text-sm'>{p.title}</span>
+                  cell: (p) => (
+                    <div className='flex items-center gap-2'>
+                      <Link
+                        to='/products/$id'
+                        params={{ id: String(p.id) }}
+                        className='block truncate font-medium text-sm text-primary hover:underline'
+                      >
+                        {p.title}
+                      </Link>
+                      {isEndorsed(p) && <EndorsedBadge />}
+                    </div>
+                  )
                 },
                 {
                   key: 'year',
                   header: 'Año',
                   cell: (p) => <span className='text-muted-foreground'>{p.year ?? (String(p.publication_date ?? '').slice(0, 4) || '-')}</span>
+                },
+                {
+                  key: 'subtype',
+                  header: 'Tipología 2024',
+                  cell: (p) => {
+                    const s = p.subtype_id ? subtypeById.get(p.subtype_id) : undefined
+                    return s ? (
+                      <Badge variant='outline' className='font-mono text-xs' title={s.name}>
+                        {s.code ?? s.name}
+                      </Badge>
+                    ) : (
+                      <span className='text-xs text-muted-foreground'>sin clasificar</span>
+                    )
+                  }
                 },
                 {
                   key: 'status',

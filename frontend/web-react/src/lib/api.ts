@@ -468,6 +468,13 @@ export async function exportToFile(path: string = 'pea_data.json') {
 }
 
 // --- Dashboard ---
+export interface Modelo2024Stats {
+  products_without_subtype: number
+  products_with_quality: number
+  endorsed_products: number
+  researchers_with_orcid: number
+  total_projects: number
+}
 export interface DashboardStats {
   total_groups: number
   total_researchers: number
@@ -475,6 +482,8 @@ export interface DashboardStats {
   validation: Record<string, number>
   by_year: Array<{ year: string; count: number }>
   groups_by_classification: Record<string, number>
+  /** Métricas del Modelo de Medición 2024 (calculadas en la API sobre la RAM) */
+  modelo_2024?: Modelo2024Stats
 }
 
 export async function getDashboardStats() {

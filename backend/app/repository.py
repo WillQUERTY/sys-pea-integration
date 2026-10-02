@@ -1292,12 +1292,36 @@ def vq_remove_item(item_id: int):
         abpoxx_pybind.vq_cancel_db(_active_connection_string, item.product_id)
     return item.product_id
 
+def _is_endorsed(p: Product) -> bool:
+    """Aval ✓ GrupLAC/CvLAC: llega como evidencia de texto o como atributo
+    especializado JSON (no existe campo propio), igual que en la UI."""
+    evidence = p.evidence or ""
+    return (
+        "avalado" in evidence.lower()
+        or "✓" in evidence
+        or '"minciencias_endorsed": true' in (p.specialized_attributes or "")
+    )
+
+
 def get_dashboard_stats() -> dict:
     if not _active_connection_string:
         return {}
     # El nucleo C++ ejecuta las 6 agregaciones y devuelve el JSON ya
     # estructurado con las mismas claves que consumia la API.
-    return json.loads(abpoxx_pybind.get_dashboard_stats_json(_active_connection_string))
+    stats = json.loads(abpoxx_pybind.get_dashboard_stats_json(_active_connection_string))
+    # Métricas del Modelo de Medición 2024, calculadas en Python sobre la
+    # RAM del core (el agregado del C++ no las conoce) y fusionadas al JSON.
+    products = list_products()
+    researchers = list_researchers()
+    _, total_projects = list_projects()
+    stats["modelo_2024"] = {
+        "products_without_subtype": sum(1 for p in products if not p.subtype_id),
+        "products_with_quality": sum(1 for p in products if p.quality_category_id),
+        "endorsed_products": sum(1 for p in products if _is_endorsed(p)),
+        "researchers_with_orcid": sum(1 for r in researchers if r.orcid),
+        "total_projects": total_projects,
+    }
+    return stats
 
 def get_group_projects(group_id: int) -> List[Project]:
     get_group(group_id)  # 404 si no existe

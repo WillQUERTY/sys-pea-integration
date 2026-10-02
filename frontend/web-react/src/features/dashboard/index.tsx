@@ -32,6 +32,9 @@ import {
   GraduationCap,
   History,
   ShieldCheck,
+  BadgeCheck,
+  Fingerprint,
+  ClipboardList,
 } from 'lucide-react'
 import { getDashboardStats, listValidationQueue, listGroups, groupReportPdfUrl } from '@/lib/api'
 import { parseMincienciasClassification } from '@/lib/utils'
@@ -97,14 +100,14 @@ export function Dashboard() {
   const totalGroups = stats?.total_groups ?? 0
   const totalResearchers = stats?.total_researchers ?? 0
 
-  const validationRate = totalProducts > 0 ? ((validCount / totalProducts) * 100).toFixed(1) : '100'
+  const validationRate = totalProducts > 0 ? ((validCount / totalProducts) * 100).toFixed(1) : '0'
 
   const handleHeroSearch = (e: React.FormEvent) => {
     e.preventDefault()
     if (!heroSearch.trim()) return
     navigate({
       to: '/groups',
-      search: { search: heroSearch.trim() } as any,
+      search: { search: heroSearch.trim() },
     })
   }
 
@@ -254,7 +257,11 @@ export function Dashboard() {
                 iconBg='bg-violet-500/10'
                 to='/researchers'
                 label='Conocer investigadores'
-                badge='CvLAC Vinculado'
+                badge={
+                  stats?.modelo_2024
+                    ? `${stats.modelo_2024.researchers_with_orcid}/${totalResearchers} con ORCID`
+                    : undefined
+                }
                 loading={statsQuery.isLoading}
               />
               <DiscoveryCard
@@ -270,14 +277,13 @@ export function Dashboard() {
               />
               <DiscoveryCard
                 title='Proyectos & Líneas I+D'
-                count={undefined}
+                count={stats?.modelo_2024?.total_projects}
                 description='Iniciativas científicas en ejecución, planes de trabajo y transferencia de conocimiento.'
                 icon={<Lightbulb className='h-5 w-5 text-amber-600 dark:text-amber-400' />}
                 iconBg='bg-amber-500/10'
                 to='/projects'
                 label='Consultar proyectos'
-                badge='Impacto Regional'
-                loading={false}
+                loading={statsQuery.isLoading}
               />
             </div>
 
@@ -579,7 +585,7 @@ export function Dashboard() {
                     </div>
                     <div className='text-center px-3 py-1.5 rounded-lg bg-background border'>
                       <p className='text-xl font-bold text-foreground'>{validationRate}%</p>
-                      <p className='text-[11px] text-muted-foreground'>Índice de Calidad</p>
+                      <p className='text-[11px] text-muted-foreground'>% Validados</p>
                     </div>
 
                     <Button
@@ -660,6 +666,63 @@ export function Dashboard() {
               </div>
             </div>
 
+            {/* Modelo de Medición 2024: estado real de tipologías, calidad y aval */}
+            <div>
+              <div className='flex items-center gap-2 mb-3'>
+                <Award className='h-4 w-4 text-primary' />
+                <h3 className='text-sm font-bold text-foreground'>Modelo de Medición 2024</h3>
+                <Badge variant='outline' className='text-[10px] font-normal'>
+                  validación humana por tipología y categoría
+                </Badge>
+              </div>
+              {statsQuery.isLoading ? (
+                <div className='grid gap-4 sm:grid-cols-2 lg:grid-cols-4'>
+                  {Array.from({ length: 4 }).map((_, i) => (
+                    <Skeleton key={i} className='h-[76px] w-full rounded-xl' />
+                  ))}
+                </div>
+              ) : (
+                <div className='grid gap-4 sm:grid-cols-2 lg:grid-cols-4'>
+                  <Metric2024Card
+                    title='Sin tipología'
+                    value={stats?.modelo_2024?.products_without_subtype}
+                    hint='Pendientes de reclasificación (filtro en Productos)'
+                    icon={<ClipboardList className='h-5 w-5 text-amber-600' />}
+                    iconBg='bg-amber-500/10'
+                    to='/products'
+                  />
+                  <Metric2024Card
+                    title='Con categoría de calidad'
+                    value={stats?.modelo_2024?.products_with_quality}
+                    hint='Asignada por el validador humano'
+                    icon={<BadgeCheck className='h-5 w-5 text-emerald-600' />}
+                    iconBg='bg-emerald-500/10'
+                    to='/products'
+                  />
+                  <Metric2024Card
+                    title='Avalados ✓ Minciencias'
+                    value={stats?.modelo_2024?.endorsed_products}
+                    hint='Convocatoria Nacional previa'
+                    icon={<ShieldCheck className='h-5 w-5 text-emerald-600' />}
+                    iconBg='bg-emerald-500/10'
+                    to='/products'
+                  />
+                  <Metric2024Card
+                    title='Cobertura ORCID'
+                    value={
+                      stats?.modelo_2024
+                        ? `${stats.modelo_2024.researchers_with_orcid}/${totalResearchers}`
+                        : undefined
+                    }
+                    hint='Investigadores con ORCID registrado'
+                    icon={<Fingerprint className='h-5 w-5 text-violet-600' />}
+                    iconBg='bg-violet-500/10'
+                    to='/researchers'
+                  />
+                </div>
+              )}
+            </div>
+
             {/* SystemCard Component for RAM / SQL Persistence */}
             <SystemCard />
 
@@ -723,6 +786,38 @@ export function Dashboard() {
 }
 
 // ─── Sub-components ────────────────────────────────────────────────────────────
+
+function Metric2024Card({
+  title,
+  value,
+  hint,
+  icon,
+  iconBg,
+  to,
+}: {
+  title: string
+  value?: number | string
+  hint: string
+  icon: React.ReactNode
+  iconBg: string
+  to: string
+}) {
+  return (
+    <Link
+      to={to}
+      className='flex items-center gap-3 rounded-xl border bg-card p-4 shadow-2xs transition-colors hover:bg-muted/40'
+    >
+      <div className={`rounded-lg p-2.5 ${iconBg}`}>{icon}</div>
+      <div className='min-w-0'>
+        <p className='text-xs text-muted-foreground'>{title}</p>
+        <p className='text-xl font-bold text-foreground'>
+          {value !== undefined ? (typeof value === 'number' ? value.toLocaleString() : value) : '—'}
+        </p>
+        <p className='text-[11px] text-muted-foreground truncate'>{hint}</p>
+      </div>
+    </Link>
+  )
+}
 
 function DiscoveryCard({
   title,
