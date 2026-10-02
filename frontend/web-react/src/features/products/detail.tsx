@@ -63,8 +63,8 @@ function Field({ label, value, mono = false }: { label: string; value?: React.Re
   )
 }
 
-export function ProductDetail() {
-  const { id } = useParams({ from: '/_authenticated/products/$id' })
+export function ProductDetail({ isAdmin = false }: { isAdmin?: boolean }) {
+  const { id } = useParams({ strict: false }) as any
   const queryClient = useQueryClient()
   const productId = Number(id)
 
@@ -174,14 +174,16 @@ export function ProductDetail() {
   if (isLoading) {
     return (
       <>
-        <Header>
-          <div className='ms-auto flex items-center space-x-4'>
-            <ThemeSwitch />
-            <ConfigDrawer />
-            <ProfileDropdown />
-          </div>
-        </Header>
-        <Main>
+        {isAdmin && (
+          <Header>
+            <div className='ms-auto flex items-center space-x-4'>
+              <ThemeSwitch />
+              <ConfigDrawer />
+              <ProfileDropdown />
+            </div>
+          </Header>
+        )}
+        <Main className={!isAdmin ? 'max-w-5xl mx-auto p-0 sm:p-6 w-full' : undefined}>
           <div className='space-y-6'>
             <Skeleton className='h-32 w-full rounded-xl' />
             <Skeleton className='h-[300px] w-full rounded-xl' />
@@ -193,11 +195,11 @@ export function ProductDetail() {
 
   if (!product) {
     return (
-      <Main>
+      <Main className={!isAdmin ? 'max-w-5xl mx-auto p-0 sm:p-6 w-full' : undefined}>
         <div className='py-20 text-center'>
           <h2 className='text-2xl font-bold'>Producto no encontrado</h2>
           <Button asChild className='mt-4'>
-            <Link to='/products'>Volver a Productos</Link>
+            <Link to={isAdmin ? "/admin/products" : "/products"}>Volver a Productos</Link>
           </Button>
         </div>
       </Main>
@@ -220,23 +222,25 @@ export function ProductDetail() {
 
   return (
     <>
-      <Header>
-        <div className='flex items-center gap-4'>
-          <Button variant='ghost' size='icon' asChild className='h-8 w-8 rounded-full'>
-            <Link to='/products'>
-              <ArrowLeft className='h-4 w-4' />
-            </Link>
-          </Button>
-          <h1 className='text-sm font-medium'>Ficha del Producto</h1>
-        </div>
-        <div className='ms-auto flex items-center space-x-4'>
-          <ThemeSwitch />
-          <ConfigDrawer />
-          <ProfileDropdown />
-        </div>
-      </Header>
+      {isAdmin && (
+        <Header>
+          <div className='flex items-center gap-4'>
+            <Button variant='ghost' size='icon' asChild className='h-8 w-8 rounded-full'>
+              <Link to={isAdmin ? '/admin/products' : '/products'}>
+                <ArrowLeft className='h-4 w-4' />
+              </Link>
+            </Button>
+            <h1 className='text-sm font-medium'>Ficha del Producto</h1>
+          </div>
+          <div className='ms-auto flex items-center space-x-4'>
+            <ThemeSwitch />
+            <ConfigDrawer />
+            <ProfileDropdown />
+          </div>
+        </Header>
+      )}
 
-      <Main>
+      <Main className={!isAdmin ? 'max-w-5xl mx-auto p-0 sm:p-6 w-full' : undefined}>
         {/* Encabezado */}
         <div className='mb-6 rounded-2xl border border-border/50 bg-card p-6 shadow-sm'>
           <div className='flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between'>
@@ -257,10 +261,12 @@ export function ProductDetail() {
               </div>
             </div>
             <div className='flex shrink-0 flex-wrap gap-2'>
-              <Button size='sm' variant='outline' onClick={() => setEditOpen(true)}>
-                <Pencil className='mr-2 h-4 w-4' /> Editar ficha
-              </Button>
-              {!isValid && (
+              {isAdmin && (
+                <>
+                  <Button size='sm' variant='outline' onClick={() => setEditOpen(true)}>
+                    <Pencil className='mr-2 h-4 w-4' /> Editar ficha
+                  </Button>
+                  {!isValid && (
                 <>
                   <Button
                     size='sm'
@@ -284,6 +290,8 @@ export function ProductDetail() {
                   >
                     <ClipboardCheck className='mr-2 h-4 w-4' /> Encolar validación
                   </Button>
+                </>
+              )}
                 </>
               )}
             </div>
@@ -364,9 +372,11 @@ export function ProductDetail() {
                 </div>
                 <h3 className='text-lg font-semibold'>Autores</h3>
               </div>
-              <Button size='sm' variant='outline' onClick={() => setAuthorOpen(true)}>
-                <UserPlus className='mr-2 h-4 w-4' /> Vincular Autor
-              </Button>
+              {isAdmin && (
+                <Button size='sm' variant='outline' onClick={() => setAuthorOpen(true)}>
+                  <UserPlus className='mr-2 h-4 w-4' /> Vincular Autor
+                </Button>
+              )}
             </div>
             {!authors || authors.length === 0 ? (
               <p className='text-sm text-muted-foreground'>Sin autores registrados.</p>
@@ -381,7 +391,7 @@ export function ProductDetail() {
                       <div className='min-w-0'>
                         {a.researcher_id ? (
                           <Link
-                            to='/researchers/$id'
+                            to={isAdmin ? '/admin/researchers/$id' : '/researchers/$id'}
                             params={{ id: String(a.researcher_id) }}
                             className='truncate text-sm font-medium text-primary hover:underline'
                           >
@@ -400,21 +410,23 @@ export function ProductDetail() {
                         </p>
                       </div>
                     </div>
-                    <Button
-                      size='icon'
-                      variant='ghost'
-                      className='h-8 w-8 shrink-0 text-destructive'
-                      disabled={removeAuthorMutation.isPending}
-                      onClick={() =>
-                        removeAuthorMutation.mutate(
-                          a.researcher_id
-                            ? { researcher_id: a.researcher_id }
-                            : { external_author_name: a.external_author_name }
-                        )
-                      }
-                    >
-                      <Trash2 className='h-4 w-4' />
-                    </Button>
+                    {isAdmin && (
+                      <Button
+                        size='icon'
+                        variant='ghost'
+                        className='h-8 w-8 shrink-0 text-destructive'
+                        disabled={removeAuthorMutation.isPending}
+                        onClick={() =>
+                          removeAuthorMutation.mutate(
+                            a.researcher_id
+                              ? { researcher_id: a.researcher_id }
+                              : { external_author_name: a.external_author_name }
+                          )
+                        }
+                      >
+                        <Trash2 className='h-4 w-4' />
+                      </Button>
+                    )}
                   </li>
                 ))}
               </ul>

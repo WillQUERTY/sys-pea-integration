@@ -29,7 +29,7 @@ import {
   groupReportPdfUrl, getProductCatalogs
 } from '@/lib/api'
 import type { Researcher } from '@/lib/types'
-import type { Group, WorkPlan } from '@/lib/types'
+import type { Group, WorkPlan, Project } from '@/lib/types'
 import { parseMincienciasClassification } from '@/lib/utils'
 
 import { Header } from '@/components/layout/header'
@@ -79,8 +79,8 @@ export function ValidationBadge({ status }: { status?: string | null }) {
   )
 }
 
-export function GroupDetail() {
-  const { id } = useParams({ from: '/_authenticated/groups/$id' })
+export function GroupDetail({ isAdmin = false }: { isAdmin?: boolean }) {
+  const { id } = useParams({ strict: false }) as any
   const queryClient = useQueryClient()
 
   const groupId = Number(id)
@@ -391,14 +391,16 @@ export function GroupDetail() {
   if (isLoading) {
     return (
       <>
-        <Header>
-          <div className='ms-auto flex items-center space-x-4'>
-            <ThemeSwitch />
-            <ConfigDrawer />
-            <ProfileDropdown />
-          </div>
-        </Header>
-        <Main>
+        {isAdmin && (
+          <Header>
+            <div className='ms-auto flex items-center space-x-4'>
+              <ThemeSwitch />
+              <ConfigDrawer />
+              <ProfileDropdown />
+            </div>
+          </Header>
+        )}
+        <Main className={`p-0 sm:p-6 ${!isAdmin ? 'max-w-5xl mx-auto w-full' : ''}`}>
           <div className="space-y-6">
             <Skeleton className="h-40 w-full rounded-xl" />
             <Skeleton className="h-[400px] w-full rounded-xl" />
@@ -410,11 +412,11 @@ export function GroupDetail() {
 
   if (!group) {
     return (
-      <Main>
+      <Main className={`p-0 sm:p-6 ${!isAdmin ? 'max-w-5xl mx-auto w-full' : ''}`}>
         <div className="text-center py-20">
           <h2 className="text-2xl font-bold">Grupo no encontrado</h2>
           <Button asChild className="mt-4">
-            <Link to="/groups">Volver a Grupos</Link>
+            <Link to={isAdmin ? "/admin/groups" : "/groups"}>Volver a Grupos</Link>
           </Button>
         </div>
       </Main>
@@ -426,23 +428,25 @@ export function GroupDetail() {
 
   return (
     <>
-      <Header>
-        <div className='flex items-center gap-4'>
-          <Button variant='ghost' size='icon' asChild className='h-8 w-8 rounded-full'>
-            <Link to="/groups">
-              <ArrowLeft className='h-4 w-4' />
-            </Link>
-          </Button>
-          <h1 className='text-sm font-medium'>Perfil del Grupo</h1>
-        </div>
-        <div className='ms-auto flex items-center space-x-4'>
-          <ThemeSwitch />
-          <ConfigDrawer />
-          <ProfileDropdown />
-        </div>
-      </Header>
+      {isAdmin && (
+        <Header>
+          <div className='flex items-center gap-4'>
+            <Button variant='ghost' size='icon' asChild className='h-8 w-8 rounded-full'>
+              <Link to={isAdmin ? '/admin/groups' : '/groups'}>
+                <ArrowLeft className='h-4 w-4' />
+              </Link>
+            </Button>
+            <h1 className='text-sm font-medium'>Perfil del Grupo</h1>
+          </div>
+          <div className='ms-auto flex items-center space-x-4'>
+            <ThemeSwitch />
+            <ConfigDrawer />
+            <ProfileDropdown />
+          </div>
+        </Header>
+      )}
 
-      <Main className='p-0 sm:p-6'>
+      <Main className={`p-0 sm:p-6 ${!isAdmin ? 'max-w-5xl mx-auto w-full' : ''}`}>
         {/* Cover & Profile Header */}
         <div className='relative mb-8 rounded-b-none sm:rounded-2xl overflow-hidden border border-border/50 bg-card shadow-sm'>
           <div className='h-32 bg-gradient-to-r from-primary/15 via-background to-secondary/15 relative'>
@@ -1163,6 +1167,7 @@ export function GroupDetail() {
           <TabsContent value="proyectos" className="focus-visible:outline-none bg-card border border-border/50 rounded-2xl p-6 shadow-sm">
             <div className="flex justify-between items-center mb-4">
               <h3 className="font-semibold text-lg">Proyectos del Grupo</h3>
+              {isAdmin && (
               <Dialog open={projectOpen} onOpenChange={setProjectOpen}>
                 <DialogTrigger asChild>
                   <Button size="sm"><Plus className="w-4 h-4 mr-2"/> Añadir Proyecto</Button>
@@ -1186,36 +1191,45 @@ export function GroupDetail() {
                   </div>
                 </DialogContent>
               </Dialog>
+              )}
             </div>
             <DataTable
               columns={[
                 {
                   key: 'title',
                   header: 'Título del Proyecto',
-                  searchable: (p) => p.title,
+                  searchable: (p: Project) => p.title,
                   className: 'max-w-[400px]',
-                  cell: (p) => <span className='block truncate font-medium text-sm'>{p.title}</span>
+                  cell: (p: Project) => (
+                    <Link
+                      to={isAdmin ? '/admin/projects/$id' : '/projects/$id'}
+                      params={{ id: String(p.id) }}
+                      className='block truncate font-medium text-sm text-primary hover:underline'
+                    >
+                      {p.title}
+                    </Link>
+                  )
                 },
                 {
                   key: 'start_date',
                   header: 'Fecha de Inicio',
-                  cell: (p) => <span className='text-muted-foreground'>{p.start_date || '-'}</span>
+                  cell: (p: Project) => <span className='text-muted-foreground'>{p.start_date || '-'}</span>
                 },
                 {
                   key: 'status',
                   header: 'Estado',
-                  cell: (p) => <Badge variant='secondary'>{p.status || 'Activo'}</Badge>
+                  cell: (p: Project) => <Badge variant='secondary'>{p.status || 'Activo'}</Badge>
                 },
-                {
+                isAdmin ? {
                   key: 'actions',
                   header: '',
-                  cell: (p) => (
+                  cell: (p: Project) => (
                     <Button variant="ghost" size="icon" onClick={() => unlinkProjMutation.mutate(p.id!)}>
                       <Trash2 className="w-4 h-4 text-red-500" />
                     </Button>
                   )
-                }
-              ]}
+                } : null
+              ].filter(Boolean) as any}
               data={projects ?? []}
               loading={isLoadingProjects}
               rowKey={(p) => p.id!}
@@ -1227,6 +1241,7 @@ export function GroupDetail() {
           <TabsContent value="planes" className="focus-visible:outline-none bg-card border border-border/50 rounded-2xl p-6 shadow-sm">
             <div className="flex justify-between items-center mb-4">
               <h3 className="font-semibold text-lg">Planes de Trabajo del Grupo</h3>
+              {isAdmin && (
               <Dialog open={planOpen} onOpenChange={setPlanOpen}>
                 <DialogTrigger asChild>
                   <Button size="sm" onClick={openCreatePlan}><Plus className="w-4 h-4 mr-2"/> Añadir Plan</Button>
@@ -1266,20 +1281,21 @@ export function GroupDetail() {
                   </div>
                 </DialogContent>
               </Dialog>
+              )}
             </div>
             <DataTable
               columns={[
                 {
                   key: 'title',
                   header: 'Título del Plan',
-                  searchable: (p) => p.title,
+                  searchable: (p: WorkPlan) => p.title,
                   className: 'max-w-[300px]',
-                  cell: (p) => <span className='block truncate font-medium text-sm'>{p.title}</span>
+                  cell: (p: WorkPlan) => <span className='block truncate font-medium text-sm'>{p.title}</span>
                 },
                 {
                   key: 'period',
                   header: 'Periodo',
-                  cell: (p) => (
+                  cell: (p: WorkPlan) => (
                     <span className='text-muted-foreground'>
                       {p.start_date || '—'} → {p.end_date || '—'}
                     </span>
@@ -1288,14 +1304,14 @@ export function GroupDetail() {
                 {
                   key: 'status',
                   header: 'Estado',
-                  cell: (p) => p.status === 'active'
+                  cell: (p: WorkPlan) => p.status === 'active'
                     ? <Badge className='bg-green-600 text-white hover:bg-green-700'>Activo</Badge>
                     : <Badge variant='secondary'>{p.status || 'Inactivo'}</Badge>
                 },
-                {
+                isAdmin ? {
                   key: 'actions',
                   header: '',
-                  cell: (p) => (
+                  cell: (p: WorkPlan) => (
                     <div className="flex items-center gap-1">
                       <Button variant="ghost" size="icon" title="Editar plan" onClick={() => openEditPlan(p)}>
                         <Pencil className="w-4 h-4" />
@@ -1307,8 +1323,8 @@ export function GroupDetail() {
                       )}
                     </div>
                   )
-                }
-              ]}
+                } : null
+              ].filter(Boolean) as any}
               data={plans ?? []}
               loading={isLoadingPlans}
               rowKey={(p) => p.id!}
@@ -1320,6 +1336,7 @@ export function GroupDetail() {
           <TabsContent value="lineas" className="focus-visible:outline-none bg-card border border-border/50 rounded-2xl p-6 shadow-sm">
             <div className="flex justify-between items-center mb-4">
               <h3 className="font-semibold text-lg">Líneas de Investigación Declaradas</h3>
+              {isAdmin && (
               <Dialog open={lineOpen} onOpenChange={setLineOpen}>
                 <DialogTrigger asChild>
                   <Button size="sm"><Plus className="w-4 h-4 mr-2"/> Añadir Línea</Button>
@@ -1339,6 +1356,7 @@ export function GroupDetail() {
                   </div>
                 </DialogContent>
               </Dialog>
+              )}
             </div>
             {isLoadingLines ? (
               <div className="space-y-2">
@@ -1354,9 +1372,11 @@ export function GroupDetail() {
                       <div className="h-2 w-2 rounded-full bg-primary mr-3" />
                       {line}
                     </div>
-                    <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => unlinkLineMutation.mutate(line)}>
-                      <Trash2 className="w-4 h-4 text-red-500" />
-                    </Button>
+                    {isAdmin && (
+                      <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => unlinkLineMutation.mutate(line)}>
+                        <Trash2 className="w-4 h-4 text-red-500" />
+                      </Button>
+                    )}
                   </li>
                 ))}
               </ul>

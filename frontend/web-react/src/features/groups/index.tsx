@@ -26,7 +26,36 @@ import { ThemeSwitch } from '@/components/theme-switch'
 import { GroupFormDialog } from './group-form-dialog'
 import { ConfirmDialog } from '@/components/confirm-dialog'
 
-export function Groups() {
+import { PublicHero } from '@/components/layout/public-hero'
+import { PublicFilterSheet } from '@/components/layout/public-filter-sheet'
+import { Users } from 'lucide-react'
+
+const GROUP_FILTERS = [
+  {
+    key: 'status',
+    label: 'Estado',
+    options: [
+      { value: 'all', label: 'Todos' },
+      { value: 'active', label: 'Activos' },
+      { value: 'inactive', label: 'Inactivos' },
+    ],
+    defaultValue: 'active',
+  },
+  {
+    key: 'classification',
+    label: 'Clasificación',
+    options: [
+      { value: 'all', label: 'Cualquiera' },
+      { value: 'A1', label: 'A1' },
+      { value: 'A', label: 'A' },
+      { value: 'B', label: 'B' },
+      { value: 'C', label: 'C' },
+      { value: 'Reconocido', label: 'Reconocido' },
+    ]
+  }
+]
+
+export function Groups({ isAdmin = false }: { isAdmin?: boolean }) {
   const queryClient = useQueryClient()
   const [formOpen, setFormOpen] = useState(false)
   const [editingGroup, setEditingGroup] = useState<Group | null>(null)
@@ -34,7 +63,7 @@ export function Groups() {
 
   // Estado server-side: búsqueda (debounced), página y filtros
   // El término llega por URL desde el hero-search del dashboard
-  const urlSearch = useSearch({ from: '/_authenticated/groups/' })
+  const urlSearch = (useSearch({ strict: false }) as { search?: string }) ?? {}
   const [search, setSearch] = useState(urlSearch.search ?? '')
   const debouncedSearch = useDebouncedValue(search, 300)
   useEffect(() => {
@@ -101,7 +130,7 @@ export function Groups() {
       searchable: (g) => `${g.name} ${g.acronym ?? ''}`,
       cell: (g) => (
         <Link
-          to='/groups/$id'
+          to={isAdmin ? '/admin/groups/$id' : '/groups/$id'}
           params={{ id: String(g.id) }}
           className='flex items-center gap-3 hover:underline'
         >
@@ -162,7 +191,7 @@ export function Groups() {
           </DropdownMenuTrigger>
           <DropdownMenuContent align='end'>
             <DropdownMenuItem asChild>
-              <Link to='/groups/$id' params={{ id: String(g.id) }} className='cursor-pointer w-full'>
+              <Link to={isAdmin ? '/admin/groups/$id' : '/groups/$id'} params={{ id: String(g.id) }} className='cursor-pointer w-full'>
                 <Pencil className='mr-2 h-4 w-4' />
                 Ver / Editar Perfil
               </Link>
@@ -190,61 +219,70 @@ export function Groups() {
 
   // Filtering is now handled by DataTable
 
+  const visibleColumns = useMemo(
+    () => (isAdmin ? columns : columns.filter((c) => c.key !== 'actions')),
+    [columns, isAdmin]
+  )
+
   return (
     <>
-      <Header>
-        <Search />
-        <div className='ms-auto flex items-center space-x-4'>
-          <ThemeSwitch />
-          <ConfigDrawer />
-          <ProfileDropdown />
-        </div>
-      </Header>
-
-      <Main>
-        <div className='mb-4 flex flex-wrap items-center justify-between gap-3'>
-          <div>
-            <h1 className='text-2xl font-bold tracking-tight'>Grupos de investigación</h1>
-            <p className='text-muted-foreground'>
-              Grupos importados desde GrupLAC o creados manualmente.
-            </p>
+      {isAdmin && (
+        <Header>
+          <Search />
+          <div className='ms-auto flex items-center space-x-4'>
+            <ThemeSwitch />
+            <ConfigDrawer />
+            <ProfileDropdown />
           </div>
-          <Button onClick={() => { setEditingGroup(null); setFormOpen(true) }}>
-            <Plus className='mr-2 h-4 w-4' /> Agregar Grupo
-          </Button>
-        </div>
+        </Header>
+      )}
+
+      {!isAdmin && (
+        <PublicHero
+          title='Grupos de Investigación'
+          subtitle='Grupos de investigación registrados en PEA-i.'
+          icon={Users}
+          searchPlaceholder='Buscar por nombre, sigla o código…'
+          searchValue={search}
+          onSearchChange={setSearch}
+          filterSlot={
+            <PublicFilterSheet
+              filters={GROUP_FILTERS}
+              filterValues={filterValues}
+              onChange={(key, val) => {
+                setFilterValues((p) => ({ ...p, [key]: val }))
+                setPage(0)
+              }}
+            />
+          }
+        />
+      )}
+
+      <Main publicWidth={!isAdmin}>
+        {isAdmin && (
+          <div className='mb-4 flex flex-wrap items-center justify-between gap-3'>
+            <div>
+              <h1 className='text-2xl font-bold tracking-tight'>Grupos de investigación</h1>
+              <p className='text-muted-foreground'>
+                Grupos importados desde GrupLAC o creados manualmente.
+              </p>
+            </div>
+            <Button onClick={() => { setEditingGroup(null); setFormOpen(true) }}>
+              <Plus className='mr-2 h-4 w-4' /> Agregar Grupo
+            </Button>
+          </div>
+        )}
 
         <DataTable
-          columns={columns}
+          columns={visibleColumns}
+          hideSearch={!isAdmin}
           data={groups.data?.items ?? []}
           loading={groups.isLoading}
           rowKey={(g) => g.id ?? g.external_code}
           searchPlaceholder='Buscar por nombre, sigla o código…'
           emptyMessage='No hay grupos que coincidan.'
-          filters={[
-            {
-              key: 'status',
-              label: 'Estado',
-              options: [
-                { value: 'all', label: 'Todos' },
-                { value: 'active', label: 'Activos' },
-                { value: 'inactive', label: 'Inactivos' },
-              ],
-              defaultValue: 'active',
-            },
-            {
-              key: 'classification',
-              label: 'Clasificación',
-              options: [
-                { value: 'all', label: 'Cualquiera' },
-                { value: 'A1', label: 'A1' },
-                { value: 'A', label: 'A' },
-                { value: 'B', label: 'B' },
-                { value: 'C', label: 'C' },
-                { value: 'Reconocido', label: 'Reconocido' },
-              ]
-            }
-          ]}
+          filters={GROUP_FILTERS}
+          hideFilters={!isAdmin}
           server={{
             total: groups.data?.total ?? 0,
             pageIndex: page,

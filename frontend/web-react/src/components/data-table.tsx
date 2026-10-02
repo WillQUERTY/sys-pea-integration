@@ -107,6 +107,10 @@ interface DataTableProps<T> {
   toolbarActions?: ReactNode
   /** Modo server: búsqueda/filtros/paginación controlados por la vista (datos del backend). */
   server?: DataTableServerProps
+  /** Hide search input */
+  hideSearch?: boolean
+  /** Hide internal filters trigger (useful when rendered externally) */
+  hideFilters?: boolean
 }
 
 // ─── Component ──────────────────────────────────────────────────────────────────
@@ -125,6 +129,8 @@ export function DataTable<T>({
   skeletonRows = 8,
   toolbarActions,
   server,
+  hideSearch = false,
+  hideFilters = false,
 }: DataTableProps<T>) {
   const [search, setSearch] = useState('')
   const [page, setPage] = useState(0)
@@ -207,20 +213,22 @@ export function DataTable<T>({
       {/* ── Toolbar ── */}
       <div className='flex flex-wrap items-center gap-3'>
         {/* Search */}
-        <div className='relative max-w-xs flex-1'>
-          <SearchIcon className='pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground' />
-          <Input
-            placeholder={searchPlaceholder}
-            value={activeSearchValue}
-            onChange={(e) =>
-              isServer ? server.onSearchChange(e.target.value) : updateSearch(e.target.value)
-            }
-            className='ps-9'
-          />
-        </div>
+        {!hideSearch && (
+          <div className='relative max-w-xs flex-1'>
+            <SearchIcon className='pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground' />
+            <Input
+              placeholder={searchPlaceholder}
+              value={activeSearchValue}
+              onChange={(e) =>
+                isServer ? server.onSearchChange(e.target.value) : updateSearch(e.target.value)
+              }
+              className='ps-9'
+            />
+          </div>
+        )}
 
         {/* Filters Drawer */}
-        {filters.length > 0 && (
+        {!hideFilters && filters.length > 0 && (
           <Sheet>
             <SheetTrigger asChild>
               <Button variant='outline' className='relative'>

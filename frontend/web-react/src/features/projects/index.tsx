@@ -1,4 +1,5 @@
 import { useState, useMemo, useEffect } from 'react'
+import { Link } from '@tanstack/react-router'
 import { useQuery, useMutation, useQueryClient, keepPreviousData } from '@tanstack/react-query'
 import { toast } from 'sonner'
 import { Plus, MoreHorizontal, Pencil, Trash2, RotateCcw } from 'lucide-react'
@@ -41,7 +42,11 @@ function fmtBudget(b?: number | null) {
   return new Intl.NumberFormat('es-CO', { maximumFractionDigits: 0 }).format(b)
 }
 
-export function Projects() {
+import { PublicHero } from '@/components/layout/public-hero'
+import { PublicFilterSheet } from '@/components/layout/public-filter-sheet'
+import { Lightbulb } from 'lucide-react'
+
+export function Projects({ isAdmin = false }: { isAdmin?: boolean }) {
   const queryClient = useQueryClient()
   const [formOpen, setFormOpen] = useState(false)
   const [editingProject, setEditingProject] = useState<Project | null>(null)
@@ -126,7 +131,13 @@ export function Projects() {
       searchable: (p) => p.title,
       cell: (p) => (
         <div className='flex items-center gap-2'>
-          <span className='truncate font-medium'>{p.title}</span>
+          <Link
+            to={isAdmin ? '/admin/projects/$id' : '/projects/$id'}
+            params={{ id: String(p.id) }}
+            className='block truncate font-medium text-primary hover:underline'
+          >
+            {p.title}
+          </Link>
           {p.status === 'inactive' && (
             <span className='shrink-0 rounded bg-muted px-1.5 py-0.5 text-[10px] text-muted-foreground'>
               inactivo
@@ -199,34 +210,66 @@ export function Projects() {
         </DropdownMenu>
       ),
     },
-  ], [delMutation, restoreMutation, researcherName])
+  ], [delMutation, restoreMutation, researcherName, isAdmin])
+
+  const visibleColumns = useMemo(
+    () => (isAdmin ? columns : columns.filter((c) => c.key !== 'actions')),
+    [columns, isAdmin]
+  )
 
   return (
     <>
-      <Header>
-        <Search />
-        <div className='ms-auto flex items-center space-x-4'>
-          <ThemeSwitch />
-          <ConfigDrawer />
-          <ProfileDropdown />
-        </div>
-      </Header>
-
-      <Main>
-        <div className='mb-4 flex flex-wrap items-center justify-between gap-3'>
-          <div>
-            <h1 className='text-2xl font-bold tracking-tight'>Proyectos de investigación</h1>
-            <p className='text-muted-foreground'>
-              Gestión independiente de proyectos y su vínculo con grupos.
-            </p>
+      {isAdmin && (
+        <Header>
+          <Search />
+          <div className='ms-auto flex items-center space-x-4'>
+            <ThemeSwitch />
+            <ConfigDrawer />
+            <ProfileDropdown />
           </div>
-          <Button onClick={() => { setEditingProject(null); setFormOpen(true) }}>
-            <Plus className='mr-2 h-4 w-4' /> Agregar Proyecto
-          </Button>
-        </div>
+        </Header>
+      )}
+
+      {!isAdmin && (
+        <PublicHero
+          title='Proyectos I+D'
+          subtitle='Catálogo público de proyectos de investigación e innovación.'
+          icon={Lightbulb}
+          searchPlaceholder='Buscar por título o tipo…'
+          searchValue={search}
+          onSearchChange={setSearch}
+          filterSlot={
+            <PublicFilterSheet
+              filters={projectFilters}
+              filterValues={filterValues}
+              onChange={(key, val) => {
+                setFilterValues((p) => ({ ...p, [key]: val }))
+                setPage(0)
+              }}
+            />
+          }
+        />
+      )}
+
+      <Main publicWidth={!isAdmin}>
+        {isAdmin && (
+          <div className='mb-4 flex flex-wrap items-center justify-between gap-3'>
+            <div>
+              <h1 className='text-2xl font-bold tracking-tight'>Proyectos de investigación</h1>
+              <p className='text-muted-foreground'>
+                Gestión independiente de proyectos y su vínculo con grupos.
+              </p>
+            </div>
+            <Button onClick={() => { setEditingProject(null); setFormOpen(true) }}>
+              <Plus className='mr-2 h-4 w-4' /> Agregar Proyecto
+            </Button>
+          </div>
+        )}
 
         <DataTable
-          columns={columns}
+          columns={visibleColumns}
+          hideSearch={!isAdmin}
+          hideFilters={!isAdmin}
           data={projects.data?.items ?? []}
           loading={projects.isLoading}
           rowKey={(p) => p.id ?? p.title}

@@ -74,7 +74,11 @@ const productFilters: DataFilter[] = [
   },
 ]
 
-export function Products() {
+import { PublicHero } from '@/components/layout/public-hero'
+import { PublicFilterSheet } from '@/components/layout/public-filter-sheet'
+import { FlaskConical, AlertTriangle } from 'lucide-react'
+
+export function Products({ isAdmin = false }: { isAdmin?: boolean }) {
   const queryClient = useQueryClient()
   const [formOpen, setFormOpen] = useState(false)
   const [editingProduct, setEditingProduct] = useState<Product | null>(null)
@@ -205,7 +209,7 @@ export function Products() {
       cell: (p) => (
         <div className='flex items-center gap-2'>
           <Link
-            to='/products/$id'
+            to={isAdmin ? '/admin/products/$id' : '/products/$id'}
             params={{ id: String(p.id) }}
             className='block truncate font-medium text-primary hover:underline'
           >
@@ -329,76 +333,112 @@ export function Products() {
     },
   ], [delMutation, restoreMutation, enqueueMutation, subtypeById, qualityCategoryById])
 
+  const visibleColumns = useMemo(
+    () => (isAdmin ? columns : columns.filter((c) => c.key !== 'actions')),
+    [columns, isAdmin]
+  )
+
+  const filterExtraContent = filterValues.window === 'custom' ? (
+    <div className='space-y-2.5'>
+      <h4 className='text-sm font-bold text-foreground'>
+        Ventana personalizada (año desde – hasta)
+      </h4>
+      <div className='grid grid-cols-2 gap-3'>
+        <Input
+          type='number'
+          inputMode='numeric'
+          placeholder='Desde (ej. 2019)'
+          className='h-11 rounded-xl border-border/60 bg-background shadow-2xs'
+          value={customStart}
+          onChange={(e) => {
+            setCustomStart(e.target.value)
+            setPage(0)
+          }}
+        />
+        <Input
+          type='number'
+          inputMode='numeric'
+          placeholder='Hasta (ej. 2023)'
+          className='h-11 rounded-xl border-border/60 bg-background shadow-2xs'
+          value={customEnd}
+          onChange={(e) => {
+            setCustomEnd(e.target.value)
+            setPage(0)
+          }}
+        />
+      </div>
+      {customStart && customEnd && Number(customStart) > Number(customEnd) && (
+        <p className='flex items-center gap-1.5 text-xs font-medium text-destructive'>
+          <AlertTriangle className='h-3.5 w-3.5 shrink-0' />
+          El año inicial ({customStart}) no puede ser mayor que el año final ({customEnd}).
+        </p>
+      )}
+      <p className='text-xs text-muted-foreground'>
+        Filtra por año de obtención del producto.
+      </p>
+    </div>
+  ) : undefined
+
   return (
     <>
-      <Header>
-        <Search />
-        <div className='ms-auto flex items-center space-x-4'>
-          <ThemeSwitch />
-          <ConfigDrawer />
-          <ProfileDropdown />
-        </div>
-      </Header>
-
-      <Main>
-        <div className='mb-4 flex flex-wrap items-center justify-between gap-3'>
-          <div>
-            <h1 className='text-2xl font-bold tracking-tight'>Productos científicos</h1>
-            <p className='text-muted-foreground'>
-              Catálogo de productos con ventana de observación dinámica.
-            </p>
+      {isAdmin && (
+        <Header>
+          <Search />
+          <div className='ms-auto flex items-center space-x-4'>
+            <ThemeSwitch />
+            <ConfigDrawer />
+            <ProfileDropdown />
           </div>
-          <Button onClick={() => { setEditingProduct(null); setFormOpen(true) }}>
-            <Plus className='mr-2 h-4 w-4' /> Agregar Producto
-          </Button>
-        </div>
+        </Header>
+      )}
+
+      {!isAdmin && (
+        <PublicHero
+          title='Producción Científica'
+          subtitle='Explora los productos científicos publicados.'
+          icon={FlaskConical}
+          searchPlaceholder='Buscar por título o código…'
+          searchValue={search}
+          onSearchChange={setSearch}
+          filterSlot={
+            <PublicFilterSheet
+              filters={productFilters2024}
+              filterValues={filterValues}
+              onChange={(key, val) => {
+                setFilterValues((p) => ({ ...p, [key]: val }))
+                setPage(0)
+              }}
+              filterExtra={filterExtraContent}
+            />
+          }
+        />
+      )}
+
+      <Main publicWidth={!isAdmin}>
+        {isAdmin && (
+          <div className='mb-4 flex flex-wrap items-center justify-between gap-3'>
+            <div>
+              <h1 className='text-2xl font-bold tracking-tight'>Productos científicos</h1>
+              <p className='text-muted-foreground'>
+                Catálogo de productos con ventana de observación dinámica.
+              </p>
+            </div>
+            <Button onClick={() => { setEditingProduct(null); setFormOpen(true) }}>
+              <Plus className='mr-2 h-4 w-4' /> Agregar Producto
+            </Button>
+          </div>
+        )}
 
         <DataTable
-          columns={columns}
+          columns={visibleColumns}
+          hideSearch={!isAdmin}
+          hideFilters={!isAdmin}
           data={products.data?.items ?? []}
           loading={products.isLoading}
           rowKey={(p) => p.id ?? p.external_code}
           searchPlaceholder='Buscar por título o DOI…'
           filters={productFilters2024}
-          filterExtra={
-            filterValues.window === 'custom' ? (
-              <div className='space-y-1.5'>
-                <label className='text-sm font-semibold text-foreground/80'>
-                  Ventana personalizada (año desde – hasta)
-                </label>
-                <div className='grid grid-cols-2 gap-3'>
-                  <Input
-                    type='number'
-                    inputMode='numeric'
-                    placeholder='Desde (ej. 2019)'
-                    value={customStart}
-                    onChange={(e) => {
-                      setCustomStart(e.target.value)
-                      setPage(0)
-                    }}
-                  />
-                  <Input
-                    type='number'
-                    inputMode='numeric'
-                    placeholder='Hasta (ej. 2023)'
-                    value={customEnd}
-                    onChange={(e) => {
-                      setCustomEnd(e.target.value)
-                      setPage(0)
-                    }}
-                  />
-                </div>
-                {customStart && customEnd && Number(customStart) > Number(customEnd) && (
-                  <p className='text-xs font-medium text-destructive'>
-                    ⚠️ El año inicial ({customStart}) no puede ser mayor que el año final ({customEnd}).
-                  </p>
-                )}
-                <p className='text-xs text-muted-foreground'>
-                  Filtra por año de obtención del producto.
-                </p>
-              </div>
-            ) : undefined
-          }
+          filterExtra={filterExtraContent}
           emptyMessage='Sin productos para los filtros seleccionados o activos.'
           server={{
             total: products.data?.total ?? 0,

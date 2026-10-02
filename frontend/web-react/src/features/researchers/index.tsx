@@ -79,7 +79,46 @@ function EnrichButton({ id }: { id?: number }) {
   )
 }
 
-export function Researchers() {
+import { PublicHero } from '@/components/layout/public-hero'
+import { PublicFilterSheet } from '@/components/layout/public-filter-sheet'
+import { UserRound } from 'lucide-react'
+
+const RESEARCHER_FILTERS = [
+  {
+    key: 'status',
+    label: 'Estado',
+    options: [
+      { value: 'all', label: 'Todos' },
+      { value: 'active', label: 'Activos' },
+      { value: 'inactive', label: 'Inactivos' },
+    ],
+    defaultValue: 'active',
+  },
+  {
+    key: 'educational_level',
+    label: 'Formación',
+    options: [
+      { value: 'all', label: 'Cualquiera' },
+      { value: 'Pregrado', label: 'Pregrado' },
+      { value: 'Especialización', label: 'Especialización' },
+      { value: 'Maestría', label: 'Maestría' },
+      { value: 'Doctorado', label: 'Doctorado' },
+    ]
+  },
+  {
+    key: 'category',
+    label: 'Categoría',
+    options: [
+      { value: 'all', label: 'Cualquiera' },
+      { value: 'Investigador Emérito', label: 'Emérito' },
+      { value: 'Investigador Senior', label: 'Senior' },
+      { value: 'Investigador Asociado', label: 'Asociado' },
+      { value: 'Investigador Junior', label: 'Junior' },
+    ]
+  }
+]
+
+export function Researchers({ isAdmin = false }: { isAdmin?: boolean }) {
   const queryClient = useQueryClient()
   const [formOpen, setFormOpen] = useState(false)
   const [editingResearcher, setEditingResearcher] = useState<Researcher | null>(null)
@@ -171,7 +210,7 @@ export function Researchers() {
               {initial}
             </div>
             <div className='min-w-0'>
-              <Link to="/researchers/$id" params={{ id: String(r.id) }} className='truncate text-sm font-medium hover:underline text-primary'>
+              <Link to={isAdmin ? '/admin/researchers/$id' : '/researchers/$id'} params={{ id: String(r.id) }} className='truncate text-sm font-medium hover:underline text-primary'>
                 {r.first_names} {r.last_names}
               </Link>
               {r.institutional_email && (
@@ -233,7 +272,7 @@ export function Researchers() {
             </DropdownMenuTrigger>
             <DropdownMenuContent align='end'>
               <DropdownMenuItem asChild>
-                <Link to="/researchers/$id" params={{ id: String(r.id) }} className='cursor-pointer w-full'>
+                <Link to={isAdmin ? '/admin/researchers/$id' : '/researchers/$id'} params={{ id: String(r.id) }} className='cursor-pointer w-full'>
                   <Pencil className='mr-2 h-4 w-4' />
                   Ver / Editar Perfil
                 </Link>
@@ -260,66 +299,65 @@ export function Researchers() {
     },
   ], [delMutation, restoreMutation])
 
+  const visibleColumns = useMemo(
+    () => (isAdmin ? columns : columns.filter((c) => c.key !== 'actions')),
+    [columns, isAdmin]
+  )
+
   return (
     <>
-      <Header>
-        <Search />
-        <div className='ms-auto flex items-center space-x-4'>
-          <ThemeSwitch />
-          <ConfigDrawer />
-          <ProfileDropdown />
-        </div>
-      </Header>
+      {isAdmin && (
+        <Header>
+          <Search />
+          <div className='ms-auto flex items-center space-x-4'>
+            <ThemeSwitch />
+            <ConfigDrawer />
+            <ProfileDropdown />
+          </div>
+        </Header>
+      )}
 
-      <Main>
-        <div className='mb-4'>
-          <h1 className='text-2xl font-bold tracking-tight'>Investigadores</h1>
-          <p className='text-muted-foreground'>
-            Integrantes importados desde GrupLAC / CvLAC o creados manualmente.
-          </p>
-        </div>
+      {!isAdmin && (
+        <PublicHero
+          title='Investigadores'
+          subtitle='Integrantes registrados y vinculados en PEA-i.'
+          icon={UserRound}
+          searchPlaceholder='Buscar por nombre o código…'
+          searchValue={search}
+          onSearchChange={setSearch}
+          filterSlot={
+            <PublicFilterSheet
+              filters={RESEARCHER_FILTERS}
+              filterValues={filterValues}
+              onChange={(key, val) => {
+                setFilterValues((p) => ({ ...p, [key]: val }))
+                setPage(0)
+              }}
+            />
+          }
+        />
+      )}
+
+      <Main publicWidth={!isAdmin}>
+        {isAdmin && (
+          <div className='mb-4'>
+            <h1 className='text-2xl font-bold tracking-tight'>Investigadores</h1>
+            <p className='text-muted-foreground'>
+              Integrantes importados desde GrupLAC / CvLAC o creados manualmente.
+            </p>
+          </div>
+        )}
 
         <DataTable
-          columns={columns}
+          columns={visibleColumns}
+          hideSearch={!isAdmin}
           data={researchers.data?.items ?? []}
           loading={researchers.isLoading}
           rowKey={(r) => r.id ?? r.external_code}
           searchPlaceholder='Buscar por nombre o código…'
           emptyMessage='No hay investigadores que coincidan.'
-          filters={[
-            {
-              key: 'status',
-              label: 'Estado',
-              options: [
-                { value: 'all', label: 'Todos' },
-                { value: 'active', label: 'Activos' },
-                { value: 'inactive', label: 'Inactivos' },
-              ],
-              defaultValue: 'active',
-            },
-            {
-              key: 'educational_level',
-              label: 'Formación',
-              options: [
-                { value: 'all', label: 'Cualquiera' },
-                { value: 'Pregrado', label: 'Pregrado' },
-                { value: 'Especialización', label: 'Especialización' },
-                { value: 'Maestría', label: 'Maestría' },
-                { value: 'Doctorado', label: 'Doctorado' },
-              ]
-            },
-            {
-              key: 'category',
-              label: 'Categoría',
-              options: [
-                { value: 'all', label: 'Cualquiera' },
-                { value: 'Investigador Emérito', label: 'Emérito' },
-                { value: 'Investigador Senior', label: 'Senior' },
-                { value: 'Investigador Asociado', label: 'Asociado' },
-                { value: 'Investigador Junior', label: 'Junior' },
-              ]
-            }
-          ]}
+          filters={RESEARCHER_FILTERS}
+          hideFilters={!isAdmin}
           server={{
             total: researchers.data?.total ?? 0,
             pageIndex: page,
@@ -342,15 +380,17 @@ export function Researchers() {
             isFetching: researchers.isFetching,
           }}
           toolbarActions={
-            <>
-              <Button variant='outline' onClick={() => enrichAll.mutate()} disabled={enrichAll.isPending}>
-                <Sparkles className='me-2 h-4 w-4' />
-                {enrichAll.isPending ? 'Enriqueciendo…' : 'Enriquecer Todo'}
-              </Button>
-              <Button onClick={() => { setEditingResearcher(null); setFormOpen(true) }}>
-                <Plus className='mr-2 h-4 w-4' /> Agregar Investigador
-              </Button>
-            </>
+            isAdmin ? (
+              <>
+                <Button variant='outline' onClick={() => enrichAll.mutate()} disabled={enrichAll.isPending}>
+                  <Sparkles className='me-2 h-4 w-4' />
+                  {enrichAll.isPending ? 'Enriqueciendo…' : 'Enriquecer Todo'}
+                </Button>
+                <Button onClick={() => { setEditingResearcher(null); setFormOpen(true) }}>
+                  <Plus className='mr-2 h-4 w-4' /> Agregar Investigador
+                </Button>
+              </>
+            ) : undefined
           }
         />
       </Main>

@@ -9,45 +9,89 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
-import { Route as AuthenticatedRouteRouteImport } from './routes/_authenticated/route'
-import { Route as AuthenticatedIndexRouteImport } from './routes/_authenticated/index'
-import { Route as AuthenticatedUndoRouteImport } from './routes/_authenticated/undo'
+import { Route as ValidationQueueRouteImport } from './routes/validation-queue'
+import { Route as UndoRouteImport } from './routes/undo'
+import { Route as SettingsRouteImport } from './routes/settings'
+import { Route as ImportRouteImport } from './routes/import'
+import { Route as AdminRouteRouteImport } from './routes/admin/route'
+import { Route as PublicRouteRouteImport } from './routes/_public/route'
+import { Route as AdminIndexRouteImport } from './routes/admin/index'
+import { Route as PublicIndexRouteImport } from './routes/_public/index'
+import { Route as AdminSystemRouteImport } from './routes/admin/system'
 import { Route as errors503RouteImport } from './routes/(errors)/503'
 import { Route as errors500RouteImport } from './routes/(errors)/500'
 import { Route as errors404RouteImport } from './routes/(errors)/404'
 import { Route as errors403RouteImport } from './routes/(errors)/403'
 import { Route as errors401RouteImport } from './routes/(errors)/401'
-import { Route as AuthenticatedSettingsRouteRouteImport } from './routes/_authenticated/settings/route'
-import { Route as AuthenticatedValidationQueueIndexRouteImport } from './routes/_authenticated/validation-queue/index'
-import { Route as AuthenticatedUndoIndexRouteImport } from './routes/_authenticated/undo/index'
-import { Route as AuthenticatedSettingsIndexRouteImport } from './routes/_authenticated/settings/index'
-import { Route as AuthenticatedResearchersIndexRouteImport } from './routes/_authenticated/researchers/index'
-import { Route as AuthenticatedProjectsIndexRouteImport } from './routes/_authenticated/projects/index'
-import { Route as AuthenticatedProductsIndexRouteImport } from './routes/_authenticated/products/index'
-import { Route as AuthenticatedImportIndexRouteImport } from './routes/_authenticated/import/index'
-import { Route as AuthenticatedGroupsIndexRouteImport } from './routes/_authenticated/groups/index'
-import { Route as AuthenticatedSettingsNotificationsRouteImport } from './routes/_authenticated/settings/notifications'
-import { Route as AuthenticatedSettingsDisplayRouteImport } from './routes/_authenticated/settings/display'
-import { Route as AuthenticatedSettingsAppearanceRouteImport } from './routes/_authenticated/settings/appearance'
-import { Route as AuthenticatedSettingsAccountRouteImport } from './routes/_authenticated/settings/account'
-import { Route as AuthenticatedResearchersIdRouteImport } from './routes/_authenticated/researchers/$id'
-import { Route as AuthenticatedProductsIdRouteImport } from './routes/_authenticated/products/$id'
-import { Route as AuthenticatedGroupsIdRouteImport } from './routes/_authenticated/groups/$id'
-import { Route as AuthenticatedErrorsErrorRouteImport } from './routes/_authenticated/errors/$error'
+import { Route as AdminSettingsRouteRouteImport } from './routes/admin/settings/route'
+import { Route as AdminValidationQueueIndexRouteImport } from './routes/admin/validation-queue/index'
+import { Route as AdminUndoIndexRouteImport } from './routes/admin/undo/index'
+import { Route as AdminSettingsIndexRouteImport } from './routes/admin/settings/index'
+import { Route as AdminResearchersIndexRouteImport } from './routes/admin/researchers/index'
+import { Route as AdminProjectsIndexRouteImport } from './routes/admin/projects/index'
+import { Route as AdminProductsIndexRouteImport } from './routes/admin/products/index'
+import { Route as AdminImportIndexRouteImport } from './routes/admin/import/index'
+import { Route as AdminGroupsIndexRouteImport } from './routes/admin/groups/index'
+import { Route as PublicResearchersIndexRouteImport } from './routes/_public/researchers/index'
+import { Route as PublicProjectsIndexRouteImport } from './routes/_public/projects/index'
+import { Route as PublicProductsIndexRouteImport } from './routes/_public/products/index'
+import { Route as PublicGroupsIndexRouteImport } from './routes/_public/groups/index'
+import { Route as AdminSettingsNotificationsRouteImport } from './routes/admin/settings/notifications'
+import { Route as AdminSettingsDisplayRouteImport } from './routes/admin/settings/display'
+import { Route as AdminSettingsAppearanceRouteImport } from './routes/admin/settings/appearance'
+import { Route as AdminSettingsAccountRouteImport } from './routes/admin/settings/account'
+import { Route as AdminResearchersIdRouteImport } from './routes/admin/researchers/$id'
+import { Route as AdminProjectsIdRouteImport } from './routes/admin/projects/$id'
+import { Route as AdminProductsIdRouteImport } from './routes/admin/products/$id'
+import { Route as AdminGroupsIdRouteImport } from './routes/admin/groups/$id'
+import { Route as PublicResearchersIdRouteImport } from './routes/_public/researchers/$id'
+import { Route as PublicProjectsIdRouteImport } from './routes/_public/projects/$id'
+import { Route as PublicProductsIdRouteImport } from './routes/_public/products/$id'
+import { Route as PublicGroupsIdRouteImport } from './routes/_public/groups/$id'
 
-const AuthenticatedRouteRoute = AuthenticatedRouteRouteImport.update({
-  id: '/_authenticated',
+const ValidationQueueRoute = ValidationQueueRouteImport.update({
+  id: '/validation-queue',
+  path: '/validation-queue',
   getParentRoute: () => rootRouteImport,
 } as any)
-const AuthenticatedIndexRoute = AuthenticatedIndexRouteImport.update({
-  id: '/',
-  path: '/',
-  getParentRoute: () => AuthenticatedRouteRoute,
-} as any)
-const AuthenticatedUndoRoute = AuthenticatedUndoRouteImport.update({
+const UndoRoute = UndoRouteImport.update({
   id: '/undo',
   path: '/undo',
-  getParentRoute: () => AuthenticatedRouteRoute,
+  getParentRoute: () => rootRouteImport,
+} as any)
+const SettingsRoute = SettingsRouteImport.update({
+  id: '/settings',
+  path: '/settings',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ImportRoute = ImportRouteImport.update({
+  id: '/import',
+  path: '/import',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AdminRouteRoute = AdminRouteRouteImport.update({
+  id: '/admin',
+  path: '/admin',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const PublicRouteRoute = PublicRouteRouteImport.update({
+  id: '/_public',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AdminIndexRoute = AdminIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => AdminRouteRoute,
+} as any)
+const PublicIndexRoute = PublicIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => PublicRouteRoute,
+} as any)
+const AdminSystemRoute = AdminSystemRouteImport.update({
+  id: '/system',
+  path: '/system',
+  getParentRoute: () => AdminRouteRoute,
 } as any)
 const errors503Route = errors503RouteImport.update({
   id: '/(errors)/503',
@@ -74,266 +118,383 @@ const errors401Route = errors401RouteImport.update({
   path: '/401',
   getParentRoute: () => rootRouteImport,
 } as any)
-const AuthenticatedSettingsRouteRoute =
-  AuthenticatedSettingsRouteRouteImport.update({
-    id: '/settings',
-    path: '/settings',
-    getParentRoute: () => AuthenticatedRouteRoute,
-  } as any)
-const AuthenticatedValidationQueueIndexRoute =
-  AuthenticatedValidationQueueIndexRouteImport.update({
+const AdminSettingsRouteRoute = AdminSettingsRouteRouteImport.update({
+  id: '/settings',
+  path: '/settings',
+  getParentRoute: () => AdminRouteRoute,
+} as any)
+const AdminValidationQueueIndexRoute =
+  AdminValidationQueueIndexRouteImport.update({
     id: '/validation-queue/',
     path: '/validation-queue/',
-    getParentRoute: () => AuthenticatedRouteRoute,
+    getParentRoute: () => AdminRouteRoute,
   } as any)
-const AuthenticatedUndoIndexRoute = AuthenticatedUndoIndexRouteImport.update({
+const AdminUndoIndexRoute = AdminUndoIndexRouteImport.update({
+  id: '/undo/',
+  path: '/undo/',
+  getParentRoute: () => AdminRouteRoute,
+} as any)
+const AdminSettingsIndexRoute = AdminSettingsIndexRouteImport.update({
   id: '/',
   path: '/',
-  getParentRoute: () => AuthenticatedUndoRoute,
+  getParentRoute: () => AdminSettingsRouteRoute,
 } as any)
-const AuthenticatedSettingsIndexRoute =
-  AuthenticatedSettingsIndexRouteImport.update({
-    id: '/',
-    path: '/',
-    getParentRoute: () => AuthenticatedSettingsRouteRoute,
-  } as any)
-const AuthenticatedResearchersIndexRoute =
-  AuthenticatedResearchersIndexRouteImport.update({
-    id: '/researchers/',
-    path: '/researchers/',
-    getParentRoute: () => AuthenticatedRouteRoute,
-  } as any)
-const AuthenticatedProjectsIndexRoute =
-  AuthenticatedProjectsIndexRouteImport.update({
-    id: '/projects/',
-    path: '/projects/',
-    getParentRoute: () => AuthenticatedRouteRoute,
-  } as any)
-const AuthenticatedProductsIndexRoute =
-  AuthenticatedProductsIndexRouteImport.update({
-    id: '/products/',
-    path: '/products/',
-    getParentRoute: () => AuthenticatedRouteRoute,
-  } as any)
-const AuthenticatedImportIndexRoute =
-  AuthenticatedImportIndexRouteImport.update({
-    id: '/import/',
-    path: '/import/',
-    getParentRoute: () => AuthenticatedRouteRoute,
-  } as any)
-const AuthenticatedGroupsIndexRoute =
-  AuthenticatedGroupsIndexRouteImport.update({
-    id: '/groups/',
-    path: '/groups/',
-    getParentRoute: () => AuthenticatedRouteRoute,
-  } as any)
-const AuthenticatedSettingsNotificationsRoute =
-  AuthenticatedSettingsNotificationsRouteImport.update({
+const AdminResearchersIndexRoute = AdminResearchersIndexRouteImport.update({
+  id: '/researchers/',
+  path: '/researchers/',
+  getParentRoute: () => AdminRouteRoute,
+} as any)
+const AdminProjectsIndexRoute = AdminProjectsIndexRouteImport.update({
+  id: '/projects/',
+  path: '/projects/',
+  getParentRoute: () => AdminRouteRoute,
+} as any)
+const AdminProductsIndexRoute = AdminProductsIndexRouteImport.update({
+  id: '/products/',
+  path: '/products/',
+  getParentRoute: () => AdminRouteRoute,
+} as any)
+const AdminImportIndexRoute = AdminImportIndexRouteImport.update({
+  id: '/import/',
+  path: '/import/',
+  getParentRoute: () => AdminRouteRoute,
+} as any)
+const AdminGroupsIndexRoute = AdminGroupsIndexRouteImport.update({
+  id: '/groups/',
+  path: '/groups/',
+  getParentRoute: () => AdminRouteRoute,
+} as any)
+const PublicResearchersIndexRoute = PublicResearchersIndexRouteImport.update({
+  id: '/researchers/',
+  path: '/researchers/',
+  getParentRoute: () => PublicRouteRoute,
+} as any)
+const PublicProjectsIndexRoute = PublicProjectsIndexRouteImport.update({
+  id: '/projects/',
+  path: '/projects/',
+  getParentRoute: () => PublicRouteRoute,
+} as any)
+const PublicProductsIndexRoute = PublicProductsIndexRouteImport.update({
+  id: '/products/',
+  path: '/products/',
+  getParentRoute: () => PublicRouteRoute,
+} as any)
+const PublicGroupsIndexRoute = PublicGroupsIndexRouteImport.update({
+  id: '/groups/',
+  path: '/groups/',
+  getParentRoute: () => PublicRouteRoute,
+} as any)
+const AdminSettingsNotificationsRoute =
+  AdminSettingsNotificationsRouteImport.update({
     id: '/notifications',
     path: '/notifications',
-    getParentRoute: () => AuthenticatedSettingsRouteRoute,
+    getParentRoute: () => AdminSettingsRouteRoute,
   } as any)
-const AuthenticatedSettingsDisplayRoute =
-  AuthenticatedSettingsDisplayRouteImport.update({
-    id: '/display',
-    path: '/display',
-    getParentRoute: () => AuthenticatedSettingsRouteRoute,
-  } as any)
-const AuthenticatedSettingsAppearanceRoute =
-  AuthenticatedSettingsAppearanceRouteImport.update({
-    id: '/appearance',
-    path: '/appearance',
-    getParentRoute: () => AuthenticatedSettingsRouteRoute,
-  } as any)
-const AuthenticatedSettingsAccountRoute =
-  AuthenticatedSettingsAccountRouteImport.update({
-    id: '/account',
-    path: '/account',
-    getParentRoute: () => AuthenticatedSettingsRouteRoute,
-  } as any)
-const AuthenticatedResearchersIdRoute =
-  AuthenticatedResearchersIdRouteImport.update({
-    id: '/researchers/$id',
-    path: '/researchers/$id',
-    getParentRoute: () => AuthenticatedRouteRoute,
-  } as any)
-const AuthenticatedProductsIdRoute = AuthenticatedProductsIdRouteImport.update({
+const AdminSettingsDisplayRoute = AdminSettingsDisplayRouteImport.update({
+  id: '/display',
+  path: '/display',
+  getParentRoute: () => AdminSettingsRouteRoute,
+} as any)
+const AdminSettingsAppearanceRoute = AdminSettingsAppearanceRouteImport.update({
+  id: '/appearance',
+  path: '/appearance',
+  getParentRoute: () => AdminSettingsRouteRoute,
+} as any)
+const AdminSettingsAccountRoute = AdminSettingsAccountRouteImport.update({
+  id: '/account',
+  path: '/account',
+  getParentRoute: () => AdminSettingsRouteRoute,
+} as any)
+const AdminResearchersIdRoute = AdminResearchersIdRouteImport.update({
+  id: '/researchers/$id',
+  path: '/researchers/$id',
+  getParentRoute: () => AdminRouteRoute,
+} as any)
+const AdminProjectsIdRoute = AdminProjectsIdRouteImport.update({
+  id: '/projects/$id',
+  path: '/projects/$id',
+  getParentRoute: () => AdminRouteRoute,
+} as any)
+const AdminProductsIdRoute = AdminProductsIdRouteImport.update({
   id: '/products/$id',
   path: '/products/$id',
-  getParentRoute: () => AuthenticatedRouteRoute,
+  getParentRoute: () => AdminRouteRoute,
 } as any)
-const AuthenticatedGroupsIdRoute = AuthenticatedGroupsIdRouteImport.update({
+const AdminGroupsIdRoute = AdminGroupsIdRouteImport.update({
   id: '/groups/$id',
   path: '/groups/$id',
-  getParentRoute: () => AuthenticatedRouteRoute,
+  getParentRoute: () => AdminRouteRoute,
 } as any)
-const AuthenticatedErrorsErrorRoute =
-  AuthenticatedErrorsErrorRouteImport.update({
-    id: '/errors/$error',
-    path: '/errors/$error',
-    getParentRoute: () => AuthenticatedRouteRoute,
-  } as any)
+const PublicResearchersIdRoute = PublicResearchersIdRouteImport.update({
+  id: '/researchers/$id',
+  path: '/researchers/$id',
+  getParentRoute: () => PublicRouteRoute,
+} as any)
+const PublicProjectsIdRoute = PublicProjectsIdRouteImport.update({
+  id: '/projects/$id',
+  path: '/projects/$id',
+  getParentRoute: () => PublicRouteRoute,
+} as any)
+const PublicProductsIdRoute = PublicProductsIdRouteImport.update({
+  id: '/products/$id',
+  path: '/products/$id',
+  getParentRoute: () => PublicRouteRoute,
+} as any)
+const PublicGroupsIdRoute = PublicGroupsIdRouteImport.update({
+  id: '/groups/$id',
+  path: '/groups/$id',
+  getParentRoute: () => PublicRouteRoute,
+} as any)
 
 export interface FileRoutesByFullPath {
-  '/': typeof AuthenticatedIndexRoute
-  '/settings': typeof AuthenticatedSettingsRouteRouteWithChildren
+  '/': typeof PublicIndexRoute
+  '/admin': typeof AdminRouteRouteWithChildren
+  '/import': typeof ImportRoute
+  '/settings': typeof SettingsRoute
+  '/undo': typeof UndoRoute
+  '/validation-queue': typeof ValidationQueueRoute
+  '/admin/settings': typeof AdminSettingsRouteRouteWithChildren
   '/401': typeof errors401Route
   '/403': typeof errors403Route
   '/404': typeof errors404Route
   '/500': typeof errors500Route
   '/503': typeof errors503Route
-  '/undo': typeof AuthenticatedUndoRouteWithChildren
-  '/errors/$error': typeof AuthenticatedErrorsErrorRoute
-  '/groups/$id': typeof AuthenticatedGroupsIdRoute
-  '/products/$id': typeof AuthenticatedProductsIdRoute
-  '/researchers/$id': typeof AuthenticatedResearchersIdRoute
-  '/settings/account': typeof AuthenticatedSettingsAccountRoute
-  '/settings/appearance': typeof AuthenticatedSettingsAppearanceRoute
-  '/settings/display': typeof AuthenticatedSettingsDisplayRoute
-  '/settings/notifications': typeof AuthenticatedSettingsNotificationsRoute
-  '/groups/': typeof AuthenticatedGroupsIndexRoute
-  '/import/': typeof AuthenticatedImportIndexRoute
-  '/products/': typeof AuthenticatedProductsIndexRoute
-  '/projects/': typeof AuthenticatedProjectsIndexRoute
-  '/researchers/': typeof AuthenticatedResearchersIndexRoute
-  '/settings/': typeof AuthenticatedSettingsIndexRoute
-  '/undo/': typeof AuthenticatedUndoIndexRoute
-  '/validation-queue/': typeof AuthenticatedValidationQueueIndexRoute
+  '/admin/system': typeof AdminSystemRoute
+  '/admin/': typeof AdminIndexRoute
+  '/groups/$id': typeof PublicGroupsIdRoute
+  '/products/$id': typeof PublicProductsIdRoute
+  '/projects/$id': typeof PublicProjectsIdRoute
+  '/researchers/$id': typeof PublicResearchersIdRoute
+  '/admin/groups/$id': typeof AdminGroupsIdRoute
+  '/admin/products/$id': typeof AdminProductsIdRoute
+  '/admin/projects/$id': typeof AdminProjectsIdRoute
+  '/admin/researchers/$id': typeof AdminResearchersIdRoute
+  '/admin/settings/account': typeof AdminSettingsAccountRoute
+  '/admin/settings/appearance': typeof AdminSettingsAppearanceRoute
+  '/admin/settings/display': typeof AdminSettingsDisplayRoute
+  '/admin/settings/notifications': typeof AdminSettingsNotificationsRoute
+  '/groups/': typeof PublicGroupsIndexRoute
+  '/products/': typeof PublicProductsIndexRoute
+  '/projects/': typeof PublicProjectsIndexRoute
+  '/researchers/': typeof PublicResearchersIndexRoute
+  '/admin/groups/': typeof AdminGroupsIndexRoute
+  '/admin/import/': typeof AdminImportIndexRoute
+  '/admin/products/': typeof AdminProductsIndexRoute
+  '/admin/projects/': typeof AdminProjectsIndexRoute
+  '/admin/researchers/': typeof AdminResearchersIndexRoute
+  '/admin/settings/': typeof AdminSettingsIndexRoute
+  '/admin/undo/': typeof AdminUndoIndexRoute
+  '/admin/validation-queue/': typeof AdminValidationQueueIndexRoute
 }
 export interface FileRoutesByTo {
+  '/import': typeof ImportRoute
+  '/settings': typeof SettingsRoute
+  '/undo': typeof UndoRoute
+  '/validation-queue': typeof ValidationQueueRoute
   '/401': typeof errors401Route
   '/403': typeof errors403Route
   '/404': typeof errors404Route
   '/500': typeof errors500Route
   '/503': typeof errors503Route
-  '/': typeof AuthenticatedIndexRoute
-  '/errors/$error': typeof AuthenticatedErrorsErrorRoute
-  '/groups/$id': typeof AuthenticatedGroupsIdRoute
-  '/products/$id': typeof AuthenticatedProductsIdRoute
-  '/researchers/$id': typeof AuthenticatedResearchersIdRoute
-  '/settings/account': typeof AuthenticatedSettingsAccountRoute
-  '/settings/appearance': typeof AuthenticatedSettingsAppearanceRoute
-  '/settings/display': typeof AuthenticatedSettingsDisplayRoute
-  '/settings/notifications': typeof AuthenticatedSettingsNotificationsRoute
-  '/groups': typeof AuthenticatedGroupsIndexRoute
-  '/import': typeof AuthenticatedImportIndexRoute
-  '/products': typeof AuthenticatedProductsIndexRoute
-  '/projects': typeof AuthenticatedProjectsIndexRoute
-  '/researchers': typeof AuthenticatedResearchersIndexRoute
-  '/settings': typeof AuthenticatedSettingsIndexRoute
-  '/undo': typeof AuthenticatedUndoIndexRoute
-  '/validation-queue': typeof AuthenticatedValidationQueueIndexRoute
+  '/admin/system': typeof AdminSystemRoute
+  '/': typeof PublicIndexRoute
+  '/admin': typeof AdminIndexRoute
+  '/groups/$id': typeof PublicGroupsIdRoute
+  '/products/$id': typeof PublicProductsIdRoute
+  '/projects/$id': typeof PublicProjectsIdRoute
+  '/researchers/$id': typeof PublicResearchersIdRoute
+  '/admin/groups/$id': typeof AdminGroupsIdRoute
+  '/admin/products/$id': typeof AdminProductsIdRoute
+  '/admin/projects/$id': typeof AdminProjectsIdRoute
+  '/admin/researchers/$id': typeof AdminResearchersIdRoute
+  '/admin/settings/account': typeof AdminSettingsAccountRoute
+  '/admin/settings/appearance': typeof AdminSettingsAppearanceRoute
+  '/admin/settings/display': typeof AdminSettingsDisplayRoute
+  '/admin/settings/notifications': typeof AdminSettingsNotificationsRoute
+  '/groups': typeof PublicGroupsIndexRoute
+  '/products': typeof PublicProductsIndexRoute
+  '/projects': typeof PublicProjectsIndexRoute
+  '/researchers': typeof PublicResearchersIndexRoute
+  '/admin/groups': typeof AdminGroupsIndexRoute
+  '/admin/import': typeof AdminImportIndexRoute
+  '/admin/products': typeof AdminProductsIndexRoute
+  '/admin/projects': typeof AdminProjectsIndexRoute
+  '/admin/researchers': typeof AdminResearchersIndexRoute
+  '/admin/settings': typeof AdminSettingsIndexRoute
+  '/admin/undo': typeof AdminUndoIndexRoute
+  '/admin/validation-queue': typeof AdminValidationQueueIndexRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
-  '/_authenticated': typeof AuthenticatedRouteRouteWithChildren
-  '/_authenticated/settings': typeof AuthenticatedSettingsRouteRouteWithChildren
+  '/_public': typeof PublicRouteRouteWithChildren
+  '/admin': typeof AdminRouteRouteWithChildren
+  '/import': typeof ImportRoute
+  '/settings': typeof SettingsRoute
+  '/undo': typeof UndoRoute
+  '/validation-queue': typeof ValidationQueueRoute
+  '/admin/settings': typeof AdminSettingsRouteRouteWithChildren
   '/(errors)/401': typeof errors401Route
   '/(errors)/403': typeof errors403Route
   '/(errors)/404': typeof errors404Route
   '/(errors)/500': typeof errors500Route
   '/(errors)/503': typeof errors503Route
-  '/_authenticated/undo': typeof AuthenticatedUndoRouteWithChildren
-  '/_authenticated/': typeof AuthenticatedIndexRoute
-  '/_authenticated/errors/$error': typeof AuthenticatedErrorsErrorRoute
-  '/_authenticated/groups/$id': typeof AuthenticatedGroupsIdRoute
-  '/_authenticated/products/$id': typeof AuthenticatedProductsIdRoute
-  '/_authenticated/researchers/$id': typeof AuthenticatedResearchersIdRoute
-  '/_authenticated/settings/account': typeof AuthenticatedSettingsAccountRoute
-  '/_authenticated/settings/appearance': typeof AuthenticatedSettingsAppearanceRoute
-  '/_authenticated/settings/display': typeof AuthenticatedSettingsDisplayRoute
-  '/_authenticated/settings/notifications': typeof AuthenticatedSettingsNotificationsRoute
-  '/_authenticated/groups/': typeof AuthenticatedGroupsIndexRoute
-  '/_authenticated/import/': typeof AuthenticatedImportIndexRoute
-  '/_authenticated/products/': typeof AuthenticatedProductsIndexRoute
-  '/_authenticated/projects/': typeof AuthenticatedProjectsIndexRoute
-  '/_authenticated/researchers/': typeof AuthenticatedResearchersIndexRoute
-  '/_authenticated/settings/': typeof AuthenticatedSettingsIndexRoute
-  '/_authenticated/undo/': typeof AuthenticatedUndoIndexRoute
-  '/_authenticated/validation-queue/': typeof AuthenticatedValidationQueueIndexRoute
+  '/admin/system': typeof AdminSystemRoute
+  '/_public/': typeof PublicIndexRoute
+  '/admin/': typeof AdminIndexRoute
+  '/_public/groups/$id': typeof PublicGroupsIdRoute
+  '/_public/products/$id': typeof PublicProductsIdRoute
+  '/_public/projects/$id': typeof PublicProjectsIdRoute
+  '/_public/researchers/$id': typeof PublicResearchersIdRoute
+  '/admin/groups/$id': typeof AdminGroupsIdRoute
+  '/admin/products/$id': typeof AdminProductsIdRoute
+  '/admin/projects/$id': typeof AdminProjectsIdRoute
+  '/admin/researchers/$id': typeof AdminResearchersIdRoute
+  '/admin/settings/account': typeof AdminSettingsAccountRoute
+  '/admin/settings/appearance': typeof AdminSettingsAppearanceRoute
+  '/admin/settings/display': typeof AdminSettingsDisplayRoute
+  '/admin/settings/notifications': typeof AdminSettingsNotificationsRoute
+  '/_public/groups/': typeof PublicGroupsIndexRoute
+  '/_public/products/': typeof PublicProductsIndexRoute
+  '/_public/projects/': typeof PublicProjectsIndexRoute
+  '/_public/researchers/': typeof PublicResearchersIndexRoute
+  '/admin/groups/': typeof AdminGroupsIndexRoute
+  '/admin/import/': typeof AdminImportIndexRoute
+  '/admin/products/': typeof AdminProductsIndexRoute
+  '/admin/projects/': typeof AdminProjectsIndexRoute
+  '/admin/researchers/': typeof AdminResearchersIndexRoute
+  '/admin/settings/': typeof AdminSettingsIndexRoute
+  '/admin/undo/': typeof AdminUndoIndexRoute
+  '/admin/validation-queue/': typeof AdminValidationQueueIndexRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
     | '/'
-    | '/settings'
-    | '/401'
-    | '/403'
-    | '/404'
-    | '/500'
-    | '/503'
-    | '/undo'
-    | '/errors/$error'
-    | '/groups/$id'
-    | '/products/$id'
-    | '/researchers/$id'
-    | '/settings/account'
-    | '/settings/appearance'
-    | '/settings/display'
-    | '/settings/notifications'
-    | '/groups/'
-    | '/import/'
-    | '/products/'
-    | '/projects/'
-    | '/researchers/'
-    | '/settings/'
-    | '/undo/'
-    | '/validation-queue/'
-  fileRoutesByTo: FileRoutesByTo
-  to:
-    | '/401'
-    | '/403'
-    | '/404'
-    | '/500'
-    | '/503'
-    | '/'
-    | '/errors/$error'
-    | '/groups/$id'
-    | '/products/$id'
-    | '/researchers/$id'
-    | '/settings/account'
-    | '/settings/appearance'
-    | '/settings/display'
-    | '/settings/notifications'
-    | '/groups'
+    | '/admin'
     | '/import'
-    | '/products'
-    | '/projects'
-    | '/researchers'
     | '/settings'
     | '/undo'
     | '/validation-queue'
+    | '/admin/settings'
+    | '/401'
+    | '/403'
+    | '/404'
+    | '/500'
+    | '/503'
+    | '/admin/system'
+    | '/admin/'
+    | '/groups/$id'
+    | '/products/$id'
+    | '/projects/$id'
+    | '/researchers/$id'
+    | '/admin/groups/$id'
+    | '/admin/products/$id'
+    | '/admin/projects/$id'
+    | '/admin/researchers/$id'
+    | '/admin/settings/account'
+    | '/admin/settings/appearance'
+    | '/admin/settings/display'
+    | '/admin/settings/notifications'
+    | '/groups/'
+    | '/products/'
+    | '/projects/'
+    | '/researchers/'
+    | '/admin/groups/'
+    | '/admin/import/'
+    | '/admin/products/'
+    | '/admin/projects/'
+    | '/admin/researchers/'
+    | '/admin/settings/'
+    | '/admin/undo/'
+    | '/admin/validation-queue/'
+  fileRoutesByTo: FileRoutesByTo
+  to:
+    | '/import'
+    | '/settings'
+    | '/undo'
+    | '/validation-queue'
+    | '/401'
+    | '/403'
+    | '/404'
+    | '/500'
+    | '/503'
+    | '/admin/system'
+    | '/'
+    | '/admin'
+    | '/groups/$id'
+    | '/products/$id'
+    | '/projects/$id'
+    | '/researchers/$id'
+    | '/admin/groups/$id'
+    | '/admin/products/$id'
+    | '/admin/projects/$id'
+    | '/admin/researchers/$id'
+    | '/admin/settings/account'
+    | '/admin/settings/appearance'
+    | '/admin/settings/display'
+    | '/admin/settings/notifications'
+    | '/groups'
+    | '/products'
+    | '/projects'
+    | '/researchers'
+    | '/admin/groups'
+    | '/admin/import'
+    | '/admin/products'
+    | '/admin/projects'
+    | '/admin/researchers'
+    | '/admin/settings'
+    | '/admin/undo'
+    | '/admin/validation-queue'
   id:
     | '__root__'
-    | '/_authenticated'
-    | '/_authenticated/settings'
+    | '/_public'
+    | '/admin'
+    | '/import'
+    | '/settings'
+    | '/undo'
+    | '/validation-queue'
+    | '/admin/settings'
     | '/(errors)/401'
     | '/(errors)/403'
     | '/(errors)/404'
     | '/(errors)/500'
     | '/(errors)/503'
-    | '/_authenticated/undo'
-    | '/_authenticated/'
-    | '/_authenticated/errors/$error'
-    | '/_authenticated/groups/$id'
-    | '/_authenticated/products/$id'
-    | '/_authenticated/researchers/$id'
-    | '/_authenticated/settings/account'
-    | '/_authenticated/settings/appearance'
-    | '/_authenticated/settings/display'
-    | '/_authenticated/settings/notifications'
-    | '/_authenticated/groups/'
-    | '/_authenticated/import/'
-    | '/_authenticated/products/'
-    | '/_authenticated/projects/'
-    | '/_authenticated/researchers/'
-    | '/_authenticated/settings/'
-    | '/_authenticated/undo/'
-    | '/_authenticated/validation-queue/'
+    | '/admin/system'
+    | '/_public/'
+    | '/admin/'
+    | '/_public/groups/$id'
+    | '/_public/products/$id'
+    | '/_public/projects/$id'
+    | '/_public/researchers/$id'
+    | '/admin/groups/$id'
+    | '/admin/products/$id'
+    | '/admin/projects/$id'
+    | '/admin/researchers/$id'
+    | '/admin/settings/account'
+    | '/admin/settings/appearance'
+    | '/admin/settings/display'
+    | '/admin/settings/notifications'
+    | '/_public/groups/'
+    | '/_public/products/'
+    | '/_public/projects/'
+    | '/_public/researchers/'
+    | '/admin/groups/'
+    | '/admin/import/'
+    | '/admin/products/'
+    | '/admin/projects/'
+    | '/admin/researchers/'
+    | '/admin/settings/'
+    | '/admin/undo/'
+    | '/admin/validation-queue/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
-  AuthenticatedRouteRoute: typeof AuthenticatedRouteRouteWithChildren
+  PublicRouteRoute: typeof PublicRouteRouteWithChildren
+  AdminRouteRoute: typeof AdminRouteRouteWithChildren
+  ImportRoute: typeof ImportRoute
+  SettingsRoute: typeof SettingsRoute
+  UndoRoute: typeof UndoRoute
+  ValidationQueueRoute: typeof ValidationQueueRoute
   errors401Route: typeof errors401Route
   errors403Route: typeof errors403Route
   errors404Route: typeof errors404Route
@@ -343,26 +504,68 @@ export interface RootRouteChildren {
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
-    '/_authenticated': {
-      id: '/_authenticated'
-      path: ''
-      fullPath: '/'
-      preLoaderRoute: typeof AuthenticatedRouteRouteImport
+    '/validation-queue': {
+      id: '/validation-queue'
+      path: '/validation-queue'
+      fullPath: '/validation-queue'
+      preLoaderRoute: typeof ValidationQueueRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/_authenticated/': {
-      id: '/_authenticated/'
-      path: '/'
-      fullPath: '/'
-      preLoaderRoute: typeof AuthenticatedIndexRouteImport
-      parentRoute: typeof AuthenticatedRouteRoute
-    }
-    '/_authenticated/undo': {
-      id: '/_authenticated/undo'
+    '/undo': {
+      id: '/undo'
       path: '/undo'
       fullPath: '/undo'
-      preLoaderRoute: typeof AuthenticatedUndoRouteImport
-      parentRoute: typeof AuthenticatedRouteRoute
+      preLoaderRoute: typeof UndoRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/settings': {
+      id: '/settings'
+      path: '/settings'
+      fullPath: '/settings'
+      preLoaderRoute: typeof SettingsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/import': {
+      id: '/import'
+      path: '/import'
+      fullPath: '/import'
+      preLoaderRoute: typeof ImportRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/admin': {
+      id: '/admin'
+      path: '/admin'
+      fullPath: '/admin'
+      preLoaderRoute: typeof AdminRouteRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/_public': {
+      id: '/_public'
+      path: ''
+      fullPath: '/'
+      preLoaderRoute: typeof PublicRouteRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/admin/': {
+      id: '/admin/'
+      path: '/'
+      fullPath: '/admin/'
+      preLoaderRoute: typeof AdminIndexRouteImport
+      parentRoute: typeof AdminRouteRoute
+    }
+    '/_public/': {
+      id: '/_public/'
+      path: '/'
+      fullPath: '/'
+      preLoaderRoute: typeof PublicIndexRouteImport
+      parentRoute: typeof PublicRouteRoute
+    }
+    '/admin/system': {
+      id: '/admin/system'
+      path: '/system'
+      fullPath: '/admin/system'
+      preLoaderRoute: typeof AdminSystemRouteImport
+      parentRoute: typeof AdminRouteRoute
     }
     '/(errors)/503': {
       id: '/(errors)/503'
@@ -399,200 +602,276 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof errors401RouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/_authenticated/settings': {
-      id: '/_authenticated/settings'
+    '/admin/settings': {
+      id: '/admin/settings'
       path: '/settings'
-      fullPath: '/settings'
-      preLoaderRoute: typeof AuthenticatedSettingsRouteRouteImport
-      parentRoute: typeof AuthenticatedRouteRoute
+      fullPath: '/admin/settings'
+      preLoaderRoute: typeof AdminSettingsRouteRouteImport
+      parentRoute: typeof AdminRouteRoute
     }
-    '/_authenticated/validation-queue/': {
-      id: '/_authenticated/validation-queue/'
+    '/admin/validation-queue/': {
+      id: '/admin/validation-queue/'
       path: '/validation-queue'
-      fullPath: '/validation-queue/'
-      preLoaderRoute: typeof AuthenticatedValidationQueueIndexRouteImport
-      parentRoute: typeof AuthenticatedRouteRoute
+      fullPath: '/admin/validation-queue/'
+      preLoaderRoute: typeof AdminValidationQueueIndexRouteImport
+      parentRoute: typeof AdminRouteRoute
     }
-    '/_authenticated/undo/': {
-      id: '/_authenticated/undo/'
+    '/admin/undo/': {
+      id: '/admin/undo/'
+      path: '/undo'
+      fullPath: '/admin/undo/'
+      preLoaderRoute: typeof AdminUndoIndexRouteImport
+      parentRoute: typeof AdminRouteRoute
+    }
+    '/admin/settings/': {
+      id: '/admin/settings/'
       path: '/'
-      fullPath: '/undo/'
-      preLoaderRoute: typeof AuthenticatedUndoIndexRouteImport
-      parentRoute: typeof AuthenticatedUndoRoute
+      fullPath: '/admin/settings/'
+      preLoaderRoute: typeof AdminSettingsIndexRouteImport
+      parentRoute: typeof AdminSettingsRouteRoute
     }
-    '/_authenticated/settings/': {
-      id: '/_authenticated/settings/'
-      path: '/'
-      fullPath: '/settings/'
-      preLoaderRoute: typeof AuthenticatedSettingsIndexRouteImport
-      parentRoute: typeof AuthenticatedSettingsRouteRoute
+    '/admin/researchers/': {
+      id: '/admin/researchers/'
+      path: '/researchers'
+      fullPath: '/admin/researchers/'
+      preLoaderRoute: typeof AdminResearchersIndexRouteImport
+      parentRoute: typeof AdminRouteRoute
     }
-    '/_authenticated/researchers/': {
-      id: '/_authenticated/researchers/'
+    '/admin/projects/': {
+      id: '/admin/projects/'
+      path: '/projects'
+      fullPath: '/admin/projects/'
+      preLoaderRoute: typeof AdminProjectsIndexRouteImport
+      parentRoute: typeof AdminRouteRoute
+    }
+    '/admin/products/': {
+      id: '/admin/products/'
+      path: '/products'
+      fullPath: '/admin/products/'
+      preLoaderRoute: typeof AdminProductsIndexRouteImport
+      parentRoute: typeof AdminRouteRoute
+    }
+    '/admin/import/': {
+      id: '/admin/import/'
+      path: '/import'
+      fullPath: '/admin/import/'
+      preLoaderRoute: typeof AdminImportIndexRouteImport
+      parentRoute: typeof AdminRouteRoute
+    }
+    '/admin/groups/': {
+      id: '/admin/groups/'
+      path: '/groups'
+      fullPath: '/admin/groups/'
+      preLoaderRoute: typeof AdminGroupsIndexRouteImport
+      parentRoute: typeof AdminRouteRoute
+    }
+    '/_public/researchers/': {
+      id: '/_public/researchers/'
       path: '/researchers'
       fullPath: '/researchers/'
-      preLoaderRoute: typeof AuthenticatedResearchersIndexRouteImport
-      parentRoute: typeof AuthenticatedRouteRoute
+      preLoaderRoute: typeof PublicResearchersIndexRouteImport
+      parentRoute: typeof PublicRouteRoute
     }
-    '/_authenticated/projects/': {
-      id: '/_authenticated/projects/'
+    '/_public/projects/': {
+      id: '/_public/projects/'
       path: '/projects'
       fullPath: '/projects/'
-      preLoaderRoute: typeof AuthenticatedProjectsIndexRouteImport
-      parentRoute: typeof AuthenticatedRouteRoute
+      preLoaderRoute: typeof PublicProjectsIndexRouteImport
+      parentRoute: typeof PublicRouteRoute
     }
-    '/_authenticated/products/': {
-      id: '/_authenticated/products/'
+    '/_public/products/': {
+      id: '/_public/products/'
       path: '/products'
       fullPath: '/products/'
-      preLoaderRoute: typeof AuthenticatedProductsIndexRouteImport
-      parentRoute: typeof AuthenticatedRouteRoute
+      preLoaderRoute: typeof PublicProductsIndexRouteImport
+      parentRoute: typeof PublicRouteRoute
     }
-    '/_authenticated/import/': {
-      id: '/_authenticated/import/'
-      path: '/import'
-      fullPath: '/import/'
-      preLoaderRoute: typeof AuthenticatedImportIndexRouteImport
-      parentRoute: typeof AuthenticatedRouteRoute
-    }
-    '/_authenticated/groups/': {
-      id: '/_authenticated/groups/'
+    '/_public/groups/': {
+      id: '/_public/groups/'
       path: '/groups'
       fullPath: '/groups/'
-      preLoaderRoute: typeof AuthenticatedGroupsIndexRouteImport
-      parentRoute: typeof AuthenticatedRouteRoute
+      preLoaderRoute: typeof PublicGroupsIndexRouteImport
+      parentRoute: typeof PublicRouteRoute
     }
-    '/_authenticated/settings/notifications': {
-      id: '/_authenticated/settings/notifications'
+    '/admin/settings/notifications': {
+      id: '/admin/settings/notifications'
       path: '/notifications'
-      fullPath: '/settings/notifications'
-      preLoaderRoute: typeof AuthenticatedSettingsNotificationsRouteImport
-      parentRoute: typeof AuthenticatedSettingsRouteRoute
+      fullPath: '/admin/settings/notifications'
+      preLoaderRoute: typeof AdminSettingsNotificationsRouteImport
+      parentRoute: typeof AdminSettingsRouteRoute
     }
-    '/_authenticated/settings/display': {
-      id: '/_authenticated/settings/display'
+    '/admin/settings/display': {
+      id: '/admin/settings/display'
       path: '/display'
-      fullPath: '/settings/display'
-      preLoaderRoute: typeof AuthenticatedSettingsDisplayRouteImport
-      parentRoute: typeof AuthenticatedSettingsRouteRoute
+      fullPath: '/admin/settings/display'
+      preLoaderRoute: typeof AdminSettingsDisplayRouteImport
+      parentRoute: typeof AdminSettingsRouteRoute
     }
-    '/_authenticated/settings/appearance': {
-      id: '/_authenticated/settings/appearance'
+    '/admin/settings/appearance': {
+      id: '/admin/settings/appearance'
       path: '/appearance'
-      fullPath: '/settings/appearance'
-      preLoaderRoute: typeof AuthenticatedSettingsAppearanceRouteImport
-      parentRoute: typeof AuthenticatedSettingsRouteRoute
+      fullPath: '/admin/settings/appearance'
+      preLoaderRoute: typeof AdminSettingsAppearanceRouteImport
+      parentRoute: typeof AdminSettingsRouteRoute
     }
-    '/_authenticated/settings/account': {
-      id: '/_authenticated/settings/account'
+    '/admin/settings/account': {
+      id: '/admin/settings/account'
       path: '/account'
-      fullPath: '/settings/account'
-      preLoaderRoute: typeof AuthenticatedSettingsAccountRouteImport
-      parentRoute: typeof AuthenticatedSettingsRouteRoute
+      fullPath: '/admin/settings/account'
+      preLoaderRoute: typeof AdminSettingsAccountRouteImport
+      parentRoute: typeof AdminSettingsRouteRoute
     }
-    '/_authenticated/researchers/$id': {
-      id: '/_authenticated/researchers/$id'
+    '/admin/researchers/$id': {
+      id: '/admin/researchers/$id'
+      path: '/researchers/$id'
+      fullPath: '/admin/researchers/$id'
+      preLoaderRoute: typeof AdminResearchersIdRouteImport
+      parentRoute: typeof AdminRouteRoute
+    }
+    '/admin/projects/$id': {
+      id: '/admin/projects/$id'
+      path: '/projects/$id'
+      fullPath: '/admin/projects/$id'
+      preLoaderRoute: typeof AdminProjectsIdRouteImport
+      parentRoute: typeof AdminRouteRoute
+    }
+    '/admin/products/$id': {
+      id: '/admin/products/$id'
+      path: '/products/$id'
+      fullPath: '/admin/products/$id'
+      preLoaderRoute: typeof AdminProductsIdRouteImport
+      parentRoute: typeof AdminRouteRoute
+    }
+    '/admin/groups/$id': {
+      id: '/admin/groups/$id'
+      path: '/groups/$id'
+      fullPath: '/admin/groups/$id'
+      preLoaderRoute: typeof AdminGroupsIdRouteImport
+      parentRoute: typeof AdminRouteRoute
+    }
+    '/_public/researchers/$id': {
+      id: '/_public/researchers/$id'
       path: '/researchers/$id'
       fullPath: '/researchers/$id'
-      preLoaderRoute: typeof AuthenticatedResearchersIdRouteImport
-      parentRoute: typeof AuthenticatedRouteRoute
+      preLoaderRoute: typeof PublicResearchersIdRouteImport
+      parentRoute: typeof PublicRouteRoute
     }
-    '/_authenticated/products/$id': {
-      id: '/_authenticated/products/$id'
+    '/_public/projects/$id': {
+      id: '/_public/projects/$id'
+      path: '/projects/$id'
+      fullPath: '/projects/$id'
+      preLoaderRoute: typeof PublicProjectsIdRouteImport
+      parentRoute: typeof PublicRouteRoute
+    }
+    '/_public/products/$id': {
+      id: '/_public/products/$id'
       path: '/products/$id'
       fullPath: '/products/$id'
-      preLoaderRoute: typeof AuthenticatedProductsIdRouteImport
-      parentRoute: typeof AuthenticatedRouteRoute
+      preLoaderRoute: typeof PublicProductsIdRouteImport
+      parentRoute: typeof PublicRouteRoute
     }
-    '/_authenticated/groups/$id': {
-      id: '/_authenticated/groups/$id'
+    '/_public/groups/$id': {
+      id: '/_public/groups/$id'
       path: '/groups/$id'
       fullPath: '/groups/$id'
-      preLoaderRoute: typeof AuthenticatedGroupsIdRouteImport
-      parentRoute: typeof AuthenticatedRouteRoute
-    }
-    '/_authenticated/errors/$error': {
-      id: '/_authenticated/errors/$error'
-      path: '/errors/$error'
-      fullPath: '/errors/$error'
-      preLoaderRoute: typeof AuthenticatedErrorsErrorRouteImport
-      parentRoute: typeof AuthenticatedRouteRoute
+      preLoaderRoute: typeof PublicGroupsIdRouteImport
+      parentRoute: typeof PublicRouteRoute
     }
   }
 }
 
-interface AuthenticatedSettingsRouteRouteChildren {
-  AuthenticatedSettingsAccountRoute: typeof AuthenticatedSettingsAccountRoute
-  AuthenticatedSettingsAppearanceRoute: typeof AuthenticatedSettingsAppearanceRoute
-  AuthenticatedSettingsDisplayRoute: typeof AuthenticatedSettingsDisplayRoute
-  AuthenticatedSettingsNotificationsRoute: typeof AuthenticatedSettingsNotificationsRoute
-  AuthenticatedSettingsIndexRoute: typeof AuthenticatedSettingsIndexRoute
+interface PublicRouteRouteChildren {
+  PublicIndexRoute: typeof PublicIndexRoute
+  PublicGroupsIdRoute: typeof PublicGroupsIdRoute
+  PublicProductsIdRoute: typeof PublicProductsIdRoute
+  PublicProjectsIdRoute: typeof PublicProjectsIdRoute
+  PublicResearchersIdRoute: typeof PublicResearchersIdRoute
+  PublicGroupsIndexRoute: typeof PublicGroupsIndexRoute
+  PublicProductsIndexRoute: typeof PublicProductsIndexRoute
+  PublicProjectsIndexRoute: typeof PublicProjectsIndexRoute
+  PublicResearchersIndexRoute: typeof PublicResearchersIndexRoute
 }
 
-const AuthenticatedSettingsRouteRouteChildren: AuthenticatedSettingsRouteRouteChildren =
-  {
-    AuthenticatedSettingsAccountRoute: AuthenticatedSettingsAccountRoute,
-    AuthenticatedSettingsAppearanceRoute: AuthenticatedSettingsAppearanceRoute,
-    AuthenticatedSettingsDisplayRoute: AuthenticatedSettingsDisplayRoute,
-    AuthenticatedSettingsNotificationsRoute:
-      AuthenticatedSettingsNotificationsRoute,
-    AuthenticatedSettingsIndexRoute: AuthenticatedSettingsIndexRoute,
-  }
-
-const AuthenticatedSettingsRouteRouteWithChildren =
-  AuthenticatedSettingsRouteRoute._addFileChildren(
-    AuthenticatedSettingsRouteRouteChildren,
-  )
-
-interface AuthenticatedUndoRouteChildren {
-  AuthenticatedUndoIndexRoute: typeof AuthenticatedUndoIndexRoute
+const PublicRouteRouteChildren: PublicRouteRouteChildren = {
+  PublicIndexRoute: PublicIndexRoute,
+  PublicGroupsIdRoute: PublicGroupsIdRoute,
+  PublicProductsIdRoute: PublicProductsIdRoute,
+  PublicProjectsIdRoute: PublicProjectsIdRoute,
+  PublicResearchersIdRoute: PublicResearchersIdRoute,
+  PublicGroupsIndexRoute: PublicGroupsIndexRoute,
+  PublicProductsIndexRoute: PublicProductsIndexRoute,
+  PublicProjectsIndexRoute: PublicProjectsIndexRoute,
+  PublicResearchersIndexRoute: PublicResearchersIndexRoute,
 }
 
-const AuthenticatedUndoRouteChildren: AuthenticatedUndoRouteChildren = {
-  AuthenticatedUndoIndexRoute: AuthenticatedUndoIndexRoute,
+const PublicRouteRouteWithChildren = PublicRouteRoute._addFileChildren(
+  PublicRouteRouteChildren,
+)
+
+interface AdminSettingsRouteRouteChildren {
+  AdminSettingsAccountRoute: typeof AdminSettingsAccountRoute
+  AdminSettingsAppearanceRoute: typeof AdminSettingsAppearanceRoute
+  AdminSettingsDisplayRoute: typeof AdminSettingsDisplayRoute
+  AdminSettingsNotificationsRoute: typeof AdminSettingsNotificationsRoute
+  AdminSettingsIndexRoute: typeof AdminSettingsIndexRoute
 }
 
-const AuthenticatedUndoRouteWithChildren =
-  AuthenticatedUndoRoute._addFileChildren(AuthenticatedUndoRouteChildren)
-
-interface AuthenticatedRouteRouteChildren {
-  AuthenticatedSettingsRouteRoute: typeof AuthenticatedSettingsRouteRouteWithChildren
-  AuthenticatedUndoRoute: typeof AuthenticatedUndoRouteWithChildren
-  AuthenticatedIndexRoute: typeof AuthenticatedIndexRoute
-  AuthenticatedErrorsErrorRoute: typeof AuthenticatedErrorsErrorRoute
-  AuthenticatedGroupsIdRoute: typeof AuthenticatedGroupsIdRoute
-  AuthenticatedProductsIdRoute: typeof AuthenticatedProductsIdRoute
-  AuthenticatedResearchersIdRoute: typeof AuthenticatedResearchersIdRoute
-  AuthenticatedGroupsIndexRoute: typeof AuthenticatedGroupsIndexRoute
-  AuthenticatedImportIndexRoute: typeof AuthenticatedImportIndexRoute
-  AuthenticatedProductsIndexRoute: typeof AuthenticatedProductsIndexRoute
-  AuthenticatedProjectsIndexRoute: typeof AuthenticatedProjectsIndexRoute
-  AuthenticatedResearchersIndexRoute: typeof AuthenticatedResearchersIndexRoute
-  AuthenticatedValidationQueueIndexRoute: typeof AuthenticatedValidationQueueIndexRoute
+const AdminSettingsRouteRouteChildren: AdminSettingsRouteRouteChildren = {
+  AdminSettingsAccountRoute: AdminSettingsAccountRoute,
+  AdminSettingsAppearanceRoute: AdminSettingsAppearanceRoute,
+  AdminSettingsDisplayRoute: AdminSettingsDisplayRoute,
+  AdminSettingsNotificationsRoute: AdminSettingsNotificationsRoute,
+  AdminSettingsIndexRoute: AdminSettingsIndexRoute,
 }
 
-const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
-  AuthenticatedSettingsRouteRoute: AuthenticatedSettingsRouteRouteWithChildren,
-  AuthenticatedUndoRoute: AuthenticatedUndoRouteWithChildren,
-  AuthenticatedIndexRoute: AuthenticatedIndexRoute,
-  AuthenticatedErrorsErrorRoute: AuthenticatedErrorsErrorRoute,
-  AuthenticatedGroupsIdRoute: AuthenticatedGroupsIdRoute,
-  AuthenticatedProductsIdRoute: AuthenticatedProductsIdRoute,
-  AuthenticatedResearchersIdRoute: AuthenticatedResearchersIdRoute,
-  AuthenticatedGroupsIndexRoute: AuthenticatedGroupsIndexRoute,
-  AuthenticatedImportIndexRoute: AuthenticatedImportIndexRoute,
-  AuthenticatedProductsIndexRoute: AuthenticatedProductsIndexRoute,
-  AuthenticatedProjectsIndexRoute: AuthenticatedProjectsIndexRoute,
-  AuthenticatedResearchersIndexRoute: AuthenticatedResearchersIndexRoute,
-  AuthenticatedValidationQueueIndexRoute:
-    AuthenticatedValidationQueueIndexRoute,
+const AdminSettingsRouteRouteWithChildren =
+  AdminSettingsRouteRoute._addFileChildren(AdminSettingsRouteRouteChildren)
+
+interface AdminRouteRouteChildren {
+  AdminSettingsRouteRoute: typeof AdminSettingsRouteRouteWithChildren
+  AdminSystemRoute: typeof AdminSystemRoute
+  AdminIndexRoute: typeof AdminIndexRoute
+  AdminGroupsIdRoute: typeof AdminGroupsIdRoute
+  AdminProductsIdRoute: typeof AdminProductsIdRoute
+  AdminProjectsIdRoute: typeof AdminProjectsIdRoute
+  AdminResearchersIdRoute: typeof AdminResearchersIdRoute
+  AdminGroupsIndexRoute: typeof AdminGroupsIndexRoute
+  AdminImportIndexRoute: typeof AdminImportIndexRoute
+  AdminProductsIndexRoute: typeof AdminProductsIndexRoute
+  AdminProjectsIndexRoute: typeof AdminProjectsIndexRoute
+  AdminResearchersIndexRoute: typeof AdminResearchersIndexRoute
+  AdminUndoIndexRoute: typeof AdminUndoIndexRoute
+  AdminValidationQueueIndexRoute: typeof AdminValidationQueueIndexRoute
 }
 
-const AuthenticatedRouteRouteWithChildren =
-  AuthenticatedRouteRoute._addFileChildren(AuthenticatedRouteRouteChildren)
+const AdminRouteRouteChildren: AdminRouteRouteChildren = {
+  AdminSettingsRouteRoute: AdminSettingsRouteRouteWithChildren,
+  AdminSystemRoute: AdminSystemRoute,
+  AdminIndexRoute: AdminIndexRoute,
+  AdminGroupsIdRoute: AdminGroupsIdRoute,
+  AdminProductsIdRoute: AdminProductsIdRoute,
+  AdminProjectsIdRoute: AdminProjectsIdRoute,
+  AdminResearchersIdRoute: AdminResearchersIdRoute,
+  AdminGroupsIndexRoute: AdminGroupsIndexRoute,
+  AdminImportIndexRoute: AdminImportIndexRoute,
+  AdminProductsIndexRoute: AdminProductsIndexRoute,
+  AdminProjectsIndexRoute: AdminProjectsIndexRoute,
+  AdminResearchersIndexRoute: AdminResearchersIndexRoute,
+  AdminUndoIndexRoute: AdminUndoIndexRoute,
+  AdminValidationQueueIndexRoute: AdminValidationQueueIndexRoute,
+}
+
+const AdminRouteRouteWithChildren = AdminRouteRoute._addFileChildren(
+  AdminRouteRouteChildren,
+)
 
 const rootRouteChildren: RootRouteChildren = {
-  AuthenticatedRouteRoute: AuthenticatedRouteRouteWithChildren,
+  PublicRouteRoute: PublicRouteRouteWithChildren,
+  AdminRouteRoute: AdminRouteRouteWithChildren,
+  ImportRoute: ImportRoute,
+  SettingsRoute: SettingsRoute,
+  UndoRoute: UndoRoute,
+  ValidationQueueRoute: ValidationQueueRoute,
   errors401Route: errors401Route,
   errors403Route: errors403Route,
   errors404Route: errors404Route,

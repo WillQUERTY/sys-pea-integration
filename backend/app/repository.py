@@ -28,6 +28,37 @@ def sanitize_str(text: Any) -> str:
     return text.strip()
 
 
+def clean_doi(val: Any) -> str:
+    """
+    Limpia y valida un identificador DOI según la sintaxis estándar de la IDF/Crossref.
+    Acepta formatos como:
+      - '10.1007/s00339-026-09669-x'
+      - 'https://doi.org/10.52152/5'
+      - 'http://dx.doi.org/10.15665/esc.v15i1.1118'
+      - 'doi: 10.1016/j.jss.2020.110825.'
+      - 'http://dx.doi.org/10.24054%2F01204211.v28.n28.2016.2466'
+    Rechaza basura (autores, ISSNs, file://, drive.google.com, palabras aleatorias).
+    Devuelve el DOI limpio preservando la grafía original del sufijo (e.g. '10.1088/1757-899X/844/1/012003').
+    Devuelve "" si el texto no contiene un DOI válido.
+    """
+    if val is None:
+        return ""
+    s = str(val).strip()
+    if not s:
+        return ""
+    import urllib.parse
+    import re
+    s = urllib.parse.unquote(s)
+    s = re.sub(r"^https?://(?:dx\.)?doi\.org/", "", s, flags=re.IGNORECASE)
+    s = re.sub(r"^(?:doi:\s*|doi/|doi\s+)", "", s, flags=re.IGNORECASE).strip()
+    m = re.search(r"\b(10\.\d+/[^\s,;\"'<>]+)", s)
+    if not m:
+        return ""
+    clean = m.group(1).rstrip(".,;()[]\"'")
+    return clean.strip()
+
+
+
 # Expose InitMode
 InitMode = abpoxx_pybind.InitMode
 
@@ -620,7 +651,7 @@ def list_products() -> List[Product]:
                 validation_status=safe_get_str(p, 'validation_status'),
                 language=safe_get_str(p, 'language'),
                 country=safe_get_str(p, 'country'),
-                doi=safe_get_str(p, 'doi'),
+                doi=safe_get_str(p, 'doi') or None,
                 isbn=safe_get_str(p, 'isbn'),
                 issn=safe_get_str(p, 'issn'),
                 url=safe_get_str(p, 'url'),
@@ -655,7 +686,7 @@ def get_product(prod_id: int) -> Product:
         validation_status=safe_get_str(p, 'validation_status'),
         language=safe_get_str(p, 'language'),
         country=safe_get_str(p, 'country'),
-        doi=safe_get_str(p, 'doi'),
+        doi=safe_get_str(p, 'doi') or None,
         isbn=safe_get_str(p, 'isbn'),
         issn=safe_get_str(p, 'issn'),
         url=safe_get_str(p, 'url'),
@@ -678,7 +709,7 @@ def create_product(prod: Product) -> Product:
     proto.validation_status = sanitize_str(prod.validation_status or "pending")
     proto.language = sanitize_str(prod.language)
     proto.country = sanitize_str(prod.country)
-    proto.doi = sanitize_str(prod.doi)
+    proto.doi = clean_doi(prod.doi)
     proto.isbn = sanitize_str(prod.isbn)
     proto.issn = sanitize_str(prod.issn)
     proto.url = sanitize_str(prod.url)
@@ -710,7 +741,7 @@ def update_product(prod_id: int, updates: Product, skip_undo: bool = False) -> P
     proto.validation_status = sanitize_str(updates.validation_status or prev.validation_status)
     proto.language = sanitize_str(updates.language if updates.language is not None else prev.language)
     proto.country = sanitize_str(updates.country if updates.country is not None else prev.country)
-    proto.doi = sanitize_str(updates.doi if updates.doi is not None else prev.doi)
+    proto.doi = clean_doi(updates.doi if updates.doi is not None else prev.doi)
     proto.isbn = sanitize_str(updates.isbn if updates.isbn is not None else prev.isbn)
     proto.issn = sanitize_str(updates.issn if updates.issn is not None else prev.issn)
     proto.url = sanitize_str(updates.url if updates.url is not None else prev.url)
@@ -747,7 +778,7 @@ def delete_product(prod_id: int, soft: bool = True, skip_undo: bool = False) -> 
         proto.validation_status = sanitize_str(prev.validation_status)
         proto.language = sanitize_str(prev.language)
         proto.country = sanitize_str(prev.country)
-        proto.doi = sanitize_str(prev.doi)
+        proto.doi = clean_doi(prev.doi)
         proto.isbn = sanitize_str(prev.isbn)
         proto.issn = sanitize_str(prev.issn)
         proto.url = sanitize_str(prev.url)
@@ -782,7 +813,7 @@ def restore_product(prod_id: int) -> bool:
     proto.validation_status = sanitize_str(prev.validation_status)
     proto.language = sanitize_str(prev.language)
     proto.country = sanitize_str(prev.country)
-    proto.doi = sanitize_str(prev.doi)
+    proto.doi = clean_doi(prev.doi)
     proto.isbn = sanitize_str(prev.isbn)
     proto.issn = sanitize_str(prev.issn)
     proto.url = sanitize_str(prev.url)
@@ -822,7 +853,7 @@ def set_product_validation(
     proto.validation_status = validation_status
     proto.language = sanitize_str(prev.language)
     proto.country = sanitize_str(prev.country)
-    proto.doi = sanitize_str(prev.doi)
+    proto.doi = clean_doi(prev.doi)
     proto.isbn = sanitize_str(prev.isbn)
     proto.issn = sanitize_str(prev.issn)
     proto.url = sanitize_str(prev.url)

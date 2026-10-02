@@ -301,5 +301,84 @@ class TestIdempotencyDB(unittest.TestCase):
         self.assertEqual(link_statuses, {"pending_validation"}, "Los enlaces se proponen, no se aprueban (§6)")
 
 
+class TestDoiSanitization(unittest.TestCase):
+    """Pruebas de limpieza, validación y normalización estricta de DOIs."""
+
+    def test_clean_standard_doi(self):
+        doi = "10.1007/s00339-026-09669-x"
+        self.assertEqual(GruplacNormalizer.normalize_doi(doi), "10.1007/s00339-026-09669-x")
+
+    def test_clean_doi_with_url_prefixes(self):
+        self.assertEqual(
+            GruplacNormalizer.normalize_doi("https://doi.org/10.52152/5"),
+            "10.52152/5"
+        )
+        self.assertEqual(
+            GruplacNormalizer.normalize_doi("http://dx.doi.org/10.15665/esc.v15i1.1118"),
+            "10.15665/esc.v15i1.1118"
+        )
+        self.assertEqual(
+            GruplacNormalizer.normalize_doi("doi: 10.1016/j.jss.2020.110825"),
+            "10.1016/j.jss.2020.110825"
+        )
+
+    def test_clean_doi_with_encoded_slashes(self):
+        self.assertEqual(
+            GruplacNormalizer.normalize_doi("http://dx.doi.org/10.24054%2F01204211.v28.n28.2016.2466"),
+            "10.24054/01204211.v28.n28.2016.2466"
+        )
+
+    def test_clean_doi_strips_trailing_punctuation(self):
+        self.assertEqual(
+            GruplacNormalizer.normalize_doi("10.1016/j.jss.2020.110825."),
+            "10.1016/j.jss.2020.110825"
+        )
+        self.assertEqual(
+            GruplacNormalizer.normalize_doi("10.1016/j.jss.2020.110825;"),
+            "10.1016/j.jss.2020.110825"
+        )
+        self.assertEqual(
+            GruplacNormalizer.normalize_doi("10.1016/j.jss.2020.110825)"),
+            "10.1016/j.jss.2020.110825"
+        )
+
+    def test_clean_doi_preserves_suffix_case(self):
+        doi = "10.1088/1757-899X/844/1/012003"
+        self.assertEqual(GruplacNormalizer.normalize_doi(doi), "10.1088/1757-899X/844/1/012003")
+
+    def test_reject_garbage_doi(self):
+        garbage_samples = [
+            "Autores: MARIA JOHANA CARVAJALINO QUINTERO",
+            "Autores: CARMEN ELENA AMAYA PABON",
+            "ISSN 1679-1916",
+            "ISSN",
+            "file:///C:/Users/Cefontev/Desktop/SoportesGruplav/SoportesHolmes/ArticuloRevistacienciasmedicas.pdf",
+            "https://drive.google.com/file/d/0B7TYBDqQpwPzT0hXNTFwbEdHRkE/view",
+            "Palabras:",
+            "http://www.unilibrebaq.edu.co/ojsinvestigacion/index.php/ingeniare/article/view/702",
+            "http://revistas.uniguajira.edu.co/rev/index.php/cei/article/view/81/81",
+            "random text without doi",
+            "",
+            None,
+        ]
+        for g in garbage_samples:
+            self.assertEqual(
+                GruplacNormalizer.normalize_doi(g),
+                "",
+                f"Debe rechazar basura en DOI: '{g}'"
+            )
+
+    def test_extract_labeled_value_does_not_grab_next_label_for_empty_doi(self):
+        lines = [
+            "1.-",
+            "Titulo: Articulo con DOI vacio",
+            "En: Colombia",
+            "DOI:",
+            "Autores: MARIA JOHANA CARVAJALINO QUINTERO",
+        ]
+        extracted = GruplacHtmlParser.extract_labeled_value(lines, "DOI")
+        self.assertEqual(extracted, "", "DOI vacio no debe capturar la linea de Autores")
+
+
 if __name__ == "__main__":
     unittest.main()

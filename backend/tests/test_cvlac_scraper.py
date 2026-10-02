@@ -55,9 +55,20 @@ class TestCvlacParser(unittest.TestCase):
         self.assertEqual(len(unendorsed), 3, "3 capítulos antiguos no tienen aval")
 
     def test_libros_y_software(self):
-        self.assertEqual(len(self.cv.books), 6)
+        # Adith no tiene libros registrados (solo capítulos de libro); la sección libros
+        # no debe absorber la tabla de capítulos
+        self.assertEqual(len(self.cv.books), 0)
         self.assertEqual(len(self.cv.software), 9)
         self.assertTrue(all(s.is_endorsed for s in self.cv.software))
+        # Validar que los títulos de software sean reales y no nombres de coautores ni metadatos
+        titles_norm = [s.title.lower() for s in self.cv.software]
+        self.assertTrue(any("sisobeem" in t for t in titles_norm))
+        self.assertTrue(any("ag-casu" in t for t in titles_norm))
+        self.assertTrue(any("smartlight" in t for t in titles_norm))
+        # Validar que los coautores se hayan extraído a s.authors
+        smartlight = next(s for s in self.cv.software if "smartlight" in s.title.lower())
+        self.assertTrue(any("medina" in a.lower() for a in smartlight.authors))
+        self.assertTrue(any("duran" in a.lower() for a in smartlight.authors))
 
     def test_proyectos(self):
         self.assertGreaterEqual(len(self.cv.projects), 10)

@@ -83,24 +83,33 @@ function CatalogPicker({
   const filtered = options.filter((o) => o.name.toLowerCase().includes(search.toLowerCase()))
 
   return (
-    <div className='grid gap-2'>
+    <div className='grid gap-2 min-w-0'>
       <Label>{label}</Label>
       {selected ? (
-        <div className='flex items-center justify-between rounded-lg border border-border/50 bg-muted/30 px-3 py-2 text-sm'>
-          <span className='truncate font-medium'>{selected.name}</span>
-          <Button type='button' variant='ghost' size='sm' onClick={() => onChange(undefined)}>
+        <div className='flex items-center justify-between gap-2 rounded-lg border border-border/50 bg-muted/30 px-3 py-2 text-sm min-w-0'>
+          <span className='min-w-0 flex-1 truncate font-medium text-foreground' title={selected.name}>
+            {selected.name}
+          </span>
+          <Button
+            type='button'
+            variant='ghost'
+            size='sm'
+            className='h-7 shrink-0 px-2 text-xs hover:bg-destructive/10 hover:text-destructive'
+            onClick={() => onChange(undefined)}
+          >
             Quitar
           </Button>
         </div>
       ) : (
-        <>
+        <div className='relative min-w-0'>
           <Input
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             placeholder='Buscar en el catálogo...'
+            className='min-w-0'
           />
           {search && (
-            <div className='max-h-36 space-y-1 overflow-y-auto rounded-lg border border-border/50 p-1'>
+            <div className='absolute z-50 w-full mt-1 top-full max-h-36 space-y-1 overflow-y-auto rounded-lg border border-border/50 bg-popover p-1 shadow-md'>
               {filtered.length === 0 ? (
                 <p className='p-2 text-sm text-muted-foreground'>Sin resultados.</p>
               ) : (
@@ -109,8 +118,12 @@ function CatalogPicker({
                     <button
                       key={o.id}
                       type='button'
-                      onClick={() => { onChange(o.id); setSearch('') }}
+                      onClick={() => {
+                        onChange(o.id)
+                        setSearch('')
+                      }}
                       className='w-full truncate rounded-md px-3 py-2 text-left text-sm transition-colors hover:bg-muted/60'
+                      title={o.name}
                     >
                       {o.name}
                     </button>
@@ -124,7 +137,7 @@ function CatalogPicker({
               )}
             </div>
           )}
-        </>
+        </div>
       )}
     </div>
   )
@@ -192,15 +205,16 @@ export function ProductFormDialog({ open, onOpenChange, product }: Props) {
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className='sm:max-w-2xl max-h-[90vh] overflow-y-auto'>
-        <form onSubmit={handleSubmit}>
-          <DialogHeader>
+      <DialogContent className='sm:max-w-2xl max-h-[90vh] overflow-y-auto p-0 gap-0'>
+        <form onSubmit={handleSubmit} className='flex flex-col'>
+          <DialogHeader className='px-6 pt-6 pb-4 border-b shrink-0'>
             <DialogTitle>{isEditing ? 'Editar Producto' : 'Nuevo Producto'}</DialogTitle>
             <DialogDescription>
               Ficha completa del producto científico.
             </DialogDescription>
           </DialogHeader>
-          <div className='grid gap-4 py-4'>
+
+          <div className='px-6 py-4 space-y-4'>
             <div className='grid gap-2'>
               <Label htmlFor='title'>Título del Producto *</Label>
               <Input
@@ -211,7 +225,7 @@ export function ProductFormDialog({ open, onOpenChange, product }: Props) {
               />
             </div>
 
-            <div className='grid grid-cols-2 gap-4'>
+            <div className='grid grid-cols-1 gap-4 sm:grid-cols-2'>
               <div className='grid gap-2'>
                 <Label htmlFor='external_code'>Código *</Label>
                 <Input
@@ -233,7 +247,7 @@ export function ProductFormDialog({ open, onOpenChange, product }: Props) {
               </div>
             </div>
 
-            <div className='grid grid-cols-2 gap-4'>
+            <div className='grid grid-cols-1 gap-4 sm:grid-cols-2'>
               <div className='grid gap-2'>
                 <Label htmlFor='obtained_date'>Fecha de obtención</Label>
                 <Input
@@ -254,7 +268,7 @@ export function ProductFormDialog({ open, onOpenChange, product }: Props) {
               </div>
             </div>
 
-            <div className='grid grid-cols-3 gap-4'>
+            <div className='grid grid-cols-1 gap-4 sm:grid-cols-3'>
               <div className='grid gap-2'>
                 <Label htmlFor='doi'>DOI</Label>
                 <Input
@@ -292,7 +306,7 @@ export function ProductFormDialog({ open, onOpenChange, product }: Props) {
               />
             </div>
 
-            <div className='grid grid-cols-2 gap-4'>
+            <div className='grid grid-cols-1 gap-4 sm:grid-cols-2'>
               <div className='grid gap-2'>
                 <Label htmlFor='language'>Idioma</Label>
                 <Input
@@ -313,28 +327,35 @@ export function ProductFormDialog({ open, onOpenChange, product }: Props) {
               </div>
             </div>
 
-            <div className='grid grid-cols-1 gap-4 sm:grid-cols-3'>
-              <CatalogPicker
-                label='Familia'
-                options={(catalogs?.families ?? []).map((f) => ({
-                  id: f.id,
-                  name: withCode(f.code, f.name),
-                }))}
-                value={formData.family_id ?? undefined}
-                onChange={(id) =>
-                  set({ family_id: id, subtype_id: undefined, quality_category_id: undefined })
-                }
-              />
-              <CatalogPicker
-                label='Tipología 2024'
-                options={availableSubtypes.map((s) => ({
-                  id: s.id,
-                  name: withCode(s.code, s.name),
-                }))}
-                value={formData.subtype_id ?? undefined}
-                onChange={(id) => set({ subtype_id: id, quality_category_id: undefined })}
-              />
-              <div className='grid gap-2'>
+            {/* Clasificación Minciencias 2024 */}
+            <div className='space-y-4 rounded-xl border border-border/60 bg-muted/20 p-4'>
+              <div className='text-xs font-semibold uppercase tracking-wider text-muted-foreground'>
+                Clasificación Minciencias 2024
+              </div>
+              <div className='grid grid-cols-1 gap-4 sm:grid-cols-2'>
+                <CatalogPicker
+                  label='Familia'
+                  options={(catalogs?.families ?? []).map((f) => ({
+                    id: f.id,
+                    name: withCode(f.code, f.name),
+                  }))}
+                  value={formData.family_id ?? undefined}
+                  onChange={(id) =>
+                    set({ family_id: id, subtype_id: undefined, quality_category_id: undefined })
+                  }
+                />
+                <CatalogPicker
+                  label='Tipología 2024'
+                  options={availableSubtypes.map((s) => ({
+                    id: s.id,
+                    name: withCode(s.code, s.name),
+                  }))}
+                  value={formData.subtype_id ?? undefined}
+                  onChange={(id) => set({ subtype_id: id, quality_category_id: undefined })}
+                />
+              </div>
+
+              <div className='grid gap-2 min-w-0'>
                 <CatalogPicker
                   label='Categoría de calidad'
                   options={availableCategories.map((c) => ({
@@ -386,7 +407,8 @@ export function ProductFormDialog({ open, onOpenChange, product }: Props) {
               />
             </div>
           </div>
-          <DialogFooter>
+
+          <DialogFooter className='px-6 py-4 border-t bg-muted/20 shrink-0 gap-2 sm:gap-0'>
             <Button
               type='button'
               variant='outline'

@@ -219,13 +219,47 @@ class CvParser:
             education_records="; ".join(edu_entries) if edu_entries else "Universidad Popular del Cesar"
         )
 
+        def clean(s: Optional[str]) -> str:
+            if not s:
+                return ""
+            return " ".join(s.replace("\xa0", " ").split()).strip()
+
+        def clean_block(s: Optional[str]) -> str:
+            if not s:
+                return ""
+            lines = [" ".join(l.replace("\xa0", " ").split()) for l in s.splitlines()]
+            return "\n".join(l for l in lines if l)
+
+        def strip_accents(s: Optional[str]) -> str:
+            if not s:
+                return ""
+            import unicodedata
+            n = unicodedata.normalize('NFKD', s)
+            return "".join(c for c in n if not unicodedata.combining(c)).replace('\ufffd', 'i').lower()
+
         def extract_items_from_anchor(anchor_name: str, keyword: str = ""):
             anchor = soup.find("a", attrs={"name": anchor_name})
             if not anchor:
                 return []
-            tbl = anchor.find_next("table")
+            parent_td = anchor.find_parent("td")
+            tbl = parent_td.find("table") if parent_td else None
+            if not tbl:
+                tbl = anchor.find_next("table")
             if not tbl:
                 return []
+
+            # Prevent anchor fall-through into unrelated subsequent sections
+            h3 = tbl.find("h3")
+            h3_norm = strip_accents(h3.get_text()) if h3 else ""
+            if anchor_name == "articulos" and "art" not in h3_norm:
+                return []
+            if anchor_name == "capitulos" and "capitulo" not in h3_norm:
+                return []
+            if anchor_name == "libros" and ("libro" not in h3_norm or "capitulo" in h3_norm):
+                return []
+            if anchor_name == "software" and "software" not in h3_norm:
+                return []
+
             rows = tbl.find_all("tr")
             results = []
             i = 0
@@ -235,19 +269,22 @@ class CvParser:
                 b = r.find("b")
                 header_el = li or b
                 if header_el:
-                    header_txt = clean(header_el.get_text()).lower()
-                    if not keyword or keyword.lower() in header_txt:
+                    header_norm = strip_accents(header_el.get_text())
+                    if not keyword or strip_accents(keyword) in header_norm:
+                        if anchor_name == "libros" and "capitulo" in header_norm:
+                            i += 1
+                            continue
                         has_chulo = bool(r.find("img", src=lambda s: s and "chulo" in s.lower()))
                         if i + 1 < len(rows):
                             bquote = rows[i + 1].find("blockquote")
                             if bquote:
-                                results.append((has_chulo, clean(bquote.get_text())))
+                                results.append((has_chulo, clean_block(bquote.get_text())))
                                 i += 1
                 i += 1
             return results
 
         # 1. Artículos
-        for has_chulo, txt in extract_items_from_anchor("articulos"):
+        for has_chulo, txt in extract_items_from_anchor("articulos", keyword="art"):
             m_title = re.search(r'"([^"]+)"', txt)
             if m_title:
                 title = m_title.group(1).strip()
@@ -260,7 +297,9 @@ class CvParser:
                     authors = [clean(a) for a in parts[0].split(",")[:-1] if clean(a)]
                 else:
                     title = txt[:150]
-                    authors = [clean(a) for a in txt.split(",")[:2] if clean(a)]
+            title = title.strip()
+            if not title or len(title) < 3:
+                continue
 
             m_j = re.search(r'\.\s*En:\s*(?:[^A-Za-z0-9]*[A-Za-z]+)?\s*([^,\n\r]+?)\s*ISSN:', txt)
             journal = clean(m_j.group(1)) if m_j else ""
@@ -274,7 +313,8 @@ class CvParser:
             year = int(m_y.group(1)) if m_y else None
 
             m_doi = re.search(r'DOI:\s*([^\s,]+)', txt)
-            doi = m_doi.group(1).strip() if m_doi else ""
+            raw_doi = m_doi.group(1).strip() if m_doi else ""
+            doi = GruplacNormalizer.normalize_doi(raw_doi)
 
             cv.articles.append(CvArticle(
                 title=title,
@@ -288,9 +328,14 @@ class CvParser:
 
         # 2. Capítulos de libro
         for has_chulo, txt in extract_items_from_anchor("capitulos"):
+            lower_txt = txt.lower()
+            if "nombre comercial:" in lower_txt or "contrato/registro:" in lower_txt:
+                continue
             m_title = re.search(r'"([^"]+)"', txt)
-            title = m_title.group(1).strip() if m_title else txt[:150]
-            before = txt[:m_title.start()].strip().rstrip(",") if m_title else ""
+            if not m_title:
+                continue
+            title = m_title.group(1).strip()
+            before = txt[:m_title.start()].strip().rstrip(",")
             authors = [clean(a) for a in before.split(",") if clean(a)]
             m_isbn = re.search(r'ISBN:\s*([0-9Xx\-]+)', txt)
             isbn = m_isbn.group(1).strip() if m_isbn else ""
@@ -306,9 +351,14 @@ class CvParser:
 
         # 3. Libros
         for has_chulo, txt in extract_items_from_anchor("libros"):
+            lower_txt = txt.lower()
+            if "nombre comercial:" in lower_txt or "contrato/registro:" in lower_txt:
+                continue
             m_title = re.search(r'"([^"]+)"', txt)
-            title = m_title.group(1).strip() if m_title else txt[:150]
-            before = txt[:m_title.start()].strip().rstrip(",") if m_title else ""
+            if not m_title:
+                continue
+            title = m_title.group(1).strip()
+            before = txt[:m_title.start()].strip().rstrip(",")
             authors = [clean(a) for a in before.split(",") if clean(a)]
             m_isbn = re.search(r'ISBN:\s*([0-9Xx\-]+)', txt)
             isbn = m_isbn.group(1).strip() if m_isbn else ""
@@ -323,10 +373,10 @@ class CvParser:
             ))
 
         # 4. Software
-        for has_chulo, txt in extract_items_from_anchor("software", keyword="softwares"):
-            lines = [l.strip() for l in txt.split(",") if l.strip()]
-            title = lines[1] if len(lines) > 1 else txt[:150]
-            authors = [lines[0]] if lines else []
+        for has_chulo, txt in extract_items_from_anchor("software", keyword="software"):
+            title, authors = cls.parse_software_item(txt)
+            if not title:
+                continue
             m_y = re.search(r'\b(19\d{2}|20\d{2})\b', txt)
             year = int(m_y.group(1)) if m_y else None
             cv.software.append(CvSoftware(
@@ -440,7 +490,8 @@ class CvParser:
             year_val = int(y_m.group(1)) if y_m else 2026
 
             doi_m = re.search(r'DOI:\s*([^\s,]+)', details_line)
-            doi = doi_m.group(1).strip() if doi_m else ""
+            raw_doi = doi_m.group(1).strip() if doi_m else ""
+            doi = GruplacNormalizer.normalize_doi(raw_doi)
 
             authors = [a.strip() for a in raw_authors.split(",") if a.strip()]
             cv.articles.append(CvArticle(
@@ -521,6 +572,54 @@ class CvParser:
                 ))
 
         return cv
+
+    @classmethod
+    def parse_software_item(cls, txt: str) -> tuple[str, list[str]]:
+        def clean_s(s: str) -> str:
+            return re.sub(r"\s+", " ", s).strip() if s else ""
+
+        meta_pattern = r'(?i)\b(?:Nombre comercial:|contrato/registro:|\.\s*En:|plataforma:|ambiente:|Palabras:|Areas:|Sectores:|Disponibilidad:|finalidad:)'
+        parts = re.split(meta_pattern, txt, maxsplit=1)
+        header = parts[0].strip().rstrip(",.")
+
+        m_quotes = re.search(r'"([^"]+)"', header)
+        if m_quotes:
+            title = clean_s(m_quotes.group(1))
+            before = header[:m_quotes.start()].strip().rstrip(",")
+            authors = [clean_s(a) for a in before.split(",") if clean_s(a)]
+            return title, authors
+
+        lines = [clean_s(l.rstrip(",")) for l in header.splitlines() if clean_s(l)]
+        if len(lines) > 1:
+            authors = []
+            title_lines = []
+            in_title = False
+            for idx, l in enumerate(lines):
+                is_last = (idx == len(lines) - 1)
+                lower = l.lower()
+                has_indicator = any(w in lower for w in [":", "software", "sistema", "simulador", "aplicaci", "modulo", "herramienta", "red", "metodo", "control", "web", "app", "diseno", "portal"])
+                if in_title:
+                    title_lines.append(l)
+                elif has_indicator or is_last:
+                    in_title = True
+                    title_lines.append(l)
+                else:
+                    words = l.split()
+                    if 2 <= len(words) <= 5 and not any(ch in l for ch in [":", "/", "\\", "(", ")"]):
+                        authors.append(l)
+                    else:
+                        in_title = True
+                        title_lines.append(l)
+            title = " ".join(title_lines).strip()
+            if title:
+                return title, authors
+
+        chunks = [clean_s(c) for c in header.split(",") if clean_s(c)]
+        if not chunks:
+            return clean_s(header), []
+        if len(chunks) == 1:
+            return chunks[0], []
+        return chunks[-1], chunks[:-1]
 
     @classmethod
     def parse(cls, html_or_text: str) -> CvData:
@@ -609,17 +708,18 @@ class CvCommitService:
 
             def _find_or_insert_product(p_code: str, title: str, year, doi, subtype_id: int, family_id: int, evidence: Optional[str] = None) -> int:
                 nonlocal new_products
+                clean_d = GruplacNormalizer.normalize_doi(doi) or None
                 cur.execute("SELECT id, doi, evidence FROM Product WHERE external_code = ?", p_code)
                 row = cur.fetchone()
                 if row:
-                    if (doi and not row[1]) or (evidence and not row[2]):
-                        cur.execute("UPDATE Product SET doi = COALESCE(doi, ?), evidence = COALESCE(evidence, ?) WHERE id = ?", doi, evidence, row[0])
+                    if (clean_d and not row[1]) or (evidence and not row[2]):
+                        cur.execute("UPDATE Product SET doi = COALESCE(doi, ?), evidence = COALESCE(evidence, ?) WHERE id = ?", clean_d, evidence, row[0])
                     return row[0]
                 canon_key = f"{GruplacNormalizer.normalized_name_key(title)}|{year or ''}"
                 existing_id = canon_map.get(canon_key)
                 if existing_id:
-                    if doi or evidence:
-                        cur.execute("UPDATE Product SET doi = COALESCE(doi, ?), evidence = COALESCE(evidence, ?) WHERE id = ?", doi, evidence, existing_id)
+                    if clean_d or evidence:
+                        cur.execute("UPDATE Product SET doi = COALESCE(doi, ?), evidence = COALESCE(evidence, ?) WHERE id = ?", clean_d, evidence, existing_id)
                     return existing_id
                 spec_attrs = json.dumps({"minciencias_endorsed": True}) if (evidence and "✓" in evidence) else None
                 try:
@@ -627,7 +727,7 @@ class CvCommitService:
                         INSERT INTO Product (external_code, title, family_id, subtype_id, year, doi, validation_status, evidence, specialized_attributes, created_at)
                         OUTPUT INSERTED.id
                         VALUES (?, ?, ?, ?, ?, ?, 'pending', ?, ?, GETDATE());
-                    """, p_code, title[:500], family_id, subtype_id, year, doi or None, evidence, spec_attrs)
+                    """, p_code, title[:500], family_id, subtype_id, year, clean_d, evidence, spec_attrs)
                     new_id = cur.fetchone()[0]
                 except pyodbc.IntegrityError:
                     cur.execute("SELECT id FROM Product WHERE external_code = ?", p_code)
@@ -765,13 +865,36 @@ class CvCommitService:
                     p_id = _find_or_insert_product(p_code, sw.title, sw.year, None, subtype_id, fam_id, evidence=evidence)
                     _enqueue_validation(p_id)
 
-                    cur.execute("""
-                        IF NOT EXISTS (SELECT 1 FROM ProductAuthor WHERE product_id = ? AND researcher_id = ?)
-                        BEGIN
-                            INSERT INTO ProductAuthor (product_id, researcher_id, author_order, match_status)
-                            VALUES (?, ?, 1, 'verified');
-                        END
-                    """, p_id, researcher_id, p_id, researcher_id)
+                    for idx, auth_name in enumerate(sw.authors, start=1):
+                        norm_auth = GruplacNormalizer.normalized_name_key(auth_name)
+                        norm_cv = GruplacNormalizer.normalized_name_key(cv.name)
+                        norm_cit = GruplacNormalizer.normalized_name_key(cv.citation_name)
+                        is_main = (norm_auth == norm_cv) or (norm_cit and norm_auth == norm_cit) or (norm_cv and norm_cv in norm_auth) or (norm_auth and norm_auth in norm_cv)
+                        if is_main:
+                            cur.execute("""
+                                IF NOT EXISTS (SELECT 1 FROM ProductAuthor WHERE product_id = ? AND researcher_id = ?)
+                                BEGIN
+                                    INSERT INTO ProductAuthor (product_id, researcher_id, author_order, match_status)
+                                    VALUES (?, ?, ?, 'verified');
+                                END
+                            """, p_id, researcher_id, p_id, researcher_id, idx)
+                        else:
+                            cur.execute("""
+                                IF NOT EXISTS (SELECT 1 FROM ProductAuthor WHERE product_id = ? AND external_author_name = ?)
+                                BEGIN
+                                    INSERT INTO ProductAuthor (product_id, external_author_name, author_order, match_status)
+                                    VALUES (?, ?, ?, 'unverified');
+                                END
+                            """, p_id, auth_name, p_id, auth_name, idx)
+
+                    if not sw.authors:
+                        cur.execute("""
+                            IF NOT EXISTS (SELECT 1 FROM ProductAuthor WHERE product_id = ? AND researcher_id = ?)
+                            BEGIN
+                                INSERT INTO ProductAuthor (product_id, researcher_id, author_order, match_status)
+                                VALUES (?, ?, 1, 'verified');
+                            END
+                        """, p_id, researcher_id, p_id, researcher_id)
 
                     if db_group_id:
                         cur.execute("""
@@ -781,6 +904,11 @@ class CvCommitService:
                                 VALUES (?, ?, 'pending_validation', 'cvlac_public', 'Software desde CvLAC', GETDATE());
                             END
                         """, db_group_id, p_id, db_group_id, p_id)
+
+                    cur.execute("""
+                        INSERT INTO ImportRecord (job_id, entity_type, external_identifier, action_taken, source_data_summary, resolution_details, created_at)
+                        VALUES (?, 'Product', ?, 'created', ?, 'Software desde CvLAC', GETDATE());
+                    """, job_id, p_code, clean_title[:200])
 
             # 8. Insertar Eventos Científicos (Ponencias y Pósters)
             for ev in cv.events:

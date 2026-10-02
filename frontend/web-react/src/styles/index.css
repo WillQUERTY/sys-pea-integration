@@ -15,7 +15,7 @@
   }
   body {
     @apply min-h-svh w-full bg-background text-foreground has-[div[data-variant='inset']]:bg-sidebar;
-    font-family: 'Public Sans', 'Inter', sans-serif;
+    font-family: 'Inter', system-ui, sans-serif;
   }
 
   /* Minimal Template Card Shadows */

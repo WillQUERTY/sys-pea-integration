@@ -34,8 +34,8 @@ import { Badge } from '@/components/ui/badge'
 
 import { DataTable } from '@/components/data-table'
 
-export function ResearcherDetail() {
-  const { id } = useParams({ from: '/_authenticated/researchers/$id' })
+export function ResearcherDetail({ isAdmin = false }: { isAdmin?: boolean }) {
+  const { id } = useParams({ strict: false }) as any
   const queryClient = useQueryClient()
   
   const researcherId = Number(id)
@@ -136,14 +136,16 @@ export function ResearcherDetail() {
   if (isLoading) {
     return (
       <>
-        <Header>
-          <div className='ms-auto flex items-center space-x-4'>
-            <ThemeSwitch />
-            <ConfigDrawer />
-            <ProfileDropdown />
-          </div>
-        </Header>
-        <Main>
+        {isAdmin && (
+          <Header>
+            <div className='ms-auto flex items-center space-x-4'>
+              <ThemeSwitch />
+              <ConfigDrawer />
+              <ProfileDropdown />
+            </div>
+          </Header>
+        )}
+        <Main className={`p-0 sm:p-6 ${!isAdmin ? 'max-w-5xl mx-auto w-full' : ''}`}>
           <div className="space-y-6">
             <Skeleton className="h-40 w-full rounded-xl" />
             <Skeleton className="h-[400px] w-full rounded-xl" />
@@ -155,11 +157,11 @@ export function ResearcherDetail() {
 
   if (!researcher) {
     return (
-      <Main>
+      <Main className={`p-0 sm:p-6 ${!isAdmin ? 'max-w-5xl mx-auto w-full' : ''}`}>
         <div className="text-center py-20">
           <h2 className="text-2xl font-bold">Investigador no encontrado</h2>
           <Button asChild className="mt-4">
-            <Link to="/researchers">Volver a Investigadores</Link>
+            <Link to={isAdmin ? "/admin/researchers" : "/researchers"}>Volver a Investigadores</Link>
           </Button>
         </div>
       </Main>
@@ -171,28 +173,30 @@ export function ResearcherDetail() {
 
   return (
     <>
-      <Header>
-        <div className='flex items-center gap-4'>
-          <Button variant='ghost' size='icon' asChild className='h-8 w-8 rounded-full'>
-            <Link to="/researchers">
-              <ArrowLeft className='h-4 w-4' />
-            </Link>
-          </Button>
-          <div className='flex items-center gap-2'>
-            <h1 className='text-sm font-semibold'>Ficha del Investigador</h1>
-            <Badge variant='outline' className='text-[10px] font-normal text-muted-foreground'>
-              CvLAC
-            </Badge>
+      {isAdmin && (
+        <Header>
+          <div className='flex items-center gap-4'>
+            <Button variant='ghost' size='icon' asChild className='h-8 w-8 rounded-full'>
+              <Link to={isAdmin ? '/admin/researchers' : '/researchers'}>
+                <ArrowLeft className='h-4 w-4' />
+              </Link>
+            </Button>
+            <div className='flex items-center gap-2'>
+              <h1 className='text-sm font-semibold'>Ficha del Investigador</h1>
+              <Badge variant='outline' className='text-[10px] font-normal text-muted-foreground'>
+                CvLAC
+              </Badge>
+            </div>
           </div>
-        </div>
-        <div className='ms-auto flex items-center space-x-4'>
-          <ThemeSwitch />
-          <ConfigDrawer />
-          <ProfileDropdown />
-        </div>
-      </Header>
+          <div className='ms-auto flex items-center space-x-4'>
+            <ThemeSwitch />
+            <ConfigDrawer />
+            <ProfileDropdown />
+          </div>
+        </Header>
+      )}
 
-      <Main className='p-0 sm:p-6'>
+      <Main className={`p-0 sm:p-6 ${!isAdmin ? 'max-w-5xl mx-auto w-full' : ''}`}>
         {/* Cover & Profile Header */}
         <div className='relative mb-8 rounded-b-none sm:rounded-2xl overflow-hidden border border-border/50 bg-card shadow-sm'>
           <div className='h-32 bg-gradient-to-r from-primary/15 via-background to-secondary/15 relative'>

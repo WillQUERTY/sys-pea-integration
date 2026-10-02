@@ -122,7 +122,7 @@ export function ValidationQueue() {
         return (
           <div className='flex items-center gap-2'>
             <Link
-              to='/products/$id'
+              to='/admin/products/$id'
               params={{ id: String(item.product_id) }}
               className='block truncate font-medium text-primary hover:underline'
             >

@@ -1,7 +1,7 @@
-import { useEffect, useState } from 'react'
+import { useContext, useEffect, useState } from 'react'
 import { cn } from '@/lib/utils'
 import { Separator } from '@/components/ui/separator'
-import { SidebarTrigger } from '@/components/ui/sidebar'
+import { SidebarContext, SidebarTrigger } from '@/components/ui/sidebar'
 
 type HeaderProps = React.HTMLAttributes<HTMLElement> & {
   fixed?: boolean
@@ -10,6 +10,7 @@ type HeaderProps = React.HTMLAttributes<HTMLElement> & {
 
 export function Header({ className, fixed, children, ...props }: HeaderProps) {
   const [offset, setOffset] = useState(0)
+  const hasSidebar = useContext(SidebarContext) !== null
 
   useEffect(() => {
     const onScroll = () => {
@@ -41,8 +42,12 @@ export function Header({ className, fixed, children, ...props }: HeaderProps) {
             'after:absolute after:inset-0 after:-z-10 after:bg-background/20 after:backdrop-blur-lg'
         )}
       >
-        <SidebarTrigger variant='outline' className='max-md:scale-125' />
-        <Separator orientation='vertical' className='h-6' />
+        {hasSidebar && (
+          <>
+            <SidebarTrigger variant='outline' className='max-md:scale-125' />
+            <Separator orientation='vertical' className='h-6' />
+          </>
+        )}
         {children}
       </div>
     </header>

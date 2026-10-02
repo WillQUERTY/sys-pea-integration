@@ -103,10 +103,10 @@ export function ValidateProductDialog({ open, onOpenChange, product }: Props) {
   return (
     <>
       <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className='sm:max-w-lg'>
+      <DialogContent className='sm:max-w-lg max-h-[90vh] overflow-y-auto'>
         <DialogHeader>
           <DialogTitle>Validar producto</DialogTitle>
-          <DialogDescription className='line-clamp-2'>{product.title}</DialogDescription>
+          <DialogDescription className='line-clamp-2 break-words'>{product.title}</DialogDescription>
         </DialogHeader>
 
         <div className='grid gap-4 py-2'>

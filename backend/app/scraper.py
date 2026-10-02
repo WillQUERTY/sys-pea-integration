@@ -179,17 +179,12 @@ class GruplacNormalizer:
         return None
 
     @staticmethod
-    def normalize_doi(doi: str) -> str:
-        if not doi:
-            return ""
-        d = doi.strip()
-        d = re.sub(r"^https?://(dx\.)?doi\.org/", "", d, flags=re.IGNORECASE)
-        d = re.sub(r"^doi:\s*", "", d, flags=re.IGNORECASE)
-        return d.strip().lower()
+    def normalize_doi(doi: Optional[str]) -> str:
+        return repository.clean_doi(doi)
 
     @classmethod
     def product_external_code(cls, title: str, year: Optional[int], doi: str = "", authors: Optional[List[str]] = None) -> str:
-        norm_doi = cls.normalize_doi(doi)
+        norm_doi = cls.normalize_doi(doi).lower()
         if norm_doi:
             canonical = f"DOI:{norm_doi}"
             digest = hashlib.sha256(canonical.encode("utf-8")).hexdigest()[:20]
@@ -395,6 +390,11 @@ class GruplacHtmlParser:
     @staticmethod
     def extract_labeled_value(lines: List[str], label: str) -> str:
         norm_label = GruplacNormalizer.normalize(label).lower().strip(" :")
+        stop_labels = (
+            "autores:", "tutor(es):", "tutor:", "doi:", "issn:", "isbn:",
+            "vol:", "fasc:", "pags:", "paginas:", "palabras:", "ano:", "año:",
+            "mes:", "en:", "titulo:", "sitio web:", "disponibilidad:"
+        )
         for idx, line in enumerate(lines):
             clean = line.strip()
             norm_l = GruplacNormalizer.normalize(clean).lower().strip(" :")
@@ -405,7 +405,8 @@ class GruplacHtmlParser:
                         return val
                 if idx + 1 < len(lines):
                     next_l = lines[idx + 1].strip()
-                    if not next_l.endswith(":") and len(next_l) < 200:
+                    next_norm = GruplacNormalizer.normalize(next_l).lower()
+                    if not next_norm.startswith(stop_labels) and not next_l.endswith(":") and len(next_l) < 200:
                         return next_l
         return ""
 
@@ -472,7 +473,7 @@ class GruplacHtmlParser:
                     base.authors.append(a)
                     seen.add(k)
             # Rellenar identificadores faltantes con los del duplicado
-            base.doi = base.doi or existing.doi
+            base.doi = GruplacNormalizer.normalize_doi(base.doi or existing.doi) or None
             base.issn = base.issn or existing.issn
             base.isbn = base.isbn or existing.isbn
             base.year = base.year or existing.year
@@ -769,10 +770,11 @@ class GruplacHtmlParser:
                         else "PAT_INV"
 
                 # Extracción estructurada de DOI, ISSN, ISBN
-                doi = cls.extract_labeled_value(lines, "DOI")
-                if not doi:
+                raw_doi = cls.extract_labeled_value(lines, "DOI")
+                if not raw_doi:
                     m_doi = re.search(r"DOI:\s*([^\s,]+)", full_text, re.IGNORECASE)
-                    if m_doi: doi = m_doi.group(1).strip()
+                    if m_doi: raw_doi = m_doi.group(1).strip()
+                doi = GruplacNormalizer.normalize_doi(raw_doi) or None
 
                 issn = cls.extract_labeled_value(lines, "ISSN")
                 if not issn:

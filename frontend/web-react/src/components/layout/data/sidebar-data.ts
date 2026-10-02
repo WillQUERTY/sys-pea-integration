@@ -8,12 +8,14 @@ import {
   Upload,
   Atom,
   History,
+  Cpu,
+  Globe,
 } from 'lucide-react'
 import { type SidebarData } from '../types'
 
 export const sidebarData: SidebarData = {
   user: {
-    name: 'Portal Institucional',
+    name: 'Gestión Institucional',
     email: 'investigacion@unicesar.edu.co',
     avatar: '',
   },
@@ -26,32 +28,17 @@ export const sidebarData: SidebarData = {
   ],
   navGroups: [
     {
-      title: 'Exploración Abierta',
+      title: 'Panel & Control',
       items: [
         {
-          title: 'Portal Principal',
-          url: '/',
+          title: 'Métricas de Gestión',
+          url: '/admin',
           icon: Compass,
         },
         {
-          title: 'Grupos de Investigación',
-          url: '/groups',
-          icon: Users,
-        },
-        {
-          title: 'Directorio Investigadores',
-          url: '/researchers',
-          icon: UserRound,
-        },
-        {
-          title: 'Producción Científica',
-          url: '/products',
-          icon: FlaskConical,
-        },
-        {
-          title: 'Proyectos de I+D',
-          url: '/projects',
-          icon: Lightbulb,
+          title: 'Consola del Núcleo & ODBC',
+          url: '/admin/system',
+          icon: Cpu,
         },
       ],
     },
@@ -60,18 +47,53 @@ export const sidebarData: SidebarData = {
       items: [
         {
           title: 'Importar GrupLAC / CvLAC',
-          url: '/import',
+          url: '/admin/import',
           icon: Upload,
         },
         {
           title: 'Cola de Validación FIFO',
-          url: '/validation-queue',
+          url: '/admin/validation-queue',
           icon: ClipboardCheck,
         },
         {
           title: 'Historial & Deshacer',
-          url: '/undo',
+          url: '/admin/undo',
           icon: History,
+        },
+      ],
+    },
+    {
+      title: 'Gestión de Entidades',
+      items: [
+        {
+          title: 'Grupos de Investigación',
+          url: '/admin/groups',
+          icon: Users,
+        },
+        {
+          title: 'Directorio Investigadores',
+          url: '/admin/researchers',
+          icon: UserRound,
+        },
+        {
+          title: 'Producción Científica',
+          url: '/admin/products',
+          icon: FlaskConical,
+        },
+        {
+          title: 'Proyectos de I+D',
+          url: '/admin/projects',
+          icon: Lightbulb,
+        },
+      ],
+    },
+    {
+      title: 'Portal de Acceso',
+      items: [
+        {
+          title: 'Ver Portal Abierto',
+          url: '/',
+          icon: Globe,
         },
       ],
     },

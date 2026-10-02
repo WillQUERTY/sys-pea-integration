@@ -21,12 +21,12 @@ export function AppTitle() {
         >
           <div>
             <Link
-              to='/'
+              to='/admin'
               onClick={() => setOpenMobile(false)}
               className='grid flex-1 text-start text-sm leading-tight'
             >
-              <span className='truncate font-bold'>Shadcn-Admin</span>
-              <span className='truncate text-xs'>Vite + ShadcnUI</span>
+              <span className='truncate font-bold'>PEA-i Gestión</span>
+              <span className='truncate text-xs text-muted-foreground'>Univ. Popular del Cesar</span>
             </Link>
             <ToggleSidebar />
           </div>
