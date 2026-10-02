@@ -1,8 +1,8 @@
-import { useMemo, useState } from 'react'
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { useEffect, useMemo, useState } from 'react'
+import { keepPreviousData, useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { Link } from '@tanstack/react-router'
 import { toast } from 'sonner'
-import { listValidationQueue, validateProduct, cancelValidationItem, listProducts } from '@/lib/api'
+import { listValidationQueue, validateProduct, cancelValidationItem } from '@/lib/api'
 import type { Product, ValidationQueueItem } from '@/lib/types'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -22,6 +22,7 @@ import { Search } from '@/components/search'
 import { ThemeSwitch } from '@/components/theme-switch'
 import { ValidateProductDialog } from '@/features/products/validate-product-dialog'
 import { isEndorsed, EndorsedBadge } from '@/features/products/endorsed'
+import { useDebouncedValue } from '@/hooks/use-debounced-value'
 
 const statusFilters: DataFilter[] = [
   {
@@ -39,19 +40,38 @@ const statusFilters: DataFilter[] = [
 
 export function ValidationQueue() {
   const queryClient = useQueryClient()
-  const queue = useQuery({ queryKey: ['validation-queue'], queryFn: listValidationQueue })
-  // mapa id→producto para la cola: necesita un catálogo amplio (core en RAM).
-  // TODO: exponer el título desde el endpoint de la cola y eliminar este fetch.
-  const products = useQuery({ queryKey: ['products', 'catalog'], queryFn: () => listProducts({ limit: 5000 }) })
 
-  // id -> producto completo (el diálogo de validación necesita subtype_id)
-  const productsById = useMemo(() => {
-    const map = new Map<number, Product>()
-    for (const p of products.data?.items ?? []) {
-      if (p.id != null) map.set(p.id, p)
-    }
-    return map
-  }, [products.data])
+  // Estado server-side: búsqueda debounced, página y filtros
+  const [search, setSearch] = useState('')
+  const debouncedSearch = useDebouncedValue(search, 300)
+  const [page, setPage] = useState(0)
+  const [pageSize, setPageSize] = useState(20)
+  const [filterValues, setFilterValues] = useState<Record<string, string>>({
+    status: 'pending',
+  })
+
+  const params = useMemo(
+    () => ({
+      skip: page * pageSize,
+      limit: pageSize,
+      status: filterValues.status !== 'all' ? filterValues.status : undefined,
+      search: debouncedSearch.trim() || undefined,
+    }),
+    [page, pageSize, debouncedSearch, filterValues]
+  )
+
+  // Consulta paginada nativa y enriquecida desde el backend (sin sobrecarga en cliente)
+  const queue = useQuery({
+    queryKey: ['validation-queue', params],
+    queryFn: () => listValidationQueue(params),
+    placeholderData: keepPreviousData,
+  })
+
+  // Si un procesamiento o filtro deja la página fuera de rango, reajustar
+  useEffect(() => {
+    const maxPage = Math.max(0, Math.ceil((queue.data?.total ?? 0) / pageSize) - 1)
+    if (page > maxPage) setPage(maxPage)
+  }, [queue.data?.total, pageSize, page])
 
   // Producto en validación a través del diálogo 2024 (exige tipología+categoría)
   const [validatingProduct, setValidatingProduct] = useState<Product | null>(null)
@@ -59,6 +79,7 @@ export function ValidationQueue() {
   const invalidate = () => {
     queryClient.invalidateQueries({ queryKey: ['validation-queue'] })
     queryClient.invalidateQueries({ queryKey: ['products'] })
+    queryClient.invalidateQueries({ queryKey: ['dashboard-stats'] })
   }
 
   // §3.6: un ítem solo se valida en el diálogo (tipología + categoría de
@@ -66,10 +87,10 @@ export function ValidationQueue() {
   // «siguiente pendiente».
   const openValidation = (item: ValidationQueueItem) =>
     setValidatingProduct(
-      productsById.get(item.product_id) ?? {
+      item.product ?? {
         id: item.product_id,
-        external_code: '',
-        title: `Producto #${item.product_id}`,
+        external_code: item.product_external_code ?? '',
+        title: item.product_title ?? `Producto #${item.product_id}`,
       }
     )
 
@@ -103,9 +124,9 @@ export function ValidationQueue() {
       key: 'product',
       header: 'Producto',
       className: 'max-w-[480px]',
-      searchable: (item) => productsById.get(item.product_id)?.title ?? `producto ${item.product_id}`,
       cell: (item) => {
-        const prod = productsById.get(item.product_id)
+        const prod = item.product
+        const title = item.product_title ?? prod?.title ?? `Producto #${item.product_id}`
         return (
           <div className='flex items-center gap-2'>
             <Link
@@ -113,7 +134,7 @@ export function ValidationQueue() {
               params={{ id: String(item.product_id) }}
               className='block truncate font-medium text-primary hover:underline'
             >
-              {prod?.title ?? `Producto #${item.product_id}`}
+              {title}
             </Link>
             {isEndorsed(prod) && <EndorsedBadge />}
           </div>
@@ -176,9 +197,10 @@ export function ValidationQueue() {
           </div>
         ) : null,
     },
-  ], [productsById, reject.isPending, cancelItem.isPending])
+  ], [reject.isPending, cancelItem.isPending])
 
-  const pending = (queue.data ?? []).filter((i) => i.status === 'pending')
+  const pendingCount = queue.data?.pending_count ?? 0
+  const firstPending = (queue.data?.items ?? []).find((i) => i.status === 'pending')
 
   return (
     <>
@@ -201,10 +223,9 @@ export function ValidationQueue() {
           </div>
           <Button
             onClick={() => {
-              const next = pending[0]
-              if (next) openValidation(next)
+              if (firstPending) openValidation(firstPending)
             }}
-            disabled={pending.length === 0}
+            disabled={pendingCount === 0 || !firstPending}
             title='Abre el diálogo de validación del primer ítem pendiente (FIFO); nunca valida en un clic'
           >
             Abrir siguiente pendiente
@@ -214,7 +235,7 @@ export function ValidationQueue() {
         <Card>
           <CardHeader>
             <CardTitle>
-              Ítems en cola <Badge variant='secondary'>{pending.length} pendientes</Badge>
+              Ítems en cola <Badge variant='secondary'>{pendingCount} pendientes</Badge>
             </CardTitle>
             <CardDescription>
               Los productos importados por scraping entran aquí con estado «pending».
@@ -223,14 +244,34 @@ export function ValidationQueue() {
           <CardContent>
             <DataTable
               columns={columns}
-              data={queue.data ?? []}
+              data={queue.data?.items ?? []}
               loading={queue.isLoading}
               rowKey={(item) => item.id}
-              searchPlaceholder='Buscar por título de producto…'
+              searchPlaceholder='Buscar por título o código de producto…'
               filters={statusFilters}
-              filterFn={(item, f) => f.status === 'all' || (item.status ?? 'pending') === f.status}
               emptyMessage='La cola está vacía.'
-              defaultPageSize={20}
+              pageSizeOptions={[10, 20, 50, 100]}
+              server={{
+                total: queue.data?.total ?? 0,
+                pageIndex: page,
+                pageSize,
+                onPageChange: setPage,
+                onPageSizeChange: (ps) => {
+                  setPageSize(ps)
+                  setPage(0)
+                },
+                searchValue: search,
+                onSearchChange: (v) => {
+                  setSearch(v)
+                  setPage(0)
+                },
+                filterValues,
+                onFilterChange: (v) => {
+                  setFilterValues(v)
+                  setPage(0)
+                },
+                isFetching: queue.isFetching,
+              }}
             />
           </CardContent>
         </Card>

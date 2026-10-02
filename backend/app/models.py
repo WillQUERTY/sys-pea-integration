@@ -172,6 +172,12 @@ class ValidationQueueItem(BaseModel):
     assigned_to: Optional[str] = None
     result: Optional[str] = None
     processed_at: Optional[str] = None
+    product_title: Optional[str] = None
+    product_external_code: Optional[str] = None
+    product: Optional[Product] = None
+
+class ValidationQueueResponse(PagedResponse[ValidationQueueItem]):
+    pending_count: int = 0
 
 class ResearchLine(BaseModel):
     id: Optional[int] = None

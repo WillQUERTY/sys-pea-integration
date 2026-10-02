@@ -4,7 +4,7 @@ from pydantic import BaseModel
 from typing import Any, Dict, List, Optional
 from .. import repository
 from .. import reports
-from ..models import Group, Researcher, Product, Project, WorkPlan, PagedResponse
+from ..models import Group, Researcher, Product, Project, WorkPlan, PagedResponse, ValidationQueueItem, ValidationQueueResponse
 
 router = APIRouter()
 
@@ -128,22 +128,68 @@ class EnqueueValidationRequest(BaseModel):
     product_id: int
     assigned_to: Optional[str] = "evaluador_tecnico"
 
-@router.get("/system/validation-queue", tags=["Validation Queue"])
-async def list_validation_queue():
-    """List all pending validation queue items (FIFO order)."""
-    items = repository.vq_list()
-    return [
-        {
-            "id": it.id,
-            "product_id": it.product_id,
-            "enqueued_at": it.enqueued_at,
-            "status": it.status,
-            "attempts": it.attempts,
-            "assigned_to": it.assigned_to,
-            "result": it.result,
-            "processed_at": it.processed_at
-        } for it in items
-    ]
+@router.get("/system/validation-queue", response_model=ValidationQueueResponse, tags=["Validation Queue"])
+async def list_validation_queue(
+    skip: int = Query(0, ge=0),
+    limit: int = Query(50, ge=1, le=10000),
+    status: Optional[str] = None,
+    search: Optional[str] = None,
+):
+    """List validation queue items with native pagination, search and product enrichment (FIFO order)."""
+    raw_items = repository.vq_list()
+    pending_count = repository.vq_pending_count()
+
+    if status and status != "all":
+        raw_items = [it for it in raw_items if (it.status or "pending") == status]
+
+    if search:
+        s = search.strip().lower()
+        products_by_id = {p.id: p for p in repository.list_products() if p.id is not None}
+        matched = []
+        for it in raw_items:
+            prod = products_by_id.get(it.product_id)
+            title = (prod.title or "").lower() if prod else ""
+            ext_code = (prod.external_code or "").lower() if prod else ""
+            assigned = (it.assigned_to or "").lower()
+            pid_str = str(it.product_id)
+            if s in title or s in ext_code or s in assigned or s in pid_str:
+                matched.append(it)
+        raw_items = matched
+
+    total = len(raw_items)
+    page_items = raw_items[skip : skip + limit]
+
+    enriched: List[ValidationQueueItem] = []
+    for it in page_items:
+        prod = None
+        try:
+            prod = repository.get_product(it.product_id)
+        except KeyError:
+            pass
+
+        enriched.append(
+            ValidationQueueItem(
+                id=it.id,
+                product_id=it.product_id,
+                enqueued_at=it.enqueued_at,
+                status=it.status,
+                attempts=it.attempts,
+                assigned_to=it.assigned_to,
+                result=it.result,
+                processed_at=it.processed_at,
+                product_title=prod.title if prod else f"Producto #{it.product_id}",
+                product_external_code=prod.external_code if prod else None,
+                product=prod,
+            )
+        )
+
+    return ValidationQueueResponse(
+        items=enriched,
+        total=total,
+        skip=skip,
+        limit=limit,
+        pending_count=pending_count,
+    )
 
 @router.post("/system/validation-queue/enqueue", status_code=201, tags=["Validation Queue"])
 async def enqueue_validation_item(req: EnqueueValidationRequest):
@@ -635,7 +681,8 @@ async def list_products_endpoint(
     group_id: Optional[int] = None,
     start_year: Optional[int] = Query(None, description="Año inicial para Ventana de Observación (Requerimiento 10)"),
     end_year: Optional[int] = Query(None, description="Año final para Ventana de Observación (Requerimiento 10)"),
-    window_years: Optional[int] = Query(None, description="Ventana de observación en años hacia atrás (ej. 2 o 5 años)")
+    window_years: Optional[int] = Query(None, description="Ventana de observación en años hacia atrás (ej. 2 o 5 años)"),
+    unclassified: Optional[bool] = Query(None, description="Solo productos sin tipología 2024 (para reclasificar)")
 ):
     """
     List products with complete filtering, dynamic Observation Window (Requerimiento 10)

@@ -157,7 +157,9 @@ def run_tests():
     assert resp_vq.status_code == 201
     resp_qlist = client.get("/api/v1/system/validation-queue")
     assert resp_qlist.status_code == 200
-    print(f"  [OK] Cola FIFO de Validacion: {len(resp_qlist.json())} items en cola")
+    q_data = resp_qlist.json()
+    q_count = q_data.get("total", len(q_data)) if isinstance(q_data, dict) else len(q_data)
+    print(f"  [OK] Cola FIFO de Validacion: {q_count} items en cola")
 
     print("\n" + "=" * 65)
     print("TODAS LAS PRUEBAS DEL MODELO DE ESCRITURA Y API PASARON CON EXITO")

@@ -93,6 +93,13 @@ export interface ValidationQueueItem {
   assigned_to?: string | null
   result?: string | null
   processed_at?: string | null
+  product_title?: string | null
+  product_external_code?: string | null
+  product?: Product | null
+}
+
+export interface ValidationQueueResponse extends PagedResponse<ValidationQueueItem> {
+  pending_count?: number
 }
 
 export interface GruplacPreviewMember {

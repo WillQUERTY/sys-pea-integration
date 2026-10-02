@@ -7,7 +7,7 @@ import type {
   WorkPlan,
   ProductFilters,
   PagedResponse,
-  ValidationQueueItem,
+  ValidationQueueResponse,
   GruplacPreview,
   ImportResult,
   GroupSearchResult,
@@ -339,9 +339,18 @@ export function groupReportPdfUrl(
   return s ? `${base}?${s}` : base
 }
 
+export interface ValidationQueueFilters {
+  skip?: number
+  limit?: number
+  status?: string
+  search?: string
+}
+
 // --- Validation queue (FIFO) ---
-export async function listValidationQueue() {
-  const { data } = await api.get<ValidationQueueItem[]>('/system/validation-queue')
+export async function listValidationQueue(filters?: ValidationQueueFilters) {
+  const { data } = await api.get<ValidationQueueResponse>('/system/validation-queue', {
+    params: filters,
+  })
   return data
 }
 export async function cancelValidationItem(itemId: number) {

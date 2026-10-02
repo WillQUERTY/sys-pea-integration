@@ -64,7 +64,10 @@ export function Dashboard() {
   const [heroSearch, setHeroSearch] = useState('')
 
   const statsQuery = useQuery({ queryKey: ['dashboard-stats'], queryFn: getDashboardStats })
-  const queue = useQuery({ queryKey: ['validation-queue'], queryFn: listValidationQueue })
+  const queue = useQuery({
+    queryKey: ['validation-queue', 'summary'],
+    queryFn: () => listValidationQueue({ status: 'pending', limit: 1 }),
+  })
   const featuredGroupsQuery = useQuery({
     queryKey: ['featured-groups'],
     queryFn: () => listGroups({ limit: 4 }),
@@ -92,7 +95,7 @@ export function Dashboard() {
     )
   }, [stats?.groups_by_classification])
 
-  const pendingInQueue = (queue.data ?? []).filter((i) => i.status === 'pending').length
+  const pendingInQueue = queue.data?.pending_count ?? queue.data?.total ?? 0
   const validCount = stats?.validation?.['valid'] ?? 0
   const rejectedCount = stats?.validation?.['rejected'] ?? 0
   const totalProducts = stats?.total_products ?? 0
