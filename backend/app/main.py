@@ -5,7 +5,7 @@ from .api import v1
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    db_conn = "Driver={ODBC Driver 17 for SQL Server};Server=localhost;Database=peai;Trusted_Connection=yes;"
+    db_conn = "Driver={ODBC Driver 18 for SQL Server};Server=127.0.0.1;Database=peai;UID=sa;PWD=TuSuperClav3123!;TrustServerCertificate=yes;"
     try:
         from . import repository
         ok = repository.initialize(repository.InitMode.Database, db_conn)

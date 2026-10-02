@@ -1530,7 +1530,7 @@ if __name__ == "__main__":
             workers = max(1, int(a.split("=", 1)[1]))
     conn_str = os.environ.get(
         "PEAI_SQLSERVER_CONNECTION",
-        "Driver={ODBC Driver 17 for SQL Server};Server=localhost;Database=peai;Trusted_Connection=yes;"
+        "Driver={ODBC Driver 18 for SQL Server};Server=127.0.0.1;Database=peai;UID=sa;PWD=TuSuperClav3123!;TrustServerCertificate=yes;"
     )
 
     if preview_mode:
