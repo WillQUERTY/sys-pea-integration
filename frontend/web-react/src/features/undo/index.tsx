@@ -75,7 +75,7 @@ export function UndoPage() {
           <div>
             <h1 className='text-2xl font-bold tracking-tight'>Historial / Deshacer</h1>
             <p className='text-muted-foreground'>
-              Pila LIFO de operaciones (Requerimiento 14): el último cambio es el primero en revertirse.
+              Pila LIFO de operaciones: el último cambio es el primero en revertirse.
             </p>
           </div>
           <div className='flex gap-2'>

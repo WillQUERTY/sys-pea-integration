@@ -196,7 +196,7 @@ export function ValidationQueue() {
           <div>
             <h1 className='text-2xl font-bold tracking-tight'>Cola de validación técnica</h1>
             <p className='text-muted-foreground'>
-              Estructura FIFO (Requerimiento 13): el primero en entrar es el primero en procesarse.
+              Estructura FIFO: el primero en entrar es el primero en procesarse.
             </p>
           </div>
           <Button

@@ -339,7 +339,7 @@ export function ProductFormDialog({ open, onOpenChange, product }: Props) {
                 />
                 {!formData.subtype_id && catsHaveSubtype && (
                   <p className='text-xs text-muted-foreground'>
-                    Selecciona primero la tipología: las categorías dependen de ella (par. 3.6).
+                    Selecciona primero la tipología: las categorías dependen de ella.
                   </p>
                 )}
               </div>

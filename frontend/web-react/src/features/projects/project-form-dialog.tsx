@@ -165,7 +165,7 @@ export function ProjectFormDialog({ open, onOpenChange, project }: Props) {
           <DialogHeader>
             <DialogTitle>{isEditing ? 'Editar Proyecto' : 'Nuevo Proyecto'}</DialogTitle>
             <DialogDescription>
-              Ficha del proyecto de investigación (Requerimiento 3).
+              Ficha del proyecto de investigación.
             </DialogDescription>
           </DialogHeader>
           <div className='grid gap-4 py-4'>

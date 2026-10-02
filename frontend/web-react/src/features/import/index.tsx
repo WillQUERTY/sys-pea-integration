@@ -41,8 +41,8 @@ export function ImportPage() {
         <div className='mb-4'>
           <h1 className='text-2xl font-bold tracking-tight'>Importación de datos</h1>
           <p className='text-muted-foreground'>
-            Requerimiento 7: búsqueda en el buscador oficial de Scienti, ingestión desde
-            URL pública de GrupLAC o texto CvLAC.
+            Búsqueda en el buscador oficial de Scienti, ingestión desde URL
+            pública de GrupLAC o texto CvLAC.
           </p>
         </div>
 

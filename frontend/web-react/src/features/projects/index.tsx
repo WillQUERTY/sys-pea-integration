@@ -219,7 +219,7 @@ export function Projects() {
           <div>
             <h1 className='text-2xl font-bold tracking-tight'>Proyectos de investigación</h1>
             <p className='text-muted-foreground'>
-              Gestión independiente de proyectos y su vínculo con grupos (Requerimiento 3).
+              Gestión independiente de proyectos y su vínculo con grupos.
             </p>
           </div>
           <Button onClick={() => { setEditingProject(null); setFormOpen(true) }}>

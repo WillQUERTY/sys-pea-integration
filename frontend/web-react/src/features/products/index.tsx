@@ -94,13 +94,17 @@ export function Products() {
   const [customStart, setCustomStart] = useState('')
   const [customEnd, setCustomEnd] = useState('')
 
-  // Catálogo 2024: columna Tipología y opciones del filtro de familia.
+  // Catálogo 2024: columnas Tipología/Calidad y opciones del filtro de familia.
   const { data: catalogs } = useQuery({
     queryKey: ['product-catalogs'],
     queryFn: getProductCatalogs,
   })
   const subtypeById = useMemo(
     () => new Map((catalogs?.subtypes ?? []).map((s) => [s.id, s])),
+    [catalogs]
+  )
+  const qualityCategoryById = useMemo(
+    () => new Map((catalogs?.quality_categories ?? []).map((c) => [c.id, c])),
     [catalogs]
   )
   const productFilters2024 = useMemo<DataFilter[]>(
@@ -241,6 +245,24 @@ export function Products() {
       },
     },
     {
+      key: 'quality',
+      header: 'Calidad',
+      searchable: (p) => {
+        const c = p.quality_category_id ? qualityCategoryById.get(p.quality_category_id) : undefined
+        return c ? `${c.code ?? ''} ${c.name}` : ''
+      },
+      cell: (p) => {
+        const c = p.quality_category_id ? qualityCategoryById.get(p.quality_category_id) : undefined
+        return c ? (
+          <Badge variant='secondary' className='font-mono text-xs' title={c.name}>
+            {c.code ?? c.name}
+          </Badge>
+        ) : (
+          <span className='text-xs text-muted-foreground'>—</span>
+        )
+      },
+    },
+    {
       key: 'doi',
       header: 'DOI',
       searchable: (p) => p.doi ?? '',
@@ -307,7 +329,7 @@ export function Products() {
         </DropdownMenu>
       ),
     },
-  ], [delMutation, restoreMutation, enqueueMutation, subtypeById])
+  ], [delMutation, restoreMutation, enqueueMutation, subtypeById, qualityCategoryById])
 
   return (
     <>
@@ -325,7 +347,7 @@ export function Products() {
           <div>
             <h1 className='text-2xl font-bold tracking-tight'>Productos científicos</h1>
             <p className='text-muted-foreground'>
-              Catálogo de productos con ventana de observación dinámica (Requerimiento 10).
+              Catálogo de productos con ventana de observación dinámica.
             </p>
           </div>
           <Button onClick={() => { setEditingProduct(null); setFormOpen(true) }}>
@@ -374,7 +396,7 @@ export function Products() {
                   </p>
                 )}
                 <p className='text-xs text-muted-foreground'>
-                  Filtra por año de obtención del producto (Requerimiento 10).
+                  Filtra por año de obtención del producto.
                 </p>
               </div>
             ) : undefined

@@ -8,6 +8,7 @@ import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
+import { Textarea } from '@/components/ui/textarea'
 import {
   Dialog,
   DialogContent,
@@ -31,11 +32,13 @@ export function ValidateProductDialog({ open, onOpenChange, product }: Props) {
   const queryClient = useQueryClient()
   const [categoryId, setCategoryId] = useState<number | undefined>()
   const [search, setSearch] = useState('')
+  const [reason, setReason] = useState('')
 
   useEffect(() => {
     if (open) {
       setCategoryId(product?.quality_category_id ?? undefined)
       setSearch('')
+      setReason('')
     }
   }, [open, product])
 
@@ -61,14 +64,28 @@ export function ValidateProductDialog({ open, onOpenChange, product }: Props) {
     queryClient.invalidateQueries({ queryKey: ['dashboard-stats'] })
   }
 
+  // Rechazar revierte una decisión de validación y deja registro en la
+  // auditoría: exigir motivo escrito y confirmación explícita.
+  const handleReject = () => {
+    if (!reason.trim()) {
+      toast.error('Escribe el motivo del rechazo: queda en la auditoría del producto.')
+      return
+    }
+    if (!confirm('¿Rechazar este producto? El motivo quedará en su auditoría.')) return
+    mutation.mutate('rejected')
+  }
+
   const mutation = useMutation({
+    // El motivo es libre y queda en la auditoría. Al validar puede ir vacío
+    // (se registra el motivo por defecto); al rechazar, handleReject ya
+    // exigió texto y confirmación.
     mutationFn: (status: 'valid' | 'rejected') =>
       validateProduct(
         product!.id!,
         status,
         status === 'valid'
-          ? 'Validado con categoría de calidad del modelo 2024'
-          : 'Decisión de validación',
+          ? reason.trim() || 'Validado con categoría de calidad del modelo 2024'
+          : reason.trim(),
         status === 'valid' ? categoryId : undefined
       ),
     onSuccess: (data) => {
@@ -175,10 +192,24 @@ export function ValidateProductDialog({ open, onOpenChange, product }: Props) {
               )}
               <p className='text-xs text-muted-foreground'>
                 Solo se listan las categorías de la tipología {subtype.code ?? subtype.name} (la
-                categoría determina el peso global del producto, par. 3.6).
+                categoría determina el peso global del producto).
               </p>
             </div>
           )}
+
+          <div className='grid gap-2'>
+            <Label htmlFor='validation-reason'>Motivo</Label>
+            <Textarea
+              id='validation-reason'
+              value={reason}
+              onChange={(e) => setReason(e.target.value)}
+              placeholder='Ej.: producción verificable en CvLAC por todos los autores…'
+              className='min-h-[70px]'
+            />
+            <p className='text-xs text-muted-foreground'>
+              Obligatorio al rechazar. Queda en la auditoría del producto.
+            </p>
+          </div>
         </div>
 
         <DialogFooter>
@@ -189,7 +220,7 @@ export function ValidateProductDialog({ open, onOpenChange, product }: Props) {
             type='button'
             variant='destructive'
             disabled={mutation.isPending}
-            onClick={() => mutation.mutate('rejected')}
+            onClick={handleReject}
           >
             Rechazar
           </Button>

@@ -490,7 +490,7 @@ export function GroupDetail() {
                   variant='outline'
                   onClick={() => setPdfDialogOpen(true)}
                   className='rounded-xl shadow-sm border-primary/20 hover:border-primary/40 bg-card/60 backdrop-blur-sm'
-                  title='Configurar ventana de observación y generar informe PDF oficial (Requerimiento 10)'
+                  title='Configurar ventana de observación y generar informe PDF oficial'
                 >
                   <FileDown className='mr-2 h-4 w-4 text-primary' />
                   Informe PDF
@@ -518,7 +518,7 @@ export function GroupDetail() {
                 </div>
                 <div>
                   <DialogTitle className='text-lg font-bold'>Informe Ejecutivo GrupLAC</DialogTitle>
-                  <p className='text-xs text-muted-foreground'>Requerimiento 10 · Ventana de Observación Temporal</p>
+                  <p className='text-xs text-muted-foreground'>Ventana de Observación Temporal</p>
                 </div>
               </div>
               <DialogDescription className='text-xs text-muted-foreground pt-1'>
