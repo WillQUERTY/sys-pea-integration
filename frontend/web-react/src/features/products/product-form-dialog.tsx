@@ -104,16 +104,23 @@ function CatalogPicker({
               {filtered.length === 0 ? (
                 <p className='p-2 text-sm text-muted-foreground'>Sin resultados.</p>
               ) : (
-                filtered.slice(0, 8).map((o) => (
-                  <button
-                    key={o.id}
-                    type='button'
-                    onClick={() => { onChange(o.id); setSearch('') }}
-                    className='w-full truncate rounded-md px-3 py-2 text-left text-sm transition-colors hover:bg-muted/60'
-                  >
-                    {o.name}
-                  </button>
-                ))
+                <>
+                  {filtered.slice(0, 8).map((o) => (
+                    <button
+                      key={o.id}
+                      type='button'
+                      onClick={() => { onChange(o.id); setSearch('') }}
+                      className='w-full truncate rounded-md px-3 py-2 text-left text-sm transition-colors hover:bg-muted/60'
+                    >
+                      {o.name}
+                    </button>
+                  ))}
+                  {filtered.length > 8 && (
+                    <p className='px-3 py-1.5 text-center text-xs italic text-muted-foreground'>
+                      … y {filtered.length - 8} más coincidencias (escribe para filtrar)
+                    </p>
+                  )}
+                </>
               )}
             </div>
           )}

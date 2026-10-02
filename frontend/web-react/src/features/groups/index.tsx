@@ -24,11 +24,13 @@ import { ProfileDropdown } from '@/components/profile-dropdown'
 import { Search } from '@/components/search'
 import { ThemeSwitch } from '@/components/theme-switch'
 import { GroupFormDialog } from './group-form-dialog'
+import { ConfirmDialog } from '@/components/confirm-dialog'
 
 export function Groups() {
   const queryClient = useQueryClient()
   const [formOpen, setFormOpen] = useState(false)
   const [editingGroup, setEditingGroup] = useState<Group | null>(null)
+  const [deletingGroup, setDeletingGroup] = useState<Group | null>(null)
 
   // Estado server-side: búsqueda (debounced), página y filtros
   // El término llega por URL desde el hero-search del dashboard
@@ -89,11 +91,7 @@ export function Groups() {
     onError: (e) => toast.error(e instanceof Error ? e.message : 'Error al restaurar'),
   })
 
-  const handleDelete = (id: number) => {
-    if (confirm('¿Estás seguro de eliminar este grupo?')) {
-      delMutation.mutate(id)
-    }
-  }
+
 
   const columns = useMemo<DataColumn<Group>[]>(() => [
     {
@@ -178,7 +176,7 @@ export function Groups() {
             ) : (
               <DropdownMenuItem
                 className='text-destructive focus:text-destructive'
-                onClick={() => handleDelete(g.id!)}
+                onClick={() => setDeletingGroup(g)}
               >
                 <Trash2 className='mr-2 h-4 w-4' />
                 Eliminar
@@ -275,6 +273,25 @@ export function Groups() {
         open={formOpen} 
         onOpenChange={setFormOpen} 
         group={editingGroup} 
+      />
+
+      <ConfirmDialog
+        open={!!deletingGroup}
+        onOpenChange={(open) => {
+          if (!open) setDeletingGroup(null)
+        }}
+        title={`¿Eliminar grupo «${deletingGroup?.name}»?`}
+        desc='Se desactiva el grupo (baja lógica). Sus investigadores, productos y proyectos vinculados no se eliminan; los registros y vínculos quedan preservados de manera independiente en el sistema.'
+        confirmText='Eliminar grupo'
+        cancelBtnText='Cancelar'
+        destructive
+        isLoading={delMutation.isPending}
+        handleConfirm={() => {
+          if (deletingGroup?.id != null) {
+            delMutation.mutate(deletingGroup.id)
+            setDeletingGroup(null)
+          }
+        }}
       />
     </>
   )

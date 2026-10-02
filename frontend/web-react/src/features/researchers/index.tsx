@@ -23,6 +23,7 @@ import { ProfileDropdown } from '@/components/profile-dropdown'
 import { Search } from '@/components/search'
 import { ThemeSwitch } from '@/components/theme-switch'
 import { ResearcherFormDialog } from './researcher-form-dialog'
+import { ConfirmDialog } from '@/components/confirm-dialog'
 
 function CvlacFetchButton({ codRh }: { codRh?: string }) {
   const queryClient = useQueryClient()
@@ -82,6 +83,7 @@ export function Researchers() {
   const queryClient = useQueryClient()
   const [formOpen, setFormOpen] = useState(false)
   const [editingResearcher, setEditingResearcher] = useState<Researcher | null>(null)
+  const [deletingResearcher, setDeletingResearcher] = useState<Researcher | null>(null)
 
   // Estado server-side: búsqueda (debounced), página y filtros
   const [search, setSearch] = useState('')
@@ -150,11 +152,7 @@ export function Researchers() {
     onError: (e) => toast.error(e instanceof Error ? e.message : 'Error al enriquecer'),
   })
 
-  const handleDelete = (id: number) => {
-    if (confirm('¿Estás seguro de eliminar este investigador?')) {
-      delMutation.mutate(id)
-    }
-  }
+
 
   const columns = useMemo<DataColumn<Researcher>[]>(() => [
     {
@@ -249,7 +247,7 @@ export function Researchers() {
               ) : (
                 <DropdownMenuItem
                   className='text-destructive focus:text-destructive'
-                  onClick={() => handleDelete(r.id!)}
+                  onClick={() => setDeletingResearcher(r)}
                 >
                   <Trash2 className='mr-2 h-4 w-4' />
                   Eliminar
@@ -361,6 +359,25 @@ export function Researchers() {
         open={formOpen} 
         onOpenChange={setFormOpen} 
         researcher={editingResearcher} 
+      />
+
+      <ConfirmDialog
+        open={!!deletingResearcher}
+        onOpenChange={(open) => {
+          if (!open) setDeletingResearcher(null)
+        }}
+        title={`¿Eliminar investigador «${deletingResearcher?.first_names ?? ''} ${deletingResearcher?.last_names ?? ''}»?`}
+        desc='Se desactiva el registro del investigador (baja lógica). Sus productos, proyectos y vínculos a grupos NO se eliminan; los registros y enlaces quedan preservados en el sistema.'
+        confirmText='Eliminar investigador'
+        cancelBtnText='Cancelar'
+        destructive
+        isLoading={delMutation.isPending}
+        handleConfirm={() => {
+          if (deletingResearcher?.id != null) {
+            delMutation.mutate(deletingResearcher.id)
+            setDeletingResearcher(null)
+          }
+        }}
       />
     </>
   )

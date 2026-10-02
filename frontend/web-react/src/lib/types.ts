@@ -121,6 +121,7 @@ export interface GruplacPreviewProduct {
   doi?: string | null
   external_code?: string
   authors: string[]
+  is_endorsed?: boolean
 }
 
 export interface GruplacPreview {
@@ -133,7 +134,13 @@ export interface GruplacPreview {
   projects: { title: string; year?: number | null }[]
   skipped_sections: string[]
   warnings: string[]
-  counts: { members: number; products: number; projects: number; research_lines: number }
+  counts: {
+    members: number
+    products: number
+    projects: number
+    research_lines: number
+    endorsed_products?: number
+  }
 }
 
 export interface GroupSearchResult {

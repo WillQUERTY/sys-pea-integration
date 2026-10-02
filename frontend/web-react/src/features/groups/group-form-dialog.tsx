@@ -275,16 +275,23 @@ export function GroupFormDialog({ open, onOpenChange, group }: Props) {
                             : 'Sin resultados.'}
                         </p>
                       ) : (
-                        filteredMembers.slice(0, 8).map((r) => (
-                          <button
-                            key={r.id}
-                            type='button'
-                            onClick={() => { set({ leader_id: r.id }); setLeaderSearch('') }}
-                            className='w-full rounded-md px-3 py-2 text-left text-sm transition-colors hover:bg-muted/60'
-                          >
-                            {r.first_names} {r.last_names}
-                          </button>
-                        ))
+                        <>
+                          {filteredMembers.slice(0, 8).map((r) => (
+                            <button
+                              key={r.id}
+                              type='button'
+                              onClick={() => { set({ leader_id: r.id }); setLeaderSearch('') }}
+                              className='w-full rounded-md px-3 py-2 text-left text-sm transition-colors hover:bg-muted/60'
+                            >
+                              {r.first_names} {r.last_names}
+                            </button>
+                          ))}
+                          {filteredMembers.length > 8 && (
+                            <p className='px-3 py-1.5 text-center text-xs italic text-muted-foreground'>
+                              … y {filteredMembers.length - 8} más coincidencias (escribe para filtrar)
+                            </p>
+                          )}
+                        </>
                       )}
                     </div>
                   </>

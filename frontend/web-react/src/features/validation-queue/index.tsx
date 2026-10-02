@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { keepPreviousData, useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { Link } from '@tanstack/react-router'
 import { toast } from 'sonner'
-import { listValidationQueue, validateProduct, cancelValidationItem } from '@/lib/api'
+import { listValidationQueue, cancelValidationItem } from '@/lib/api'
 import type { Product, ValidationQueueItem } from '@/lib/types'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -23,6 +23,7 @@ import { ThemeSwitch } from '@/components/theme-switch'
 import { ValidateProductDialog } from '@/features/products/validate-product-dialog'
 import { isEndorsed, EndorsedBadge } from '@/features/products/endorsed'
 import { useDebouncedValue } from '@/hooks/use-debounced-value'
+import { ConfirmDialog } from '@/components/confirm-dialog'
 
 const statusFilters: DataFilter[] = [
   {
@@ -75,6 +76,7 @@ export function ValidationQueue() {
 
   // Producto en validación a través del diálogo 2024 (exige tipología+categoría)
   const [validatingProduct, setValidatingProduct] = useState<Product | null>(null)
+  const [cancellingItem, setCancellingItem] = useState<ValidationQueueItem | null>(null)
 
   const invalidate = () => {
     queryClient.invalidateQueries({ queryKey: ['validation-queue'] })
@@ -93,16 +95,6 @@ export function ValidationQueue() {
         title: item.product_title ?? `Producto #${item.product_id}`,
       }
     )
-
-  const reject = useMutation({
-    mutationFn: (id: number) =>
-      validateProduct(id, 'rejected', 'Decisión desde la cola de validación'),
-    onSuccess: () => {
-      toast.success('Producto rechazado')
-      invalidate()
-    },
-    onError: (e) => toast.error(e instanceof Error ? e.message : 'Error al validar'),
-  })
 
   const cancelItem = useMutation({
     mutationFn: (itemId: number) => cancelValidationItem(itemId),
@@ -172,32 +164,24 @@ export function ValidationQueue() {
             <Button
               size='sm'
               variant='outline'
-              disabled={reject.isPending}
               onClick={() => openValidation(item)}
+              title='Evaluar producto en el diálogo técnico (validar con tipología/categoría o rechazar con motivo)'
             >
-              Validar
-            </Button>
-            <Button
-              size='sm'
-              variant='destructive'
-              disabled={reject.isPending}
-              onClick={() => reject.mutate(item.product_id)}
-            >
-              Rechazar
+              Evaluar
             </Button>
             <Button
               size='sm'
               variant='ghost'
               disabled={cancelItem.isPending}
-              onClick={() => cancelItem.mutate(item.id)}
+              onClick={() => setCancellingItem(item)}
               title='Retirar de la cola sin procesar'
             >
-              Cancelar
+              Retirar
             </Button>
           </div>
         ) : null,
     },
-  ], [reject.isPending, cancelItem.isPending])
+  ], [cancelItem.isPending])
 
   const pendingCount = queue.data?.pending_count ?? 0
   const firstPending = (queue.data?.items ?? []).find((i) => i.status === 'pending')
@@ -283,6 +267,25 @@ export function ValidationQueue() {
           if (!o) setValidatingProduct(null)
         }}
         product={validatingProduct}
+      />
+
+      <ConfirmDialog
+        open={!!cancellingItem}
+        onOpenChange={(open) => {
+          if (!open) setCancellingItem(null)
+        }}
+        title={`¿Retirar ítem #${cancellingItem?.id} de la cola?`}
+        desc={`El producto «${cancellingItem?.product_title ?? cancellingItem?.product_id}» no será modificado ni evaluado; únicamente se retira de la cola de espera de validación.`}
+        confirmText='Retirar de la cola'
+        cancelBtnText='Cancelar'
+        destructive
+        isLoading={cancelItem.isPending}
+        handleConfirm={() => {
+          if (cancellingItem?.id != null) {
+            cancelItem.mutate(cancellingItem.id)
+            setCancellingItem(null)
+          }
+        }}
       />
     </>
   )

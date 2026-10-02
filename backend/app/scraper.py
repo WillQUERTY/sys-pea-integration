@@ -1309,28 +1309,36 @@ def enrich_members_with_cvlac(scraped_data: ScrapedGroupData, db_conn_str: str, 
     members_with_rh = [m for m in scraped_data.members if m.cod_rh]
 
     def _enrich_one(member) -> Dict[str, Any]:
-        try:
-            text = fetch_cvlac_text(member.cod_rh)
-            cv = CvParser.parse_text(text)
-            cv.external_code = "".join(c for c in member.cod_rh if c.isdigit()).zfill(10)
-            cv.target_group_code = group_code
-            res = CvCommitService.commit_cvlac(cv, db_conn_str, reload_ram=False)
-            return {
-                "cod_rh": member.cod_rh,
-                "name": res.get("researcher_name", member.display_name),
-                "status": "enriched",
-                "articles": res.get("articles", 0),
-                "events": res.get("events", 0),
-                "projects": res.get("projects", 0),
-            }
-        except Exception as e:
-            logger.warning(f"[CvLAC] No se pudo enriquecer {member.cod_rh}: {e}")
-            return {
-                "cod_rh": member.cod_rh,
-                "name": member.display_name,
-                "status": "failed",
-                "error": str(e),
-            }
+        current_delay = delay_seconds
+        last_error = None
+        for attempt in range(2):
+            if current_delay > 0:
+                time.sleep(current_delay)
+            try:
+                text = fetch_cvlac_text(member.cod_rh)
+                cv = CvParser.parse_text(text)
+                cv.external_code = "".join(c for c in member.cod_rh if c.isdigit()).zfill(10)
+                cv.target_group_code = group_code
+                res = CvCommitService.commit_cvlac(cv, db_conn_str, reload_ram=False)
+                return {
+                    "cod_rh": member.cod_rh,
+                    "name": res.get("researcher_name", member.display_name),
+                    "status": "enriched",
+                    "articles": res.get("articles", 0),
+                    "events": res.get("events", 0),
+                    "projects": res.get("projects", 0),
+                }
+            except Exception as e:
+                last_error = e
+                logger.warning(f"[CvLAC] Intento {attempt + 1} falló para {member.cod_rh}: {e}")
+                current_delay = max(current_delay * 4.0, 1.0)
+
+        return {
+            "cod_rh": member.cod_rh,
+            "name": member.display_name,
+            "status": "failed",
+            "error": str(last_error),
+        }
 
     with ThreadPoolExecutor(max_workers=max_workers) as pool:
         for detail in pool.map(_enrich_one, members_with_rh):
@@ -1448,7 +1456,7 @@ def buscar_grupos_scienti(nombre: str = "", institucion: str = "", departamento:
     return results[:limit]
 
 
-def scrape_gruplac(url: str, db_conn_str: str = "", preview: bool = False, enrich_cvlac: bool = False, cvlac_workers: int = 8, expected_group_code: str = "") -> Dict[str, Any]:
+def scrape_gruplac(url: str, db_conn_str: str = "", preview: bool = False, enrich_cvlac: bool = False, cvlac_workers: int = 8, expected_group_code: str = "", cvlac_delay: float = 0.5) -> Dict[str, Any]:
     print("=" * 65)
     print(f"PEA-i Importador GrupLAC (Estructural e Idempotente en SQL)")
     print(f"URL: {url}")
@@ -1491,7 +1499,7 @@ def scrape_gruplac(url: str, db_conn_str: str = "", preview: bool = False, enric
     if enrich_cvlac:
         group_code = scraped_data.group.get("external_code", "")
         print(f"[CvLAC] Enriqueciendo {len([m for m in scraped_data.members if m.cod_rh])} integrantes con cod_rh...")
-        result["cvlac_enrichment"] = enrich_members_with_cvlac(scraped_data, db_conn_str, group_code, max_workers=cvlac_workers)
+        result["cvlac_enrichment"] = enrich_members_with_cvlac(scraped_data, db_conn_str, group_code, delay_seconds=cvlac_delay, max_workers=cvlac_workers)
         print(f"[CvLAC] Enriquecidos: {result['cvlac_enrichment']['enriched']} | Fallidos: {result['cvlac_enrichment']['failed']}")
 
     print("=" * 65)

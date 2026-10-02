@@ -26,6 +26,7 @@ import { ThemeSwitch } from '@/components/theme-switch'
 import { ValidationBadge } from '@/features/groups/detail'
 import { ProductFormDialog } from './product-form-dialog'
 import { isEndorsed, EndorsedBadge } from './endorsed'
+import { ConfirmDialog } from '@/components/confirm-dialog'
 
 const productFilters: DataFilter[] = [
   {
@@ -77,6 +78,7 @@ export function Products() {
   const queryClient = useQueryClient()
   const [formOpen, setFormOpen] = useState(false)
   const [editingProduct, setEditingProduct] = useState<Product | null>(null)
+  const [deletingProduct, setDeletingProduct] = useState<Product | null>(null)
 
   // Estado server-side: búsqueda (debounced), página y filtros
   const [search, setSearch] = useState('')
@@ -192,11 +194,7 @@ export function Products() {
     setFormOpen(true)
   }
 
-  const handleDelete = (id: number) => {
-    if (confirm('¿Estás seguro de eliminar este producto?')) {
-      delMutation.mutate(id)
-    }
-  }
+
 
   const columns = useMemo<DataColumn<Product>[]>(() => [
     {
@@ -319,7 +317,7 @@ export function Products() {
             ) : (
               <DropdownMenuItem
                 className='text-destructive focus:text-destructive'
-                onClick={() => handleDelete(p.id!)}
+                onClick={() => setDeletingProduct(p)}
               >
                 <Trash2 className='mr-2 h-4 w-4' />
                 Eliminar
@@ -430,6 +428,25 @@ export function Products() {
         open={formOpen} 
         onOpenChange={setFormOpen} 
         product={editingProduct} 
+      />
+
+      <ConfirmDialog
+        open={!!deletingProduct}
+        onOpenChange={(open) => {
+          if (!open) setDeletingProduct(null)
+        }}
+        title={`¿Eliminar producto «${deletingProduct?.title}»?`}
+        desc='Se desactiva el registro del producto (baja lógica). Sus vínculos con grupos e investigadores NO se eliminan; los registros asociados quedan preservados en el sistema.'
+        confirmText='Eliminar producto'
+        cancelBtnText='Cancelar'
+        destructive
+        isLoading={delMutation.isPending}
+        handleConfirm={() => {
+          if (deletingProduct?.id != null) {
+            delMutation.mutate(deletingProduct.id)
+            setDeletingProduct(null)
+          }
+        }}
       />
     </>
   )

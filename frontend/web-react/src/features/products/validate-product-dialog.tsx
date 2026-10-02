@@ -18,6 +18,7 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog'
 import { isEndorsed } from '@/features/products/endorsed'
+import { ConfirmDialog } from '@/components/confirm-dialog'
 
 interface Props {
   open: boolean
@@ -33,12 +34,14 @@ export function ValidateProductDialog({ open, onOpenChange, product }: Props) {
   const [categoryId, setCategoryId] = useState<number | undefined>()
   const [search, setSearch] = useState('')
   const [reason, setReason] = useState('')
+  const [confirmRejectOpen, setConfirmRejectOpen] = useState(false)
 
   useEffect(() => {
     if (open) {
       setCategoryId(product?.quality_category_id ?? undefined)
       setSearch('')
       setReason('')
+      setConfirmRejectOpen(false)
     }
   }, [open, product])
 
@@ -71,8 +74,7 @@ export function ValidateProductDialog({ open, onOpenChange, product }: Props) {
       toast.error('Escribe el motivo del rechazo: queda en la auditoría del producto.')
       return
     }
-    if (!confirm('¿Rechazar este producto? El motivo quedará en su auditoría.')) return
-    mutation.mutate('rejected')
+    setConfirmRejectOpen(true)
   }
 
   const mutation = useMutation({
@@ -99,7 +101,8 @@ export function ValidateProductDialog({ open, onOpenChange, product }: Props) {
   if (!product) return null
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
+    <>
+      <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className='sm:max-w-lg'>
         <DialogHeader>
           <DialogTitle>Validar producto</DialogTitle>
@@ -234,5 +237,21 @@ export function ValidateProductDialog({ open, onOpenChange, product }: Props) {
         </DialogFooter>
       </DialogContent>
     </Dialog>
+
+    <ConfirmDialog
+      open={confirmRejectOpen}
+      onOpenChange={setConfirmRejectOpen}
+      title='¿Rechazar este producto?'
+      desc={`El producto pasará a estado rechazado. Motivo registrado: "${reason.trim()}". Esta decisión quedará asentada en la auditoría del producto.`}
+      confirmText='Confirmar rechazo'
+      cancelBtnText='Cancelar'
+      destructive
+      isLoading={mutation.isPending}
+      handleConfirm={() => {
+        setConfirmRejectOpen(false)
+        mutation.mutate('rejected')
+      }}
+    />
+    </>
   )
 }

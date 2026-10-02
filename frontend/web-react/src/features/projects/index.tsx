@@ -20,6 +20,7 @@ import { ProfileDropdown } from '@/components/profile-dropdown'
 import { Search } from '@/components/search'
 import { ThemeSwitch } from '@/components/theme-switch'
 import { ProjectFormDialog } from './project-form-dialog'
+import { ConfirmDialog } from '@/components/confirm-dialog'
 
 const projectFilters: DataFilter[] = [
   {
@@ -44,6 +45,7 @@ export function Projects() {
   const queryClient = useQueryClient()
   const [formOpen, setFormOpen] = useState(false)
   const [editingProject, setEditingProject] = useState<Project | null>(null)
+  const [deletingProject, setDeletingProject] = useState<Project | null>(null)
 
   // Estado server-side: búsqueda (debounced), página y filtro de estado
   const [search, setSearch] = useState('')
@@ -114,11 +116,7 @@ export function Projects() {
     setFormOpen(true)
   }
 
-  const handleDelete = (id: number) => {
-    if (confirm('¿Estás seguro de eliminar este proyecto?')) {
-      delMutation.mutate(id)
-    }
-  }
+
 
   const columns = useMemo<DataColumn<Project>[]>(() => [
     {
@@ -191,7 +189,7 @@ export function Projects() {
             ) : (
               <DropdownMenuItem
                 className='text-destructive focus:text-destructive'
-                onClick={() => handleDelete(p.id!)}
+                onClick={() => setDeletingProject(p)}
               >
                 <Trash2 className='mr-2 h-4 w-4' />
                 Eliminar
@@ -263,6 +261,25 @@ export function Projects() {
         open={formOpen}
         onOpenChange={setFormOpen}
         project={editingProject}
+      />
+
+      <ConfirmDialog
+        open={!!deletingProject}
+        onOpenChange={(open) => {
+          if (!open) setDeletingProject(null)
+        }}
+        title={`¿Eliminar proyecto «${deletingProject?.title}»?`}
+        desc='Se desactiva el proyecto (baja lógica). Los grupos e investigadores vinculados NO se eliminan; los enlaces quedan preservados en el sistema.'
+        confirmText='Eliminar proyecto'
+        cancelBtnText='Cancelar'
+        destructive
+        isLoading={delMutation.isPending}
+        handleConfirm={() => {
+          if (deletingProject?.id != null) {
+            delMutation.mutate(deletingProject.id)
+            setDeletingProject(null)
+          }
+        }}
       />
     </>
   )
