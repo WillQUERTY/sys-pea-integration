@@ -1111,6 +1111,7 @@ def filter_products(
     status: Optional[str] = None,
     group_id: Optional[int] = None,
     search: Optional[str] = None,
+    unclassified: Optional[bool] = None,
 ) -> List[Product]:
     """Filtra productos en RAM según los criterios dados. La paginación (skip/limit) la aplica el endpoint."""
     products = list_products()
@@ -1123,6 +1124,9 @@ def filter_products(
         products = [p for p in products if _product_year(p) > 0 and _product_year(p) <= end_year]
     if family_id is not None:
         products = [p for p in products if p.family_id == family_id]
+    if unclassified:
+        # Sin tipología 2024: desde el core llega como 0 o None.
+        products = [p for p in products if not p.subtype_id]
     if validation_status is not None and validation_status != 'all':
         products = [p for p in products if p.validation_status == validation_status]
     if status is not None and status != 'all':

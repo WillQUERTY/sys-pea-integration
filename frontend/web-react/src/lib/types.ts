@@ -173,6 +173,8 @@ export interface ProductFilters {
   start_year?: number
   end_year?: number
   window_years?: number
+  /** Solo productos sin tipología 2024 (para reclasificar) */
+  unclassified?: boolean
 }
 
 /** Envelope paginado estándar de los endpoints de listado. */

@@ -25,6 +25,7 @@ import { Search } from '@/components/search'
 import { ThemeSwitch } from '@/components/theme-switch'
 import { ValidationBadge } from '@/features/groups/detail'
 import { ProductFormDialog } from './product-form-dialog'
+import { isEndorsed, EndorsedBadge } from './endorsed'
 
 const productFilters: DataFilter[] = [
   {
@@ -61,6 +62,15 @@ const productFilters: DataFilter[] = [
       { value: 'custom', label: 'Rango personalizado…' },
     ],
   },
+  {
+    key: 'classification',
+    label: 'Clasificación 2024',
+    defaultValue: 'all',
+    options: [
+      { value: 'all', label: 'Todas' },
+      { value: 'unclassified', label: 'Sin clasificar' },
+    ],
+  },
 ]
 
 export function Products() {
@@ -78,6 +88,7 @@ export function Products() {
     record_status: 'active',
     window: 'all',
     family: 'all',
+    classification: 'all',
   })
   // Ventana personalizada (Req. 10): rango explícito desde–hasta
   const [customStart, setCustomStart] = useState('')
@@ -119,6 +130,7 @@ export function Products() {
       validation_status: filterValues.status !== 'all' ? filterValues.status : undefined,
       status: filterValues.record_status !== 'all' ? filterValues.record_status : undefined,
       family_id: filterValues.family !== 'all' ? Number(filterValues.family) : undefined,
+      unclassified: filterValues.classification === 'unclassified' || undefined,
       window_years:
         filterValues.window !== 'all' && filterValues.window !== 'custom'
           ? Number(filterValues.window)
@@ -188,33 +200,18 @@ export function Products() {
       header: 'Título',
       className: 'max-w-[520px]',
       searchable: (p) => p.title,
-      cell: (p) => {
-        const isEndorsed = Boolean(
-          p.evidence?.toLowerCase().includes('avalado') ||
-          p.evidence?.includes('✓') ||
-          (p.specialized_attributes && p.specialized_attributes.includes('"minciencias_endorsed": true'))
-        )
-        return (
-          <div className='flex items-center gap-2'>
-            <Link
-              to='/products/$id'
-              params={{ id: String(p.id) }}
-              className='block truncate font-medium text-primary hover:underline'
-            >
-              {p.title}
-            </Link>
-            {isEndorsed && (
-              <Badge
-                variant='outline'
-                className='shrink-0 border-emerald-500/40 bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 text-xs'
-                title='Avalado y validado en la convocatoria previa de Minciencias'
-              >
-                ✓ Avalado
-              </Badge>
-            )}
-          </div>
-        )
-      },
+      cell: (p) => (
+        <div className='flex items-center gap-2'>
+          <Link
+            to='/products/$id'
+            params={{ id: String(p.id) }}
+            className='block truncate font-medium text-primary hover:underline'
+          >
+            {p.title}
+          </Link>
+          {isEndorsed(p) && <EndorsedBadge />}
+        </div>
+      ),
     },
     {
       key: 'year',

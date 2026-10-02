@@ -325,6 +325,7 @@ async def get_group_report_pdf(
     start_year: Optional[int] = Query(None, description="Año inicial para Ventana de Observación (Requerimiento 10)"),
     end_year: Optional[int] = Query(None, description="Año final para Ventana de Observación (Requerimiento 10)"),
     window_years: Optional[int] = Query(None, description="Ventana de observación en años hacia atrás (ej. 2 o 5 años)"),
+    unclassified: Optional[bool] = Query(None, description="Solo productos sin tipología 2024 (para reclasificar)"),
 ):
     """Informe PDF del grupo (estilo GrupLAC): datos basicos, integrantes,
     produccion agrupada por familia/subtipo Minciencias y proyectos.
@@ -660,6 +661,7 @@ async def list_products_endpoint(
         status=status,
         group_id=group_id,
         search=search,
+        unclassified=unclassified,
     )
     total = len(items)
     return PagedResponse(items=items[skip : skip + limit], total=total, skip=skip, limit=limit)

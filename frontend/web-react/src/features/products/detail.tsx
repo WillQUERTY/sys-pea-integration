@@ -15,6 +15,7 @@ import {
   Users,
   UserPlus,
   Trash2,
+  Pencil,
 } from 'lucide-react'
 
 import {
@@ -50,6 +51,8 @@ import {
 
 import { ValidationBadge } from '@/features/groups/detail'
 import { ValidateProductDialog } from '@/features/products/validate-product-dialog'
+import { ProductFormDialog } from '@/features/products/product-form-dialog'
+import { isEndorsed, EndorsedBadge } from '@/features/products/endorsed'
 
 function Field({ label, value, mono = false }: { label: string; value?: React.ReactNode; mono?: boolean }) {
   return (
@@ -84,6 +87,8 @@ export function ProductDetail() {
   const [extIdentifier, setExtIdentifier] = useState('')
   // Estado del diálogo "Validar" (modelo 2024: exige tipología + categoría)
   const [validateOpen, setValidateOpen] = useState(false)
+  // Estado del diálogo "Editar ficha" (reclasificación: tipología/categoría)
+  const [editOpen, setEditOpen] = useState(false)
 
   // Catálogo 2024: resolver familia/tipología/categoría por id
   const { data: catalogs } = useQuery({
@@ -243,6 +248,7 @@ export function ProductDetail() {
                 <h1 className='text-xl font-bold leading-snug'>{product.title}</h1>
                 <div className='mt-2 flex flex-wrap items-center gap-2'>
                   <ValidationBadge status={product.validation_status} />
+                  {isEndorsed(product) && <EndorsedBadge />}
                   {product.status && <Badge variant='outline'>{product.status}</Badge>}
                   <Badge variant='outline' className='font-mono text-xs text-muted-foreground'>
                     {product.external_code}
@@ -251,6 +257,9 @@ export function ProductDetail() {
               </div>
             </div>
             <div className='flex shrink-0 flex-wrap gap-2'>
+              <Button size='sm' variant='outline' onClick={() => setEditOpen(true)}>
+                <Pencil className='mr-2 h-4 w-4' /> Editar ficha
+              </Button>
               {!isValid && (
                 <>
                   <Button
@@ -330,7 +339,7 @@ export function ProductDetail() {
                 value={
                   subtype
                     ? labeled(subtype.code, subtype.name)
-                    : 'Sin clasificar (reclasificar en el formulario)'
+                    : 'Sin clasificar (usa «Editar ficha» para reclasificar)'
                 }
               />
               <Field
@@ -551,6 +560,13 @@ export function ProductDetail() {
         <ValidateProductDialog
           open={validateOpen}
           onOpenChange={setValidateOpen}
+          product={product}
+        />
+
+        {/* Diálogo: editar ficha (reclasificación tipología/categoría) */}
+        <ProductFormDialog
+          open={editOpen}
+          onOpenChange={setEditOpen}
           product={product}
         />
       </Main>
