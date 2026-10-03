@@ -31,6 +31,8 @@ import {
 import type { Researcher } from '@/lib/types'
 import type { Group, WorkPlan, Project, Product } from '@/lib/types'
 import { parseMincienciasClassification } from '@/lib/utils'
+import { MEMBER_ROLES, GRAND_AREAS_OCDE, DEPARTMENTS } from '@/lib/catalogs'
+import { CatalogSelect, CatalogCombobox, toMonthInput } from '@/components/catalog-field'
 
 import { Header } from '@/components/layout/header'
 import { Main } from '@/components/layout/main'
@@ -176,8 +178,8 @@ export function GroupDetail({ isAdmin = false }: { isAdmin?: boolean }) {
     setPlanForm({
       title: p.title,
       description: p.description ?? '',
-      start_date: p.start_date ?? '',
-      end_date: p.end_date ?? '',
+      start_date: toMonthInput(p.start_date),
+      end_date: toMonthInput(p.end_date),
       status: p.status ?? 'active',
     })
     setPlanOpen(true)
@@ -230,7 +232,7 @@ export function GroupDetail({ isAdmin = false }: { isAdmin?: boolean }) {
         department: group.department ?? '',
         email: group.email ?? '',
         website: group.website ?? '',
-        declared_creation_date: group.declared_creation_date ?? '',
+        declared_creation_date: toMonthInput(group.declared_creation_date),
       })
     }
   }, [group])
@@ -353,8 +355,8 @@ export function GroupDetail({ isAdmin = false }: { isAdmin?: boolean }) {
     const ms = (memberships ?? []).find((m) => m.researcher_id === r.id)
     setEditingMember(r)
     setEditRole(ms?.role || 'Investigador')
-    setEditStartDate(ms?.start_date || '')
-    setEditEndDate(ms?.end_date || '')
+    setEditStartDate(toMonthInput(ms?.start_date))
+    setEditEndDate(toMonthInput(ms?.end_date))
   }
 
   const updateMemberMutation = useMutation({
@@ -803,13 +805,14 @@ export function GroupDetail({ isAdmin = false }: { isAdmin?: boolean }) {
                             onChange={(e) => setFormData({ ...formData, city: e.target.value })}
                             className='bg-muted/30 focus-visible:bg-transparent rounded-xl'
                           />
-                          <Input
-                            id="department"
-                            placeholder="Departamento"
-                            value={formData.department ?? ''}
-                            onChange={(e) => setFormData({ ...formData, department: e.target.value })}
-                            className='bg-muted/30 focus-visible:bg-transparent rounded-xl'
-                          />
+                          <div className='flex-1 min-w-0'>
+                            <CatalogCombobox
+                              options={DEPARTMENTS}
+                              value={formData.department ?? ''}
+                              onChange={(v) => setFormData({ ...formData, department: v })}
+                              placeholder='Departamento'
+                            />
+                          </div>
                         </div>
                       </div>
                     </div>
@@ -834,19 +837,18 @@ export function GroupDetail({ isAdmin = false }: { isAdmin?: boolean }) {
                       </div>
                     </div>
                     <div className="grid grid-cols-2 gap-4">
-                      <div className="space-y-2">
-                        <Label htmlFor="knowledge_area">Área de Conocimiento</Label>
-                        <Input
-                          id="knowledge_area"
-                          value={formData.knowledge_area ?? ''}
-                          onChange={(e) => setFormData({ ...formData, knowledge_area: e.target.value })}
-                          className='bg-muted/30 focus-visible:bg-transparent rounded-xl'
-                        />
-                      </div>
+                      <CatalogCombobox
+                        label="Área de Conocimiento (OCDE)"
+                        options={GRAND_AREAS_OCDE}
+                        value={formData.knowledge_area ?? ''}
+                        onChange={(v) => setFormData({ ...formData, knowledge_area: v })}
+                        placeholder='Ej: Ingeniería y Tecnología'
+                      />
                       <div className="space-y-2">
                         <Label htmlFor="declared_creation_date">Año / Mes de Formación</Label>
                         <Input
                           id="declared_creation_date"
+                          type="month"
                           value={formData.declared_creation_date ?? ''}
                           onChange={(e) => setFormData({ ...formData, declared_creation_date: e.target.value })}
                           className='bg-muted/30 focus-visible:bg-transparent rounded-xl'
@@ -889,15 +891,8 @@ export function GroupDetail({ isAdmin = false }: { isAdmin?: boolean }) {
                       placeholder="Visión del grupo..."
                     />
                   </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="knowledge_area">Área de Conocimiento</Label>
-                    <Input
-                      id="knowledge_area"
-                      value={formData.knowledge_area ?? ''}
-                      onChange={(e) => setFormData({ ...formData, knowledge_area: e.target.value })}
-                      className='bg-muted/30 focus-visible:bg-transparent rounded-xl'
-                    />
-                  </div>
+                  {/* Nota: el Área de Conocimiento se edita en "Información Básica"
+                      (antes estaba duplicada aquí y en esa tarjeta). */}
                 </div>
               </div>
               
@@ -986,13 +981,16 @@ export function GroupDetail({ isAdmin = false }: { isAdmin?: boolean }) {
                       )}
                     </div>
                     <div className="grid grid-cols-2 gap-4">
-                      <div className="space-y-2">
-                        <Label>Rol en el grupo</Label>
-                        <Input value={memberRole} onChange={e => setMemberRole(e.target.value)} placeholder="Ej: Investigador" />
-                      </div>
+                      <CatalogSelect
+                        label="Rol en el grupo"
+                        options={MEMBER_ROLES}
+                        value={memberRole}
+                        onChange={setMemberRole}
+                        allowClear={false}
+                      />
                       <div className="space-y-2">
                         <Label>Fecha de vinculación</Label>
-                        <Input value={memberStartDate} onChange={e => setMemberStartDate(e.target.value)} placeholder="Ej: 2024-01" />
+                        <Input type="month" value={memberStartDate} onChange={e => setMemberStartDate(e.target.value)} />
                       </div>
                     </div>
                     <Button
@@ -1078,18 +1076,21 @@ export function GroupDetail({ isAdmin = false }: { isAdmin?: boolean }) {
                   <p className="text-sm text-muted-foreground">
                     {editingMember ? `${editingMember.first_names} ${editingMember.last_names}` : ''}
                   </p>
-                  <div className="space-y-2">
-                    <Label>Rol en el grupo</Label>
-                    <Input value={editRole} onChange={e => setEditRole(e.target.value)} placeholder="Ej: Investigador" />
-                  </div>
+                  <CatalogSelect
+                    label="Rol en el grupo"
+                    options={MEMBER_ROLES}
+                    value={editRole}
+                    onChange={setEditRole}
+                    allowClear={false}
+                  />
                   <div className="grid grid-cols-2 gap-4">
                     <div className="space-y-2">
                       <Label>Fecha de vinculación</Label>
-                      <Input value={editStartDate} onChange={e => setEditStartDate(e.target.value)} placeholder="Ej: 2024-01" />
+                      <Input type="month" value={editStartDate} onChange={e => setEditStartDate(e.target.value)} />
                     </div>
                     <div className="space-y-2">
                       <Label>Fecha de retiro</Label>
-                      <Input value={editEndDate} onChange={e => setEditEndDate(e.target.value)} placeholder="Opcional" />
+                      <Input type="month" value={editEndDate} onChange={e => setEditEndDate(e.target.value)} />
                     </div>
                   </div>
                   <Button
@@ -1241,8 +1242,8 @@ export function GroupDetail({ isAdmin = false }: { isAdmin?: boolean }) {
                       <Input value={newProject.title} onChange={e => setNewProject({...newProject, title: e.target.value})} />
                     </div>
                     <div className="space-y-2">
-                      <Label>Fecha de Inicio</Label>
-                      <Input value={newProject.start_date} onChange={e => setNewProject({...newProject, start_date: e.target.value})} placeholder="Ej: 2024" />
+                      <Label>Año de Inicio</Label>
+                      <Input type="number" min={1900} max={2100} value={newProject.start_date} onChange={e => setNewProject({...newProject, start_date: e.target.value})} placeholder="Ej: 2024" />
                     </div>
                     <Button className="w-full" onClick={() => linkProjMutation.mutate()} disabled={!newProject.title || linkProjMutation.isPending}>
                       Guardar Proyecto
@@ -1327,11 +1328,11 @@ export function GroupDetail({ isAdmin = false }: { isAdmin?: boolean }) {
                     <div className="grid grid-cols-2 gap-4">
                       <div className="space-y-2">
                         <Label>Fecha de Inicio</Label>
-                        <Input value={planForm.start_date} onChange={e => setPlanForm({...planForm, start_date: e.target.value})} placeholder="Ej: 2024-01" />
+                        <Input type="month" value={planForm.start_date} onChange={e => setPlanForm({...planForm, start_date: e.target.value})} />
                       </div>
                       <div className="space-y-2">
                         <Label>Fecha de Fin</Label>
-                        <Input value={planForm.end_date} onChange={e => setPlanForm({...planForm, end_date: e.target.value})} placeholder="Ej: 2026-12" />
+                        <Input type="month" value={planForm.end_date} onChange={e => setPlanForm({...planForm, end_date: e.target.value})} />
                       </div>
                     </div>
                     <Button className="w-full" onClick={() => savePlanMutation.mutate()} disabled={!planForm.title || savePlanMutation.isPending}>

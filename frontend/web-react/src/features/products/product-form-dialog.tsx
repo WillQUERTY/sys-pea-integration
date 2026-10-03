@@ -3,6 +3,8 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { toast } from 'sonner'
 import { createProduct, updateProduct, getProductCatalogs } from '@/lib/api'
 import type { Product } from '@/lib/types'
+import { LANGUAGES, COUNTRIES } from '@/lib/catalogs'
+import { CatalogCombobox } from '@/components/catalog-field'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -247,23 +249,32 @@ export function ProductFormDialog({ open, onOpenChange, product }: Props) {
               </div>
             </div>
 
+            {/* Las fechas reales importadas de GrupLAC son solo el año
+                (verificado en BD: len=4 en todos los registros), así que el
+                control es de año, no de fecha completa. */}
             <div className='grid grid-cols-1 gap-4 sm:grid-cols-2'>
               <div className='grid gap-2'>
-                <Label htmlFor='obtained_date'>Fecha de obtención</Label>
+                <Label htmlFor='obtained_date'>Año de obtención</Label>
                 <Input
                   id='obtained_date'
+                  type='number'
+                  min={1900}
+                  max={2100}
                   value={formData.obtained_date ?? ''}
                   onChange={(e) => set({ obtained_date: e.target.value })}
-                  placeholder='Ej: 2024-05-10'
+                  placeholder='Ej: 2024'
                 />
               </div>
               <div className='grid gap-2'>
-                <Label htmlFor='publication_date'>Fecha de publicación</Label>
+                <Label htmlFor='publication_date'>Año de publicación</Label>
                 <Input
                   id='publication_date'
+                  type='number'
+                  min={1900}
+                  max={2100}
                   value={formData.publication_date ?? ''}
                   onChange={(e) => set({ publication_date: e.target.value })}
-                  placeholder='Ej: 2024-08-01'
+                  placeholder='Ej: 2024'
                 />
               </div>
             </div>
@@ -307,24 +318,20 @@ export function ProductFormDialog({ open, onOpenChange, product }: Props) {
             </div>
 
             <div className='grid grid-cols-1 gap-4 sm:grid-cols-2'>
-              <div className='grid gap-2'>
-                <Label htmlFor='language'>Idioma</Label>
-                <Input
-                  id='language'
-                  value={formData.language ?? ''}
-                  onChange={(e) => set({ language: e.target.value })}
-                  placeholder='Ej: Español'
-                />
-              </div>
-              <div className='grid gap-2'>
-                <Label htmlFor='country'>País</Label>
-                <Input
-                  id='country'
-                  value={formData.country ?? ''}
-                  onChange={(e) => set({ country: e.target.value })}
-                  placeholder='Ej: Colombia'
-                />
-              </div>
+              <CatalogCombobox
+                label='Idioma'
+                options={LANGUAGES}
+                value={formData.language ?? ''}
+                onChange={(v) => set({ language: v })}
+                placeholder='Ej: Español'
+              />
+              <CatalogCombobox
+                label='País'
+                options={COUNTRIES}
+                value={formData.country ?? ''}
+                onChange={(v) => set({ country: v })}
+                placeholder='Ej: Colombia'
+              />
             </div>
 
             {/* Clasificación Minciencias 2024 */}
