@@ -320,7 +320,7 @@ export function Researchers({ isAdmin = false }: { isAdmin?: boolean }) {
       {!isAdmin && (
         <PublicHero
           title='Investigadores'
-          subtitle='Integrantes registrados y vinculados en PEA-i.'
+          subtitle='Integrantes registrados y vinculados en Khemia.'
           icon={UserRound}
           searchPlaceholder='Buscar por nombre o código…'
           searchValue={search}

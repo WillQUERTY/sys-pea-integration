@@ -40,7 +40,7 @@ def fetch_cvlac_text(cod_rh: str) -> str:
     SourceValidator.validate_source_url(url)
 
     headers = {
-        "User-Agent": "PEA-i Academic Research Importer/1.0 (Universidad Popular del Cesar; contact: vicerrectoria.investigacion@unicesar.edu.co)"
+        "User-Agent": "Khemia Academic Research Importer/1.0 (Universidad Popular del Cesar; contact: vicerrectoria.investigacion@unicesar.edu.co)"
     }
     logger.info(f"Descargando CvLAC desde: {url}")
     resp = requests.get(url, headers=headers, timeout=(10, 30))

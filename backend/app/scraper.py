@@ -1,7 +1,7 @@
 """
 backend/app/scraper.py
-Extractor Estructural, Normalizador y Servicio de Persistencia Transaccional para GrupLAC (PEA-i).
-Conforme a la especificacion en docs/PEA-i_Revision_Tecnica_Scraper_Gruplac.md.
+Extractor Estructural, Normalizador y Servicio de Persistencia Transaccional para GrupLAC (Khemia).
+Conforme a la especificacion en docs/Khemia_Revision_Tecnica_Scraper_Gruplac.md.
 """
 
 import os
@@ -122,7 +122,7 @@ class GruplacHttpClient:
     def fetch(cls, url: str) -> str:
         cls.validate_source_url(url)
         headers = {
-            "User-Agent": "PEA-i Academic Research Importer/1.0 (Universidad Popular del Cesar; contact: vicerrectoria.investigacion@unicesar.edu.co)"
+            "User-Agent": "Khemia Academic Research Importer/1.0 (Universidad Popular del Cesar; contact: vicerrectoria.investigacion@unicesar.edu.co)"
         }
         logger.info(f"Descargando fuente GrupLAC desde: {url}")
         resp = requests.get(url, headers=headers, timeout=(10, 30))
@@ -1465,7 +1465,7 @@ def buscar_grupos_scienti(nombre: str = "", institucion: str = "", departamento:
 
 def scrape_gruplac(url: str, db_conn_str: str = "", preview: bool = False, enrich_cvlac: bool = False, cvlac_workers: int = 8, expected_group_code: str = "", cvlac_delay: float = 0.5) -> Dict[str, Any]:
     print("=" * 65)
-    print(f"PEA-i Importador GrupLAC (Estructural e Idempotente en SQL)")
+    print(f"Khemia Importador GrupLAC (Estructural e Idempotente en SQL)")
     print(f"URL: {url}")
     print("=" * 65)
 

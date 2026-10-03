@@ -1,5 +1,5 @@
 // core_cpp/pybind/bindings.cpp
-// Exposes the PEA-i core library to Python via pybind11.
+// Exposes the Khemia core library to Python via pybind11.
 // After building, import as:  import abpoxx_pybind as core
 
 #include <pybind11/pybind11.h>
@@ -9,7 +9,7 @@
 namespace py = pybind11;
 
 PYBIND11_MODULE(abpoxx_pybind, m) {
-    m.doc() = "PEA-i core library — Python bindings (pybind11)";
+    m.doc() = "Khemia core library — Python bindings (pybind11)";
 
     // ---- Struct: Membership ----
     py::class_<Membership>(m, "Membership")

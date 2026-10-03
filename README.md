@@ -1,4 +1,4 @@
-# PEA-i — Programa Estadístico de Análisis de Investigación
+# Khemia — Plataforma de Producción Científica
 
 Sistema de gestión de producción académica de grupos de investigación (Universidad Popular del Cesar — Taller 2, Estructura de Datos, Grupo 5).
 

@@ -14,7 +14,7 @@ DB_CONN_STR = "Driver={ODBC Driver 17 for SQL Server};Server=localhost;Database=
 
 def run_tests():
     print("=" * 65)
-    print("INICIANDO PRUEBAS DEL MODELO DE ESCRITURA Y API (PEA-i)")
+    print("INICIANDO PRUEBAS DEL MODELO DE ESCRITURA Y API (Khemia)")
     print("=" * 65)
 
     # 1. Inicialización en modo Base de Datos

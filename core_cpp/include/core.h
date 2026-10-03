@@ -1,5 +1,5 @@
 // core_cpp/include/core.h
-// Unified facade — include this single header to access all PEA-i core APIs.
+// Unified facade — include this single header to access all Khemia core APIs.
 
 #ifndef PEAI_CORE_H
 #define PEAI_CORE_H
