@@ -960,6 +960,8 @@ def get_group_members_detailed(group_id: int) -> list:
                 "role": det.role,
                 "start_date": det.start_date,
                 "end_date": det.end_date,
+                # Convención GrupLAC: sin fecha de fin == vinculación vigente ("Actual")
+                "is_current": not det.end_date,
                 "status": det.status
             })
     return rows
@@ -1359,6 +1361,12 @@ def get_group_projects(group_id: int) -> List[Project]:
     return [_to_project_model(abpoxx_pybind.get_project(pid))
             for pid in abpoxx_pybind.projects_of_group(group_id)
             if abpoxx_pybind.get_project(pid) is not None]
+
+def get_project_groups(project_id: int) -> List[Group]:
+    """Grupos vinculados a un proyecto (lookup inverso de la multilista)."""
+    get_project(project_id)  # 404 si no existe
+    return [g for g in list_groups()
+            if g.id is not None and project_id in abpoxx_pybind.projects_of_group(g.id)]
 
 def get_group_research_lines(group_id: int) -> List[str]:
     if not _active_connection_string: return []

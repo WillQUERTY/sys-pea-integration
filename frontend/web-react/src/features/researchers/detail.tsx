@@ -16,7 +16,7 @@ import {
 } from 'lucide-react'
 
 import { getResearcher, updateResearcher, getResearcherProducts, getResearcherGroups, listGroups, linkMember, unlinkMember } from '@/lib/api'
-import type { Researcher } from '@/lib/types'
+import type { Researcher, Group } from '@/lib/types'
 
 import { Header } from '@/components/layout/header'
 import { Main } from '@/components/layout/main'
@@ -34,8 +34,17 @@ import { Badge } from '@/components/ui/badge'
 
 import { DataTable } from '@/components/data-table'
 
+function Field({ label, value, mono = false }: { label: string; value?: React.ReactNode; mono?: boolean }) {
+  return (
+    <div className='space-y-1'>
+      <p className='text-xs font-medium uppercase tracking-wider text-muted-foreground'>{label}</p>
+      <p className={`text-sm ${mono ? 'font-mono' : ''}`}>{value ?? '—'}</p>
+    </div>
+  )
+}
+
 export function ResearcherDetail({ isAdmin = false }: { isAdmin?: boolean }) {
-  const { id } = useParams({ strict: false }) as any
+  const { id } = useParams({ strict: false }) as { id: string }
   const queryClient = useQueryClient()
   
   const researcherId = Number(id)
@@ -170,6 +179,10 @@ export function ResearcherDetail({ isAdmin = false }: { isAdmin?: boolean }) {
 
   const hue = (researcher.first_names?.charCodeAt(0) ?? 0) * 23 % 360
   const initial = researcher.first_names?.[0]?.toUpperCase() ?? '?'
+  const educationList = (researcher.education_records ?? '')
+    .split(';')
+    .map((s) => s.trim())
+    .filter(Boolean)
 
   return (
     <>
@@ -231,16 +244,18 @@ export function ResearcherDetail({ isAdmin = false }: { isAdmin?: boolean }) {
                 </div>
               </div>
               
-              <div className='pb-1 w-full sm:w-auto'>
-                <Button 
-                  onClick={handleSubmit} 
-                  disabled={mutation.isPending}
-                  className='w-full sm:w-auto rounded-xl shadow-md'
-                >
-                  <Save className='mr-2 h-4 w-4' />
-                  {mutation.isPending ? 'Guardando...' : 'Guardar Cambios'}
-                </Button>
-              </div>
+              {isAdmin && (
+                <div className='pb-1 w-full sm:w-auto'>
+                  <Button
+                    onClick={handleSubmit}
+                    disabled={mutation.isPending}
+                    className='w-full sm:w-auto rounded-xl shadow-md'
+                  >
+                    <Save className='mr-2 h-4 w-4' />
+                    {mutation.isPending ? 'Guardando...' : 'Guardar Cambios'}
+                  </Button>
+                </div>
+              )}
             </div>
           </div>
         </div>
@@ -269,8 +284,9 @@ export function ResearcherDetail({ isAdmin = false }: { isAdmin?: boolean }) {
           </TabsList>
 
           <TabsContent value="perfil" className="focus-visible:outline-none">
+            {isAdmin ? (
             <form onSubmit={handleSubmit} className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              
+
               {/* Información Personal */}
               <div className="bg-card border border-border/50 rounded-2xl p-6 shadow-sm">
                 <div className='flex items-center gap-2 mb-6'>
@@ -366,6 +382,69 @@ export function ResearcherDetail({ isAdmin = false }: { isAdmin?: boolean }) {
               </div>
               
             </form>
+            ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              {/* Información Personal (solo lectura) */}
+              <div className="bg-card border border-border/50 rounded-2xl p-6 shadow-sm">
+                <div className='flex items-center gap-2 mb-6'>
+                  <div className='p-2 bg-primary/10 rounded-lg'>
+                    <UserIcon className='h-4 w-4 text-primary' />
+                  </div>
+                  <h3 className="font-semibold text-lg">Información Personal</h3>
+                </div>
+                <div className="grid grid-cols-2 gap-4">
+                  <Field label='Nombres' value={researcher.first_names} />
+                  <Field label='Apellidos' value={researcher.last_names} />
+                  <Field label='Código CvLAC' value={researcher.external_code} mono />
+                  <Field label='Nacionalidad' value={researcher.nationality} />
+                  <Field label='País de residencia' value={researcher.country_of_residence} />
+                </div>
+              </div>
+
+              <div className="space-y-6">
+                {/* Académico (solo lectura; el correo institucional no se expone) */}
+                <div className="bg-card border border-border/50 rounded-2xl p-6 shadow-sm">
+                  <div className='flex items-center gap-2 mb-6'>
+                    <div className='p-2 bg-secondary/10 rounded-lg'>
+                      <GraduationCap className='h-4 w-4 text-secondary' />
+                    </div>
+                    <h3 className="font-semibold text-lg">Académico</h3>
+                  </div>
+                  <div className="space-y-4">
+                    <Field label='Formación Máxima' value={researcher.highest_education_level} />
+                    {researcher.orcid && (
+                      <div className='space-y-1'>
+                        <p className='text-xs font-medium uppercase tracking-wider text-muted-foreground'>ORCID</p>
+                        <a
+                          href={`https://orcid.org/${researcher.orcid}`}
+                          target='_blank'
+                          rel='noreferrer'
+                          className='text-sm font-mono text-primary hover:underline'
+                        >
+                          {researcher.orcid}
+                        </a>
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                {/* Formación detallada (registros CvLAC separados por ";") */}
+                {educationList.length > 0 && (
+                  <div className="bg-card border border-border/50 rounded-2xl p-6 shadow-sm">
+                    <div className='flex items-center gap-2 mb-4'>
+                      <div className='p-2 bg-violet-500/10 rounded-lg'>
+                        <BookOpen className='h-4 w-4 text-violet-500' />
+                      </div>
+                      <h3 className="font-semibold text-lg">Formación Académica</h3>
+                    </div>
+                    <ul className='list-disc pl-5 space-y-1 text-sm text-muted-foreground'>
+                      {educationList.map((entry, i) => <li key={i}>{entry}</li>)}
+                    </ul>
+                  </div>
+                )}
+              </div>
+            </div>
+            )}
           </TabsContent>
 
           <TabsContent value="productos" className="focus-visible:outline-none bg-card border border-border/50 rounded-2xl p-6 shadow-sm">
@@ -403,6 +482,7 @@ export function ResearcherDetail({ isAdmin = false }: { isAdmin?: boolean }) {
           <TabsContent value="grupos" className="focus-visible:outline-none bg-card border border-border/50 rounded-2xl p-6 shadow-sm">
             <div className="flex justify-between items-center mb-4">
               <h3 className="font-semibold text-lg">Grupos de Investigación</h3>
+              {isAdmin && (
               <Dialog open={groupOpen} onOpenChange={setGroupOpen}>
                 <DialogTrigger asChild>
                   <Button size="sm"><UserPlus className="w-4 h-4 mr-2"/> Vincular a Grupo</Button>
@@ -463,15 +543,16 @@ export function ResearcherDetail({ isAdmin = false }: { isAdmin?: boolean }) {
                   </div>
                 </DialogContent>
               </Dialog>
+              )}
             </div>
             <DataTable
               columns={[
                 {
                   key: 'name',
                   header: 'Nombre del Grupo',
-                  cell: (g) => (
+                  cell: (g: Group) => (
                     <Link
-                      to="/groups/$id"
+                      to={isAdmin ? '/admin/groups/$id' : '/groups/$id'}
                       params={{ id: String(g.id) }}
                       className='font-medium text-sm text-primary hover:underline'
                     >
@@ -482,25 +563,25 @@ export function ResearcherDetail({ isAdmin = false }: { isAdmin?: boolean }) {
                 {
                   key: 'acronym',
                   header: 'Sigla',
-                  cell: (g) => <span className='text-muted-foreground'>{g.acronym || '-'}</span>
+                  cell: (g: Group) => <span className='text-muted-foreground'>{g.acronym || '-'}</span>
                 },
                 {
                   key: 'classification',
                   header: 'Clasificación',
-                  cell: (g) => g.classification
+                  cell: (g: Group) => g.classification
                     ? <Badge variant='secondary'>{g.classification}</Badge>
                     : <span className='text-muted-foreground'>Sin clasificar</span>
                 },
-                {
+                isAdmin ? {
                   key: 'actions',
                   header: '',
-                  cell: (g) => (
+                  cell: (g: Group) => (
                     <Button variant="ghost" size="icon" onClick={() => unlinkGroupMutation.mutate(g.id!)}>
                       <Trash2 className="w-4 h-4 text-red-500" />
                     </Button>
                   )
-                }
-              ]}
+                } : null
+              ].filter(Boolean) as any}
               data={groups ?? []}
               loading={isLoadingGroups}
               rowKey={(g) => g.id!}
