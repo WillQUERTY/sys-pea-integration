@@ -537,6 +537,14 @@ async def get_project_endpoint(project_id: int):
     except KeyError:
         raise HTTPException(status_code=404, detail="Project not found")
 
+@router.get("/projects/{project_id}/groups", response_model=List[Group], tags=["Projects"])
+async def list_project_groups_endpoint(project_id: int):
+    """Grupos de investigación vinculados a un proyecto."""
+    try:
+        return repository.get_project_groups(project_id)
+    except KeyError:
+        raise HTTPException(status_code=404, detail="Project not found")
+
 @router.put("/projects/{project_id}", response_model=Project, tags=["Projects"])
 async def update_project_endpoint(project_id: int, updates: Project):
     """Update a project (Requerimiento 11)."""
