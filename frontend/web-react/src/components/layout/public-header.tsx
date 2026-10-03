@@ -1,6 +1,5 @@
 import { Link, useLocation } from '@tanstack/react-router'
 import {
-  Atom,
   Users,
   UserRound,
   FlaskConical,
@@ -9,6 +8,7 @@ import {
   Menu,
   Home,
 } from 'lucide-react'
+import { KhemiaLogo } from '@/assets/khemia-logo'
 import { ThemeSwitch } from '@/components/theme-switch'
 import { Button } from '@/components/ui/button'
 import {
@@ -41,9 +41,7 @@ export function PublicHeader() {
       <div className='mx-auto flex h-16 max-w-7xl items-center justify-between px-4 sm:px-6 lg:px-8'>
         {/* Brand / Logo */}
         <Link to='/' className='flex items-center gap-3 transition-opacity hover:opacity-90'>
-          <div className='flex aspect-square size-9 items-center justify-center rounded-xl bg-gradient-to-tr from-primary to-emerald-400 text-primary-foreground shadow-sm shadow-black/20'>
-            <Atom className='size-5 animate-[pulse_4s_cubic-bezier(0.4,0,0.6,1)_infinite]' />
-          </div>
+          <KhemiaLogo className='h-9.5 w-auto shrink-0 drop-shadow-md' />
           <div className='flex flex-col text-start leading-tight'>
             <div className='flex items-center gap-2'>
               <span className='font-extrabold tracking-tight text-base text-white'>Khemia</span>

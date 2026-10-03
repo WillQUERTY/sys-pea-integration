@@ -3,6 +3,8 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { toast } from 'sonner'
 import { createProject, updateProject, listResearchers } from '@/lib/api'
 import type { Project } from '@/lib/types'
+import { PROJECT_TYPES, FUNDING_TYPES } from '@/lib/catalogs'
+import { CatalogSelect, CatalogCombobox } from '@/components/catalog-field'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -198,43 +200,46 @@ export function ProjectFormDialog({ open, onOpenChange, project }: Props) {
             </div>
 
             <div className='grid grid-cols-2 gap-4'>
-              <div className='grid gap-2'>
-                <Label htmlFor='project_type'>Tipo de proyecto</Label>
-                <Input
-                  id='project_type'
-                  value={formData.project_type ?? ''}
-                  onChange={(e) => set({ project_type: e.target.value })}
-                  placeholder='Ej: Investigación y desarrollo'
-                />
-              </div>
-              <div className='grid gap-2'>
-                <Label htmlFor='funding_type'>Tipo de financiación</Label>
-                <Input
-                  id='funding_type'
-                  value={formData.funding_type ?? ''}
-                  onChange={(e) => set({ funding_type: e.target.value })}
-                  placeholder='Ej: Interna'
-                />
-              </div>
+              <CatalogCombobox
+                label='Tipo de proyecto'
+                options={PROJECT_TYPES}
+                value={formData.project_type ?? ''}
+                onChange={(v) => set({ project_type: v })}
+                placeholder='Ej: Investigación y desarrollo'
+              />
+              <CatalogSelect
+                label='Tipo de financiación'
+                options={FUNDING_TYPES}
+                value={formData.funding_type ?? ''}
+                onChange={(v) => set({ funding_type: v })}
+              />
             </div>
 
+            {/* Las fechas reales importadas de GrupLAC son solo el año
+                (verificado en BD: len=4), así que el control es de año. */}
             <div className='grid grid-cols-2 gap-4'>
               <div className='grid gap-2'>
-                <Label htmlFor='start_date'>Fecha de inicio</Label>
+                <Label htmlFor='start_date'>Año de inicio</Label>
                 <Input
                   id='start_date'
+                  type='number'
+                  min={1900}
+                  max={2100}
                   value={formData.start_date ?? ''}
                   onChange={(e) => set({ start_date: e.target.value })}
-                  placeholder='Ej: 2026-01'
+                  placeholder='Ej: 2024'
                 />
               </div>
               <div className='grid gap-2'>
-                <Label htmlFor='end_date'>Fecha de fin</Label>
+                <Label htmlFor='end_date'>Año de fin</Label>
                 <Input
                   id='end_date'
+                  type='number'
+                  min={1900}
+                  max={2100}
                   value={formData.end_date ?? ''}
                   onChange={(e) => set({ end_date: e.target.value })}
-                  placeholder='Ej: 2026-12'
+                  placeholder='Ej: 2026'
                 />
               </div>
             </div>
