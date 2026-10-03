@@ -178,6 +178,63 @@ class GruplacNormalizer:
                 return y
         return None
 
+    @classmethod
+    def normalize_classification(cls, text: Any) -> str:
+        """
+        La celda 'Clasificado' de GrupLAC mezcla la categoría con el texto de
+        vigencia ('Bcon vigencia hasta la publicación...'). Se extrae solo la
+        categoría del modelo de medición (A1/A/B/C, histórico D, o Reconocido)
+        para que matchee el catálogo de la UI; si no se reconoce, se conserva
+        el texto crudo.
+        """
+        t = cls.normalize(text)
+        if not t:
+            return ""
+        if re.search(r"reconocido", t, re.IGNORECASE):
+            return "Reconocido"
+        m = re.match(r"^(A1|A|B|C|D)\b", t, re.IGNORECASE)
+        if m:
+            return m.group(1).upper()
+        # Caso frecuente: letra pegada al texto ('Bcon vigencia...')
+        m = re.match(r"^(A1|A|B|C|D)\s*con\b", t, re.IGNORECASE)
+        if m:
+            return m.group(1).upper()
+        m = re.search(r"\bcategor[íi]a\s+(A1|A|B|C|D)\b", t, re.IGNORECASE)
+        if m:
+            return m.group(1).upper()
+        return t
+
+    @classmethod
+    def split_city_department(cls, text: Any) -> tuple:
+        """
+        GrupLAC publica la ubicación en una sola celda 'DEPTO - CIUDAD'
+        ('CESAR - VALLEDUPAR'). Se parte en (city, department) con title case
+        para que department matchee el catálogo de la UI. Sin separador, todo
+        se considera ciudad (comportamiento previo).
+        """
+        t = cls.normalize(text)
+        if not t:
+            return "", ""
+        if " - " in t:
+            dept, _, city = t.partition(" - ")
+            return city.strip().title(), dept.strip().title()
+        return t.title(), ""
+
+    @classmethod
+    def normalize_year_month(cls, text: Any) -> str:
+        """
+        'Año y mes de formación' de GrupLAC viene como '2005 - 7'. Se normaliza
+        a 'YYYY-MM' (formato que esperan los inputs type=month de la UI).
+        """
+        t = cls.normalize(text)
+        if not t:
+            return ""
+        m = re.match(r"^(\d{4})\s*[-/]\s*(\d{1,2})\b", t)
+        if m:
+            return f"{m.group(1)}-{int(m.group(2)):02d}"
+        y = cls.extract_year(t)
+        return str(y) if y else t
+
     @staticmethod
     def normalize_doi(doi: Optional[str]) -> str:
         return repository.clean_doi(doi)
@@ -846,17 +903,29 @@ class GruplacHtmlParser:
         if merged_count:
             warnings.append(f"{merged_count} productos repetidos en la página fueron fusionados por título+año")
 
+        # Ubicación: GrupLAC la publica combinada ('CESAR - VALLEDUPAR') bajo
+        # la etiqueta 'Departamento - Ciudad'; se parte en city + department.
+        loc_city, loc_dept = GruplacNormalizer.split_city_department(
+            basic_data.get("departamento ciudad", basic_data.get("ciudad", ""))
+        )
+        if not loc_dept and basic_data.get("departamento"):
+            loc_dept = GruplacNormalizer.normalize(basic_data.get("departamento")).title()
+
         return ScrapedGroupData(
             group={
                 "external_code": group_code,
                 "name": group_name,
                 "leader_name": leader_name,
-                "classification": basic_data.get("clasificacion", basic_data.get("estado", "")),
+                "classification": GruplacNormalizer.normalize_classification(
+                    basic_data.get("clasificacion", basic_data.get("estado", ""))
+                ),
                 "email": basic_data.get("e mail", ""),
                 "website": basic_data.get("pagina web", ""),
-                "city": basic_data.get("ciudad", basic_data.get("departamento ciudad", "")),
-                "department": basic_data.get("departamento", ""),
-                "declared_creation_date": basic_data.get("ano y mes de formacion", ""),
+                "city": loc_city,
+                "department": loc_dept,
+                "declared_creation_date": GruplacNormalizer.normalize_year_month(
+                    basic_data.get("ano y mes de formacion", "")
+                ),
                 "knowledge_area": basic_data.get("area de conocimiento", ""),
             },
             institutions=institutions,
