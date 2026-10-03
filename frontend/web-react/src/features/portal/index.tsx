@@ -405,9 +405,9 @@ export function PublicPortal() {
           </div>
 
           {featuredGroupsQuery.isLoading ? (
-            <div className='grid gap-4 sm:grid-cols-2 lg:grid-cols-4'>
+            <div className='flex overflow-x-auto snap-x snap-mandatory gap-4 pb-4 sm:grid sm:grid-cols-2 lg:grid-cols-4 sm:overflow-visible sm:pb-0'>
               {Array.from({ length: 4 }).map((_, i) => (
-                <Skeleton key={i} className='h-40 w-full rounded-xl' />
+                <Skeleton key={i} className='h-40 w-[85vw] sm:w-auto shrink-0 snap-center rounded-xl' />
               ))}
             </div>
           ) : (featuredGroupsQuery.data?.items ?? []).length === 0 ? (
@@ -419,7 +419,7 @@ export function PublicPortal() {
               </p>
             </Card>
           ) : (
-            <div className='grid gap-4 sm:grid-cols-2 lg:grid-cols-4'>
+            <div className='flex overflow-x-auto snap-x snap-mandatory gap-4 pb-4 sm:grid sm:grid-cols-2 lg:grid-cols-4 sm:overflow-visible sm:pb-0'>
               {featuredGroupsQuery.data?.items.map((group) => {
                 const initials = group.name
                   ? group.name.split(' ').filter((w) => w.length > 2).slice(0, 2).map((w) => w[0].toUpperCase()).join('')
@@ -428,7 +428,7 @@ export function PublicPortal() {
                 return (
                   <Card
                     key={group.id ?? group.external_code}
-                    className='group flex flex-col justify-between border-border/70 hover:border-primary/40 hover:shadow-md transition-all duration-200'
+                    className='group shrink-0 snap-center w-[85vw] sm:w-auto flex flex-col justify-between border-border/70 hover:border-primary/40 hover:shadow-md transition-all duration-200'
                   >
                     <CardHeader className='pb-3'>
                       <div className='flex items-start justify-between gap-2'>
@@ -450,7 +450,7 @@ export function PublicPortal() {
                           {group.name}
                         </CardTitle>
                         {group.acronym && (
-                          <span className='text-[11px] font-mono font-medium text-muted-foreground block mt-0.5'>
+                          <span className='text-[11px] font-mono font-medium text-muted-foreground block truncate mt-0.5'>
                             [{group.acronym}]
                           </span>
                         )}
@@ -459,13 +459,13 @@ export function PublicPortal() {
                     <CardContent className='pt-0 pb-3 flex-1 flex flex-col justify-end'>
                       <div className='space-y-1 text-xs text-muted-foreground'>
                         {group.institution && (
-                          <p className='truncate flex items-center gap-1.5'>
+                          <p className='flex items-center gap-1.5 min-w-0'>
                             <Building2 className='h-3.5 w-3.5 shrink-0 opacity-70' />
                             <span className='truncate'>{group.institution}</span>
                           </p>
                         )}
                         {group.knowledge_area && (
-                          <p className='truncate flex items-center gap-1.5'>
+                          <p className='flex items-center gap-1.5 min-w-0'>
                             <GraduationCap className='h-3.5 w-3.5 shrink-0 opacity-70' />
                             <span className='truncate'>{group.knowledge_area}</span>
                           </p>
