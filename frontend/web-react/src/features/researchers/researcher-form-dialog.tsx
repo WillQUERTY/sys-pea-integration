@@ -3,6 +3,13 @@ import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { toast } from 'sonner'
 import { createResearcher, updateResearcher } from '@/lib/api'
 import type { Researcher } from '@/lib/types'
+import {
+  IDENTIFICATION_TYPES,
+  NATIONALITIES,
+  COUNTRIES,
+  EDUCATION_LEVELS,
+} from '@/lib/catalogs'
+import { CatalogSelect, CatalogCombobox } from '@/components/catalog-field'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -145,15 +152,12 @@ export function ResearcherFormDialog({ open, onOpenChange, researcher }: Props) 
               </div>
             </div>
             <div className='grid grid-cols-2 gap-4'>
-              <div className='grid gap-2'>
-                <Label htmlFor='identification_type'>Tipo de Identificación</Label>
-                <Input
-                  id='identification_type'
-                  value={formData.identification_type ?? ''}
-                  onChange={(e) => setFormData({ ...formData, identification_type: e.target.value })}
-                  placeholder='Ej: CC'
-                />
-              </div>
+              <CatalogSelect
+                label='Tipo de Identificación'
+                options={IDENTIFICATION_TYPES}
+                value={formData.identification_type ?? ''}
+                onChange={(v) => setFormData({ ...formData, identification_type: v })}
+              />
               <div className='grid gap-2'>
                 <Label htmlFor='identification_number'>Número de Identificación</Label>
                 <Input
@@ -164,34 +168,28 @@ export function ResearcherFormDialog({ open, onOpenChange, researcher }: Props) 
               </div>
             </div>
             <div className='grid grid-cols-2 gap-4'>
-              <div className='grid gap-2'>
-                <Label htmlFor='nationality'>Nacionalidad</Label>
-                <Input
-                  id='nationality'
-                  value={formData.nationality ?? ''}
-                  onChange={(e) => setFormData({ ...formData, nationality: e.target.value })}
-                  placeholder='Ej: Colombiana'
-                />
-              </div>
-              <div className='grid gap-2'>
-                <Label htmlFor='country_of_residence'>País de Residencia</Label>
-                <Input
-                  id='country_of_residence'
-                  value={formData.country_of_residence ?? ''}
-                  onChange={(e) => setFormData({ ...formData, country_of_residence: e.target.value })}
-                  placeholder='Ej: Colombia'
-                />
-              </div>
-            </div>
-            <div className='grid gap-2'>
-              <Label htmlFor='highest_education_level'>Formación Máxima</Label>
-              <Input
-                id='highest_education_level'
-                value={formData.highest_education_level || ''}
-                onChange={(e) => setFormData({ ...formData, highest_education_level: e.target.value })}
-                placeholder='Ej: Doctorado en...'
+              <CatalogCombobox
+                label='Nacionalidad'
+                options={NATIONALITIES}
+                value={formData.nationality ?? ''}
+                onChange={(v) => setFormData({ ...formData, nationality: v })}
+                placeholder='Ej: Colombiana'
+              />
+              <CatalogCombobox
+                label='País de Residencia'
+                options={COUNTRIES}
+                value={formData.country_of_residence ?? ''}
+                onChange={(v) => setFormData({ ...formData, country_of_residence: v })}
+                placeholder='Ej: Colombia'
               />
             </div>
+            <CatalogCombobox
+              label='Formación Máxima'
+              options={EDUCATION_LEVELS}
+              value={formData.highest_education_level ?? ''}
+              onChange={(v) => setFormData({ ...formData, highest_education_level: v })}
+              placeholder='Ej: Doctorado'
+            />
             <div className='grid gap-2'>
               <Label htmlFor='institutional_email'>Correo Institucional</Label>
               <Input

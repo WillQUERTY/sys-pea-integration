@@ -17,6 +17,8 @@ import {
 
 import { getResearcher, updateResearcher, getResearcherProducts, getResearcherGroups, listGroups, linkMember, unlinkMember } from '@/lib/api'
 import type { Researcher, Group } from '@/lib/types'
+import { MEMBER_ROLES, EDUCATION_LEVELS } from '@/lib/catalogs'
+import { CatalogSelect, CatalogCombobox } from '@/components/catalog-field'
 
 import { Header } from '@/components/layout/header'
 import { Main } from '@/components/layout/main'
@@ -344,16 +346,13 @@ export function ResearcherDetail({ isAdmin = false }: { isAdmin?: boolean }) {
                   </div>
                   
                   <div className="space-y-4">
-                    <div className="space-y-2">
-                      <Label htmlFor="highest_education_level">Formación Máxima</Label>
-                      <Input
-                        id="highest_education_level"
-                        value={formData.highest_education_level ?? ''}
-                        onChange={(e) => setFormData({ ...formData, highest_education_level: e.target.value })}
-                        placeholder="Ej: Doctorado en Ingeniería"
-                        className='bg-muted/30 focus-visible:bg-transparent rounded-xl'
-                      />
-                    </div>
+                    <CatalogCombobox
+                      label="Formación Máxima"
+                      options={EDUCATION_LEVELS}
+                      value={formData.highest_education_level ?? ''}
+                      onChange={(v) => setFormData({ ...formData, highest_education_level: v })}
+                      placeholder="Ej: Doctorado"
+                    />
                     <div className="space-y-2">
                       <Label htmlFor="institutional_email">Correo Institucional</Label>
                       <div className='relative'>
@@ -524,13 +523,16 @@ export function ResearcherDetail({ isAdmin = false }: { isAdmin?: boolean }) {
                       )}
                     </div>
                     <div className="grid grid-cols-2 gap-4">
-                      <div className="space-y-2">
-                        <Label>Rol en el grupo</Label>
-                        <Input value={memberRole} onChange={e => setMemberRole(e.target.value)} placeholder="Ej: Investigador" />
-                      </div>
+                      <CatalogSelect
+                        label="Rol en el grupo"
+                        options={MEMBER_ROLES}
+                        value={memberRole}
+                        onChange={setMemberRole}
+                        allowClear={false}
+                      />
                       <div className="space-y-2">
                         <Label>Fecha de vinculación</Label>
-                        <Input value={memberStartDate} onChange={e => setMemberStartDate(e.target.value)} placeholder="Ej: 2024-01" />
+                        <Input type="month" value={memberStartDate} onChange={e => setMemberStartDate(e.target.value)} />
                       </div>
                     </div>
                     <Button
