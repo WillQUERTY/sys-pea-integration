@@ -4,10 +4,10 @@ import { Atom, ExternalLink, ShieldCheck } from 'lucide-react'
 export function PublicFooter() {
   return (
     <footer className='border-t border-border/40 bg-muted/20 text-muted-foreground'>
-      <div className='mx-auto max-w-7xl px-4 py-12 sm:px-6 lg:px-8'>
-        <div className='grid grid-cols-1 gap-8 md:grid-cols-4'>
+      <div className='mx-auto max-w-7xl px-5 py-10 sm:px-6 sm:py-12 lg:px-8'>
+        <div className='grid grid-cols-2 gap-x-6 gap-y-8 md:grid-cols-4'>
           {/* Col 1: Identity */}
-          <div className='space-y-4 md:col-span-2'>
+          <div className='col-span-2 space-y-4'>
             <div className='flex items-center gap-3'>
               <div className='flex aspect-square size-8 items-center justify-center rounded-lg bg-primary text-primary-foreground shadow-xs font-bold'>
                 <Atom className='size-4.5' />
@@ -99,7 +99,7 @@ export function PublicFooter() {
           </div>
         </div>
 
-        <div className='mt-10 border-t border-border/40 pt-6 flex flex-col sm:flex-row items-center justify-between text-xs text-muted-foreground gap-3'>
+        <div className='mt-10 border-t border-border/40 pt-6 flex flex-col sm:flex-row items-center justify-between text-center sm:text-left text-xs text-muted-foreground gap-3'>
           <p>© {new Date().getFullYear()} Universidad Popular del Cesar — Todos los derechos reservados.</p>
           <p className='flex items-center gap-2'>
             <span>Datos Abiertos</span>

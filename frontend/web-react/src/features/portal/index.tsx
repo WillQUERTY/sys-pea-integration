@@ -68,11 +68,11 @@ function HeroStat({ label, value, loading }: { label: string; value?: number; lo
       {loading ? (
         <Skeleton className='h-10 w-20 bg-white/15' />
       ) : (
-        <span className='text-4xl lg:text-5xl font-extrabold text-white tabular-nums tracking-tight lg:min-w-[5.5rem]'>
+        <span className='text-3xl sm:text-4xl lg:text-5xl font-extrabold text-white tabular-nums tracking-tight lg:min-w-[5.5rem]'>
           <CountUp value={value ?? 0} />
         </span>
       )}
-      <span className='text-sm text-emerald-100/70 leading-snug mt-1 lg:mt-0'>{label}</span>
+      <span className='text-xs sm:text-sm text-emerald-100/70 leading-snug mt-1 lg:mt-0'>{label}</span>
     </div>
   )
 }
@@ -127,7 +127,7 @@ export function PublicPortal() {
       {/* ══════════════════════════════════════════════════════════════════
           HERO — Full-width emerald + knowledge graph
       ══════════════════════════════════════════════════════════════════ */}
-      <div className='relative overflow-hidden min-h-[520px] sm:min-h-[580px] flex flex-col justify-center'>
+      <div className='relative overflow-hidden lg:min-h-[580px] flex flex-col justify-center'>
         {/* Dark emerald background */}
         <div className='absolute inset-0 bg-gradient-to-br from-emerald-900 via-emerald-800 to-emerald-950' />
 
@@ -138,7 +138,7 @@ export function PublicPortal() {
 
         {/* Fade to page body — 5-stop eased gradient */}
         <div
-          className='absolute inset-x-0 bottom-0 h-56 pointer-events-none'
+          className='absolute inset-x-0 bottom-0 h-20 sm:h-36 lg:h-56 pointer-events-none'
           style={{
             background:
               'linear-gradient(to top, var(--background) 0%, color-mix(in oklch, var(--background) 92%, transparent) 18%, color-mix(in oklch, var(--background) 70%, transparent) 38%, color-mix(in oklch, var(--background) 35%, transparent) 58%, color-mix(in oklch, var(--background) 10%, transparent) 78%, transparent 100%)',
@@ -146,22 +146,22 @@ export function PublicPortal() {
         />
 
         {/* ── Hero content ── */}
-        <div className='relative mx-auto w-full max-w-7xl px-4 sm:px-6 lg:px-8 pt-16 pb-28 sm:pt-20 sm:pb-32'>
-          <div className='grid gap-12 lg:grid-cols-[minmax(0,1.5fr)_minmax(0,1fr)] lg:gap-16 lg:items-center'>
+        <div className='relative mx-auto w-full max-w-7xl px-5 sm:px-6 lg:px-8 pt-10 pb-24 sm:pt-16 sm:pb-28 lg:pt-20 lg:pb-32'>
+          <div className='grid gap-10 lg:grid-cols-[minmax(0,1.5fr)_minmax(0,1fr)] lg:gap-16 lg:items-center'>
 
             {/* Left: voice + search */}
-            <div>
-              <p className='flex items-center gap-3 text-xs font-semibold uppercase tracking-[0.22em] text-amber-300/90 mb-6'>
-                <span className='h-px w-8 bg-amber-300/70' />
-                Khemia · Universidad Popular del Cesar
+            <div className='min-w-0'>
+              <p className='flex items-center gap-3 text-[10px] sm:text-xs font-semibold uppercase tracking-[0.18em] sm:tracking-[0.22em] text-amber-300/90 mb-5 sm:mb-6'>
+                <span className='h-px w-6 sm:w-8 shrink-0 bg-amber-300/70' />
+                <span>Khemia · Universidad Popular del Cesar</span>
               </p>
 
-              <h1 className='text-4xl sm:text-5xl lg:text-6xl font-extrabold tracking-tight text-white leading-[1.08] mb-5'>
+              <h1 className='text-[2.15rem] sm:text-5xl lg:text-6xl font-extrabold tracking-tight text-white leading-[1.1] sm:leading-[1.08] mb-4 sm:mb-5 text-balance'>
                 Lo que investiga la UPC,{' '}
                 <span className='text-amber-400'>al alcance de todos.</span>
               </h1>
 
-              <p className='text-base sm:text-lg text-emerald-100/75 leading-relaxed mb-9 max-w-xl'>
+              <p className='text-[15px] sm:text-lg text-emerald-100/75 leading-relaxed mb-7 sm:mb-9 max-w-xl'>
                 Conoce a los grupos, las personas y los trabajos que hacen ciencia en la universidad,
                 con la categorización oficial de Minciencias a un clic.
               </p>
@@ -184,15 +184,15 @@ export function PublicPortal() {
                 </div>
                 <Button
                   type='submit'
-                  className='h-12 px-7 rounded-full font-semibold bg-amber-500 hover:bg-amber-400 text-amber-950 shadow-lg shadow-amber-500/30 border-0 transition-all duration-200'
+                  className='h-12 w-full sm:w-auto px-7 rounded-full font-semibold bg-amber-500 hover:bg-amber-400 text-amber-950 shadow-lg shadow-amber-500/30 border-0 transition-all duration-200'
                 >
                   <Compass className='mr-2 h-4 w-4' /> Explorar
                 </Button>
               </form>
 
               {/* Quick links — plain text, no pills */}
-              <div className='flex flex-wrap items-center gap-x-5 gap-y-2 text-sm text-emerald-100/80'>
-                <span className='text-emerald-100/50'>O entra directo a</span>
+              <div className='flex flex-wrap items-center gap-x-4 sm:gap-x-5 gap-y-2 text-sm text-emerald-100/80'>
+                <span className='w-full sm:w-auto text-emerald-100/50'>O entra directo a</span>
                 {[
                   { label: 'Grupos', to: '/groups' },
                   { label: 'Investigadores', to: '/researchers' },
@@ -211,7 +211,7 @@ export function PublicPortal() {
             </div>
 
             {/* Right: the numbers, living on the emerald itself */}
-            <div className='grid grid-cols-2 gap-x-6 gap-y-8 lg:grid-cols-1 lg:gap-0 lg:border-l lg:border-white/15 lg:pl-12'>
+            <div className='grid grid-cols-2 sm:grid-cols-4 gap-x-6 gap-y-6 border-t border-white/15 pt-7 lg:grid-cols-1 lg:gap-0 lg:border-t-0 lg:pt-0 lg:border-l lg:pl-12'>
               <HeroStat label='grupos de investigación' value={totalGroups} loading={statsQuery.isLoading} />
               <HeroStat label='investigadores' value={totalResearchers} loading={statsQuery.isLoading} />
               <HeroStat label='productos científicos' value={totalProducts} loading={statsQuery.isLoading} />
@@ -224,17 +224,17 @@ export function PublicPortal() {
       {/* ══════════════════════════════════════════════════════════════════
           BODY — Cards + Charts + Showcase
       ══════════════════════════════════════════════════════════════════ */}
-      <div className='mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 pb-16 space-y-14'>
+      <div className='mx-auto max-w-7xl px-5 sm:px-6 lg:px-8 pb-12 sm:pb-16 space-y-10 sm:space-y-14'>
 
         {/* Explore — navigation tiles (numbers already live in the hero) */}
-        <section className='space-y-6'>
+        <section className='space-y-5 sm:space-y-6'>
           <div className='max-w-xl'>
-            <h2 className='text-2xl font-bold tracking-tight text-foreground'>¿Por dónde quieres empezar?</h2>
+            <h2 className='text-xl sm:text-2xl font-bold tracking-tight text-foreground'>¿Por dónde quieres empezar?</h2>
             <p className='text-sm text-muted-foreground mt-1.5'>
               Cada puerta lleva a una parte distinta de la ciencia que se hace en la UPC.
             </p>
           </div>
-          <div className='grid gap-4 sm:grid-cols-2 lg:grid-cols-4 lg:pb-6 lg:[&>*:nth-child(even)]:translate-y-6'>
+          <div className='grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-4 lg:pb-6 lg:[&>*:nth-child(even)]:translate-y-6'>
             <DiscoveryCard
               title='Grupos de investigación'
               description='Las unidades que investigan en la universidad, con sus líneas de trabajo y su categoría Minciencias.'
@@ -286,9 +286,9 @@ export function PublicPortal() {
           {/* Histogram */}
           <Card className='col-span-1 lg:col-span-4 border-border/60 shadow-xs'>
             <CardHeader className='pb-3'>
-              <div className='flex items-center justify-between'>
-                <div>
-                  <div className='flex items-center gap-2'>
+              <div className='flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between'>
+                <div className='min-w-0'>
+                  <div className='flex flex-wrap items-center gap-2'>
                     <TrendingUp className='h-4 w-4 text-primary' />
                     <CardTitle className='text-base font-semibold'>Dinámica Temporal de Producción</CardTitle>
                     <Badge variant='secondary' className='text-[11px] font-normal'>Crecimiento Histórico</Badge>
@@ -297,7 +297,7 @@ export function PublicPortal() {
                     Distribución de publicaciones según el año de obtención declarado.
                   </CardDescription>
                 </div>
-                <div className='flex items-center gap-1.5 text-xs text-muted-foreground bg-muted/60 px-2.5 py-1 rounded-md'>
+                <div className='flex w-fit shrink-0 items-center gap-1.5 text-xs text-muted-foreground bg-muted/60 px-2.5 py-1 rounded-md'>
                   <BookOpen className='h-3.5 w-3.5 text-primary' />
                   <span className='font-semibold text-foreground'>{totalProducts.toLocaleString()}</span> obras
                 </div>
@@ -388,8 +388,8 @@ export function PublicPortal() {
 
         {/* Showcase: featured groups */}
         <div className='space-y-4'>
-          <div className='flex items-center justify-between'>
-            <div>
+          <div className='flex items-end justify-between gap-3'>
+            <div className='min-w-0'>
               <h3 className='text-lg font-bold tracking-tight text-foreground'>
                 Vitrina de Grupos de Investigación
               </h3>
@@ -397,7 +397,7 @@ export function PublicPortal() {
                 Acceso directo e interactivo a las fichas públicas de los grupos institucionales.
               </p>
             </div>
-            <Button variant='ghost' size='sm' asChild className='text-xs text-primary hover:text-primary'>
+            <Button variant='ghost' size='sm' asChild className='shrink-0 text-xs text-primary hover:text-primary'>
               <Link to='/groups'>
                 Ver todos <ChevronRight className='ml-1 h-3.5 w-3.5' />
               </Link>
@@ -505,11 +505,11 @@ export function PublicPortal() {
           <div className='absolute inset-0 opacity-25'>
             <KnowledgeGraph className='h-full w-full' />
           </div>
-          <div className='relative px-6 sm:px-10 py-8 flex flex-col md:flex-row md:items-center justify-between gap-6'>
+          <div className='relative px-5 sm:px-10 py-7 sm:py-8 flex flex-col md:flex-row md:items-center justify-between gap-5 sm:gap-6'>
             <div className='space-y-2 max-w-xl'>
-              <div className='flex items-center gap-2'>
-                <ShieldCheck className='h-5 w-5 text-amber-400' />
-                <h4 className='text-lg font-bold text-white'>Gestión y Validación Institucional</h4>
+              <div className='flex items-start sm:items-center gap-2'>
+                <ShieldCheck className='h-5 w-5 shrink-0 text-amber-400 mt-0.5 sm:mt-0' />
+                <h4 className='text-base sm:text-lg font-bold text-white'>Gestión y Validación Institucional</h4>
               </div>
               <p className='text-sm text-emerald-200/75 leading-relaxed'>
                 Área técnica para evaluadores y administradores: ingesta de GrupLAC/CvLAC, cola FIFO de validación,
@@ -518,7 +518,7 @@ export function PublicPortal() {
             </div>
             <Button
               asChild
-              className='shrink-0 bg-amber-500 hover:bg-amber-400 text-amber-950 font-semibold rounded-full px-7 shadow-lg shadow-amber-500/30 border-0'
+              className='w-full md:w-auto shrink-0 bg-amber-500 hover:bg-amber-400 text-amber-950 font-semibold rounded-full px-7 shadow-lg shadow-amber-500/30 border-0'
             >
               <Link to='/admin'>
                 <ShieldCheck className='mr-2 h-4 w-4' /> Ingresar a Gestión
@@ -551,17 +551,18 @@ function DiscoveryCard({
     <Link
       to={to}
       className={cn(
-        'group flex flex-col rounded-3xl border p-6 transition-all duration-300 hover:-translate-y-1',
+        'group flex flex-col rounded-2xl sm:rounded-3xl border p-4 sm:p-6 transition-all duration-300 hover:-translate-y-1',
         t.box
       )}
     >
-      <div className={cn('flex h-11 w-11 items-center justify-center rounded-2xl', t.icon)}>{icon}</div>
-      <h3 className='mt-5 text-lg font-bold tracking-tight text-foreground'>{title}</h3>
-      <p className='mt-2 text-sm text-muted-foreground leading-relaxed flex-1'>{description}</p>
-      {note && <p className='mt-3 text-xs font-medium text-foreground/70'>{note}</p>}
-      <span className='mt-5 inline-flex items-center text-sm font-semibold text-foreground'>
-        {label}
-        <ArrowRight className='ml-2 h-4 w-4 transition-transform group-hover:translate-x-1.5' />
+      <div className={cn('flex h-10 w-10 sm:h-11 sm:w-11 items-center justify-center rounded-xl sm:rounded-2xl', t.icon)}>{icon}</div>
+      <h3 className='mt-3 sm:mt-5 text-[15px] sm:text-lg font-bold tracking-tight leading-snug text-foreground'>{title}</h3>
+      <p className='hidden sm:block mt-2 text-sm text-muted-foreground leading-relaxed flex-1'>{description}</p>
+      {note && <p className='mt-1.5 sm:mt-3 text-[11px] sm:text-xs font-medium text-foreground/70'>{note}</p>}
+      <span className='mt-auto pt-3 sm:pt-5 inline-flex items-center text-xs sm:text-sm font-semibold text-foreground'>
+        <span className='hidden sm:inline'>{label}</span>
+        <span className='sm:hidden'>Entrar</span>
+        <ArrowRight className='ml-1.5 sm:ml-2 h-4 w-4 transition-transform group-hover:translate-x-1.5' />
       </span>
     </Link>
   )
