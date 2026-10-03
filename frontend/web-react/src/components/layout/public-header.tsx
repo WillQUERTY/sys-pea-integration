@@ -47,7 +47,7 @@ export function PublicHeader() {
           <div className='flex flex-col text-start leading-tight'>
             <div className='flex items-center gap-2'>
               <span className='font-extrabold tracking-tight text-base text-white'>Khemia</span>
-              <span className='rounded-full border border-white/25 bg-white/15 px-2 py-0.5 text-[10px] font-semibold text-white/90'>
+              <span className='hidden min-[400px]:inline rounded-full border border-white/25 bg-white/15 px-2 py-0.5 text-[10px] font-semibold text-white/90'>
                 Ciencia Abierta
               </span>
             </div>
@@ -58,7 +58,7 @@ export function PublicHeader() {
         </Link>
 
         {/* Desktop Nav */}
-        <nav className='hidden md:flex items-center gap-1 lg:gap-2'>
+        <nav className='hidden lg:flex items-center gap-1 xl:gap-2'>
           {navLinks.map(({ title, href, icon: Icon }) => {
             const isActive = href === '/' ? pathname === '/' : pathname.startsWith(href)
             return (
@@ -96,7 +96,7 @@ export function PublicHeader() {
           </Button>
 
           {/* Mobile Navigation Dropdown */}
-          <div className='md:hidden'>
+          <div className='lg:hidden'>
             <DropdownMenu modal={false}>
               <DropdownMenuTrigger asChild>
                 <Button size='icon' variant='ghost' className='size-9 text-white/85 hover:bg-white/10'>
