@@ -19,7 +19,7 @@ export function ProfileDropdown() {
           variant='outline'
           size='sm'
           className='h-8 gap-1.5 rounded-full px-2.5 text-xs font-medium border-border/80 hover:bg-muted/80'
-          title='Información Institucional PEA-i'
+          title='Información Institucional Khemia'
         >
           <GraduationCap className='h-3.5 w-3.5 text-primary' />
           <span className='font-bold text-foreground'>UPC</span>
@@ -34,7 +34,7 @@ export function ProfileDropdown() {
             </div>
             <div className='min-w-0 flex-1 leading-tight'>
               <div className='flex items-center gap-1.5'>
-                <p className='text-sm font-bold text-foreground'>PEA-i</p>
+                <p className='text-sm font-bold text-foreground'>Khemia</p>
                 <Badge variant='outline' className='text-[10px] border-primary/40 text-primary font-semibold py-0 px-1'>
                   v2.1
                 </Badge>

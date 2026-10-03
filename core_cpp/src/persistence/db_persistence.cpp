@@ -1,6 +1,6 @@
 // core_cpp/src/persistence/db_persistence.cpp
 // SQL Server persistence layer using native ODBC.
-// Supports all 16 tables of PEA-i master specification.
+// Supports all 16 tables of Khemia master specification.
 
 #include "persistence/db_persistence.h"
 #include "persistence/json_persistence.h"

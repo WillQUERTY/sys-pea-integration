@@ -1,6 +1,6 @@
 """
 clean_existing_dois.py
-Migración y saneamiento transaccional de DOIs y códigos externos para productos en SQL Server (PEA-i).
+Migración y saneamiento transaccional de DOIs y códigos externos para productos en SQL Server (Khemia).
 - Limpia prefijos como https://doi.org/, http://dx.doi.org/, doi:, %2F.
 - Mueve URLs que no son DOI (file://, drive.google.com, etc) al campo url si este estaba vacío.
 - Elimina basura accidentalmente extraída (Autores: ..., ISSN ..., Palabras:, etc) seteando doi = NULL.

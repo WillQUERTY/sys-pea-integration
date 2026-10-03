@@ -6,7 +6,7 @@ cur.execute("SELECT TABLE_NAME FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_TYPE='
 tables = [r[0] for r in cur.fetchall()]
 
 print("=================================================================")
-print("          PEA-i SQL SERVER DATABASE VERIFICATION REPORT          ")
+print("          Khemia SQL SERVER DATABASE VERIFICATION REPORT          ")
 print("=================================================================")
 total_all = 0
 for t in tables:

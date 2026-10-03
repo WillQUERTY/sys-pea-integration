@@ -70,7 +70,7 @@ export function Dashboard() {
                 Panel de Gestión Institucional
               </h1>
               <Badge variant='outline' className='text-xs font-normal border-primary/30 text-primary'>
-                PEA-i v2.1
+                Khemia v2.1
               </Badge>
             </div>
             <p className='mt-1 text-sm text-muted-foreground'>

@@ -30,7 +30,7 @@ export function AppSidebar() {
                 </div>
                 <div className='grid flex-1 text-start text-sm leading-tight'>
                   <div className='flex items-center gap-1.5'>
-                    <span className='truncate font-bold tracking-tight text-foreground'>PEA-i</span>
+                    <span className='truncate font-bold tracking-tight text-foreground'>Khemia</span>
                     <span className='rounded bg-primary/15 text-primary text-[10px] font-semibold px-1 py-0.5 leading-none'>
                       Abierto
                     </span>

@@ -13,7 +13,7 @@ export function PublicFooter() {
                 <Atom className='size-4.5' />
               </div>
               <div>
-                <span className='font-bold text-foreground tracking-tight text-base'>PEA-i</span>
+                <span className='font-bold text-foreground tracking-tight text-base'>Khemia</span>
                 <span className='ms-2 text-xs font-medium text-muted-foreground'>
                   Universidad Popular del Cesar
                 </span>
