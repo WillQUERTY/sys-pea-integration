@@ -1,5 +1,6 @@
 import { Link } from '@tanstack/react-router'
-import { Atom, ExternalLink, ShieldCheck } from 'lucide-react'
+import { ExternalLink, ShieldCheck } from 'lucide-react'
+import { KhemiaLogo } from '@/assets/khemia-logo'
 
 export function PublicFooter() {
   return (
@@ -9,9 +10,7 @@ export function PublicFooter() {
           {/* Col 1: Identity */}
           <div className='col-span-2 space-y-4'>
             <div className='flex items-center gap-3'>
-              <div className='flex aspect-square size-8 items-center justify-center rounded-lg bg-primary text-primary-foreground shadow-xs font-bold'>
-                <Atom className='size-4.5' />
-              </div>
+              <KhemiaLogo className='h-9 w-auto shrink-0' />
               <div>
                 <span className='font-bold text-foreground tracking-tight text-base'>Khemia</span>
                 <span className='ms-2 text-xs font-medium text-muted-foreground'>

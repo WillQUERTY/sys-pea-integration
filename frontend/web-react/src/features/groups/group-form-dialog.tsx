@@ -3,6 +3,8 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { toast } from 'sonner'
 import { createGroup, updateGroup, getGroupMembers } from '@/lib/api'
 import type { Group } from '@/lib/types'
+import { GROUP_CLASSIFICATIONS, GRAND_AREAS_OCDE, DEPARTMENTS } from '@/lib/catalogs'
+import { CatalogSelect, CatalogCombobox } from '@/components/catalog-field'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -155,15 +157,12 @@ export function GroupFormDialog({ open, onOpenChange, group }: Props) {
                   onChange={(e) => set({ acronym: e.target.value })}
                 />
               </div>
-              <div className='grid gap-2'>
-                <Label htmlFor='classification'>Clasificación</Label>
-                <Input
-                  id='classification'
-                  value={formData.classification ?? ''}
-                  onChange={(e) => set({ classification: e.target.value })}
-                  placeholder='Ej: A1, A, B, C'
-                />
-              </div>
+              <CatalogSelect
+                label='Clasificación'
+                options={GROUP_CLASSIFICATIONS}
+                value={formData.classification ?? ''}
+                onChange={(v) => set({ classification: v })}
+              />
             </div>
 
             <div className='grid gap-2'>
@@ -184,14 +183,13 @@ export function GroupFormDialog({ open, onOpenChange, group }: Props) {
                   onChange={(e) => set({ city: e.target.value })}
                 />
               </div>
-              <div className='grid gap-2'>
-                <Label htmlFor='department'>Departamento</Label>
-                <Input
-                  id='department'
-                  value={formData.department ?? ''}
-                  onChange={(e) => set({ department: e.target.value })}
-                />
-              </div>
+              <CatalogCombobox
+                label='Departamento'
+                options={DEPARTMENTS}
+                value={formData.department ?? ''}
+                onChange={(v) => set({ department: v })}
+                placeholder='Ej: Cesar'
+              />
             </div>
 
             <div className='grid grid-cols-2 gap-4'>
@@ -220,19 +218,18 @@ export function GroupFormDialog({ open, onOpenChange, group }: Props) {
                 <Label htmlFor='declared_creation_date'>Año/Mes de Formación</Label>
                 <Input
                   id='declared_creation_date'
+                  type='month'
                   value={formData.declared_creation_date ?? ''}
                   onChange={(e) => set({ declared_creation_date: e.target.value })}
-                  placeholder='Ej: 2010-03'
                 />
               </div>
-              <div className='grid gap-2'>
-                <Label htmlFor='knowledge_area'>Área de Conocimiento</Label>
-                <Input
-                  id='knowledge_area'
-                  value={formData.knowledge_area ?? ''}
-                  onChange={(e) => set({ knowledge_area: e.target.value })}
-                />
-              </div>
+              <CatalogCombobox
+                label='Área de Conocimiento (OCDE)'
+                options={GRAND_AREAS_OCDE}
+                value={formData.knowledge_area ?? ''}
+                onChange={(v) => set({ knowledge_area: v })}
+                placeholder='Ej: Ingeniería y Tecnología'
+              />
               <div className='grid gap-2'>
                 <Label htmlFor='knowledge_subarea'>Subárea</Label>
                 <Input
