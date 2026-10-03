@@ -29,7 +29,7 @@ import {
   groupReportPdfUrl, getProductCatalogs
 } from '@/lib/api'
 import type { Researcher } from '@/lib/types'
-import type { Group, WorkPlan, Project } from '@/lib/types'
+import type { Group, WorkPlan, Project, Product } from '@/lib/types'
 import { parseMincienciasClassification } from '@/lib/utils'
 
 import { Header } from '@/components/layout/header'
@@ -56,6 +56,16 @@ import {
 
 import { DataTable } from '@/components/data-table'
 import { isEndorsed, EndorsedBadge } from '@/features/products/endorsed'
+
+function Field({ label, value, mono = false }: { label: string; value?: React.ReactNode; mono?: boolean }) {
+  if (!value) return null
+  return (
+    <div className='flex flex-col gap-1.5'>
+      <span className='text-xs font-semibold text-muted-foreground uppercase tracking-wider'>{label}</span>
+      <span className={`text-sm text-foreground leading-relaxed ${mono ? 'font-mono' : ''}`}>{value}</span>
+    </div>
+  )
+}
 
 export function ValidationBadge({ status }: { status?: string | null }) {
   if (status === 'valid') {
@@ -499,14 +509,16 @@ export function GroupDetail({ isAdmin = false }: { isAdmin?: boolean }) {
                   <FileDown className='mr-2 h-4 w-4 text-primary' />
                   Informe PDF
                 </Button>
-                <Button
-                  onClick={handleSubmit}
-                  disabled={mutation.isPending}
-                  className='w-full sm:w-auto rounded-xl shadow-md'
-                >
-                  <Save className='mr-2 h-4 w-4' />
-                  {mutation.isPending ? 'Guardando...' : 'Guardar Cambios'}
-                </Button>
+                {isAdmin && (
+                  <Button
+                    onClick={handleSubmit}
+                    disabled={mutation.isPending}
+                    className='w-full sm:w-auto rounded-xl shadow-md'
+                  >
+                    <Save className='mr-2 h-4 w-4' />
+                    {mutation.isPending ? 'Guardando...' : 'Guardar Cambios'}
+                  </Button>
+                )}
               </div>
             </div>
           </div>
@@ -726,7 +738,8 @@ export function GroupDetail({ isAdmin = false }: { isAdmin?: boolean }) {
           </TabsList>
 
           <TabsContent value="perfil" className="focus-visible:outline-none">
-            <form onSubmit={handleSubmit} className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            {isAdmin ? (
+              <form onSubmit={handleSubmit} className="grid grid-cols-1 md:grid-cols-2 gap-6">
               
               {/* Información Básica */}
               <div className="space-y-6">
@@ -889,11 +902,49 @@ export function GroupDetail({ isAdmin = false }: { isAdmin?: boolean }) {
               </div>
               
             </form>
+            ) : (
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div className="space-y-6">
+                  <div className="bg-card border border-border/50 rounded-2xl p-6 shadow-sm space-y-6">
+                    <div className='flex items-center gap-2 mb-2'>
+                      <div className='p-2 bg-blue-500/10 rounded-lg'>
+                        <GroupIcon className='h-4 w-4 text-blue-500' />
+                      </div>
+                      <h3 className="font-semibold text-lg">Información Básica</h3>
+                    </div>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+                      <Field label="Nombre del Grupo" value={group.name} />
+                      <Field label="Sigla" value={group.acronym} />
+                      <Field label="Código GrupLAC" value={group.external_code} mono />
+                      <Field label="Institución" value={group.institution} />
+                      <Field label="Ciudad / Depto" value={[group.city, group.department].filter(Boolean).join(' / ')} />
+                      <Field label="Página Web" value={group.website} />
+                      <Field label="Año / Mes de Formación" value={group.declared_creation_date} />
+                      <Field label="Área de Conocimiento" value={group.knowledge_area} />
+                    </div>
+                  </div>
+                </div>
+
+                <div className="bg-card border border-border/50 rounded-2xl p-6 shadow-sm space-y-6">
+                  <div className='flex items-center gap-2 mb-2'>
+                    <div className='p-2 bg-purple-500/10 rounded-lg'>
+                      <Trophy className='h-4 w-4 text-purple-500' />
+                    </div>
+                    <h3 className="font-semibold text-lg">Misión y Visión</h3>
+                  </div>
+                  <div className="space-y-6">
+                    <Field label="Misión" value={group.mission} />
+                    <Field label="Visión" value={group.vision} />
+                  </div>
+                </div>
+              </div>
+            )}
           </TabsContent>
 
           <TabsContent value="integrantes" className="focus-visible:outline-none bg-card border border-border/50 rounded-2xl p-6 shadow-sm">
             <div className="flex justify-between items-center mb-4">
               <h3 className="font-semibold text-lg">Investigadores vinculados</h3>
+              {isAdmin && (
               <Dialog open={memberOpen} onOpenChange={setMemberOpen}>
                 <DialogTrigger asChild>
                   <Button size="sm"><UserPlus className="w-4 h-4 mr-2"/> Vincular Investigador</Button>
@@ -954,15 +1005,16 @@ export function GroupDetail({ isAdmin = false }: { isAdmin?: boolean }) {
                   </div>
                 </DialogContent>
               </Dialog>
+              )}
             </div>
             <DataTable
               columns={[
                 {
                   key: 'name',
                   header: 'Nombre',
-                  searchable: (r) => `${r.first_names} ${r.last_names}`,
-                  cell: (r) => (
-                    <Link to="/researchers/$id" params={{ id: String(r.id) }} className="font-medium text-primary hover:underline">
+                  searchable: (r: Researcher) => `${r.first_names} ${r.last_names}`,
+                  cell: (r: Researcher) => (
+                    <Link to={isAdmin ? '/admin/researchers/$id' : '/researchers/$id'} params={{ id: String(r.id) }} className="font-medium text-primary hover:underline">
                       {r.first_names} {r.last_names}
                     </Link>
                   )
@@ -970,29 +1022,34 @@ export function GroupDetail({ isAdmin = false }: { isAdmin?: boolean }) {
                 {
                   key: 'orcid',
                   header: 'ORCID',
-                  cell: (r) => <span className='text-muted-foreground font-mono text-xs'>{r.orcid || '-'}</span>
+                  cell: (r: Researcher) => <span className='text-muted-foreground font-mono text-xs'>{r.orcid || '-'}</span>
                 },
                 {
                   key: 'role',
-                  header: 'Rol',
-                  cell: (r) => {
+                  header: 'Rol y Periodo',
+                  cell: (r: Researcher) => {
                     const ms = (memberships ?? []).find((m) => m.researcher_id === r.id)
-                    return ms ? (
-                      <Badge variant="secondary">
-                        {ms.role}{ms.start_date ? ` · ${ms.start_date}` : ''}
-                      </Badge>
-                    ) : '-'
+                    if (!ms) return '-'
+                    const period = ms.start_date
+                      ? `${ms.start_date} – ${ms.is_current ? 'Actual' : (ms.end_date || '')}`
+                      : ''
+                    return (
+                      <div className="flex flex-col gap-1">
+                        <span className="font-medium">{ms.role}</span>
+                        {period && <span className="text-xs text-muted-foreground">{period}</span>}
+                      </div>
+                    )
                   }
                 },
                 {
                   key: 'education',
                   header: 'Formación',
-                  cell: (r) => r.highest_education_level ? <Badge variant="outline">{r.highest_education_level}</Badge> : '-'
+                  cell: (r: Researcher) => r.highest_education_level ? <Badge variant="outline">{r.highest_education_level}</Badge> : '-'
                 },
-                {
+                isAdmin ? {
                   key: 'actions',
                   header: '',
-                  cell: (r) => (
+                  cell: (r: Researcher) => (
                     <div className="flex items-center gap-1">
                       <Button variant="ghost" size="icon" title="Editar membresía" onClick={() => openEditMember(r)}>
                         <Pencil className="w-4 h-4" />
@@ -1002,8 +1059,8 @@ export function GroupDetail({ isAdmin = false }: { isAdmin?: boolean }) {
                       </Button>
                     </div>
                   )
-                }
-              ]}
+                } : null
+              ].filter(Boolean) as any}
               data={members ?? []}
               loading={isLoadingMembers}
               rowKey={(r) => r.id!}
@@ -1050,6 +1107,7 @@ export function GroupDetail({ isAdmin = false }: { isAdmin?: boolean }) {
           <TabsContent value="productos" className="focus-visible:outline-none bg-card border border-border/50 rounded-2xl p-6 shadow-sm">
             <div className="flex justify-between items-center mb-4">
               <h3 className="font-semibold text-lg">Productos del Grupo</h3>
+              {isAdmin && (
               <Dialog open={productOpen} onOpenChange={setProductOpen}>
                 <DialogTrigger asChild>
                   <Button size="sm"><Plus className="w-4 h-4 mr-2"/> Vincular Producto</Button>
@@ -1102,18 +1160,19 @@ export function GroupDetail({ isAdmin = false }: { isAdmin?: boolean }) {
                   </div>
                 </DialogContent>
               </Dialog>
+              )}
             </div>
             <DataTable
               columns={[
                 {
                   key: 'title',
                   header: 'Título del Producto',
-                  searchable: (p) => p.title,
+                  searchable: (p: Product) => p.title,
                   className: 'max-w-[400px]',
-                  cell: (p) => (
+                  cell: (p: Product) => (
                     <div className='flex items-center gap-2'>
                       <Link
-                        to='/products/$id'
+                        to={isAdmin ? '/admin/products/$id' : '/products/$id'}
                         params={{ id: String(p.id) }}
                         className='block truncate font-medium text-sm text-primary hover:underline'
                       >
@@ -1126,12 +1185,12 @@ export function GroupDetail({ isAdmin = false }: { isAdmin?: boolean }) {
                 {
                   key: 'year',
                   header: 'Año',
-                  cell: (p) => <span className='text-muted-foreground'>{p.year ?? (String(p.publication_date ?? '').slice(0, 4) || '-')}</span>
+                  cell: (p: Product) => <span className='text-muted-foreground'>{p.year ?? (String(p.publication_date ?? '').slice(0, 4) || '-')}</span>
                 },
                 {
                   key: 'subtype',
                   header: 'Tipología 2024',
-                  cell: (p) => {
+                  cell: (p: Product) => {
                     const s = p.subtype_id ? subtypeById.get(p.subtype_id) : undefined
                     return s ? (
                       <Badge variant='outline' className='font-mono text-xs' title={s.name}>
@@ -1145,18 +1204,18 @@ export function GroupDetail({ isAdmin = false }: { isAdmin?: boolean }) {
                 {
                   key: 'status',
                   header: 'Estado',
-                  cell: (p) => <ValidationBadge status={p.validation_status} />
+                  cell: (p: Product) => <ValidationBadge status={p.validation_status} />
                 },
-                {
+                isAdmin ? {
                   key: 'actions',
                   header: '',
-                  cell: (p) => (
+                  cell: (p: Product) => (
                     <Button variant="ghost" size="icon" onClick={() => unlinkProductMutation.mutate(p.id!)}>
                       <Trash2 className="w-4 h-4 text-red-500" />
                     </Button>
                   )
-                }
-              ]}
+                } : null
+              ].filter(Boolean) as any}
               data={products ?? []}
               loading={isLoadingProducts}
               rowKey={(p) => p.id!}
