@@ -6,11 +6,11 @@ import {
   Lightbulb,
   ClipboardCheck,
   Upload,
-  Atom,
   History,
   Cpu,
   Globe,
 } from 'lucide-react'
+import { KhemiaLogo } from '@/assets/khemia-logo'
 import { type SidebarData } from '../types'
 
 export const sidebarData: SidebarData = {
@@ -22,7 +22,7 @@ export const sidebarData: SidebarData = {
   teams: [
     {
       name: 'Khemia',
-      logo: Atom,
+      logo: KhemiaLogo,
       plan: 'Universidad Popular del Cesar',
     },
   ],
