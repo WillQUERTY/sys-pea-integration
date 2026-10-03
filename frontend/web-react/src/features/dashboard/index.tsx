@@ -32,6 +32,7 @@ import { Main } from '@/components/layout/main'
 import { ProfileDropdown } from '@/components/profile-dropdown'
 import { Search } from '@/components/search'
 import { ThemeSwitch } from '@/components/theme-switch'
+import { KhemiaLogo } from '@/assets/khemia-logo'
 
 export function Dashboard() {
   const statsQuery = useQuery({ queryKey: ['dashboard-stats'], queryFn: getDashboardStats })
@@ -64,18 +65,23 @@ export function Dashboard() {
       <Main className='space-y-6 pb-12'>
         {/* Encabezado del Panel de Gestión */}
         <div className='flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between border-b pb-4'>
-          <div>
-            <div className='flex items-center gap-2'>
-              <h1 className='text-2xl font-bold tracking-tight sm:text-3xl text-foreground'>
-                Panel de Gestión Institucional
-              </h1>
-              <Badge variant='outline' className='text-xs font-normal border-primary/30 text-primary'>
-                Khemia v2.1
-              </Badge>
+          <div className='flex items-center gap-3.5'>
+            <div className='flex aspect-square size-12 items-center justify-center rounded-2xl bg-emerald-950/15 border border-primary/20 shadow-xs shrink-0'>
+              <KhemiaLogo className='h-9 w-auto drop-shadow-xs' />
             </div>
-            <p className='mt-1 text-sm text-muted-foreground'>
-              Monitoreo y administración del ciclo de vida de producción científica, validación técnica y persistencia.
-            </p>
+            <div>
+              <div className='flex items-center gap-2'>
+                <h1 className='text-2xl font-bold tracking-tight sm:text-3xl text-foreground'>
+                  Panel de Gestión Institucional
+                </h1>
+                <Badge variant='outline' className='text-xs font-normal border-primary/30 text-primary'>
+                  Khemia v2.1
+                </Badge>
+              </div>
+              <p className='mt-1 text-sm text-muted-foreground'>
+                Monitoreo y administración del ciclo de vida de producción científica, validación técnica y persistencia.
+              </p>
+            </div>
           </div>
 
           <div className='flex items-center gap-2.5'>

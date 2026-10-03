@@ -1,5 +1,6 @@
 import { Link } from '@tanstack/react-router'
-import { Atom, GraduationCap } from 'lucide-react'
+import { GraduationCap } from 'lucide-react'
+import { KhemiaLogo } from '@/assets/khemia-logo'
 import { useLayout } from '@/context/layout-provider'
 import {
   Sidebar,
@@ -25,8 +26,8 @@ export function AppSidebar() {
           <SidebarMenuItem>
             <SidebarMenuButton size='lg' asChild className='hover:bg-sidebar-accent/50'>
               <Link to='/'>
-                <div className='flex aspect-square size-8 items-center justify-center rounded-lg bg-primary text-primary-foreground font-bold shadow-xs'>
-                  <Atom className='size-4.5 animate-pulse' />
+                <div className='flex aspect-square size-8 items-center justify-center rounded-lg bg-emerald-950/20 text-primary font-bold shadow-xs border border-sidebar-border/40'>
+                  <KhemiaLogo className='h-6 w-auto' />
                 </div>
                 <div className='grid flex-1 text-start text-sm leading-tight'>
                   <div className='flex items-center gap-1.5'>
