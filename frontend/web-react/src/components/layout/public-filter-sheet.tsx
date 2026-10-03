@@ -70,9 +70,9 @@ export function PublicFilterSheet({
 
       {/* ── Filter Sheet ── */}
       <Sheet open={open} onOpenChange={setOpen}>
-        <SheetContent className='flex flex-col gap-0 border-l-0 bg-muted/40 p-0 shadow-2xl sm:max-w-sm'>
+        <SheetContent className='flex flex-col gap-0 border-l bg-background p-0 shadow-2xl sm:max-w-sm [&>button]:inset-e-4 [&>button]:top-4 [&>button]:flex [&>button]:size-8 [&>button]:items-center [&>button]:justify-center [&>button]:rounded-full [&>button]:opacity-100 [&>button]:hover:bg-muted'>
           {/* Header */}
-          <SheetHeader className='flex flex-row items-center justify-between border-b border-border/50 bg-background/70 px-6 py-4 backdrop-blur-sm'>
+          <SheetHeader className='flex h-16 shrink-0 flex-row items-center justify-between border-b border-border bg-background py-0 ps-6 pe-14'>
             <div className='flex items-center gap-2.5'>
               <SlidersHorizontal className='h-4.5 w-4.5 text-primary' />
               <SheetTitle className='text-lg font-bold tracking-tight'>Filtros</SheetTitle>
@@ -86,7 +86,7 @@ export function PublicFilterSheet({
               <Button
                 variant='ghost'
                 size='icon'
-                className='mr-8 h-8 w-8 text-muted-foreground hover:text-foreground'
+                className='h-8 w-8 text-muted-foreground hover:text-foreground'
                 onClick={clearAll}
                 title='Restablecer filtros'
               >
@@ -96,7 +96,7 @@ export function PublicFilterSheet({
           </SheetHeader>
 
           {/* Body */}
-          <div className='flex-1 overflow-y-auto px-5 py-6 space-y-7'>
+          <div className='flex-1 space-y-7 overflow-y-auto bg-muted px-5 py-6'>
             {filters.map((f) => {
               const currentValue = filterValues[f.key] ?? f.defaultValue ?? 'all'
               // Select para listas largas, lista seleccionable para pocas opciones
@@ -140,7 +140,7 @@ export function PublicFilterSheet({
                               'flex cursor-pointer items-center gap-3 rounded-xl border px-3.5 py-2.5 text-sm transition-colors',
                               selected
                                 ? 'border-primary/40 bg-background font-medium text-foreground shadow-2xs'
-                                : 'border-transparent text-muted-foreground hover:bg-background/80 hover:text-foreground'
+                                : 'border-transparent text-muted-foreground hover:bg-background hover:text-foreground'
                             )}
                           >
                             <RadioGroupItem value={opt.value} id={id} />
@@ -159,7 +159,7 @@ export function PublicFilterSheet({
           </div>
 
           {/* Footer */}
-          <div className='flex items-center gap-3 border-t border-border/50 bg-background/70 px-5 py-4 backdrop-blur-sm'>
+          <div className='flex items-center gap-3 border-t border-border bg-background px-5 py-4'>
             <Button
               variant='outline'
               className='h-11 flex-1 rounded-xl'
