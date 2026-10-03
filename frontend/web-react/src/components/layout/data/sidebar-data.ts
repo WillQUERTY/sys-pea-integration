@@ -21,7 +21,7 @@ export const sidebarData: SidebarData = {
   },
   teams: [
     {
-      name: 'PEA-i',
+      name: 'Khemia',
       logo: Atom,
       plan: 'Universidad Popular del Cesar',
     },

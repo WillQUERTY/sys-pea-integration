@@ -25,7 +25,7 @@ export function AppTitle() {
               onClick={() => setOpenMobile(false)}
               className='grid flex-1 text-start text-sm leading-tight'
             >
-              <span className='truncate font-bold'>PEA-i Gestión</span>
+              <span className='truncate font-bold'>Khemia Gestión</span>
               <span className='truncate text-xs text-muted-foreground'>Univ. Popular del Cesar</span>
             </Link>
             <ToggleSidebar />

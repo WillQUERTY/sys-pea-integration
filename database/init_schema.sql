@@ -1,7 +1,7 @@
 -- =====================================================================
--- PEA-i Database Schema (SQL Server)
+-- Khemia Database Schema (SQL Server)
 -- Script de inicializacion y definicion del modelo de datos completo
--- Especificacion Integral PEA-i (Taller 2 Estructura de Datos)
+-- Especificacion Integral Khemia (Taller 2 Estructura de Datos)
 -- =====================================================================
 
 USE peai;

@@ -240,7 +240,7 @@ export function Groups({ isAdmin = false }: { isAdmin?: boolean }) {
       {!isAdmin && (
         <PublicHero
           title='Grupos de Investigación'
-          subtitle='Grupos de investigación registrados en PEA-i.'
+          subtitle='Grupos de investigación registrados en Khemia.'
           icon={Users}
           searchPlaceholder='Buscar por nombre, sigla o código…'
           searchValue={search}

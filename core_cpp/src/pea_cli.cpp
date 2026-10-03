@@ -1,5 +1,5 @@
 // core_cpp/src/pea_cli.cpp
-// Command-line interface for the PEA-i core (solución C/C++ — decisión D-01).
+// Command-line interface for the Khemia core (solución C/C++ — decisión D-01).
 //
 // Usage (sección 34 de la especificación):
 //   pea_cli summary                          Resumen en tablas y números
@@ -30,7 +30,7 @@ using namespace peai;
 
 static void usage() {
     std::cout
-        << "PEA-i CLI  (Taller 2 - Estructura de Datos)\n"
+        << "Khemia CLI  (Taller 2 - Estructura de Datos)\n"
         << "=============================================\n\n"
         << "Usage: pea_cli <command> [subcommand] [args...]\n\n"
         << "Resumen:\n"
@@ -155,7 +155,7 @@ static int dispatch(int argc, char* argv[]);
 
 // ---- Interactive REPL ----
 static int interactive_mode() {
-    std::cout << "PEA-i CLI  (modo interactivo)\n";
+    std::cout << "Khemia CLI  (modo interactivo)\n";
     std::cout << "Escribe comandos como: groups add G01 \"Grupo Alpha\"\n";
     std::cout << "Escribe 'exit' o 'quit' para salir.\n\n";
 
