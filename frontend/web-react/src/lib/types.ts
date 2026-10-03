@@ -1,4 +1,4 @@
-// PEA-i domain types — mirror of backend/app/models.py
+// Khemia domain types — mirror of backend/app/models.py
 
 export interface Group {
   id?: number

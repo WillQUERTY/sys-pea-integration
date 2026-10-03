@@ -11,11 +11,11 @@ async def lifespan(app: FastAPI):
         ok = repository.initialize(repository.InitMode.Database, db_conn)
         repository._active_connection_string = db_conn
         if ok:
-            print("[PEA-i Startup] Memoria C++ reconstruida exitosamente desde SQL Server.")
+            print("[Khemia Startup] Memoria C++ reconstruida exitosamente desde SQL Server.")
         else:
-            print("[PEA-i Startup] repository.initialize retorno False.")
+            print("[Khemia Startup] repository.initialize retorno False.")
     except Exception as e:
-        print(f"[PEA-i Startup] Aviso: No se pudo auto-inicializar BD ({e}).")
+        print(f"[Khemia Startup] Aviso: No se pudo auto-inicializar BD ({e}).")
     yield
 
 tags_metadata = [
@@ -39,10 +39,10 @@ tags_metadata = [
 
 app = FastAPI(
     lifespan=lifespan,
-    title="PEA-i Backend Core API",
+    title="Khemia Backend Core API",
     version="1.0.0",
     description="""
-**PEA-i (Proyecto Estratégico de Arquitectura)** 🚀
+**Khemia (Proyecto Estratégico de Arquitectura)** 🚀
 
 Esta API sirve de puente interactivo con un núcleo de alto rendimiento escrito en **C++**. 
 Utiliza `Pybind11` para conectar directamente Python con estructuras de datos en memoria (Multilistas).

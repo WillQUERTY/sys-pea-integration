@@ -88,7 +88,7 @@ def _encabezado_pie(canvas, doc):
     canvas.rect(0, A4[1] - 1.1 * cm, ancho, 1.1 * cm, stroke=0, fill=1)
     canvas.setFillColor(colors.white)
     canvas.setFont(_FONT_BOLD, 8)
-    canvas.drawString(2 * cm, A4[1] - 0.75 * cm, "PEA-i  ·  Informe de grupo de investigación")
+    canvas.drawString(2 * cm, A4[1] - 0.75 * cm, "Khemia  ·  Informe de grupo de investigación")
     canvas.setFont(_FONT, 8)
     canvas.drawRightString(ancho - 2 * cm, A4[1] - 0.75 * cm, "Scienti / GrupLAC")
     canvas.setFillColor(_GRIS)
@@ -236,10 +236,10 @@ def build_group_report_pdf(group_id: int, start_year=None, end_year=None,
         leftMargin=2 * cm, rightMargin=2 * cm,
         topMargin=2 * cm, bottomMargin=2 * cm,
         title=f"Informe {grupo.name}",
-        author="PEA-i",
+        author="Khemia",
     )
 
-    sub = (f"Generado el {datetime.now():%d/%m/%Y %H:%M} · PEA-i (Taller 2 · "
+    sub = (f"Generado el {datetime.now():%d/%m/%Y %H:%M} · Khemia (Taller 2 · "
            f"Estructura de Datos · Universidad Popular del Cesar)")
     if window_applied:
         rango = f"{eff_start if eff_start is not None else '…'}–{eff_end if eff_end is not None else '…'}"
