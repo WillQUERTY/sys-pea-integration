@@ -8,9 +8,10 @@ import {
   ClipboardList,
   UserRound,
   FileText,
+  Users,
 } from 'lucide-react'
 
-import { getProject, getResearcher } from '@/lib/api'
+import { getProject, getResearcher, getProjectGroups } from '@/lib/api'
 
 import { Header } from '@/components/layout/header'
 import { Main } from '@/components/layout/main'
@@ -54,6 +55,12 @@ export function ProjectDetail({ isAdmin = false }: { isAdmin?: boolean }) {
     queryKey: ['researcher', piId],
     queryFn: () => getResearcher(piId!),
     enabled: piId != null,
+  })
+
+  // Grupos vinculados al proyecto (lookup inverso de la multilista)
+  const { data: linkedGroups, isLoading: isLoadingGroups } = useQuery({
+    queryKey: ['projects', projectId, 'groups'],
+    queryFn: () => getProjectGroups(projectId),
   })
 
   // Estado del diálogo "Editar ficha" (reusa el modal de la tabla admin)
@@ -191,6 +198,42 @@ export function ProjectDetail({ isAdmin = false }: { isAdmin?: boolean }) {
               </div>
             ) : (
               <p className='text-sm text-muted-foreground'>Investigador no disponible.</p>
+            )}
+          </div>
+
+          {/* Grupos vinculados */}
+          <div className='rounded-2xl border border-border/50 bg-card p-6 shadow-sm lg:col-span-2'>
+            <div className='mb-5 flex items-center gap-2'>
+              <div className='rounded-lg bg-emerald-500/10 p-2'>
+                <Users className='h-4 w-4 text-emerald-500' />
+              </div>
+              <h3 className='text-lg font-semibold'>Grupos Vinculados</h3>
+            </div>
+            {isLoadingGroups ? (
+              <Skeleton className='h-6 w-64' />
+            ) : (linkedGroups ?? []).length === 0 ? (
+              <p className='text-sm text-muted-foreground'>
+                Este proyecto no está vinculado a ningún grupo.
+              </p>
+            ) : (
+              <ul className='grid grid-cols-1 gap-3 sm:grid-cols-2'>
+                {linkedGroups!.map((g) => (
+                  <li key={g.id}>
+                    <Link
+                      to={isAdmin ? '/admin/groups/$id' : '/groups/$id'}
+                      params={{ id: String(g.id) }}
+                      className='flex items-center gap-3 rounded-xl border border-border/50 p-3 transition-colors hover:border-primary/40 hover:bg-muted/40'
+                    >
+                      <div className='min-w-0'>
+                        <p className='truncate text-sm font-medium text-primary hover:underline'>{g.name}</p>
+                        {g.acronym && (
+                          <p className='font-mono text-xs text-muted-foreground'>[{g.acronym}]</p>
+                        )}
+                      </div>
+                    </Link>
+                  </li>
+                ))}
+              </ul>
             )}
           </div>
 

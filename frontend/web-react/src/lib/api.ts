@@ -59,6 +59,8 @@ export interface GroupMembership {
   role: string
   start_date: string
   end_date: string
+  /** true = vinculación vigente (sin fecha de fin, convención GrupLAC) */
+  is_current: boolean
   status: string
   researcher_id: number | null
   researcher_name: string
@@ -108,6 +110,10 @@ export async function listProjects(params?: {
 }
 export async function getProject(id: number) {
   const { data } = await api.get<Project>(`/projects/${id}`)
+  return data
+}
+export async function getProjectGroups(id: number) {
+  const { data } = await api.get<Group[]>(`/projects/${id}/groups`)
   return data
 }
 export async function createProject(project: Partial<Project>) {
