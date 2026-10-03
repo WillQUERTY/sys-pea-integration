@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useEffect } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { Link, useNavigate } from '@tanstack/react-router'
 import {
@@ -43,18 +43,36 @@ import { Skeleton } from '@/components/ui/skeleton'
 import { KnowledgeGraph } from '@/components/layout/knowledge-graph'
 import { cn } from '@/lib/utils'
 
-// ─── Stat pill ────────────────────────────────────────────────────────────────
-function HeroStat({ label, value, loading }: { label: string; value?: number | string; loading: boolean }) {
+// ─── Animated counter ─────────────────────────────────────────────────────────
+function CountUp({ value, duration = 1100 }: { value: number; duration?: number }) {
+  const [display, setDisplay] = useState(0)
+  useEffect(() => {
+    let raf = 0
+    const start = performance.now()
+    const tick = (now: number) => {
+      const t = Math.min((now - start) / duration, 1)
+      const eased = 1 - Math.pow(1 - t, 3)
+      setDisplay(Math.round(value * eased))
+      if (t < 1) raf = requestAnimationFrame(tick)
+    }
+    raf = requestAnimationFrame(tick)
+    return () => cancelAnimationFrame(raf)
+  }, [value, duration])
+  return <>{display.toLocaleString()}</>
+}
+
+// ─── Hero stat (sits directly on the emerald, no box) ─────────────────────────
+function HeroStat({ label, value, loading }: { label: string; value?: number; loading: boolean }) {
   return (
-    <div className='flex flex-col items-center text-center'>
+    <div className='flex flex-col lg:flex-row lg:items-baseline lg:gap-5 lg:py-4 lg:border-b lg:border-white/10 lg:last:border-0'>
       {loading ? (
-        <Skeleton className='h-8 w-16 mb-1' />
+        <Skeleton className='h-10 w-20 bg-white/15' />
       ) : (
-        <span className='text-2xl sm:text-3xl font-extrabold text-foreground tabular-nums'>
-          {typeof value === 'number' ? value.toLocaleString() : (value ?? '—')}
+        <span className='text-4xl lg:text-5xl font-extrabold text-white tabular-nums tracking-tight lg:min-w-[5.5rem]'>
+          <CountUp value={value ?? 0} />
         </span>
       )}
-      <span className='text-xs font-semibold text-muted-foreground uppercase tracking-wider mt-1 whitespace-nowrap'>{label}</span>
+      <span className='text-sm text-emerald-100/70 leading-snug mt-1 lg:mt-0'>{label}</span>
     </div>
   )
 }
@@ -128,80 +146,77 @@ export function PublicPortal() {
         />
 
         {/* ── Hero content ── */}
-        <div className='relative mx-auto w-full max-w-7xl px-4 sm:px-6 lg:px-8 py-16 sm:py-20'>
-          <div className='max-w-3xl'>
-            {/* Pill */}
-            <div className='inline-flex items-center gap-2 rounded-full border border-amber-400/30 bg-amber-400/10 px-3.5 py-1 text-xs font-medium text-amber-300 mb-6 backdrop-blur-sm shadow-sm'>
-              <span className='h-1.5 w-1.5 rounded-full bg-amber-400 animate-pulse' />
-              Portal Abierto · Universidad Popular del Cesar
-            </div>
+        <div className='relative mx-auto w-full max-w-7xl px-4 sm:px-6 lg:px-8 pt-16 pb-28 sm:pt-20 sm:pb-32'>
+          <div className='grid gap-12 lg:grid-cols-[minmax(0,1.5fr)_minmax(0,1fr)] lg:gap-16 lg:items-center'>
 
-            <h1 className='text-4xl sm:text-5xl lg:text-6xl font-extrabold tracking-tight text-white leading-[1.1] mb-4'>
-              Ecosistema Científico<br />
-              <span className='text-amber-400'>Institucional UPC</span>
-            </h1>
+            {/* Left: voice + search */}
+            <div>
+              <p className='flex items-center gap-3 text-xs font-semibold uppercase tracking-[0.22em] text-amber-300/90 mb-6'>
+                <span className='h-px w-8 bg-amber-300/70' />
+                Khemia · Universidad Popular del Cesar
+              </p>
 
-            <p className='text-base sm:text-lg text-emerald-100/75 leading-relaxed mb-8 max-w-2xl'>
-              Explora con total transparencia la producción académica, la red de investigadores
-              y la categorización oficial de Minciencias de la Universidad Popular del Cesar.
-            </p>
+              <h1 className='text-4xl sm:text-5xl lg:text-6xl font-extrabold tracking-tight text-white leading-[1.08] mb-5'>
+                Lo que investiga la UPC,{' '}
+                <span className='text-amber-400'>al alcance de todos.</span>
+              </h1>
 
-            {/* Search */}
-            <form onSubmit={handleHeroSearch} className='flex flex-col sm:flex-row gap-2.5 max-w-2xl mb-8'>
-              <div className='relative flex-1'>
-                <SearchIcon className='absolute left-4 top-1/2 -translate-y-1/2 h-4.5 w-4.5 text-muted-foreground pointer-events-none' />
-                <Input
-                  type='text'
-                  placeholder='Buscar grupos, investigadores, publicaciones…'
-                  value={heroSearch}
-                  onChange={(e) => setHeroSearch(e.target.value)}
-                  className={cn(
-                    'pl-12 h-12 text-sm rounded-full shadow-lg',
-                    'bg-white/95 border-0 ring-2 ring-transparent focus-visible:ring-amber-400/60',
-                    'placeholder:text-muted-foreground text-foreground'
-                  )}
-                />
-              </div>
-              <Button
-                type='submit'
-                className='h-12 px-7 rounded-full font-semibold bg-amber-500 hover:bg-amber-400 text-amber-950 shadow-lg shadow-amber-500/30 border-0 transition-all duration-200'
-              >
-                <Compass className='mr-2 h-4 w-4' /> Explorar
-              </Button>
-            </form>
+              <p className='text-base sm:text-lg text-emerald-100/75 leading-relaxed mb-9 max-w-xl'>
+                Conoce a los grupos, las personas y los trabajos que hacen ciencia en la universidad,
+                con la categorización oficial de Minciencias a un clic.
+              </p>
 
-            {/* Quick links */}
-            <div className='flex flex-wrap items-center gap-2'>
-              {[
-                { label: 'Grupos', to: '/groups', icon: Users },
-                { label: 'Investigadores', to: '/researchers', icon: UserRound },
-                { label: 'Publicaciones', to: '/products', icon: FlaskConical },
-                { label: 'Proyectos I+D', to: '/projects', icon: Lightbulb },
-              ].map(({ label, to, icon: Icon }) => (
-                <Link
-                  key={to}
-                  to={to}
-                  className='inline-flex items-center gap-1.5 rounded-full bg-white/95 hover:bg-white px-3.5 py-1.5 text-xs font-semibold text-emerald-950 shadow-md hover:shadow-lg transition-all duration-200'
+              {/* Search */}
+              <form onSubmit={handleHeroSearch} className='flex flex-col sm:flex-row gap-2.5 max-w-xl mb-6'>
+                <div className='relative flex-1'>
+                  <SearchIcon className='absolute left-4 top-1/2 -translate-y-1/2 h-4.5 w-4.5 text-muted-foreground pointer-events-none' />
+                  <Input
+                    type='text'
+                    placeholder='Busca un grupo, una persona o un artículo…'
+                    value={heroSearch}
+                    onChange={(e) => setHeroSearch(e.target.value)}
+                    className={cn(
+                      'pl-12 h-12 text-sm rounded-full shadow-lg',
+                      'bg-white/95 border-0 ring-2 ring-transparent focus-visible:ring-amber-400/60',
+                      'placeholder:text-muted-foreground text-foreground'
+                    )}
+                  />
+                </div>
+                <Button
+                  type='submit'
+                  className='h-12 px-7 rounded-full font-semibold bg-amber-500 hover:bg-amber-400 text-amber-950 shadow-lg shadow-amber-500/30 border-0 transition-all duration-200'
                 >
-                  <Icon className='h-3.5 w-3.5 text-emerald-600' />
-                  {label}
-                </Link>
-              ))}
-            </div>
-          </div>
-        </div>
-      </div>
+                  <Compass className='mr-2 h-4 w-4' /> Explorar
+                </Button>
+              </form>
 
-      {/* ══════════════════════════════════════════════════════════════════
-          STAT RIBBON — números clave flotando entre hero y cuerpo
-      ══════════════════════════════════════════════════════════════════ */}
-      <div className='relative -mt-8 mx-auto max-w-5xl px-4 sm:px-6 lg:px-8 z-10 mb-12'>
-        <div className='rounded-2xl bg-white/95 dark:bg-card/95 backdrop-blur-xl shadow-2xl border border-border p-6'>
-          <div className='grid grid-cols-2 gap-6 sm:grid-cols-4 divide-x-0 sm:divide-x divide-border'>
-            <HeroStat label='Grupos de Investigación' value={totalGroups} loading={statsQuery.isLoading} />
-            <HeroStat label='Investigadores Registrados' value={totalResearchers} loading={statsQuery.isLoading} />
-            <HeroStat label='Productos Científicos' value={totalProducts} loading={statsQuery.isLoading} />
-            <HeroStat label='Producción Verificada' value={`${validationRate}%`} loading={statsQuery.isLoading} />
+              {/* Quick links — plain text, no pills */}
+              <div className='flex flex-wrap items-center gap-x-5 gap-y-2 text-sm text-emerald-100/80'>
+                <span className='text-emerald-100/50'>O entra directo a</span>
+                {[
+                  { label: 'Grupos', to: '/groups' },
+                  { label: 'Investigadores', to: '/researchers' },
+                  { label: 'Publicaciones', to: '/products' },
+                  { label: 'Proyectos', to: '/projects' },
+                ].map(({ label, to }) => (
+                  <Link
+                    key={to}
+                    to={to}
+                    className='font-medium text-white underline decoration-amber-400/50 underline-offset-4 hover:decoration-amber-400 hover:text-amber-300 transition-colors'
+                  >
+                    {label}
+                  </Link>
+                ))}
+              </div>
+            </div>
+
+            {/* Right: the numbers, living on the emerald itself */}
+            <div className='grid grid-cols-2 gap-x-6 gap-y-8 lg:grid-cols-1 lg:gap-0 lg:border-l lg:border-white/15 lg:pl-12'>
+              <HeroStat label='grupos de investigación' value={totalGroups} loading={statsQuery.isLoading} />
+              <HeroStat label='investigadores' value={totalResearchers} loading={statsQuery.isLoading} />
+              <HeroStat label='productos científicos' value={totalProducts} loading={statsQuery.isLoading} />
+              <HeroStat label='proyectos de I+D' value={stats?.modelo_2024?.total_projects ?? 0} loading={statsQuery.isLoading} />
+            </div>
           </div>
         </div>
       </div>
@@ -209,62 +224,62 @@ export function PublicPortal() {
       {/* ══════════════════════════════════════════════════════════════════
           BODY — Cards + Charts + Showcase
       ══════════════════════════════════════════════════════════════════ */}
-      <div className='mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 pb-16 space-y-10'>
+      <div className='mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 pb-16 space-y-14'>
 
-        {/* Discovery cards */}
-        <div className='grid gap-5 sm:grid-cols-2 lg:grid-cols-4'>
-          <DiscoveryCard
-            title='Grupos de Investigación'
-            count={totalGroups}
-            description='Unidades acreditadas con líneas activas de investigación y categorización oficial.'
-            icon={<Users className='h-5 w-5 text-emerald-600 dark:text-emerald-400' />}
-            iconBg='bg-emerald-500/10'
-            to='/groups'
-            label='Explorar grupos'
-            badge={
-              normalizedClassifications.find((c) => c.info.code === 'A1')
-                ? `${normalizedClassifications.find((c) => c.info.code === 'A1')?.count} en Cat. A1`
-                : totalGroups > 0 ? `${totalGroups} registrados` : undefined
-            }
-            loading={statsQuery.isLoading}
-          />
-          <DiscoveryCard
-            title='Talento Investigador'
-            count={totalResearchers}
-            description='Comunidad académica, líderes de grupo, directores de proyecto y autores vinculados.'
-            icon={<UserRound className='h-5 w-5 text-violet-600 dark:text-violet-400' />}
-            iconBg='bg-violet-500/10'
-            to='/researchers'
-            label='Conocer investigadores'
-            badge={
-              stats?.modelo_2024
-                ? `${stats.modelo_2024.researchers_with_orcid}/${totalResearchers} con ORCID`
-                : undefined
-            }
-            loading={statsQuery.isLoading}
-          />
-          <DiscoveryCard
-            title='Producción Científica'
-            count={totalProducts}
-            description='Artículos en revistas indexadas, libros, capítulos, desarrollos de software y patentes.'
-            icon={<FlaskConical className='h-5 w-5 text-blue-600 dark:text-blue-400' />}
-            iconBg='bg-blue-500/10'
-            to='/products'
-            label='Ver catálogo'
-            badge={`${validationRate}% verificada`}
-            loading={statsQuery.isLoading}
-          />
-          <DiscoveryCard
-            title='Proyectos & Líneas I+D'
-            count={stats?.modelo_2024?.total_projects}
-            description='Iniciativas científicas en ejecución, planes de trabajo y transferencia de conocimiento.'
-            icon={<Lightbulb className='h-5 w-5 text-amber-600 dark:text-amber-400' />}
-            iconBg='bg-amber-500/10'
-            to='/projects'
-            label='Consultar proyectos'
-            loading={statsQuery.isLoading}
-          />
-        </div>
+        {/* Explore — navigation tiles (numbers already live in the hero) */}
+        <section className='space-y-6'>
+          <div className='max-w-xl'>
+            <h2 className='text-2xl font-bold tracking-tight text-foreground'>¿Por dónde quieres empezar?</h2>
+            <p className='text-sm text-muted-foreground mt-1.5'>
+              Cada puerta lleva a una parte distinta de la ciencia que se hace en la UPC.
+            </p>
+          </div>
+          <div className='grid gap-4 sm:grid-cols-2 lg:grid-cols-4 lg:pb-6 lg:[&>*:nth-child(even)]:translate-y-6'>
+            <DiscoveryCard
+              title='Grupos de investigación'
+              description='Las unidades que investigan en la universidad, con sus líneas de trabajo y su categoría Minciencias.'
+              icon={<Users className='h-5 w-5' />}
+              tint='emerald'
+              to='/groups'
+              label='Ver los grupos'
+              note={
+                normalizedClassifications.find((c) => c.info.code === 'A1')
+                  ? `${normalizedClassifications.find((c) => c.info.code === 'A1')?.count} en categoría A1`
+                  : undefined
+              }
+            />
+            <DiscoveryCard
+              title='Investigadores'
+              description='Docentes, líderes de grupo y autores: quiénes son y en qué proyectos y publicaciones participan.'
+              icon={<UserRound className='h-5 w-5' />}
+              tint='violet'
+              to='/researchers'
+              label='Conocer a las personas'
+              note={
+                stats?.modelo_2024 && totalResearchers > 0
+                  ? `${stats.modelo_2024.researchers_with_orcid} con ORCID`
+                  : undefined
+              }
+            />
+            <DiscoveryCard
+              title='Producción científica'
+              description='Artículos, libros, capítulos, software y patentes publicados por los grupos.'
+              icon={<FlaskConical className='h-5 w-5' />}
+              tint='blue'
+              to='/products'
+              label='Explorar el catálogo'
+              note={validCount > 0 ? `${validationRate}% verificada` : undefined}
+            />
+            <DiscoveryCard
+              title='Proyectos de I+D'
+              description='Iniciativas en marcha, planes de trabajo y transferencia de conocimiento al territorio.'
+              icon={<Lightbulb className='h-5 w-5' />}
+              tint='amber'
+              to='/projects'
+              label='Ver los proyectos'
+            />
+          </div>
+        </section>
 
         {/* Analytics */}
         <div className='grid grid-cols-1 gap-6 lg:grid-cols-7'>
@@ -518,43 +533,37 @@ export function PublicPortal() {
 }
 
 // ─── Sub-components ────────────────────────────────────────────────────────────
+const TINTS = {
+  emerald: { box: 'bg-emerald-500/[0.07] border-emerald-500/15 hover:border-emerald-500/40 hover:bg-emerald-500/[0.12]', icon: 'bg-emerald-500/15 text-emerald-700 dark:text-emerald-300' },
+  violet: { box: 'bg-violet-500/[0.07] border-violet-500/15 hover:border-violet-500/40 hover:bg-violet-500/[0.12]', icon: 'bg-violet-500/15 text-violet-700 dark:text-violet-300' },
+  blue: { box: 'bg-sky-500/[0.07] border-sky-500/15 hover:border-sky-500/40 hover:bg-sky-500/[0.12]', icon: 'bg-sky-500/15 text-sky-700 dark:text-sky-300' },
+  amber: { box: 'bg-amber-500/[0.08] border-amber-500/20 hover:border-amber-500/45 hover:bg-amber-500/[0.14]', icon: 'bg-amber-500/20 text-amber-700 dark:text-amber-300' },
+} as const
+
 function DiscoveryCard({
-  title, count, description, icon, iconBg, to, label, badge, loading,
+  title, description, icon, tint, to, label, note,
 }: {
-  title: string; count?: number; description: string; icon: React.ReactNode
-  iconBg: string; to: string; label: string; badge?: string; loading: boolean
+  title: string; description: string; icon: React.ReactNode
+  tint: keyof typeof TINTS; to: string; label: string; note?: string
 }) {
+  const t = TINTS[tint]
   return (
-    <Card className='group flex flex-col justify-between border-border/70 hover:border-primary/50 hover:shadow-md transition-all duration-200 bg-card'>
-      <CardHeader className='pb-2'>
-        <div className='flex items-center justify-between'>
-          <div className={`rounded-xl p-2.5 ${iconBg}`}>{icon}</div>
-          {badge && (
-            <Badge variant='secondary' className='text-[10px] font-medium'>{badge}</Badge>
-          )}
-        </div>
-        <div className='mt-3'>
-          <p className='text-xs font-medium text-muted-foreground'>{title}</p>
-          {loading ? (
-            <Skeleton className='h-8 w-20 mt-1' />
-          ) : count !== undefined ? (
-            <p className='text-2xl font-bold tracking-tight text-foreground mt-0.5'>
-              {count.toLocaleString()}
-            </p>
-          ) : (
-            <p className='text-lg font-bold tracking-tight text-foreground mt-0.5'>Explorar</p>
-          )}
-        </div>
-      </CardHeader>
-      <CardContent className='pt-0 pb-4'>
-        <p className='text-xs text-muted-foreground line-clamp-2 leading-relaxed'>{description}</p>
-        <div className='mt-4 pt-3 border-t'>
-          <Link to={to} className='inline-flex items-center text-xs font-semibold text-primary group-hover:underline'>
-            {label} <ArrowRight className='ml-1.5 h-3.5 w-3.5 transition-transform group-hover:translate-x-1' />
-          </Link>
-        </div>
-      </CardContent>
-    </Card>
+    <Link
+      to={to}
+      className={cn(
+        'group flex flex-col rounded-3xl border p-6 transition-all duration-300 hover:-translate-y-1',
+        t.box
+      )}
+    >
+      <div className={cn('flex h-11 w-11 items-center justify-center rounded-2xl', t.icon)}>{icon}</div>
+      <h3 className='mt-5 text-lg font-bold tracking-tight text-foreground'>{title}</h3>
+      <p className='mt-2 text-sm text-muted-foreground leading-relaxed flex-1'>{description}</p>
+      {note && <p className='mt-3 text-xs font-medium text-foreground/70'>{note}</p>}
+      <span className='mt-5 inline-flex items-center text-sm font-semibold text-foreground'>
+        {label}
+        <ArrowRight className='ml-2 h-4 w-4 transition-transform group-hover:translate-x-1.5' />
+      </span>
+    </Link>
   )
 }
 
