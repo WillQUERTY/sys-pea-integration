@@ -44,10 +44,10 @@ export function MonthPicker({
 }: MonthPickerProps) {
   const [open, setOpen] = useState(false)
 
-  // Parsear valor actual (YYYY-MM)
+  // Parsear valor actual (YYYY-MM o 'YYYY - M')
   const parsed = useMemo(() => {
     if (!value) return null
-    const match = value.trim().match(/^(\d{4})-(\d{1,2})$/)
+    const match = value.trim().match(/^(\d{4})\s*-\s*(\d{1,2})/)
     if (!match) return null
     const y = parseInt(match[1], 10)
     const m = parseInt(match[2], 10) - 1

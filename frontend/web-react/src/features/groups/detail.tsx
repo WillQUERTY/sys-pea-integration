@@ -883,12 +883,11 @@ export function GroupDetail({ isAdmin = false }: { isAdmin?: boolean }) {
                       />
                       <div className="space-y-2">
                         <Label htmlFor="declared_creation_date">Año / Mes de Formación</Label>
-                        <Input
+                        <MonthPicker
                           id="declared_creation_date"
-                          type="month"
                           value={formData.declared_creation_date ?? ''}
-                          onChange={(e) => setFormData({ ...formData, declared_creation_date: e.target.value })}
-                          className='bg-muted/30 focus-visible:bg-transparent rounded-xl'
+                          onChange={(v) => setFormData({ ...formData, declared_creation_date: v })}
+                          placeholder='Mes y año...'
                         />
                       </div>
                     </div>

@@ -5,6 +5,7 @@ import { createGroup, updateGroup, getGroupMembers } from '@/lib/api'
 import type { Group } from '@/lib/types'
 import { GROUP_CLASSIFICATIONS, GRAND_AREAS_OCDE, DEPARTMENTS, citiesOfDepartment } from '@/lib/catalogs'
 import { CatalogSelect, CatalogCombobox } from '@/components/catalog-field'
+import { MonthPicker } from '@/components/month-picker'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -219,11 +220,11 @@ export function GroupFormDialog({ open, onOpenChange, group }: Props) {
             <div className='grid grid-cols-3 gap-4'>
               <div className='grid gap-2'>
                 <Label htmlFor='declared_creation_date'>Año/Mes de Formación</Label>
-                <Input
+                <MonthPicker
                   id='declared_creation_date'
-                  type='month'
                   value={formData.declared_creation_date ?? ''}
-                  onChange={(e) => set({ declared_creation_date: e.target.value })}
+                  onChange={(v) => set({ declared_creation_date: v })}
+                  placeholder='Mes y año...'
                 />
               </div>
               <CatalogCombobox
