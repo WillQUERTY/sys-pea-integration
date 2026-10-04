@@ -12,11 +12,21 @@ import {
   Mail,
   Fingerprint,
   UserPlus,
-  Trash2
+  Trash2,
+  ExternalLink,
 } from 'lucide-react'
 
-import { getResearcher, updateResearcher, getResearcherProducts, getResearcherGroups, listGroups, linkMember, unlinkMember } from '@/lib/api'
-import type { Researcher, Group } from '@/lib/types'
+import {
+  getResearcher,
+  updateResearcher,
+  getResearcherProducts,
+  getResearcherGroups,
+  listGroups,
+  linkMember,
+  unlinkMember,
+  getProductCatalogs,
+} from '@/lib/api'
+import type { Researcher, Group, Product } from '@/lib/types'
 import { MEMBER_ROLES, EDUCATION_LEVELS } from '@/lib/catalogs'
 import { CatalogSelect, CatalogCombobox } from '@/components/catalog-field'
 import { MonthPicker } from '@/components/month-picker'
@@ -24,6 +34,9 @@ import { EntityCombobox, type EntityItem } from '@/components/entity-combobox'
 import { ConfirmDialog } from '@/components/confirm-dialog'
 import { ActionTooltip } from '@/components/action-tooltip'
 import { ResearcherAvatar } from '@/components/researcher-avatar'
+import { ValidationBadge } from '@/features/groups/detail'
+import { isEndorsed, EndorsedBadge } from '@/features/products/endorsed'
+import { DataTable, type DataFilter } from '@/components/data-table'
 
 import { Header } from '@/components/layout/header'
 import { Main } from '@/components/layout/main'
@@ -38,8 +51,6 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Badge } from '@/components/ui/badge'
-
-import { DataTable } from '@/components/data-table'
 
 function Field({ label, value, mono = false }: { label: string; value?: React.ReactNode; mono?: boolean }) {
   return (
@@ -70,6 +81,30 @@ export function ResearcherDetail({ isAdmin = false }: { isAdmin?: boolean }) {
     queryKey: ['researcher-groups', researcherId],
     queryFn: () => getResearcherGroups(researcherId),
   })
+
+  const { data: catalogs } = useQuery({
+    queryKey: ['product-catalogs'],
+    queryFn: getProductCatalogs,
+  })
+
+  const subtypeById = useMemo(
+    () => new Map((catalogs?.subtypes ?? []).map((s) => [s.id, s])),
+    [catalogs]
+  )
+
+  const productStatusFilters: DataFilter[] = [
+    {
+      key: 'status',
+      label: 'Estado de validación',
+      defaultValue: 'all',
+      options: [
+        { value: 'all', label: 'Todos los estados' },
+        { value: 'valid', label: 'Validados' },
+        { value: 'pending', label: 'Pendientes' },
+        { value: 'rejected', label: 'Rechazados' },
+      ],
+    },
+  ]
 
   const [formData, setFormData] = useState<Partial<Researcher>>({})
   const [unlinkingGroup, setUnlinkingGroup] = useState<Group | null>(null)
@@ -469,20 +504,69 @@ export function ResearcherDetail({ isAdmin = false }: { isAdmin?: boolean }) {
                 {
                   key: 'title',
                   header: 'Título del Producto',
-                  cell: (p) => <div className='font-medium text-sm'>{p.title}</div>
+                  searchable: (p: Product) => p.title,
+                  className: 'max-w-[420px]',
+                  cell: (p: Product) => (
+                    <div className='flex items-center gap-2'>
+                      <Link
+                        to={isAdmin ? '/admin/products/$id' : '/products/$id'}
+                        params={{ id: String(p.id) }}
+                        className='block truncate font-medium text-sm text-primary hover:underline'
+                      >
+                        {p.title}
+                      </Link>
+                      {isEndorsed(p) && <EndorsedBadge />}
+                    </div>
+                  )
                 },
                 {
-                  key: 'date',
-                  header: 'Fecha',
-                  cell: (p) => <span className='text-muted-foreground'>{p.publication_date || p.obtained_date || '-'}</span>
+                  key: 'year',
+                  header: 'Año',
+                  cell: (p: Product) => (
+                    <span className='text-sm text-muted-foreground'>
+                      {p.year ?? (String(p.publication_date ?? '').slice(0, 4) || '—')}
+                    </span>
+                  )
+                },
+                {
+                  key: 'subtype',
+                  header: 'Tipología 2024',
+                  searchable: (p: Product) => {
+                    const s = p.subtype_id ? subtypeById.get(p.subtype_id) : undefined
+                    return s ? `${s.code ?? ''} ${s.name}` : ''
+                  },
+                  cell: (p: Product) => {
+                    const s = p.subtype_id ? subtypeById.get(p.subtype_id) : undefined
+                    return s ? (
+                      <Badge variant='outline' className='font-mono text-xs' title={s.name}>
+                        {s.code ?? s.name}
+                      </Badge>
+                    ) : (
+                      <span className='text-xs text-muted-foreground'>sin clasificar</span>
+                    )
+                  }
                 },
                 {
                   key: 'status',
                   header: 'Estado',
-                  cell: (p) => (
-                    <Badge variant={p.validation_status === 'valid' ? 'default' : p.validation_status === 'rejected' ? 'destructive' : 'secondary'}>
-                      {p.validation_status === 'valid' ? 'Validado' : p.validation_status === 'rejected' ? 'Rechazado' : 'Pendiente'}
-                    </Badge>
+                  cell: (p: Product) => <ValidationBadge status={p.validation_status} />
+                },
+                {
+                  key: 'actions',
+                  header: '',
+                  cell: (p: Product) => (
+                    <div className='flex items-center justify-end'>
+                      <ActionTooltip label="Ver detalle del producto">
+                        <Button variant="ghost" size="icon" asChild className="h-8 w-8 rounded-full">
+                          <Link
+                            to={isAdmin ? '/admin/products/$id' : '/products/$id'}
+                            params={{ id: String(p.id) }}
+                          >
+                            <ExternalLink className="h-4 w-4 text-muted-foreground hover:text-foreground" />
+                          </Link>
+                        </Button>
+                      </ActionTooltip>
+                    </div>
                   )
                 }
               ]}
@@ -490,7 +574,14 @@ export function ResearcherDetail({ isAdmin = false }: { isAdmin?: boolean }) {
               loading={isLoadingProducts}
               rowKey={(p) => p.id!}
               emptyMessage="Este investigador no tiene productos asociados."
-              searchPlaceholder="Buscar productos..."
+              searchPlaceholder="Buscar productos por título..."
+              filters={productStatusFilters}
+              filterFn={(p: Product, filterValues) => {
+                if (filterValues.status && filterValues.status !== 'all') {
+                  if (p.validation_status !== filterValues.status) return false
+                }
+                return true
+              }}
             />
           </TabsContent>
 
@@ -552,6 +643,7 @@ export function ResearcherDetail({ isAdmin = false }: { isAdmin?: boolean }) {
                 {
                   key: 'name',
                   header: 'Nombre del Grupo',
+                  searchable: (g: Group) => `${g.name} ${g.acronym ?? ''}`,
                   cell: (g: Group) => (
                     <Link
                       to={isAdmin ? '/admin/groups/$id' : '/groups/$id'}
