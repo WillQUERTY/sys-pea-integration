@@ -228,12 +228,12 @@ export function DataTable<T>({
   }
 
   return (
-    <div className='space-y-4'>
+    <div className='space-y-4 w-full min-w-0 max-w-full'>
       {/* ── Toolbar ── */}
       <div className='flex flex-wrap items-center gap-3'>
         {/* Search */}
         {!hideSearch && (
-          <div className='relative max-w-xs flex-1'>
+          <div className='relative max-w-xs flex-1 min-w-0'>
             <SearchIcon className='pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground' />
             <Input
               placeholder={searchPlaceholder}
@@ -319,7 +319,7 @@ export function DataTable<T>({
 
       {/* ── Table ── */}
       <div
-        className={`rounded-lg border${isServer && server.isFetching && !loading ? ' opacity-60 pointer-events-none transition-opacity' : ''}`}
+        className={`rounded-lg border overflow-hidden w-full min-w-0 max-w-full${isServer && server.isFetching && !loading ? ' opacity-60 pointer-events-none transition-opacity' : ''}`}
         aria-busy={isServer && server.isFetching}
       >
         <Table>

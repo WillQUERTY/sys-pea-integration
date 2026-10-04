@@ -13,7 +13,7 @@ export function Main({ fixed, className, fluid, publicWidth, ...props }: MainPro
     <main
       data-layout={fixed ? 'fixed' : 'auto'}
       className={cn(
-        'px-4 py-6',
+        'px-4 py-6 min-w-0 max-w-full',
 
         // fixed layout: flex grow column
         fixed && 'flex grow flex-col overflow-hidden',
