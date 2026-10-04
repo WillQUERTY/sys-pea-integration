@@ -37,6 +37,7 @@ class Settings:
     # el historial de git. Sin clave el backend no conecta: fallar rapido es
     # mas seguro que intentarlo con una credencial horneada en el repo.
     DB_PASSWORD: str = os.getenv("DB_PASSWORD", "")
+    DB_TRUSTED_CONNECTION: bool = os.getenv("DB_TRUSTED_CONNECTION", "false").lower() in ("true", "1", "yes")
     DB_DRIVER: str = os.getenv("DB_DRIVER", "ODBC Driver 18 for SQL Server")
     DB_TRUST_CERT: str = os.getenv("DB_TRUST_CERT", "yes")
     DB_TIMEOUT: int = int(os.getenv("DB_TIMEOUT", "3"))
@@ -65,14 +66,19 @@ class Settings:
         # ODBC expresa el puerto con coma ('Server=host,port'). Las instancias
         # nombradas (host\INSTANCIA) o hosts con puerto explicito no llevan sufijo.
         server = self.DB_SERVER
-        if self.DB_PORT and "," not in server and "\\" not in server:
-            server = f"{server},{self.DB_PORT}"
+        if self.DB_PORT and self.DB_PORT.strip() and "," not in server and "\\" not in server:
+            server = f"{server},{self.DB_PORT.strip()}"
+
+        if self.DB_TRUSTED_CONNECTION or not self.DB_USER:
+            auth_str = "Trusted_Connection=yes;"
+        else:
+            auth_str = f"UID={self.DB_USER};PWD={self.DB_PASSWORD};"
+
         return (
             f"Driver={{{self.DB_DRIVER}}};"
             f"Server={server};"
             f"Database={self.DB_NAME};"
-            f"UID={self.DB_USER};"
-            f"PWD={self.DB_PASSWORD};"
+            f"{auth_str}"
             f"TrustServerCertificate={self.DB_TRUST_CERT};"
             f"LoginTimeout={self.DB_TIMEOUT};"
         )
