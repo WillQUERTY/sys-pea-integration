@@ -31,8 +31,13 @@ import {
 import type { Researcher } from '@/lib/types'
 import type { Group, WorkPlan, Project, Product } from '@/lib/types'
 import { parseMincienciasClassification } from '@/lib/utils'
-import { MEMBER_ROLES, GRAND_AREAS_OCDE, DEPARTMENTS } from '@/lib/catalogs'
+import { MEMBER_ROLES, GRAND_AREAS_OCDE, DEPARTMENTS, citiesOfDepartment } from '@/lib/catalogs'
 import { CatalogSelect, CatalogCombobox, toMonthInput } from '@/components/catalog-field'
+import { MonthPicker } from '@/components/month-picker'
+import { EntityCombobox, type EntityItem } from '@/components/entity-combobox'
+import { ConfirmDialog } from '@/components/confirm-dialog'
+import { ActionTooltip } from '@/components/action-tooltip'
+import { ResearcherAvatar } from '@/components/researcher-avatar'
 
 import { Header } from '@/components/layout/header'
 import { Main } from '@/components/layout/main'
@@ -214,6 +219,31 @@ export function GroupDetail({ isAdmin = false }: { isAdmin?: boolean }) {
   const linkableProducts = (productResults?.items ?? []).filter(
     (p) => !(products ?? []).some((gp) => gp.id === p.id)
   )
+
+  // Estados para diálogos de confirmación destructiva
+  const [unlinkingMember, setUnlinkingMember] = useState<Researcher | null>(null)
+  const [unlinkingProduct, setUnlinkingProduct] = useState<Product | null>(null)
+  const [unlinkingProject, setUnlinkingProject] = useState<Project | null>(null)
+  const [deactivatingPlan, setDeactivatingPlan] = useState<WorkPlan | null>(null)
+  const [unlinkingLine, setUnlinkingLine] = useState<string | null>(null)
+
+  const researcherItems = useMemo<EntityItem[]>(() => {
+    return linkableResearchers.map((r) => ({
+      id: r.id!,
+      label: `${r.first_names} ${r.last_names}`,
+      subLabel: r.orcid ? `ORCID: ${r.orcid}` : r.institutional_email ?? null,
+      badge: r.highest_education_level ?? null,
+    }))
+  }, [linkableResearchers])
+
+  const productItems = useMemo<EntityItem[]>(() => {
+    return linkableProducts.map((p) => ({
+      id: p.id!,
+      label: p.title,
+      subLabel: p.year ? `Año ${p.year}` : (String(p.publication_date ?? '').slice(0, 4) || 's/f'),
+      badge: p.validation_status ?? null,
+    }))
+  }, [linkableProducts])
 
   // Sync state when group loads
   useEffect(() => {
@@ -443,11 +473,13 @@ export function GroupDetail({ isAdmin = false }: { isAdmin?: boolean }) {
       {isAdmin && (
         <Header>
           <div className='flex items-center gap-4'>
-            <Button variant='ghost' size='icon' asChild className='h-8 w-8 rounded-full'>
-              <Link to={isAdmin ? '/admin/groups' : '/groups'}>
-                <ArrowLeft className='h-4 w-4' />
-              </Link>
-            </Button>
+            <ActionTooltip label='Volver a grupos'>
+              <Button variant='ghost' size='icon' asChild className='h-8 w-8 rounded-full'>
+                <Link to={isAdmin ? '/admin/groups' : '/groups'}>
+                  <ArrowLeft className='h-4 w-4' />
+                </Link>
+              </Button>
+            </ActionTooltip>
             <h1 className='text-sm font-medium'>Perfil del Grupo</h1>
           </div>
           <div className='ms-auto flex items-center space-x-4'>
@@ -480,13 +512,14 @@ export function GroupDetail({ isAdmin = false }: { isAdmin?: boolean }) {
                   {group.classification && (() => {
                     const classInfo = parseMincienciasClassification(group.classification)
                     return (
-                      <Badge
-                        variant='outline'
-                        className={`text-xs font-bold px-2.5 py-0.5 ${classInfo.badgeVariant}`}
-                        title={group.classification}
-                      >
-                        {classInfo.badgeText} · {classInfo.tier}
-                      </Badge>
+                      <ActionTooltip label={group.classification}>
+                        <Badge
+                          variant='outline'
+                          className={`text-xs font-bold px-2.5 py-0.5 cursor-default ${classInfo.badgeVariant}`}
+                        >
+                          {classInfo.badgeText} · {classInfo.tier}
+                        </Badge>
+                      </ActionTooltip>
                     )
                   })()}
                   {group.institution && (
@@ -502,15 +535,16 @@ export function GroupDetail({ isAdmin = false }: { isAdmin?: boolean }) {
               </div>
               
               <div className='pb-1 w-full sm:w-auto flex items-center gap-2.5'>
-                <Button
-                  variant='outline'
-                  onClick={() => setPdfDialogOpen(true)}
-                  className='rounded-xl shadow-sm border-primary/20 hover:border-primary/40 bg-card/60 backdrop-blur-sm'
-                  title='Configurar ventana de observación y generar informe PDF oficial'
-                >
-                  <FileDown className='mr-2 h-4 w-4 text-primary' />
-                  Informe PDF
-                </Button>
+                <ActionTooltip label='Configurar ventana de observación y generar informe PDF oficial'>
+                  <Button
+                    variant='outline'
+                    onClick={() => setPdfDialogOpen(true)}
+                    className='rounded-xl shadow-sm border-primary/20 hover:border-primary/40 bg-card/60 backdrop-blur-sm'
+                  >
+                    <FileDown className='mr-2 h-4 w-4 text-primary' />
+                    Informe PDF
+                  </Button>
+                </ActionTooltip>
                 {isAdmin && (
                   <Button
                     onClick={handleSubmit}
@@ -798,19 +832,22 @@ export function GroupDetail({ isAdmin = false }: { isAdmin?: boolean }) {
                       <div className="space-y-2">
                         <Label htmlFor="city">Ciudad / Depto</Label>
                         <div className="flex gap-2">
-                          <Input
-                            id="city"
-                            placeholder="Ciudad"
-                            value={formData.city ?? ''}
-                            onChange={(e) => setFormData({ ...formData, city: e.target.value })}
-                            className='bg-muted/30 focus-visible:bg-transparent rounded-xl'
-                          />
+                          {/* Departamento primero: la ciudad se filtra por sus municipios. */}
                           <div className='flex-1 min-w-0'>
                             <CatalogCombobox
                               options={DEPARTMENTS}
                               value={formData.department ?? ''}
                               onChange={(v) => setFormData({ ...formData, department: v })}
                               placeholder='Departamento'
+                            />
+                          </div>
+                          <div className='flex-1 min-w-0'>
+                            <CatalogCombobox
+                              options={citiesOfDepartment(formData.department ?? '')}
+                              value={formData.city ?? ''}
+                              onChange={(v) => setFormData({ ...formData, city: v })}
+                              placeholder={formData.department ? 'Ciudad' : 'Ciudad (elige depto)'}
+                              emptyMessage='Elige un departamento para ver sus municipios, o escribe la ciudad libre.'
                             />
                           </div>
                         </div>
@@ -944,42 +981,22 @@ export function GroupDetail({ isAdmin = false }: { isAdmin?: boolean }) {
                 <DialogTrigger asChild>
                   <Button size="sm"><UserPlus className="w-4 h-4 mr-2"/> Vincular Investigador</Button>
                 </DialogTrigger>
-                <DialogContent>
+                <DialogContent className='sm:max-w-md'>
                   <DialogHeader>
                     <DialogTitle>Vincular Investigador al Grupo</DialogTitle>
                   </DialogHeader>
                   <div className="space-y-4 py-4">
-                    <div className="space-y-2">
-                      <Label>Buscar investigador</Label>
-                      <Input
-                        value={memberSearch}
-                        onChange={e => { setMemberSearch(e.target.value); setSelectedResearcherId(null) }}
-                        placeholder="Nombre, apellido u ORCID..."
-                      />
-                    </div>
-                    <div className="max-h-48 overflow-y-auto space-y-1 rounded-lg border border-border/50 p-1">
-                      {isSearchingResearchers ? (
-                        <p className="text-sm text-muted-foreground p-2">Buscando...</p>
-                      ) : linkableResearchers.length === 0 ? (
-                        <p className="text-sm text-muted-foreground p-2">Sin resultados.</p>
-                      ) : (
-                        linkableResearchers.map((r) => (
-                          <button
-                            key={r.id}
-                            type="button"
-                            onClick={() => setSelectedResearcherId(r.id!)}
-                            className={`w-full text-left px-3 py-2 rounded-md text-sm transition-colors ${
-                              selectedResearcherId === r.id
-                                ? 'bg-primary/10 text-primary font-medium'
-                                : 'hover:bg-muted/60'
-                            }`}
-                          >
-                            {r.first_names} {r.last_names}
-                            {r.orcid && <span className="ml-2 text-xs text-muted-foreground font-mono">{r.orcid}</span>}
-                          </button>
-                        ))
-                      )}
-                    </div>
+                    <EntityCombobox
+                      label="Investigador a vincular"
+                      items={researcherItems}
+                      value={selectedResearcherId}
+                      onChange={(id) => setSelectedResearcherId(id)}
+                      onSearchChange={setMemberSearch}
+                      isLoading={isSearchingResearchers}
+                      placeholder="Seleccionar o buscar investigador..."
+                      searchPlaceholder="Nombre, apellido u ORCID..."
+                      emptyMessage="No se encontraron investigadores disponibles."
+                    />
                     <div className="grid grid-cols-2 gap-4">
                       <CatalogSelect
                         label="Rol en el grupo"
@@ -990,7 +1007,11 @@ export function GroupDetail({ isAdmin = false }: { isAdmin?: boolean }) {
                       />
                       <div className="space-y-2">
                         <Label>Fecha de vinculación</Label>
-                        <Input type="month" value={memberStartDate} onChange={e => setMemberStartDate(e.target.value)} />
+                        <MonthPicker
+                          value={memberStartDate}
+                          onChange={setMemberStartDate}
+                          placeholder="Mes y año..."
+                        />
                       </div>
                     </div>
                     <Button
@@ -1012,9 +1033,16 @@ export function GroupDetail({ isAdmin = false }: { isAdmin?: boolean }) {
                   header: 'Nombre',
                   searchable: (r: Researcher) => `${r.first_names} ${r.last_names}`,
                   cell: (r: Researcher) => (
-                    <Link to={isAdmin ? '/admin/researchers/$id' : '/researchers/$id'} params={{ id: String(r.id) }} className="font-medium text-primary hover:underline">
-                      {r.first_names} {r.last_names}
-                    </Link>
+                    <div className='flex items-center gap-2.5'>
+                      <ResearcherAvatar
+                        firstName={r.first_names}
+                        lastName={r.last_names}
+                        size='sm'
+                      />
+                      <Link to={isAdmin ? '/admin/researchers/$id' : '/researchers/$id'} params={{ id: String(r.id) }} className="font-medium text-primary hover:underline">
+                        {r.first_names} {r.last_names}
+                      </Link>
+                    </div>
                   )
                 },
                 {
@@ -1049,12 +1077,16 @@ export function GroupDetail({ isAdmin = false }: { isAdmin?: boolean }) {
                   header: '',
                   cell: (r: Researcher) => (
                     <div className="flex items-center gap-1">
-                      <Button variant="ghost" size="icon" title="Editar membresía" onClick={() => openEditMember(r)}>
-                        <Pencil className="w-4 h-4" />
-                      </Button>
-                      <Button variant="ghost" size="icon" title="Desvincular" onClick={() => unlinkMemberMutation.mutate(r.id!)}>
-                        <Trash2 className="w-4 h-4 text-red-500" />
-                      </Button>
+                      <ActionTooltip label="Editar membresía">
+                        <Button variant="ghost" size="icon" onClick={() => openEditMember(r)}>
+                          <Pencil className="w-4 h-4" />
+                        </Button>
+                      </ActionTooltip>
+                      <ActionTooltip label="Desvincular integrante">
+                        <Button variant="ghost" size="icon" onClick={() => setUnlinkingMember(r)}>
+                          <Trash2 className="w-4 h-4 text-red-500" />
+                        </Button>
+                      </ActionTooltip>
                     </div>
                   )
                 } : null
@@ -1086,11 +1118,20 @@ export function GroupDetail({ isAdmin = false }: { isAdmin?: boolean }) {
                   <div className="grid grid-cols-2 gap-4">
                     <div className="space-y-2">
                       <Label>Fecha de vinculación</Label>
-                      <Input type="month" value={editStartDate} onChange={e => setEditStartDate(e.target.value)} />
+                      <MonthPicker
+                        value={editStartDate}
+                        onChange={setEditStartDate}
+                        placeholder="Mes y año..."
+                      />
                     </div>
                     <div className="space-y-2">
                       <Label>Fecha de retiro</Label>
-                      <Input type="month" value={editEndDate} onChange={e => setEditEndDate(e.target.value)} />
+                      <MonthPicker
+                        value={editEndDate}
+                        onChange={setEditEndDate}
+                        placeholder="Vigente (sin retiro)"
+                        allowClear
+                      />
                     </div>
                   </div>
                   <Button
@@ -1113,44 +1154,22 @@ export function GroupDetail({ isAdmin = false }: { isAdmin?: boolean }) {
                 <DialogTrigger asChild>
                   <Button size="sm"><Plus className="w-4 h-4 mr-2"/> Vincular Producto</Button>
                 </DialogTrigger>
-                <DialogContent>
+                <DialogContent className='sm:max-w-md'>
                   <DialogHeader>
                     <DialogTitle>Vincular Producto al Grupo</DialogTitle>
                   </DialogHeader>
                   <div className="space-y-4 py-4">
-                    <div className="space-y-2">
-                      <Label>Buscar producto</Label>
-                      <Input
-                        value={productSearch}
-                        onChange={e => { setProductSearch(e.target.value); setSelectedProductId(null) }}
-                        placeholder="Título del producto..."
-                      />
-                    </div>
-                    <div className="max-h-48 overflow-y-auto space-y-1 rounded-lg border border-border/50 p-1">
-                      {isSearchingProducts ? (
-                        <p className="text-sm text-muted-foreground p-2">Buscando...</p>
-                      ) : linkableProducts.length === 0 ? (
-                        <p className="text-sm text-muted-foreground p-2">Sin resultados.</p>
-                      ) : (
-                        linkableProducts.map((p) => (
-                          <button
-                            key={p.id}
-                            type="button"
-                            onClick={() => setSelectedProductId(p.id!)}
-                            className={`w-full text-left px-3 py-2 rounded-md text-sm transition-colors ${
-                              selectedProductId === p.id
-                                ? 'bg-primary/10 text-primary font-medium'
-                                : 'hover:bg-muted/60'
-                            }`}
-                          >
-                            <span className="block truncate">{p.title}</span>
-                            <span className="text-xs text-muted-foreground">
-                              {p.year ?? (String(p.publication_date ?? '').slice(0, 4) || 's/f')}
-                            </span>
-                          </button>
-                        ))
-                      )}
-                    </div>
+                    <EntityCombobox
+                      label="Producto a vincular"
+                      items={productItems}
+                      value={selectedProductId}
+                      onChange={(id) => setSelectedProductId(id)}
+                      onSearchChange={setProductSearch}
+                      isLoading={isSearchingProducts}
+                      placeholder="Seleccionar o buscar producto..."
+                      searchPlaceholder="Título del producto..."
+                      emptyMessage="No se encontraron productos disponibles."
+                    />
                     <Button
                       className="w-full"
                       onClick={() => linkProductMutation.mutate()}
@@ -1211,9 +1230,11 @@ export function GroupDetail({ isAdmin = false }: { isAdmin?: boolean }) {
                   key: 'actions',
                   header: '',
                   cell: (p: Product) => (
-                    <Button variant="ghost" size="icon" onClick={() => unlinkProductMutation.mutate(p.id!)}>
-                      <Trash2 className="w-4 h-4 text-red-500" />
-                    </Button>
+                    <ActionTooltip label="Desvincular producto del grupo">
+                      <Button variant="ghost" size="icon" onClick={() => setUnlinkingProduct(p)}>
+                        <Trash2 className="w-4 h-4 text-red-500" />
+                      </Button>
+                    </ActionTooltip>
                   )
                 } : null
               ].filter(Boolean) as any}
@@ -1284,9 +1305,11 @@ export function GroupDetail({ isAdmin = false }: { isAdmin?: boolean }) {
                   key: 'actions',
                   header: '',
                   cell: (p: Project) => (
-                    <Button variant="ghost" size="icon" onClick={() => unlinkProjMutation.mutate(p.id!)}>
-                      <Trash2 className="w-4 h-4 text-red-500" />
-                    </Button>
+                    <ActionTooltip label="Desvincular proyecto del grupo">
+                      <Button variant="ghost" size="icon" onClick={() => setUnlinkingProject(p)}>
+                        <Trash2 className="w-4 h-4 text-red-500" />
+                      </Button>
+                    </ActionTooltip>
                   )
                 } : null
               ].filter(Boolean) as any}
@@ -1328,11 +1351,20 @@ export function GroupDetail({ isAdmin = false }: { isAdmin?: boolean }) {
                     <div className="grid grid-cols-2 gap-4">
                       <div className="space-y-2">
                         <Label>Fecha de Inicio</Label>
-                        <Input type="month" value={planForm.start_date} onChange={e => setPlanForm({...planForm, start_date: e.target.value})} />
+                        <MonthPicker
+                          value={planForm.start_date}
+                          onChange={(v) => setPlanForm({ ...planForm, start_date: v })}
+                          placeholder="Mes de inicio..."
+                        />
                       </div>
                       <div className="space-y-2">
                         <Label>Fecha de Fin</Label>
-                        <Input type="month" value={planForm.end_date} onChange={e => setPlanForm({...planForm, end_date: e.target.value})} />
+                        <MonthPicker
+                          value={planForm.end_date}
+                          onChange={(v) => setPlanForm({ ...planForm, end_date: v })}
+                          placeholder="Mes de fin..."
+                          allowClear
+                        />
                       </div>
                     </div>
                     <Button className="w-full" onClick={() => savePlanMutation.mutate()} disabled={!planForm.title || savePlanMutation.isPending}>
@@ -1373,13 +1405,17 @@ export function GroupDetail({ isAdmin = false }: { isAdmin?: boolean }) {
                   header: '',
                   cell: (p: WorkPlan) => (
                     <div className="flex items-center gap-1">
-                      <Button variant="ghost" size="icon" title="Editar plan" onClick={() => openEditPlan(p)}>
-                        <Pencil className="w-4 h-4" />
-                      </Button>
-                      {p.status === 'active' && (
-                        <Button variant="ghost" size="icon" title="Desactivar plan" onClick={() => deletePlanMutation.mutate(p.id!)}>
-                          <Trash2 className="w-4 h-4 text-red-500" />
+                      <ActionTooltip label="Editar plan">
+                        <Button variant="ghost" size="icon" onClick={() => openEditPlan(p)}>
+                          <Pencil className="w-4 h-4" />
                         </Button>
+                      </ActionTooltip>
+                      {p.status === 'active' && (
+                        <ActionTooltip label="Desactivar plan">
+                          <Button variant="ghost" size="icon" onClick={() => setDeactivatingPlan(p)}>
+                            <Trash2 className="w-4 h-4 text-red-500" />
+                          </Button>
+                        </ActionTooltip>
                       )}
                     </div>
                   )
@@ -1433,9 +1469,11 @@ export function GroupDetail({ isAdmin = false }: { isAdmin?: boolean }) {
                       {line}
                     </div>
                     {isAdmin && (
-                      <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => unlinkLineMutation.mutate(line)}>
-                        <Trash2 className="w-4 h-4 text-red-500" />
-                      </Button>
+                      <ActionTooltip label="Eliminar línea de investigación">
+                        <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => setUnlinkingLine(line)}>
+                          <Trash2 className="w-4 h-4 text-red-500" />
+                        </Button>
+                      </ActionTooltip>
                     )}
                   </li>
                 ))}
@@ -1445,6 +1483,101 @@ export function GroupDetail({ isAdmin = false }: { isAdmin?: boolean }) {
             )}
           </TabsContent>
         </Tabs>
+
+        {/* Confirmación: desvincular integrante */}
+        <ConfirmDialog
+          open={unlinkingMember !== null}
+          onOpenChange={(open) => !open && setUnlinkingMember(null)}
+          title="¿Desvincular integrante?"
+          desc={`¿Estás seguro de que deseas desvincular a «${unlinkingMember?.first_names ?? ''} ${unlinkingMember?.last_names ?? ''}» de este grupo? Esta acción se puede revertir volviendo a vincular al investigador.`}
+          confirmText="Desvincular"
+          cancelBtnText="Cancelar"
+          destructive
+          isLoading={unlinkMemberMutation.isPending}
+          handleConfirm={() => {
+            if (unlinkingMember?.id != null) {
+              unlinkMemberMutation.mutate(unlinkingMember.id, {
+                onSettled: () => setUnlinkingMember(null),
+              })
+            }
+          }}
+        />
+
+        {/* Confirmación: desvincular producto */}
+        <ConfirmDialog
+          open={unlinkingProduct !== null}
+          onOpenChange={(open) => !open && setUnlinkingProduct(null)}
+          title="¿Desvincular producto?"
+          desc={`¿Estás seguro de que deseas desvincular el producto «${unlinkingProduct?.title ?? ''}» de este grupo?`}
+          confirmText="Desvincular"
+          cancelBtnText="Cancelar"
+          destructive
+          isLoading={unlinkProductMutation.isPending}
+          handleConfirm={() => {
+            if (unlinkingProduct?.id != null) {
+              unlinkProductMutation.mutate(unlinkingProduct.id, {
+                onSettled: () => setUnlinkingProduct(null),
+              })
+            }
+          }}
+        />
+
+        {/* Confirmación: desvincular proyecto */}
+        <ConfirmDialog
+          open={unlinkingProject !== null}
+          onOpenChange={(open) => !open && setUnlinkingProject(null)}
+          title="¿Desvincular proyecto?"
+          desc={`¿Estás seguro de que deseas desvincular el proyecto «${unlinkingProject?.title ?? ''}» de este grupo?`}
+          confirmText="Desvincular"
+          cancelBtnText="Cancelar"
+          destructive
+          isLoading={unlinkProjMutation.isPending}
+          handleConfirm={() => {
+            if (unlinkingProject?.id != null) {
+              unlinkProjMutation.mutate(unlinkingProject.id, {
+                onSettled: () => setUnlinkingProject(null),
+              })
+            }
+          }}
+        />
+
+        {/* Confirmación: desactivar plan de trabajo */}
+        <ConfirmDialog
+          open={deactivatingPlan !== null}
+          onOpenChange={(open) => !open && setDeactivatingPlan(null)}
+          title="¿Desactivar plan de trabajo?"
+          desc={`¿Estás seguro de que deseas desactivar el plan «${deactivatingPlan?.title ?? ''}»? Su estado pasará a inactivo.`}
+          confirmText="Desactivar"
+          cancelBtnText="Cancelar"
+          destructive
+          isLoading={deletePlanMutation.isPending}
+          handleConfirm={() => {
+            if (deactivatingPlan?.id != null) {
+              deletePlanMutation.mutate(deactivatingPlan.id, {
+                onSettled: () => setDeactivatingPlan(null),
+              })
+            }
+          }}
+        />
+
+        {/* Confirmación: eliminar línea de investigación */}
+        <ConfirmDialog
+          open={unlinkingLine !== null}
+          onOpenChange={(open) => !open && setUnlinkingLine(null)}
+          title="¿Eliminar línea de investigación?"
+          desc={`¿Estás seguro de que deseas eliminar la línea de investigación «${unlinkingLine ?? ''}» de este grupo?`}
+          confirmText="Eliminar"
+          cancelBtnText="Cancelar"
+          destructive
+          isLoading={unlinkLineMutation.isPending}
+          handleConfirm={() => {
+            if (unlinkingLine) {
+              unlinkLineMutation.mutate(unlinkingLine, {
+                onSettled: () => setUnlinkingLine(null),
+              })
+            }
+          }}
+        />
       </Main>
     </>
   )

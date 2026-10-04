@@ -24,6 +24,8 @@ import { Search } from '@/components/search'
 import { ThemeSwitch } from '@/components/theme-switch'
 import { ResearcherFormDialog } from './researcher-form-dialog'
 import { ConfirmDialog } from '@/components/confirm-dialog'
+import { ActionTooltip } from '@/components/action-tooltip'
+import { ResearcherAvatar } from '@/components/researcher-avatar'
 
 function CvlacFetchButton({ codRh }: { codRh?: string }) {
   const queryClient = useQueryClient()
@@ -38,15 +40,16 @@ function CvlacFetchButton({ codRh }: { codRh?: string }) {
     onError: (e) => toast.error(e instanceof Error ? e.message : 'Error al traer el CvLAC'),
   })
   return (
-    <Button
-      size='sm'
-      variant='outline'
-      disabled={!codRh || mutation.isPending}
-      onClick={() => mutation.mutate()}
-      title='Descargar e importar CvLAC completo desde Scienti'
-    >
-      <DownloadCloud className='h-3.5 w-3.5' />
-    </Button>
+    <ActionTooltip label='Descargar e importar CvLAC completo desde Scienti'>
+      <Button
+        size='sm'
+        variant='outline'
+        disabled={!codRh || mutation.isPending}
+        onClick={() => mutation.mutate()}
+      >
+        <DownloadCloud className='h-3.5 w-3.5' />
+      </Button>
+    </ActionTooltip>
   )
 }
 
@@ -67,15 +70,16 @@ function EnrichButton({ id }: { id?: number }) {
     onError: (e) => toast.error(e instanceof Error ? e.message : 'Error al enriquecer'),
   })
   return (
-    <Button
-      size='sm'
-      variant='outline'
-      disabled={!id || mutation.isPending}
-      onClick={() => mutation.mutate()}
-      title="Enriquecer con datos abiertos de Minciencias"
-    >
-      <Sparkles className='h-3.5 w-3.5' />
-    </Button>
+    <ActionTooltip label='Enriquecer con datos abiertos de Minciencias'>
+      <Button
+        size='sm'
+        variant='outline'
+        disabled={!id || mutation.isPending}
+        onClick={() => mutation.mutate()}
+      >
+        <Sparkles className='h-3.5 w-3.5' />
+      </Button>
+    </ActionTooltip>
   )
 }
 
@@ -199,16 +203,13 @@ export function Researchers({ isAdmin = false }: { isAdmin?: boolean }) {
       header: 'Nombre completo',
       searchable: (r) => `${r.first_names} ${r.last_names}`,
       cell: (r) => {
-        const initial = r.first_names?.[0]?.toUpperCase() ?? '?'
-        const hue = (r.first_names?.charCodeAt(0) ?? 0) * 23 % 360
         return (
           <div className='flex items-center gap-3'>
-            <div
-              className='flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-xs font-bold text-white'
-              style={{ background: `hsl(${hue} 50% 45%)` }}
-            >
-              {initial}
-            </div>
+            <ResearcherAvatar
+              firstName={r.first_names}
+              lastName={r.last_names}
+              size='sm'
+            />
             <div className='min-w-0'>
               <Link to={isAdmin ? '/admin/researchers/$id' : '/researchers/$id'} params={{ id: String(r.id) }} className='truncate text-sm font-medium hover:underline text-primary'>
                 {r.first_names} {r.last_names}

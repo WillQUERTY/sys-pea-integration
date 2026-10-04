@@ -187,39 +187,25 @@ export const GRAND_AREAS_OCDE = [
   'Humanidades',
 ]
 
-/** Departamentos de Colombia (32) + distrito capital. */
-export const DEPARTMENTS = [
-  'Amazonas',
-  'Antioquia',
-  'Arauca',
-  'Atlántico',
-  'Bogotá D.C.',
-  'Bolívar',
-  'Boyacá',
-  'Caldas',
-  'Caquetá',
-  'Casanare',
-  'Cauca',
-  'Cesar',
-  'Chocó',
-  'Córdoba',
-  'Cundinamarca',
-  'Guainía',
-  'Guaviare',
-  'Huila',
-  'La Guajira',
-  'Magdalena',
-  'Meta',
-  'Nariño',
-  'Norte de Santander',
-  'Putumayo',
-  'Quindío',
-  'Risaralda',
-  'San Andrés y Providencia',
-  'Santander',
-  'Sucre',
-  'Tolima',
-  'Valle del Cauca',
-  'Vaupés',
-  'Vichada',
-]
+/**
+ * Departamentos y municipios de Colombia (DANE), desde colombia.json.
+ * El importador escribe p.ej. 'Cesar'/'Valledupar' (verificado en BD), y ambos
+ * existen aquí, así que el selector matchea lo que trae GrupLAC.
+ */
+import colombiaData from './colombia.json'
+
+interface ColombiaDepartment {
+  id: number
+  departamento: string
+  ciudades: string[]
+}
+
+const COLOMBIA: ColombiaDepartment[] = colombiaData
+
+/** Departamentos de Colombia (32; Bogotá aparece como municipio de Cundinamarca). */
+export const DEPARTMENTS = COLOMBIA.map((d) => d.departamento)
+
+/** Municipios de un departamento ('Cesar' → 25 municipios). [] si no existe. */
+export function citiesOfDepartment(department: string): string[] {
+  return COLOMBIA.find((d) => d.departamento === department)?.ciudades ?? []
+}

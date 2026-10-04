@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useMemo } from 'react'
 import { useParams, Link } from '@tanstack/react-router'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { toast } from 'sonner'
@@ -19,6 +19,11 @@ import { getResearcher, updateResearcher, getResearcherProducts, getResearcherGr
 import type { Researcher, Group } from '@/lib/types'
 import { MEMBER_ROLES, EDUCATION_LEVELS } from '@/lib/catalogs'
 import { CatalogSelect, CatalogCombobox } from '@/components/catalog-field'
+import { MonthPicker } from '@/components/month-picker'
+import { EntityCombobox, type EntityItem } from '@/components/entity-combobox'
+import { ConfirmDialog } from '@/components/confirm-dialog'
+import { ActionTooltip } from '@/components/action-tooltip'
+import { ResearcherAvatar } from '@/components/researcher-avatar'
 
 import { Header } from '@/components/layout/header'
 import { Main } from '@/components/layout/main'
@@ -67,6 +72,7 @@ export function ResearcherDetail({ isAdmin = false }: { isAdmin?: boolean }) {
   })
 
   const [formData, setFormData] = useState<Partial<Researcher>>({})
+  const [unlinkingGroup, setUnlinkingGroup] = useState<Group | null>(null)
 
   // Vinculación a grupos (lado investigador de la multilista — Req. 5)
   const [groupOpen, setGroupOpen] = useState(false)
@@ -83,6 +89,15 @@ export function ResearcherDetail({ isAdmin = false }: { isAdmin?: boolean }) {
   const linkableGroups = (groupResults?.items ?? []).filter(
     (g) => !(groups ?? []).some((gg) => gg.id === g.id)
   )
+
+  const groupItems = useMemo<EntityItem[]>(() => {
+    return linkableGroups.map((g) => ({
+      id: g.id!,
+      label: g.name,
+      subLabel: g.acronym || g.external_code || null,
+      badge: g.classification ?? null,
+    }))
+  }, [linkableGroups])
 
   const linkGroupMutation = useMutation({
     mutationFn: () =>
@@ -179,8 +194,6 @@ export function ResearcherDetail({ isAdmin = false }: { isAdmin?: boolean }) {
     )
   }
 
-  const hue = (researcher.first_names?.charCodeAt(0) ?? 0) * 23 % 360
-  const initial = researcher.first_names?.[0]?.toUpperCase() ?? '?'
   const educationList = (researcher.education_records ?? '')
     .split(';')
     .map((s) => s.trim())
@@ -191,11 +204,13 @@ export function ResearcherDetail({ isAdmin = false }: { isAdmin?: boolean }) {
       {isAdmin && (
         <Header>
           <div className='flex items-center gap-4'>
-            <Button variant='ghost' size='icon' asChild className='h-8 w-8 rounded-full'>
-              <Link to={isAdmin ? '/admin/researchers' : '/researchers'}>
-                <ArrowLeft className='h-4 w-4' />
-              </Link>
-            </Button>
+            <ActionTooltip label='Volver a investigadores'>
+              <Button variant='ghost' size='icon' asChild className='h-8 w-8 rounded-full'>
+                <Link to={isAdmin ? '/admin/researchers' : '/researchers'}>
+                  <ArrowLeft className='h-4 w-4' />
+                </Link>
+              </Button>
+            </ActionTooltip>
             <div className='flex items-center gap-2'>
               <h1 className='text-sm font-semibold'>Ficha del Investigador</h1>
               <Badge variant='outline' className='text-[10px] font-normal text-muted-foreground'>
@@ -220,12 +235,13 @@ export function ResearcherDetail({ isAdmin = false }: { isAdmin?: boolean }) {
           
           <div className='px-6 pb-6 pt-0 relative'>
             <div className='flex flex-col sm:flex-row gap-6 items-start sm:items-end -mt-12'>
-              <div 
-                className='h-24 w-24 rounded-2xl border-4 border-card flex items-center justify-center text-3xl font-bold text-white shadow-lg shrink-0'
-                style={{ background: `hsl(${hue} 50% 45%)` }}
-              >
-                {initial}
-              </div>
+              <ResearcherAvatar
+                firstName={researcher.first_names}
+                lastName={researcher.last_names}
+                size='xl'
+                shape='rounded'
+                className='border-4 border-card shadow-lg shrink-0'
+              />
               
               <div className='flex-1 pb-1'>
                 <h1 className='text-2xl font-bold'>{researcher.first_names} {researcher.last_names}</h1>
@@ -486,42 +502,22 @@ export function ResearcherDetail({ isAdmin = false }: { isAdmin?: boolean }) {
                 <DialogTrigger asChild>
                   <Button size="sm"><UserPlus className="w-4 h-4 mr-2"/> Vincular a Grupo</Button>
                 </DialogTrigger>
-                <DialogContent>
+                <DialogContent className='sm:max-w-md'>
                   <DialogHeader>
                     <DialogTitle>Vincular a un Grupo</DialogTitle>
                   </DialogHeader>
                   <div className="space-y-4 py-4">
-                    <div className="space-y-2">
-                      <Label>Buscar grupo</Label>
-                      <Input
-                        value={groupSearch}
-                        onChange={e => { setGroupSearch(e.target.value); setSelectedGroupId(null) }}
-                        placeholder="Nombre o sigla del grupo..."
-                      />
-                    </div>
-                    <div className="max-h-48 overflow-y-auto space-y-1 rounded-lg border border-border/50 p-1">
-                      {isSearchingGroups ? (
-                        <p className="text-sm text-muted-foreground p-2">Buscando...</p>
-                      ) : linkableGroups.length === 0 ? (
-                        <p className="text-sm text-muted-foreground p-2">Sin resultados.</p>
-                      ) : (
-                        linkableGroups.map((g) => (
-                          <button
-                            key={g.id}
-                            type="button"
-                            onClick={() => setSelectedGroupId(g.id!)}
-                            className={`w-full text-left px-3 py-2 rounded-md text-sm transition-colors ${
-                              selectedGroupId === g.id
-                                ? 'bg-primary/10 text-primary font-medium'
-                                : 'hover:bg-muted/60'
-                            }`}
-                          >
-                            <span className="block truncate">{g.name}</span>
-                            {g.acronym && <span className="text-xs text-muted-foreground">{g.acronym}</span>}
-                          </button>
-                        ))
-                      )}
-                    </div>
+                    <EntityCombobox
+                      label="Grupo de investigación"
+                      items={groupItems}
+                      value={selectedGroupId}
+                      onChange={(id) => setSelectedGroupId(id)}
+                      onSearchChange={setGroupSearch}
+                      isLoading={isSearchingGroups}
+                      placeholder="Seleccionar o buscar grupo..."
+                      searchPlaceholder="Nombre, sigla o código..."
+                      emptyMessage="No se encontraron grupos disponibles."
+                    />
                     <div className="grid grid-cols-2 gap-4">
                       <CatalogSelect
                         label="Rol en el grupo"
@@ -532,7 +528,11 @@ export function ResearcherDetail({ isAdmin = false }: { isAdmin?: boolean }) {
                       />
                       <div className="space-y-2">
                         <Label>Fecha de vinculación</Label>
-                        <Input type="month" value={memberStartDate} onChange={e => setMemberStartDate(e.target.value)} />
+                        <MonthPicker
+                          value={memberStartDate}
+                          onChange={setMemberStartDate}
+                          placeholder="Mes y año..."
+                        />
                       </div>
                     </div>
                     <Button
@@ -578,9 +578,11 @@ export function ResearcherDetail({ isAdmin = false }: { isAdmin?: boolean }) {
                   key: 'actions',
                   header: '',
                   cell: (g: Group) => (
-                    <Button variant="ghost" size="icon" onClick={() => unlinkGroupMutation.mutate(g.id!)}>
-                      <Trash2 className="w-4 h-4 text-red-500" />
-                    </Button>
+                    <ActionTooltip label="Desvincular del grupo">
+                      <Button variant="ghost" size="icon" onClick={() => setUnlinkingGroup(g)}>
+                        <Trash2 className="w-4 h-4 text-red-500" />
+                      </Button>
+                    </ActionTooltip>
                   )
                 } : null
               ].filter(Boolean) as any}
@@ -592,6 +594,25 @@ export function ResearcherDetail({ isAdmin = false }: { isAdmin?: boolean }) {
             />
           </TabsContent>
         </Tabs>
+
+        {/* Confirmación: desvincular de grupo */}
+        <ConfirmDialog
+          open={unlinkingGroup !== null}
+          onOpenChange={(open) => !open && setUnlinkingGroup(null)}
+          title="¿Desvincular del grupo?"
+          desc={`¿Estás seguro de que deseas desvincular a este investigador del grupo «${unlinkingGroup?.name ?? ''}»?`}
+          confirmText="Desvincular"
+          cancelBtnText="Cancelar"
+          destructive
+          isLoading={unlinkGroupMutation.isPending}
+          handleConfirm={() => {
+            if (unlinkingGroup?.id != null) {
+              unlinkGroupMutation.mutate(unlinkingGroup.id, {
+                onSettled: () => setUnlinkingGroup(null),
+              })
+            }
+          }}
+        />
       </Main>
     </>
   )

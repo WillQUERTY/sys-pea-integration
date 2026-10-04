@@ -1,6 +1,17 @@
 import { useState } from 'react'
-import { Input } from '@/components/ui/input'
+import { Check, ChevronsUpDown } from 'lucide-react'
+import { cn } from '@/lib/utils'
+import { Button } from '@/components/ui/button'
 import { Label } from '@/components/ui/label'
+import {
+  Command,
+  CommandEmpty,
+  CommandGroup,
+  CommandInput,
+  CommandItem,
+  CommandList,
+} from '@/components/ui/command'
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import {
   Select,
   SelectContent,
@@ -10,8 +21,9 @@ import {
 } from '@/components/ui/select'
 
 // Selectores para catálogos de dominio finito (lib/catalogs.ts).
-// - CatalogSelect: cerrado, solo valores del catálogo.
-// - CatalogCombobox: flexible, sugiere del catálogo pero acepta texto libre.
+// - CatalogSelect: cerrado, solo valores del catálogo (shadcn Select).
+// - CatalogCombobox: flexible, sugiere del catálogo pero acepta texto libre
+//   (shadcn Combobox: Popover + Command).
 // Ambos respetan el valor actual aunque no esté en la lista (datos históricos
 // importados de GrupLAC que no matchean el catálogo, p.ej. clasificaciones
 // concatenadas del importador).
@@ -79,66 +91,72 @@ export function CatalogCombobox({
   options,
   value,
   onChange,
-  placeholder,
+  placeholder = 'Seleccionar...',
+  emptyMessage = 'Sin coincidencias — se guardará como texto libre.',
 }: {
   label?: string
   options: string[]
   value: string
   onChange: (v: string) => void
   placeholder?: string
+  emptyMessage?: string
 }) {
   const [open, setOpen] = useState(false)
-  const q = value.trim().toLowerCase()
-  const filtered = q
-    ? options.filter((o) => o.toLowerCase().includes(q))
-    : options
 
   return (
     <div className='grid gap-2 min-w-0'>
       {label && <Label>{label}</Label>}
-      <div className='relative min-w-0'>
-        <Input
-          value={value}
-          onChange={(e) => onChange(e.target.value)}
-          onFocus={() => setOpen(true)}
-          // Pequeña espera para que el click en una sugerencia dispare antes del cierre.
-          onBlur={() => setTimeout(() => setOpen(false), 150)}
-          placeholder={placeholder}
-          className='min-w-0'
-          autoComplete='off'
-        />
-        {open && filtered.length > 0 && (
-          <div className='absolute z-50 top-full mt-1 max-h-40 w-full space-y-1 overflow-y-auto rounded-lg border border-border/50 bg-popover p-1 shadow-md'>
-            {filtered.slice(0, 10).map((o) => (
-              <button
-                key={o}
-                type='button'
-                onMouseDown={(e) => {
-                  e.preventDefault()
-                  onChange(o)
-                  setOpen(false)
-                }}
-                className='w-full truncate rounded-md px-3 py-2 text-left text-sm transition-colors hover:bg-muted/60'
-                title={o}
-              >
-                {o}
-              </button>
-            ))}
-            {filtered.length > 10 && (
-              <p className='px-3 py-1.5 text-center text-xs italic text-muted-foreground'>
-                … y {filtered.length - 10} más (escribe para filtrar)
-              </p>
+      <Popover open={open} onOpenChange={setOpen}>
+        <PopoverTrigger asChild>
+          <Button
+            variant='outline'
+            role='combobox'
+            aria-expanded={open}
+            className={cn(
+              'w-full justify-between font-normal',
+              !value && 'text-muted-foreground'
             )}
-          </div>
-        )}
-        {open && q && filtered.length === 0 && (
-          <div className='absolute z-50 top-full mt-1 w-full rounded-lg border border-border/50 bg-popover p-2 shadow-md'>
-            <p className='text-xs text-muted-foreground'>
-              Sin coincidencias — se guardará como texto libre.
-            </p>
-          </div>
-        )}
-      </div>
+          >
+            <span className='truncate'>{value || placeholder}</span>
+            <ChevronsUpDown className='ms-2 size-4 shrink-0 opacity-50' />
+          </Button>
+        </PopoverTrigger>
+        <PopoverContent
+          className='p-0'
+          align='start'
+          style={{ width: 'max(var(--radix-popover-trigger-width), 12rem)' }}
+        >
+          <Command>
+            {/* Input controlado por el valor del form: lo que se escribe ES
+                el valor, así el texto libre (fuera de catálogo) se conserva. */}
+            <CommandInput
+              value={value}
+              onValueChange={onChange}
+              placeholder='Escribe para filtrar...'
+            />
+            <CommandList>
+              <CommandEmpty>{emptyMessage}</CommandEmpty>
+              <CommandGroup>
+                {options.map((o) => (
+                  <CommandItem
+                    key={o}
+                    value={o}
+                    onSelect={() => {
+                      onChange(o)
+                      setOpen(false)
+                    }}
+                  >
+                    <Check
+                      className={cn('size-4', o === value ? 'opacity-100' : 'opacity-0')}
+                    />
+                    {o}
+                  </CommandItem>
+                ))}
+              </CommandGroup>
+            </CommandList>
+          </Command>
+        </PopoverContent>
+      </Popover>
     </div>
   )
 }

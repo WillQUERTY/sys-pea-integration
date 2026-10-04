@@ -41,6 +41,7 @@ import {
 } from '@/components/ui/card'
 import { Skeleton } from '@/components/ui/skeleton'
 import { KnowledgeGraph } from '@/components/layout/knowledge-graph'
+import { ActionTooltip } from '@/components/action-tooltip'
 import { cn } from '@/lib/utils'
 
 // ─── Animated counter ─────────────────────────────────────────────────────────
@@ -478,15 +479,16 @@ export function PublicPortal() {
                           </Link>
                         </Button>
                         {group.id && (
-                          <Button
-                            variant='outline'
-                            size='sm'
-                            className='h-8 w-8 p-0 shrink-0'
-                            title='Descargar Reporte PDF'
-                            onClick={() => window.open(groupReportPdfUrl(group.id!), '_blank')}
-                          >
-                            <FileDown className='h-3.5 w-3.5 text-muted-foreground' />
-                          </Button>
+                          <ActionTooltip label='Descargar Reporte PDF'>
+                            <Button
+                              variant='outline'
+                              size='sm'
+                              className='h-8 w-8 p-0 shrink-0'
+                              onClick={() => window.open(groupReportPdfUrl(group.id!), '_blank')}
+                            >
+                              <FileDown className='h-3.5 w-3.5 text-muted-foreground' />
+                            </Button>
+                          </ActionTooltip>
                         )}
                       </div>
                     </CardContent>

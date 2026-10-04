@@ -1,5 +1,6 @@
 import type { Product } from '@/lib/types'
 import { Badge } from '@/components/ui/badge'
+import { ActionTooltip } from '@/components/action-tooltip'
 
 type EndorsedSource = Pick<Product, 'evidence' | 'specialized_attributes'> | null | undefined
 
@@ -16,12 +17,13 @@ export function isEndorsed(p: EndorsedSource): boolean {
 
 export function EndorsedBadge() {
   return (
-    <Badge
-      variant='outline'
-      className='shrink-0 border-emerald-500/40 bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 text-xs'
-      title='Avalado y validado en la convocatoria previa de Minciencias'
-    >
-      ✓ Avalado
-    </Badge>
+    <ActionTooltip label='Avalado y validado en la convocatoria previa de Minciencias'>
+      <Badge
+        variant='outline'
+        className='shrink-0 cursor-default border-emerald-500/40 bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 text-xs'
+      >
+        ✓ Avalado
+      </Badge>
+    </ActionTooltip>
   )
 }
