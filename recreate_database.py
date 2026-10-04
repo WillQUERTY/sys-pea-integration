@@ -9,11 +9,25 @@ import os
 import sys
 import re
 import pyodbc
+from backend.app.config import settings
 from backend.app import repository, datos_abiertos
 from backend.app.scraper import scrape_gruplac
 
-MASTER_CONN_STR = "Driver={ODBC Driver 18 for SQL Server};Server=127.0.0.1;Database=master;UID=sa;PWD=***REMOVED***;TrustServerCertificate=yes;"
-PEAI_CONN_STR = "Driver={ODBC Driver 18 for SQL Server};Server=127.0.0.1;Database=peai;UID=sa;PWD=***REMOVED***;TrustServerCertificate=yes;"
+
+def _conn_str(database: str) -> str:
+    """Connection string para una BD concreta, con credenciales de backend/.env."""
+    return (
+        f"Driver={{{settings.DB_DRIVER}}};"
+        f"Server={settings.DB_SERVER},{settings.DB_PORT};"
+        f"Database={database};"
+        f"UID={settings.DB_USER};"
+        f"PWD={settings.DB_PASSWORD};"
+        f"TrustServerCertificate={settings.DB_TRUST_CERT};"
+    )
+
+
+MASTER_CONN_STR = _conn_str("master")
+PEAI_CONN_STR = _conn_str("peai")
 SCHEMA_PATH = os.path.join(os.path.dirname(__file__), "database", "init_schema.sql")
 
 TARGET_GROUPS = [
@@ -175,6 +189,8 @@ def notify_running_api():
 
 
 if __name__ == "__main__":
+    if not settings.DB_PASSWORD:
+        sys.exit("Falta DB_PASSWORD: configura backend/.env antes de recrear la BD.")
     recreate_sql_database()
     apply_schema()
     seed_catalog()

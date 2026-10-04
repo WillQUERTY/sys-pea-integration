@@ -67,11 +67,18 @@ _active_connection_string = ""
 def initialize(mode: InitMode, source: str = "") -> bool:
     global _active_connection_string
     if mode == InitMode.Database:
-        _active_connection_string = source
         # Reset RAM antes de recargar: load_from_db inserta sin limpiar y
         # duplicaria las estructuras si ya habia datos en memoria.
         abpoxx_pybind.initialize(InitMode.Empty, "")
-    return abpoxx_pybind.initialize(mode, source)
+        ok = abpoxx_pybind.initialize(mode, source)
+        if ok:
+            _active_connection_string = source
+        else:
+            _active_connection_string = ""
+        return ok
+    else:
+        _active_connection_string = ""
+        return abpoxx_pybind.initialize(mode, source)
 
 def safe_get_str(obj, attr_name: str) -> Optional[str]:
     try:
@@ -920,20 +927,95 @@ def _get_product_catalogs_pyodbc(conn_str: str) -> dict:
     finally:
         cn.close()
 
-def get_product_catalogs() -> dict:
-    """Catalogs (families/subtypes/quality categories) read from SQL Server.
+_cached_file_catalogs: Optional[dict] = None
 
-    Enriquecido con las columnas del modelo 2024 via pyodbc; si pyodbc
-    falla, degrada al JSON del nucleo C++ (campos basicos, sin pesos).
+def _get_product_catalogs_from_file() -> dict:
+    """Lee y normaliza el catalogo canonico 2024 desde database/catalog_2024.json.
+
+    Permite que el endpoint /api/v1/products/catalogs y el frontend funcionen
+    inmediatamente en modo local o de desarrollo sin depender de SQL Server.
+    """
+    global _cached_file_catalogs
+    if _cached_file_catalogs is not None:
+        return _cached_file_catalogs
+
+    import pathlib
+    cat_path = pathlib.Path(__file__).resolve().parent.parent.parent / "database" / "catalog_2024.json"
+    if not cat_path.exists():
+        logger.warning(f"No se encontro archivo de catalogo en {cat_path}")
+        return {"families": [], "subtypes": [], "quality_categories": []}
+
+    try:
+        doc = json.loads(cat_path.read_text(encoding="utf-8"))
+        families = []
+        subtypes = []
+        quality_categories = []
+
+        f_idx = 1
+        s_idx = 1
+        c_idx = 1
+
+        for fam in doc.get("families", []):
+            f_id = f_idx
+            f_idx += 1
+            families.append({
+                "id": f_id,
+                "code": fam["code"],
+                "name": fam["name"],
+                "sort_order": fam.get("sort_order")
+            })
+            for sub in fam.get("subtypes", []):
+                s_id = s_idx
+                s_idx += 1
+                subtypes.append({
+                    "id": s_id,
+                    "family_id": f_id,
+                    "code": sub["code"],
+                    "name": sub["name"],
+                    "model_ref": sub.get("model_ref"),
+                    "sort_order": sub.get("sort_order")
+                })
+                for cat in sub.get("categories", []):
+                    c_id = c_idx
+                    c_idx += 1
+                    quality_categories.append({
+                        "id": c_id,
+                        "code": cat["code"],
+                        "name": cat.get("label") or cat.get("name"),
+                        "subtype_id": s_id,
+                        "measurement_class": cat.get("measurement_class"),
+                        "weight": float(cat["weight"]) if cat.get("weight") is not None else None,
+                        "global_weight": float(cat["global_weight"]) if cat.get("global_weight") is not None else None,
+                        "sort_order": cat.get("sort_order")
+                    })
+
+        _cached_file_catalogs = {
+            "families": families,
+            "subtypes": subtypes,
+            "quality_categories": quality_categories
+        }
+        return _cached_file_catalogs
+    except Exception as e:
+        logger.error(f"Error parseando catalogo {cat_path}: {e}")
+        return {"families": [], "subtypes": [], "quality_categories": []}
+
+def get_product_catalogs() -> dict:
+    """Catalogs (families/subtypes/quality categories).
+
+    Si hay una conexión activa a SQL Server, intenta enriquecer via pyodbc.
+    Si no hay conexión activa a BD o la consulta pyodbc falla, carga limpiamente
+    las definiciones canónicas del modelo 2024 desde database/catalog_2024.json.
     """
     if not _active_connection_string:
-        return {"families": [], "subtypes": [], "quality_categories": []}
+        return _get_product_catalogs_from_file()
     try:
         return _get_product_catalogs_pyodbc(_active_connection_string)
     except Exception:
-        logger.warning("Enriquecimiento pyodbc de catalogos fallo; fallback a C++.",
-                       exc_info=True)
-        return json.loads(abpoxx_pybind.get_product_catalogs_json(_active_connection_string))
+        logger.warning("Enriquecimiento pyodbc de catalogos fallo; fallback a catalogo JSON canonico.")
+        try:
+            return _get_product_catalogs_from_file()
+        except Exception:
+            return json.loads(abpoxx_pybind.get_product_catalogs_json(_active_connection_string))
 
 # -------------------------------------------------------------------
 # Multilista Link Operations (Write-Through)

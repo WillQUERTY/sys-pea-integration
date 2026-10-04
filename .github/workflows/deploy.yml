@@ -23,12 +23,20 @@ jobs:
           echo "=========================================="
           
           cd /var/www/sys-pea-integration
-          
+
           # 1. Actualizar el código
           echo "1. Obteniendo últimos cambios de GitHub (rama main)..."
           git fetch --all
           git reset --hard origin/main
-          
+
+          # 1b. Verificar configuración de producción: aborta ANTES de compilar
+          # nada si falta el .env (el backend se negaría a arrancar sin él).
+          if [ ! -f backend/.env ]; then
+            echo "❌ FALTA /var/www/sys-pea-integration/backend/.env en el servidor."
+            echo "   Copia el bloque de PRODUCCIÓN de backend/.env.example y reinicia el deploy."
+            exit 1
+          fi
+
           # 2. Recompilar el núcleo de C++
           echo "2. Compilando núcleo C++..."
           cd core_cpp/build_linux

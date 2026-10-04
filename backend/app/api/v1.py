@@ -4,6 +4,7 @@ from pydantic import BaseModel
 from typing import Any, Dict, List, Optional
 from .. import repository
 from .. import reports
+from ..config import settings
 from ..models import Group, Researcher, Product, Project, WorkPlan, PagedResponse, ValidationQueueItem, ValidationQueueResponse
 
 router = APIRouter()
@@ -886,7 +887,7 @@ async def import_cvlac_by_cod_rh_endpoint(req: CvlacFetchRequest):
     Alternativa automatizada al pegado manual de texto.
     """
     from ..cvlac_scraper import CvParser, CvCommitService, fetch_cvlac_text
-    conn_str = repository._active_connection_string or "Driver={ODBC Driver 18 for SQL Server};Server=127.0.0.1;Database=peai;UID=sa;PWD=***REMOVED***;TrustServerCertificate=yes;"
+    conn_str = repository._active_connection_string or settings.connection_string
     try:
         text = fetch_cvlac_text(req.cod_rh)
     except ValueError as e:
@@ -930,7 +931,7 @@ async def search_groups_endpoint(
 async def import_cvlac_endpoint(req: CvlacImportRequest):
     """Import an individual researcher and their scientific products from CvLAC text."""
     from ..cvlac_scraper import CvParser, CvCommitService
-    conn_str = repository._active_connection_string or "Driver={ODBC Driver 18 for SQL Server};Server=127.0.0.1;Database=peai;UID=sa;PWD=***REMOVED***;TrustServerCertificate=yes;"
+    conn_str = repository._active_connection_string or settings.connection_string
     cv = CvParser.parse_text(req.text)
     # Si el usuario pegó el HTML crudo de la página, parse_text ya lo procesa con
     # el extractor DOM; si pegó texto plano, el ORCID no se puede recuperar (el
@@ -967,7 +968,7 @@ async def import_gruplac_endpoint(req: GruplacImportRequest):
     """
     from ..scraper import scrape_gruplac
     from ..datos_abiertos_grupos import resolver_url_gruplac_ex
-    conn_str = repository._active_connection_string or "Driver={ODBC Driver 18 for SQL Server};Server=127.0.0.1;Database=peai;UID=sa;PWD=***REMOVED***;TrustServerCertificate=yes;"
+    conn_str = repository._active_connection_string or settings.connection_string
     try:
         url, via = resolver_url_gruplac_ex(req.url, req.group_code)
         expected = (req.group_code or "") if via == "digitos" else ""

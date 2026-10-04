@@ -1602,10 +1602,11 @@ if __name__ == "__main__":
     for a in sys.argv:
         if a.startswith("--cvlac-workers="):
             workers = max(1, int(a.split("=", 1)[1]))
-    conn_str = os.environ.get(
-        "PEAI_SQLSERVER_CONNECTION",
-        "Driver={ODBC Driver 18 for SQL Server};Server=127.0.0.1;Database=peai;UID=sa;PWD=***REMOVED***;TrustServerCertificate=yes;"
-    )
+    from .config import settings
+    conn_str = os.environ.get("PEAI_SQLSERVER_CONNECTION") or settings.connection_string
+    if not settings.DB_PASSWORD:
+        print("Falta DB_PASSWORD: configura backend/.env antes de importar a la BD.")
+        sys.exit(1)
 
     if preview_mode:
         scrape_gruplac(url_arg, preview=True)

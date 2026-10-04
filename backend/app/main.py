@@ -5,18 +5,58 @@ from .api import v1
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    db_conn = "Driver={ODBC Driver 18 for SQL Server};Server=127.0.0.1;Database=peai;UID=sa;PWD=***REMOVED***;TrustServerCertificate=yes;"
-    try:
-        from . import repository
-        ok = repository.initialize(repository.InitMode.Database, db_conn)
-        repository._active_connection_string = db_conn
+    from .config import settings
+    from . import repository
+
+    # En produccion la persistencia no es opcional: arrancar en modo memoria
+    # (USE_DATABASE=false) o degradar a JSON tras un fallo de BD significaria
+    # perder silenciosamente todo lo escrito. Se aborta el arranque en cambio.
+    if settings.is_production and not settings.USE_DATABASE:
+        raise RuntimeError(
+            "[Khemia Startup] APP_ENV=production requiere USE_DATABASE=true "
+            "(revisar backend/.env en el servidor). Abortando."
+        )
+
+    if settings.USE_DATABASE:
+        db_conn = settings.connection_string
+        print(f"[Khemia Startup] Intentando conectar a SQL Server ({settings.DB_SERVER}/{settings.DB_NAME})...")
+        ok = False
+        try:
+            ok = repository.initialize(repository.InitMode.Database, db_conn)
+        except Exception as e:
+            print(f"[Khemia Startup] Aviso: Error al inicializar BD ({e}).")
+
         if ok:
             print("[Khemia Startup] Memoria C++ reconstruida exitosamente desde SQL Server.")
+        elif settings.is_production:
+            raise RuntimeError(
+                "[Khemia Startup] No se pudo inicializar desde SQL Server con "
+                "APP_ENV=production: el fallback a pea_data.json esta deshabilitado "
+                "en produccion para no arriesgar los datos. Abortando. "
+                "(Verificar contenedor SQL Server y credenciales en backend/.env)"
+            )
         else:
-            print("[Khemia Startup] repository.initialize retorno False.")
-    except Exception as e:
-        print(f"[Khemia Startup] Aviso: No se pudo auto-inicializar BD ({e}).")
+            print("[Khemia Startup] Aviso: No se pudo auto-inicializar desde SQL Server.")
+            _init_from_local_json(repository, settings)
+    else:
+        print("[Khemia Startup] Modo Local / Desarrollo activo (USE_DATABASE=false).")
+        _init_from_local_json(repository, settings)
+
     yield
+
+
+def _init_from_local_json(repository, settings):
+    """Fallback de desarrollo: carga pea_data.json en memoria (nunca en produccion)."""
+    if settings.DATA_JSON_PATH.exists():
+        print(f"[Khemia Startup] Fallback automatico: Cargando datos desde {settings.DATA_JSON_PATH.name}...")
+        ok = repository.initialize(repository.InitMode.File, str(settings.DATA_JSON_PATH))
+        if ok:
+            print(f"[Khemia Startup] Memoria C++ cargada con {len(repository.list_groups())} grupos locales.")
+        else:
+            print(f"[Khemia Startup] Aviso: Error leyendo archivo {settings.DATA_JSON_PATH.name}.")
+    else:
+        print(f"[Khemia Startup] Aviso: No se encontro {settings.DATA_JSON_PATH.name}, iniciando memoria vacia.")
+        repository.initialize(repository.InitMode.Empty, "")
 
 tags_metadata = [
     {
