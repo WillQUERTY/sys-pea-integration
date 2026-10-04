@@ -439,6 +439,10 @@ export function Products({ isAdmin = false }: { isAdmin?: boolean }) {
           searchPlaceholder='Buscar por título o DOI…'
           filters={productFilters2024}
           filterExtra={filterExtraContent}
+          onClearFilters={() => {
+            setCustomStart('')
+            setCustomEnd('')
+          }}
           emptyMessage='Sin productos para los filtros seleccionados o activos.'
           server={{
             total: products.data?.total ?? 0,

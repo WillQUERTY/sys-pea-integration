@@ -5,7 +5,7 @@ import {
   ChevronsLeft,
   ChevronsRight,
   Search as SearchIcon,
-  Filter as FilterIcon,
+  SlidersHorizontal,
   X as XIcon,
   SearchX,
   Inbox,
@@ -14,7 +14,9 @@ import {
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
-import { ScrollArea } from '@/components/ui/scroll-area'
+import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group'
+import { Label } from '@/components/ui/label'
+import { cn } from '@/lib/utils'
 import {
   Select,
   SelectContent,
@@ -97,6 +99,8 @@ interface DataTableProps<T> {
   filters?: DataFilter[]
   /** Contenido extra dentro del panel de filtros (p.ej. inputs de ventana personalizada) */
   filterExtra?: ReactNode
+  /** Callback opcional al limpiar filtros (para resetear estados adicionales como custom date ranges) */
+  onClearFilters?: () => void
   /** Apply external filters to each row. Gets current filter values map. */
   filterFn?: (item: T, filterValues: Record<string, string>) => boolean
   /** Rows per page options */
@@ -126,6 +130,7 @@ export function DataTable<T>({
   searchPlaceholder = 'Buscar…',
   filters = [],
   filterExtra,
+  onClearFilters,
   filterFn,
   pageSizeOptions = [10, 20, 50, 100],
   defaultPageSize = 10,
@@ -139,6 +144,7 @@ export function DataTable<T>({
   const [search, setSearch] = useState('')
   const [page, setPage] = useState(0)
   const [pageSize, setPageSize] = useState(defaultPageSize)
+  const [filterSheetOpen, setFilterSheetOpen] = useState(false)
   const [filterValues, setFilterValues] = useState<Record<string, string>>(() => {
     const init: Record<string, string> = {}
     for (const f of filters) init[f.key] = f.defaultValue ?? 'all'
@@ -198,19 +204,22 @@ export function DataTable<T>({
   }
 
   // Count active filters (not default)
-  const activeFiltersCount = Object.keys(activeFilterValues).filter(k => activeFilterValues[k] !== 'all').length
+  const activeFiltersCount = filters.filter(
+    (f) => activeFilterValues[f.key] && activeFilterValues[f.key] !== (f.defaultValue ?? 'all')
+  ).length
   const isFiltered = Boolean(activeSearchValue?.trim()) || activeFiltersCount > 0
 
   const clearFilters = () => {
     const reset: Record<string, string> = {}
     for (const f of filters) reset[f.key] = f.defaultValue ?? 'all'
     if (isServer) {
-      // El reset de página lo hace la vista en su handler
       server.onFilterChange?.(reset)
+      server.onPageChange(0)
     } else {
       setFilterValues(reset)
       setPage(0)
     }
+    onClearFilters?.()
   }
 
   const clearAllFiltersAndSearch = () => {
@@ -225,97 +234,285 @@ export function DataTable<T>({
       setFilterValues(reset)
       setPage(0)
     }
+    onClearFilters?.()
   }
 
   return (
-    <div className='space-y-4 w-full min-w-0 max-w-full'>
+    <div className='space-y-3.5 w-full min-w-0 max-w-full'>
       {/* ── Toolbar ── */}
-      <div className='flex flex-wrap items-center gap-3'>
+      <div className='flex flex-wrap items-center gap-2.5 sm:gap-3 w-full min-w-0'>
         {/* Search */}
         {!hideSearch && (
-          <div className='relative max-w-xs flex-1 min-w-0'>
-            <SearchIcon className='pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground' />
+          <div className='relative max-w-sm sm:max-w-md flex-1 min-w-[180px]'>
+            <SearchIcon className='pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground transition-colors' />
             <Input
               placeholder={searchPlaceholder}
               value={activeSearchValue}
-              onChange={(e) =>
-                isServer ? server.onSearchChange(e.target.value) : updateSearch(e.target.value)
-              }
-              className='ps-9'
+              onChange={(e) => {
+                if (isServer) {
+                  server.onSearchChange(e.target.value)
+                  server.onPageChange(0)
+                } else {
+                  updateSearch(e.target.value)
+                }
+              }}
+              className='h-10 sm:h-11 rounded-full pl-10 pr-9 text-sm bg-background border border-border/80 shadow-2xs hover:border-border focus-visible:ring-2 focus-visible:ring-primary/20 focus-visible:border-primary transition-all'
             />
+            {activeSearchValue && activeSearchValue.length > 0 && (
+              <Button
+                type='button'
+                variant='ghost'
+                size='icon'
+                onClick={() => {
+                  if (isServer) {
+                    server.onSearchChange('')
+                    server.onPageChange(0)
+                  } else {
+                    updateSearch('')
+                  }
+                }}
+                className='absolute right-2 top-1/2 -translate-y-1/2 h-7 w-7 rounded-full text-muted-foreground hover:text-foreground hover:bg-muted'
+                title='Borrar búsqueda'
+              >
+                <XIcon className='h-3.5 w-3.5' />
+              </Button>
+            )}
           </div>
         )}
 
-        {/* Filters Drawer */}
+        {/* Filters Drawer (Estilo público con SlidersHorizontal, chips y cards) */}
         {!hideFilters && filters.length > 0 && (
-          <Sheet>
+          <Sheet open={filterSheetOpen} onOpenChange={setFilterSheetOpen}>
             <SheetTrigger asChild>
-              <Button variant='outline' className='relative'>
-                <FilterIcon className='mr-2 h-4 w-4' />
-                Filtros
+              <Button
+                variant='outline'
+                className='relative h-10 sm:h-11 rounded-full border border-border/80 bg-background hover:bg-muted/60 px-4 text-foreground shadow-2xs transition-all shrink-0 font-medium'
+              >
+                <SlidersHorizontal className='mr-2 h-4 w-4 text-muted-foreground' />
+                <span>Filtros</span>
                 {activeFiltersCount > 0 && (
-                  <Badge variant='default' className='absolute -right-2 -top-2 h-5 w-5 rounded-full p-0 flex items-center justify-center text-[10px]'>
+                  <Badge
+                    variant='default'
+                    className='absolute -right-1.5 -top-1.5 h-5 min-w-5 rounded-full px-1 flex items-center justify-center text-[10px] font-bold bg-amber-500 text-amber-950 dark:bg-amber-400 dark:text-amber-950 border-0 shadow-xs'
+                  >
                     {activeFiltersCount}
                   </Badge>
                 )}
               </Button>
             </SheetTrigger>
-            <SheetContent className='flex flex-col border-l-0 shadow-2xl sm:max-w-sm'>
-              <SheetHeader className='pb-4 border-b border-border/50'>
-                <div className='flex items-center gap-2'>
-                  <FilterIcon className='h-5 w-5 text-primary' />
-                  <SheetTitle className='text-lg'>Filtros avanzados</SheetTitle>
+            <SheetContent className='flex flex-col gap-0 border-l bg-background p-0 shadow-2xl sm:max-w-sm [&>button]:inset-e-4 [&>button]:top-4 [&>button]:flex [&>button]:size-8 [&>button]:items-center [&>button]:justify-center [&>button]:rounded-full [&>button]:opacity-100 [&>button]:hover:bg-muted'>
+              {/* Header */}
+              <SheetHeader className='flex h-16 shrink-0 flex-row items-center justify-between border-b border-border bg-background py-0 ps-6 pe-14'>
+                <div className='flex items-center gap-2.5'>
+                  <SlidersHorizontal className='h-4.5 w-4.5 text-primary' />
+                  <SheetTitle className='text-lg font-bold tracking-tight'>Filtros</SheetTitle>
+                  <SheetDescription className='sr-only'>Panel de filtros de la tabla</SheetDescription>
+                  {activeFiltersCount > 0 && (
+                    <Badge variant='secondary' className='rounded-full text-[11px] font-semibold'>
+                      {activeFiltersCount} {activeFiltersCount === 1 ? 'activo' : 'activos'}
+                    </Badge>
+                  )}
                 </div>
-                <SheetDescription className='text-xs'>
-                  Refina los resultados de la tabla.
-                </SheetDescription>
-              </SheetHeader>
-              
-              <ScrollArea className='flex-1 px-6 py-5'>
-                <div className='space-y-6 pr-3'>
-                  {filters.map((f) => (
-                    <div key={f.key} className='space-y-1.5'>
-                      <label className='text-sm font-semibold text-foreground/80'>{f.label}</label>
-                      <Select
-                        value={activeFilterValues[f.key]}
-                        onValueChange={(v) =>
-                          isServer
-                            ? server.onFilterChange?.({ ...activeFilterValues, [f.key]: v })
-                            : updateFilter(f.key, v)
-                        }
-                      >
-                        <SelectTrigger className='w-full bg-muted/30 border-transparent hover:border-border transition-colors h-10 px-3.5 rounded-lg'>
-                          <SelectValue placeholder={f.label} />
-                        </SelectTrigger>
-                        <SelectContent className='rounded-lg shadow-lg'>
-                          {f.options.map((opt) => (
-                            <SelectItem key={opt.value} value={opt.value} className='rounded-md my-0.5 cursor-pointer'>
-                              {opt.label}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </div>
-                  ))}
-                  {filterExtra && <div className='space-y-3 border-t border-border/50 pt-5'>{filterExtra}</div>}
-                </div>
-              </ScrollArea>
-              
-              {activeFiltersCount > 0 && (
-                <div className='p-6 border-t border-border/50'>
-                  <Button variant='destructive' className='w-full rounded-xl h-11 font-semibold bg-rose-500/10 text-rose-600 hover:bg-rose-500/20 hover:text-rose-700 dark:bg-rose-500/20 dark:text-rose-400 dark:hover:bg-rose-500/30' onClick={clearFilters}>
-                    <XIcon className='mr-2 h-4 w-4' />
-                    Limpiar filtros ({activeFiltersCount})
+                {activeFiltersCount > 0 && (
+                  <Button
+                    variant='ghost'
+                    size='icon'
+                    className='h-8 w-8 rounded-full text-muted-foreground hover:text-foreground'
+                    onClick={clearFilters}
+                    title='Restablecer filtros'
+                  >
+                    <RotateCcw className='h-4 w-4' />
                   </Button>
-                </div>
-              )}
+                )}
+              </SheetHeader>
+
+              {/* Body */}
+              <div className='flex-1 space-y-6 overflow-y-auto bg-muted/40 dark:bg-muted/20 px-5 py-6'>
+                {filters.map((f) => {
+                  const currentValue = activeFilterValues[f.key] ?? f.defaultValue ?? 'all'
+                  const useSelect = f.options.length > 4
+
+                  return (
+                    <div key={f.key} className='space-y-2.5'>
+                      <h4 className='text-sm font-bold text-foreground'>{f.label}</h4>
+
+                      {useSelect ? (
+                        <Select
+                          value={currentValue}
+                          onValueChange={(val) => {
+                            if (isServer) {
+                              server.onFilterChange?.({ ...activeFilterValues, [f.key]: val })
+                              server.onPageChange(0)
+                            } else {
+                              updateFilter(f.key, val)
+                            }
+                          }}
+                        >
+                          <SelectTrigger className='h-11 w-full rounded-xl border-border/60 bg-background px-4 text-sm shadow-2xs transition-colors hover:border-border data-[placeholder]:text-muted-foreground'>
+                            <SelectValue placeholder={`Seleccionar ${f.label.toLowerCase()}`} />
+                          </SelectTrigger>
+                          <SelectContent className='rounded-xl shadow-lg'>
+                            {f.options.map((opt) => (
+                              <SelectItem
+                                key={opt.value}
+                                value={opt.value}
+                                className='rounded-lg my-0.5 cursor-pointer'
+                              >
+                                {opt.label}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      ) : (
+                        <RadioGroup
+                          value={currentValue}
+                          onValueChange={(val) => {
+                            if (isServer) {
+                              server.onFilterChange?.({ ...activeFilterValues, [f.key]: val })
+                              server.onPageChange(0)
+                            } else {
+                              updateFilter(f.key, val)
+                            }
+                          }}
+                          className='space-y-1'
+                        >
+                          {f.options.map((opt) => {
+                            const id = `table-filter-${f.key}-${opt.value}`
+                            const selected = currentValue === opt.value
+                            return (
+                              <Label
+                                key={opt.value}
+                                htmlFor={id}
+                                className={cn(
+                                  'flex cursor-pointer items-center gap-3 rounded-xl border px-3.5 py-2.5 text-sm transition-colors',
+                                  selected
+                                    ? 'border-primary/40 bg-background font-medium text-foreground shadow-2xs'
+                                    : 'border-transparent text-muted-foreground hover:bg-background hover:text-foreground'
+                                )}
+                              >
+                                <RadioGroupItem value={opt.value} id={id} />
+                                <span className='leading-none'>{opt.label}</span>
+                              </Label>
+                            )
+                          })}
+                        </RadioGroup>
+                      )}
+                    </div>
+                  )
+                })}
+
+                {/* Filtros personalizados (p. ej. rango de años en productos) */}
+                {filterExtra && <div className='pt-1'>{filterExtra}</div>}
+              </div>
+
+              {/* Footer */}
+              <div className='flex items-center gap-3 border-t border-border bg-background px-5 py-4'>
+                <Button
+                  variant='outline'
+                  className='h-11 flex-1 rounded-xl'
+                  onClick={clearFilters}
+                  disabled={activeFiltersCount === 0}
+                >
+                  <RotateCcw className='mr-2 h-4 w-4' />
+                  Restablecer
+                </Button>
+                <Button
+                  className='h-11 flex-1 rounded-xl font-semibold'
+                  onClick={() => setFilterSheetOpen(false)}
+                >
+                  Ver resultados
+                </Button>
+              </div>
             </SheetContent>
           </Sheet>
         )}
 
         {/* Spacer + toolbar actions */}
-        {toolbarActions && <div className='ms-auto flex items-center gap-2'>{toolbarActions}</div>}
+        {toolbarActions && <div className='ms-auto flex items-center gap-2 shrink-0'>{toolbarActions}</div>}
       </div>
+
+      {/* ── Active Filter Pills / Chips ── */}
+      {(activeFiltersCount > 0 || (activeSearchValue && activeSearchValue.trim().length > 0)) && (
+        <div className='flex flex-wrap items-center gap-2 pt-0.5'>
+          <span className='text-xs font-medium text-muted-foreground'>Filtros activos:</span>
+
+          {/* Search Chip */}
+          {activeSearchValue && activeSearchValue.trim().length > 0 && (
+            <Badge
+              variant='secondary'
+              className='inline-flex items-center gap-1.5 rounded-full pl-3 pr-1.5 py-1 text-xs font-medium bg-muted/80 hover:bg-muted text-foreground transition-colors'
+            >
+              <span>
+                Búsqueda: <strong className='font-semibold'>"{activeSearchValue}"</strong>
+              </span>
+              <button
+                type='button'
+                onClick={() => {
+                  if (isServer) {
+                    server.onSearchChange('')
+                    server.onPageChange(0)
+                  } else {
+                    updateSearch('')
+                  }
+                }}
+                className='rounded-full p-0.5 hover:bg-background/80 transition-colors'
+                title='Quitar búsqueda'
+              >
+                <XIcon className='h-3 w-3 text-muted-foreground hover:text-foreground' />
+              </button>
+            </Badge>
+          )}
+
+          {/* Active Filter Chips */}
+          {filters.map((f) => {
+            const val = activeFilterValues[f.key]
+            const defaultVal = f.defaultValue ?? 'all'
+            if (!val || val === defaultVal) return null
+
+            const opt = f.options.find((o) => o.value === val)
+            const label = opt ? opt.label : val
+
+            return (
+              <Badge
+                key={f.key}
+                variant='secondary'
+                className='inline-flex items-center gap-1.5 rounded-full pl-3 pr-1.5 py-1 text-xs font-medium bg-muted/80 hover:bg-muted text-foreground transition-colors'
+              >
+                <span>
+                  <span className='text-muted-foreground'>{f.label}:</span>{' '}
+                  <strong className='font-semibold'>{label}</strong>
+                </span>
+                <button
+                  type='button'
+                  onClick={() => {
+                    const nextVal = f.defaultValue ?? 'all'
+                    if (isServer) {
+                      server.onFilterChange?.({ ...activeFilterValues, [f.key]: nextVal })
+                      server.onPageChange(0)
+                    } else {
+                      updateFilter(f.key, nextVal)
+                    }
+                  }}
+                  className='rounded-full p-0.5 hover:bg-background/80 transition-colors'
+                  title={`Quitar filtro ${f.label}`}
+                >
+                  <XIcon className='h-3 w-3 text-muted-foreground hover:text-foreground' />
+                </button>
+              </Badge>
+            )
+          })}
+
+          {/* Clear all text button */}
+          <Button
+            variant='ghost'
+            size='sm'
+            onClick={clearAllFiltersAndSearch}
+            className='h-7 px-2 text-xs text-muted-foreground hover:text-destructive'
+          >
+            Limpiar todo
+          </Button>
+        </div>
+      )}
 
       {/* ── Table ── */}
       <div
