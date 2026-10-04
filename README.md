@@ -39,13 +39,14 @@ Desde `database/`, con el servidor de backend **detenido** (libera conexiones OD
 
 ```powershell
 cd database
-sqlcmd -S localhost -E -C -b -i recreate_database.sql      # DROP + CREATE peai
-sqlcmd -S localhost -E -C -I -b -d peai -i init_schema.sql # tablas + semillas Minciencias
+sqlcmd -S localhost -E -C -b -i recreate_database.sql           # DROP + CREATE peai
+sqlcmd -S localhost -E -C -I -b -d peai -i init_schema.sql      # Tablas DDL + ObservationWindow
+python seed_catalog_2024.py                                     # Siembra canónica modelo Minciencias 2024
 ```
 
 - `-E`: autenticación Windows. `-C`: confiar en el certificado del servidor (driver 18 lo exige). `-I`: `QUOTED_IDENTIFIER ON` (requerido por los índices filtrados de `ProductAuthor`).
-- Esto deja **5 familias y 56 subtipos Minciencias** sembrados y las tablas de datos vacías.
-- Si la BD ya existe y solo faltan los subtipos nuevos (no quieres borrar): `../backend/venv/Scripts/python.exe seed_new_subtypes.py`.
+- Esto siembra **5 familias y 70 subtipos canónicos Minciencias Convocatoria 957/2024** (GNC: 10, DTI: 26, ASC: 4, DPC: 21, FRH: 9) y deja las tablas de datos vacías listas para ingesta.
+- Si la BD ya existe y solo se desea actualizar o sincronizar el catálogo 2024: `python seed_catalog_2024.py` (es un upsert idempotente por `code`).
 
 ### 2. Core C++ (compilar el puente pybind11)
 
@@ -138,8 +139,8 @@ El scraper extrae del GrupLAC: datos del grupo, líneas, integrantes, proyectos 
 ## 🧹 Limpieza / reset total
 
 1. Detener el backend (libera la BD y el `.pyd`).
-2. Ejecutar de nuevo los dos comandos de **1. Base de datos** (`recreate_database.sql` + `init_schema.sql`).
-3. Arrancar el backend: arranca con RAM vacía, consistente con la BD limpia.
+2. Ejecutar los comandos de **1. Base de datos** (`recreate_database.sql` + `init_schema.sql` + `python seed_catalog_2024.py`).
+3. Arrancar el backend: arranca con RAM vacía y catálogos Minciencias 2024 listos, consistente con la BD limpia.
 
 ---
 

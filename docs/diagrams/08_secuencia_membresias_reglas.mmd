@@ -1,0 +1,38 @@
+sequenceDiagram
+    autonumber
+    actor Usuario as Gestor de Investigación
+    participant UI as Frontend React
+    participant API as FastAPI (v1.py)
+    participant Repo as repository.py
+    participant Bind as pybind11
+    participant Core as Core C++ (GroupService)
+    participant DB as SQL Server
+
+    Usuario->>UI: Selecciona Investigador, Rol, Fecha Inicio y Fecha Fin
+    UI->>API: POST /api/v1/groups/{gid}/members/{rid} {role, start_date, end_date}
+    API->>Repo: add_member_to_group(gid, rid, role, start_date, end_date)
+    Repo->>Repo: validate_membership_period(start_date, end_date)
+    alt Fecha Inicio > Fecha Fin (Regla RV-001)
+        Repo-->>API: raise ValueError("RV-001: Periodo invertido...")
+        API-->>UI: HTTP 400 Bad Request {detail: "RV-001..."}
+        UI-->>Usuario: Muestra alerta de error en fechas
+    else Periodo no invertido
+        Repo->>Bind: membership_details(gid, rid)
+        Bind->>Core: membership_details(gid, rid)
+        Core-->>Bind: Vinculación previa (o null)
+        alt Vinculación previa activa sin fin o fechas solapadas (Regla RV-002)
+            Repo-->>API: raise ValueError("RV-002: Periodos de vinculación solapados...")
+            API-->>UI: HTTP 400 Bad Request {detail: "RV-002..."}
+            UI-->>Usuario: Muestra alerta de solapamiento
+        else Reingreso no solapado o nuevo miembro
+            Repo->>Bind: add_member_to_group(gid, rid, role, start, end)
+            Bind->>Core: add_member_to_group(...)
+            Core->>Core: new MembershipNode() en cadenas nextInGroup y nextForResearcher
+            Repo->>Bind: sync_membership_details_to_db(conn, gid, rid, role, start, end)
+            Bind->>DB: MERGE INTO GroupMembership...
+            DB-->>Bind: OK
+            Repo-->>API: OK
+            API-->>UI: HTTP 200 OK {status: "success"}
+            UI-->>Usuario: Integrante vinculado en la tabla
+        end
+    end

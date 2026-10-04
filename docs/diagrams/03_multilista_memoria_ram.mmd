@@ -1,0 +1,101 @@
+graph TB
+    classDef headStyle fill:#1a365d,stroke:#2b6cb0,stroke-width:2px,color:#fff;
+    classDef nodeStyle fill:#ebf8ff,stroke:#3182ce,stroke-width:1.5px,color:#1a365d;
+    classDef crossStyle fill:#fefcbf,stroke:#d69e2e,stroke-width:2px,color:#744210;
+    classDef stackStyle fill:#fed7d7,stroke:#e53e3e,stroke-width:1.5px,color:#742a2a;
+    classDef queueStyle fill:#c6f6d5,stroke:#38a169,stroke-width:1.5px,color:#22543d;
+
+    subgraph CabecerasRAM ["Cabeceras Principales en RAM (Singletons / Servicios)"]
+        HeadG["_headGroup (GroupNode*)"]:::headStyle
+        HeadR["_headResearcher (ResearcherNode*)"]:::headStyle
+        HeadP["_headProduct (ProductNode*)"]:::headStyle
+        HeadProj["_headProject (ProjectNode*)"]:::headStyle
+        HeadStack["_topNode (UndoOperationNode*)"]:::headStyle
+        HeadQueueF["_frontNode (ValidationQueueNode*)"]:::headStyle
+        HeadQueueR["_rearNode (ValidationQueueNode*)"]:::headStyle
+    end
+
+    subgraph ListaGrupos ["Lista Principal de Grupos"]
+        G1["GroupNode: G1 (AITICE)\n- data: Group\n- firstMembership\n- firstProductLink\n- firstProjectLink\n- firstPlan\n- nextGroup"]:::nodeStyle
+        G2["GroupNode: G2 (GIE)\n- data: Group\n- firstMembership\n- firstProductLink\n- firstProjectLink\n- firstPlan\n- nextGroup = NULL"]:::nodeStyle
+        HeadG --> G1
+        G1 -->|nextGroup| G2
+    end
+
+    subgraph ListaInvestigadores ["Lista Principal de Investigadores"]
+        R1["ResearcherNode: R1 (Adith Pérez)\n- data: Researcher\n- nextResearcher"]:::nodeStyle
+        R2["ResearcherNode: R2 (Investigador B)\n- data: Researcher\n- nextResearcher = NULL"]:::nodeStyle
+        HeadR --> R1
+        R1 -->|nextResearcher| R2
+    end
+
+    subgraph MultilistaMembresia ["Multilista Ortogonal de Membresías (Integrantes)"]
+        M1["MembershipNode (G1-R1)\n- role: Director\n- dates: 2018..activo\n- nextInGroup\n- nextForResearcher"]:::crossStyle
+        M2["MembershipNode (G1-R2)\n- role: Investigador\n- dates: 2020..2024\n- nextInGroup = NULL\n- nextForResearcher"]:::crossStyle
+        M3["MembershipNode (G2-R2)\n- role: Investigador\n- dates: 2024..activo\n- nextInGroup = NULL\n- nextForResearcher = NULL"]:::crossStyle
+
+        G1 -->|firstMembership| M1
+        M1 -->|nextInGroup| M2
+        G2 -->|firstMembership| M3
+
+        R1 -.->|primera membresía| M1
+        R2 -.->|primera membresía| M2
+        M2 -.->|nextForResearcher| M3
+    end
+
+    subgraph ListaProductos ["Lista Principal de Productos (20 Atributos 2024)"]
+        P1["ProductNode: P1 (Artículo Q1)\n- data: Product\n- firstAuthor\n- nextProduct"]:::nodeStyle
+        P2["ProductNode: P2 (Software Registrado)\n- data: Product\n- firstAuthor\n- nextProduct = NULL"]:::nodeStyle
+        HeadP --> P1
+        P1 -->|nextProduct| P2
+    end
+
+    subgraph MultilistaGrupoProducto ["Multilista Ortogonal Grupo-Producto"]
+        GP1["GroupProductNode (G1-P1)\n- status: approved\n- nextInGroup\n- nextForProduct"]:::crossStyle
+        GP2["GroupProductNode (G1-P2)\n- status: approved\n- nextInGroup = NULL\n- nextForProduct"]:::crossStyle
+        G1 -->|firstProductLink| GP1
+        GP1 -->|nextInGroup| GP2
+        P1 -.->|nextForProduct| GP1
+        P2 -.->|nextForProduct| GP2
+    end
+
+    subgraph MultilistaAutores ["Multilista Ortogonal Producto-Autor"]
+        PA1["ProductAuthorNode (P1-R1)\n- author_order: 1\n- match: verified\n- nextInProduct"]:::crossStyle
+        PA2["ProductAuthorNode (P1-R2)\n- author_order: 2\n- match: verified\n- nextInProduct = NULL"]:::crossStyle
+        P1 -->|firstAuthor| PA1
+        PA1 -->|nextInProduct| PA2
+        R1 -.->|autoría en| PA1
+        R2 -.->|autoría en| PA2
+    end
+
+    subgraph ListaPlanesProyectos ["Sublistas de Planes y Proyectos"]
+        PL1["WorkPlanNode (G1: Plan 2024-2026)\n- nextPlan = NULL"]:::nodeStyle
+        G1 -->|firstPlan| PL1
+
+        PR1["ProjectNode (Proyecto Minciencias 2024)\n- nextProject = NULL"]:::nodeStyle
+        HeadProj --> PR1
+        GPR1["GroupProjectNode (G1-PR1)\n- nextInGroup = NULL"]:::crossStyle
+        G1 -->|firstProjectLink| GPR1
+        GPR1 -.->|referencia| PR1
+    end
+
+    subgraph PilaDeshacer ["Pila LIFO: Historial de Deshacer (UndoStack)"]
+        U1["UndoOperationNode [CIMA / TOP]\n- op: UPDATE_MEMBER\n- prev_state: snapshot\n- next"]:::stackStyle
+        U2["UndoOperationNode\n- op: CREATE_PRODUCT\n- prev_state: snapshot\n- next"]:::stackStyle
+        U3["UndoOperationNode [BASE]\n- op: CREATE_GROUP\n- prev_state: snapshot\n- next = NULL"]:::stackStyle
+
+        HeadStack -->|top| U1
+        U1 -->|"next (hacia abajo)"| U2
+        U2 -->|"next (hacia abajo)"| U3
+    end
+
+    subgraph ColaValidacion ["Cola FIFO: Validación Técnica de Productos"]
+        Q1["ValidationQueueNode [FRENTE / HEAD]\n- item: P1 (2024-09-01)\n- status: pending\n- next"]:::queueStyle
+        Q2["ValidationQueueNode\n- item: P2 (2024-09-02)\n- status: in_review\n- next"]:::queueStyle
+        Q3["ValidationQueueNode [COLA / TAIL]\n- item: P3 (2024-09-03)\n- status: pending\n- next = NULL"]:::queueStyle
+
+        HeadQueueF -->|"front (desencola)"| Q1
+        Q1 -->|next| Q2
+        Q2 -->|next| Q3
+        HeadQueueR -->|"rear (encola)"| Q3
+    end

@@ -1,0 +1,26 @@
+sequenceDiagram
+    autonumber
+    actor Usuario as Gestor de Investigación
+    participant UI as Frontend React
+    participant API as FastAPI (v1.py)
+    participant Repo as repository.py
+    participant Bind as pybind11
+    participant Core as Core C++ (RAM)
+    participant Stack as UndoStack (LIFO)
+    participant DB as SQL Server
+
+    Usuario->>UI: Completa formulario y clic en "Crear Grupo"
+    UI->>API: POST /api/v1/groups {name, external_code, ...}
+    API->>Repo: create_group(data)
+    Repo->>Bind: group_create(data)
+    Bind->>Core: GroupService::create_group(Group)
+    Core->>Core: Asignar ID, instanciar GroupNode y enlazar a _headGroup
+    Core->>Stack: undo_push(CREATE, Group, ID, snapshot_null)
+    Core-->>Bind: Group instanciado con ID generado
+    Bind-->>Repo: Objeto Group creado en memoria RAM
+    Repo->>DB: INSERT INTO ResearchGroup ... (Write-Through)
+    DB-->>Repo: Confirmación de inserción en SQL Server
+    Repo->>DB: INSERT INTO AuditLog (Action='CREATE', Entity='Group', ...)
+    Repo-->>API: Respuesta de éxito con entidad completa
+    API-->>UI: HTTP 201 Created {id, name, ...}
+    UI-->>Usuario: Muestra notificación y actualiza tabla en pantalla

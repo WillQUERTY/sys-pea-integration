@@ -1,0 +1,56 @@
+graph TB
+    classDef dimStyle fill:#2b6cb0,stroke:#2c5282,stroke-width:2px,color:#fff;
+    classDef extDimStyle fill:#ebf8ff,stroke:#3182ce,stroke-width:1.5px,color:#1a365d;
+    classDef cubeStyle fill:#fefcbf,stroke:#d69e2e,stroke-width:2px,color:#744210;
+    classDef opStyle fill:#e6fffa,stroke:#319795,stroke-width:1.5px,color:#234e52;
+    classDef measStyle fill:#fed7d7,stroke:#e53e3e,stroke-width:1.5px,color:#742a2a;
+
+    subgraph DimensionesPrimarias ["Espacio 4D Canónico: H = D1 × D2 × D3 × D4"]
+        D1["D1: Grupo de Investigación\n(AITICE, GIE, etc.)"]:::dimStyle
+        D2["D2: Investigador / Autor\n(Adith Pérez, etc.)"]:::dimStyle
+        D3["D3: Producto de Investigación\n(Artículos, Software, etc.)"]:::dimStyle
+        D4["D4: Tiempo / Ventana de Observación\n(Años 2020..2026, 2 y 5 años)"]:::dimStyle
+    end
+
+    subgraph DimensionesSecundarias ["Dimensiones de Enriquecimiento Minciencias 2024"]
+        D5["D5: Familia Minciencias\n(GNC, DTI, ASC, DPC, FRH)"]:::extDimStyle
+        D6["D6: Subtipo Canónico\n(70 Tipologías Oficiales)"]:::extDimStyle
+        D7["D7: Calidad y Peso\n(A1, A, B, C, Top, Puntos)"]:::extDimStyle
+        D8["D8: Estado Validación\n(Pendiente, Válido, Rechazado)"]:::extDimStyle
+    end
+
+    subgraph CeldaHipercubo ["Celda Multidimensional (Coordenada H)"]
+        Cell["Celda Analítica H(g, i, p, t, fam, sub, q, val)\nVector de Medidas M:"]:::cubeStyle
+        M1["M1: Conteo de Productos (N)"]:::measStyle
+        M2["M2: Productos Validados vs Pendientes"]:::measStyle
+        M3["M3: Puntaje Ponderado Minciencias"]:::measStyle
+        M4["M4: Duración de Vinculación y Coautorías"]:::measStyle
+
+        Cell --> M1
+        Cell --> M2
+        Cell --> M3
+        Cell --> M4
+    end
+
+    subgraph OperacionesOLAP ["Operaciones Analíticas del Hipercubo en PEA-i"]
+        OpSlice["SLICE (Corte Plano)\nFijar 1 dimensión\nEj: Productos sólo del año 2025"]:::opStyle
+        OpDice["DICE (Subcubo)\nFiltrar múltiples rangos\nEj: GNC A1 en ventana 5 años de AITICE"]:::opStyle
+        OpDrill["DRILL-DOWN (Desglose)\nFamilia GNC ➔ Subtipo ART ➔ Artículo Q1"]:::opStyle
+        OpRoll["ROLL-UP (Agregación)\nProducto ➔ Subtipo ➔ Familia ➔ UPC Total"]:::opStyle
+        OpPivot["PIVOT (Rotación)\nFilas: Grupos UPC ✕ Columnas: Años"]:::opStyle
+    end
+
+    D1 --> Cell
+    D2 --> Cell
+    D3 --> Cell
+    D4 --> Cell
+    D5 -.-> Cell
+    D6 -.-> Cell
+    D7 -.-> Cell
+    D8 -.-> Cell
+
+    Cell --> OpSlice
+    Cell --> OpDice
+    Cell --> OpDrill
+    Cell --> OpRoll
+    Cell --> OpPivot

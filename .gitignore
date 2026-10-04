@@ -41,3 +41,8 @@ docs/_uvicorn*.log
 *.env
 !.env.example
 
+# Temporary and lock files
+*.old
+~$*
+.pytest_cache/
+

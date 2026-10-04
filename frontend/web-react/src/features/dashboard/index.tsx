@@ -47,6 +47,8 @@ export function Dashboard() {
   const rejectedCount = stats?.validation?.['rejected'] ?? 0
   const totalProducts = stats?.total_products ?? 0
   const pendingCount = stats?.validation?.['pending'] ?? 0
+  const loadingStats = statsQuery.isLoading
+  const loadingQueue = queue.isLoading
   const totalResearchers = stats?.total_researchers ?? 0
 
   const validationRate = totalProducts > 0 ? ((validCount / totalProducts) * 100).toFixed(1) : '0'
@@ -110,9 +112,13 @@ export function Dashboard() {
               </div>
             </CardHeader>
             <CardContent>
-              <div className='text-2xl font-bold text-foreground'>
-                {validCount.toLocaleString()}
-              </div>
+              {loadingStats ? (
+                <Skeleton className='h-8 w-20' />
+              ) : (
+                <div className='text-2xl font-bold text-foreground'>
+                  {validCount.toLocaleString('es-CO')}
+                </div>
+              )}
               <p className='text-[11px] text-muted-foreground mt-1'>
                 {validationRate}% de la producción total
               </p>
@@ -130,9 +136,13 @@ export function Dashboard() {
             </CardHeader>
             <CardContent>
               <div className='flex items-center justify-between'>
-                <div className='text-2xl font-bold text-foreground'>
-                  {pendingInQueue}
-                </div>
+                {loadingQueue ? (
+                  <Skeleton className='h-8 w-16' />
+                ) : (
+                  <div className='text-2xl font-bold text-foreground'>
+                    {pendingInQueue.toLocaleString('es-CO')}
+                  </div>
+                )}
                 <Badge variant='outline' className='text-[10px]'>
                   <Link to='/admin/validation-queue'>Revisar →</Link>
                 </Badge>
@@ -153,9 +163,13 @@ export function Dashboard() {
               </div>
             </CardHeader>
             <CardContent>
-              <div className='text-2xl font-bold text-foreground'>
-                {pendingCount.toLocaleString()}
-              </div>
+              {loadingStats ? (
+                <Skeleton className='h-8 w-20' />
+              ) : (
+                <div className='text-2xl font-bold text-foreground'>
+                  {pendingCount.toLocaleString('es-CO')}
+                </div>
+              )}
               <p className='text-[11px] text-muted-foreground mt-1'>
                 Productos en estado pendiente
               </p>
@@ -172,9 +186,13 @@ export function Dashboard() {
               </div>
             </CardHeader>
             <CardContent>
-              <div className='text-2xl font-bold text-foreground'>
-                {rejectedCount.toLocaleString()}
-              </div>
+              {loadingStats ? (
+                <Skeleton className='h-8 w-20' />
+              ) : (
+                <div className='text-2xl font-bold text-foreground'>
+                  {rejectedCount.toLocaleString('es-CO')}
+                </div>
+              )}
               <p className='text-[11px] text-muted-foreground mt-1'>
                 Requieren revisión o subsanación
               </p>
@@ -297,7 +315,7 @@ export function Dashboard() {
                 hint='Pendientes de reclasificación'
                 icon={<ClipboardList className='h-5 w-5 text-amber-600' />}
                 iconBg='bg-amber-500/10'
-                to='/products'
+                to='/admin/products'
               />
               <Metric2024Card
                 title='Con categoría de calidad'
@@ -305,7 +323,7 @@ export function Dashboard() {
                 hint='Asignada por el validador humano'
                 icon={<BadgeCheck className='h-5 w-5 text-emerald-600' />}
                 iconBg='bg-emerald-500/10'
-                to='/products'
+                to='/admin/products'
               />
               <Metric2024Card
                 title='Avalados ✓ Minciencias'
@@ -313,7 +331,7 @@ export function Dashboard() {
                 hint='Convocatoria Nacional previa'
                 icon={<ShieldCheck className='h-5 w-5 text-emerald-600' />}
                 iconBg='bg-emerald-500/10'
-                to='/products'
+                to='/admin/products'
               />
               <Metric2024Card
                 title='Cobertura ORCID'
@@ -325,7 +343,7 @@ export function Dashboard() {
                 hint='Investigadores con ORCID registrado'
                 icon={<Fingerprint className='h-5 w-5 text-violet-600' />}
                 iconBg='bg-violet-500/10'
-                to='/researchers'
+                to='/admin/researchers'
               />
             </div>
           )}
@@ -359,9 +377,9 @@ function Metric2024Card({
       <div className='min-w-0'>
         <p className='text-xs text-muted-foreground'>{title}</p>
         <p className='text-xl font-bold text-foreground'>
-          {value !== undefined ? (typeof value === 'number' ? value.toLocaleString() : value) : '—'}
+          {value !== undefined ? (typeof value === 'number' ? value.toLocaleString('es-CO') : value) : '—'}
         </p>
-        <p className='text-[11px] text-muted-foreground truncate'>{hint}</p>
+        <p className='text-[11px] leading-snug text-muted-foreground'>{hint}</p>
       </div>
     </Link>
   )

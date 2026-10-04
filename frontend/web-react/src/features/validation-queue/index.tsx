@@ -138,8 +138,13 @@ export function ValidationQueue() {
       key: 'enqueued_at',
       header: 'Encolado',
       cell: (item) => (
-        <span className='text-sm'>
-          {item.enqueued_at ? new Date(item.enqueued_at).toLocaleString() : '—'}
+        <span className='whitespace-nowrap text-sm'>
+          {item.enqueued_at
+            ? new Date(item.enqueued_at).toLocaleString('es-CO', {
+                dateStyle: 'medium',
+                timeStyle: 'short',
+              })
+            : '—'}
         </span>
       ),
     },
@@ -158,10 +163,10 @@ export function ValidationQueue() {
     {
       key: 'actions',
       header: 'Acciones',
-      className: 'text-right',
+      className: 'w-[1%] whitespace-nowrap text-right',
       cell: (item) =>
         item.status === 'pending' ? (
-          <div className='space-x-2 text-right'>
+          <div className='flex items-center justify-end gap-2'>
             <ActionTooltip label='Evaluar producto en el diálogo técnico (validar con tipología/categoría o rechazar con motivo)'>
               <Button
                 size='sm'

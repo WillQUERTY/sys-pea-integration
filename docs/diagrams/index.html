@@ -1,0 +1,404 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>PEA-i — Galería Oficial de Diagramas del Sistema | UPC</title>
+  <style>
+    :root {
+      --primary: #1a365d;
+      --primary-light: #2b6cb0;
+      --accent: #319795;
+      --bg: #f8fafc;
+      --card-bg: #ffffff;
+      --text: #1e293b;
+      --text-muted: #64748b;
+      --border: #e2e8f0;
+    }
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      display: flex;
+      min-height: 100vh;
+    }
+    /* Sidebar */
+    .sidebar {
+      width: 320px;
+      background: #0f172a;
+      color: #f1f5f9;
+      display: flex;
+      flex-direction: column;
+      flex-shrink: 0;
+      position: sticky;
+      top: 0;
+      height: 100vh;
+      overflow-y: auto;
+      border-right: 1px solid #1e293b;
+    }
+    .brand {
+      padding: 24px 20px;
+      border-bottom: 1px solid #1e293b;
+      background: #020617;
+    }
+    .brand h1 {
+      font-size: 1.2rem;
+      font-weight: 700;
+      color: #38bdf8;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    .brand p {
+      font-size: 0.8rem;
+      color: #94a3b8;
+      margin-top: 6px;
+      line-height: 1.4;
+    }
+    .nav-list {
+      list-style: none;
+      padding: 16px 12px;
+      flex: 1;
+    }
+    .nav-category {
+      font-size: 0.7rem;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: #64748b;
+      padding: 14px 10px 6px;
+      font-weight: 700;
+    }
+    .nav-item {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 9px 12px;
+      border-radius: 8px;
+      color: #cbd5e1;
+      text-decoration: none;
+      font-size: 0.85rem;
+      font-weight: 500;
+      margin-bottom: 3px;
+      transition: all 0.15s ease;
+      cursor: pointer;
+    }
+    .nav-item:hover {
+      background: #1e293b;
+      color: #fff;
+    }
+    .nav-item.active {
+      background: var(--primary-light);
+      color: #fff;
+      font-weight: 600;
+      box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.2);
+    }
+    .nav-item .sec-badge {
+      font-size: 0.7rem;
+      opacity: 0.75;
+      background: rgba(255, 255, 255, 0.1);
+      padding: 2px 6px;
+      border-radius: 4px;
+    }
+    /* Main Content */
+    .main {
+      flex: 1;
+      padding: 36px 40px;
+      max-width: calc(100vw - 320px);
+      overflow-y: auto;
+    }
+    .header-bar {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      margin-bottom: 20px;
+      padding-bottom: 18px;
+      border-bottom: 1px solid var(--border);
+    }
+    .title-area h2 {
+      font-size: 1.6rem;
+      font-weight: 700;
+      color: var(--primary);
+    }
+    .title-area p {
+      color: var(--text-muted);
+      margin-top: 4px;
+      font-size: 0.95rem;
+    }
+    .actions {
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+    .btn {
+      padding: 8px 14px;
+      font-size: 0.85rem;
+      font-weight: 600;
+      border-radius: 6px;
+      border: 1px solid var(--border);
+      background: #fff;
+      color: var(--text);
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      transition: all 0.15s ease;
+      text-decoration: none;
+    }
+    .btn:hover {
+      background: #f1f5f9;
+      border-color: #cbd5e1;
+    }
+    .btn-primary {
+      background: var(--primary-light);
+      color: #fff;
+      border-color: var(--primary-light);
+    }
+    .btn-primary:hover {
+      background: var(--primary);
+    }
+    .btn-success {
+      background: #0d9488;
+      color: #fff;
+      border-color: #0d9488;
+    }
+    .btn-success:hover {
+      background: #0f766e;
+    }
+    .description-box {
+      background: #f0f9ff;
+      border-left: 4px solid var(--primary-light);
+      padding: 14px 18px;
+      border-radius: 0 8px 8px 0;
+      margin-bottom: 24px;
+      font-size: 0.92rem;
+      line-height: 1.55;
+      color: #0369a1;
+    }
+    /* View Switcher */
+    .view-bar {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 16px;
+    }
+    .tab-group {
+      display: inline-flex;
+      background: #e2e8f0;
+      border-radius: 8px;
+      padding: 3px;
+    }
+    .tab-btn {
+      padding: 6px 14px;
+      font-size: 0.82rem;
+      font-weight: 600;
+      border: none;
+      background: transparent;
+      color: #475569;
+      border-radius: 6px;
+      cursor: pointer;
+      transition: all 0.15s ease;
+    }
+    .tab-btn.active {
+      background: #fff;
+      color: var(--primary);
+      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+    }
+    /* Diagram Card */
+    .diagram-card {
+      background: var(--card-bg);
+      border-radius: 12px;
+      border: 1px solid var(--border);
+      box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05);
+      padding: 24px;
+      margin-bottom: 32px;
+      overflow-x: auto;
+    }
+    .diagram-viewport {
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      min-height: 480px;
+      background: #ffffff;
+      padding: 20px;
+      border-radius: 8px;
+    }
+    .diagram-img {
+      max-width: 100%;
+      height: auto;
+      display: block;
+      border-radius: 4px;
+    }
+    .source-box {
+      background: #0f172a;
+      color: #f8fafc;
+      border-radius: 8px;
+      padding: 20px;
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+      font-size: 0.85rem;
+      line-height: 1.5;
+      overflow-x: auto;
+      white-space: pre;
+      display: none;
+      position: relative;
+    }
+    .copy-btn {
+      position: absolute;
+      top: 14px;
+      right: 14px;
+      background: #334155;
+      color: #fff;
+      border: none;
+      padding: 6px 12px;
+      border-radius: 4px;
+      font-size: 0.75rem;
+      font-weight: 600;
+      cursor: pointer;
+    }
+    .copy-btn:hover {
+      background: #475569;
+    }
+  </style>
+</head>
+<body>
+
+  <aside class="sidebar">
+    <div class="brand">
+      <h1><span>🏛️</span> PEA-i Diagrams</h1>
+      <p>Universidad Popular del Cesar<br>Estructura de Datos — Taller 2</p>
+    </div>
+    <ul class="nav-list" id="nav-list">
+      <!-- Se inyecta dinámicamente -->
+    </ul>
+  </aside>
+
+  <main class="main">
+    <div class="header-bar">
+      <div class="title-area">
+        <h2 id="diag-title">Cargando...</h2>
+        <p id="diag-subtitle"></p>
+      </div>
+      <div class="actions">
+        <a id="btn-png" class="btn btn-primary" download>📷 Descargar PNG (Word)</a>
+        <a id="btn-svg" class="btn btn-success" download>📐 Descargar SVG</a>
+      </div>
+    </div>
+
+    <div class="description-box" id="diag-desc"></div>
+
+    <div class="view-bar">
+      <div class="tab-group">
+        <button class="tab-btn active" id="tab-preview" onclick="switchView('preview')">🖼️ Diagrama Renderizado</button>
+        <button class="tab-btn" id="tab-source" onclick="switchView('source')">📝 Código Fuente Mermaid</button>
+      </div>
+    </div>
+
+    <div class="diagram-card">
+      <div class="diagram-viewport" id="viewport">
+        <img id="diagram-image" class="diagram-img" src="" alt="Diagrama PEA-i" />
+      </div>
+      <div class="source-box" id="source-box">
+        <button class="copy-btn" onclick="copyCode()">📋 Copiar Código</button>
+        <code id="code-content"></code>
+      </div>
+    </div>
+  </main>
+
+  <script>
+    const diagrams = {"01_casos_de_uso": {"id": "01_casos_de_uso", "title": "01. Diagrama de Casos de Uso del Sistema", "subtitle": "Requisito Nota 2.a del Taller 2 — Interacciones entre actores y subsistemas", "category": "Modelado Estructural", "spec_sec": "§38.1", "desc": "Modela los límites del sistema PEA-i, los 5 actores clave (Administrador, Gestor de Investigación, Validador, Líder/Investigador, Público) y los casos de uso organizados en 6 subsistemas funcionales (Entidades en RAM, Multilista Ortogonal, Ingesta Scienti con Deduplicación, Flujo de Calidad FIFO, Control LIFO y Persistencia, Analítica e Hipercubo).", "code": "graph TD\n    classDef actorStyle fill:#2d3748,stroke:#cbd5e0,stroke-width:2px,color:#fff;\n    classDef ucStyle fill:#ebf8ff,stroke:#3182ce,stroke-width:1.5px,color:#2b6cb0;\n\n    subgraph Actores [\"Actores del Sistema PEA-i\"]\n        Admin[\"Administrador del Sistema\"]:::actorStyle\n        Gestor[\"Gestor de Investigación\"]:::actorStyle\n        Validador[\"Evaluador / Validador\"]:::actorStyle\n        Lider[\"Líder / Investigador\"]:::actorStyle\n        Publico[\"Visitante / Comunidad UPC\"]:::actorStyle\n    end\n\n    subgraph Sistema [\"Sistema PEA-i — Plataforma de Producción Científica\"]\n        subgraph SubEntidades [\"Gestión de Entidades y Estructuras en RAM\"]\n            UC_Grupos[\"Gestionar Grupos de Investigación\"]:::ucStyle\n            UC_Investigadores[\"Gestionar Investigadores\"]:::ucStyle\n            UC_Planes[\"Gestionar Planes de Trabajo\"]:::ucStyle\n            UC_Proyectos[\"Gestionar Proyectos Autónomos\"]:::ucStyle\n        end\n\n        subgraph SubMultilista [\"Multilista Ortogonal y Autoría\"]\n            UC_Membresias[\"Vincular Integrante con Rol y Fechas\"]:::ucStyle\n            UC_ReglasMembresia[\"Validar Reglas RV-001 y RV-002\"]:::ucStyle\n            UC_Productos[\"Gestionar Productos (20 Atributos 2024)\"]:::ucStyle\n            UC_Autores[\"Asignar Autores y Orden de Autoría\"]:::ucStyle\n        end\n\n        subgraph SubIngesta [\"Ingesta y Deduplicación Scienti\"]\n            UC_Scienti[\"Buscar Grupos en Directorio Scienti\"]:::ucStyle\n            UC_GrupLAC[\"Scrapear GrupLAC con Vista Previa\"]:::ucStyle\n            UC_CvLAC[\"Scrapear e Integrar CvLAC de Miembros\"]:::ucStyle\n            UC_Dedupe[\"Conciliar Duplicados por DOI y Hash\"]:::ucStyle\n        end\n\n        subgraph SubValidacion [\"Flujo de Calidad FIFO y Auditoría\"]\n            UC_Cola[\"Consultar Cola FIFO de Validación\"]:::ucStyle\n            UC_Dictamen[\"Aprobar o Rechazar Evidencia\"]:::ucStyle\n            UC_Auditoria[\"Registrar Traza en AuditLog\"]:::ucStyle\n        end\n\n        subgraph SubControl [\"Control Transaccional LIFO y Persistencia\"]\n            UC_Undo[\"Deshacer Operación en Pila LIFO\"]:::ucStyle\n            UC_Snapshot[\"Restaurar Snapshot Previo\"]:::ucStyle\n            UC_Persistencia[\"Exportar / Importar pea_data.json\"]:::ucStyle\n            UC_Init[\"Inicializar Estado (Database, File, Empty)\"]:::ucStyle\n        end\n\n        subgraph SubAnalisis [\"Analítica, Hipercubo y Reportes\"]\n            UC_Dashboard[\"Consultar Dashboard Ejecutivo (KPIs)\"]:::ucStyle\n            UC_Portal[\"Explorar Portal Público con Recharts\"]:::ucStyle\n            UC_Ventana[\"Filtrar por Ventana de Observación\"]:::ucStyle\n            UC_PDF[\"Descargar Informe PDF Institucional\"]:::ucStyle\n        end\n    end\n\n    Admin --> UC_Grupos\n    Admin --> UC_Investigadores\n    Admin --> UC_Init\n    Admin --> UC_Persistencia\n    Admin --> UC_Undo\n\n    Gestor --> UC_Grupos\n    Gestor --> UC_Planes\n    Gestor --> UC_Proyectos\n    Gestor --> UC_Membresias\n    Gestor --> UC_Productos\n    Gestor --> UC_Scienti\n    Gestor --> UC_GrupLAC\n    Gestor --> UC_PDF\n\n    Validador --> UC_Cola\n    Validador --> UC_Dictamen\n\n    Lider --> UC_Productos\n    Lider --> UC_Autores\n    Lider --> UC_Planes\n\n    Publico --> UC_Portal\n    Publico --> UC_Dashboard\n    Publico --> UC_Ventana\n\n    UC_Membresias -.->|include| UC_ReglasMembresia\n    UC_GrupLAC -.->|include| UC_Dedupe\n    UC_GrupLAC -.->|extend| UC_CvLAC\n    UC_Dictamen -.->|include| UC_Auditoria\n    UC_Undo -.->|include| UC_Snapshot\n", "png": "./01_casos_de_uso.png", "svg": "./01_casos_de_uso.svg"}, "02_modelo_entidad_relacion": {"id": "02_modelo_entidad_relacion", "title": "02. Modelo Entidad-Relación Relacional (16 Tablas)", "subtitle": "Complemento b: Base de Datos SQL Server (peai)", "category": "Modelado Estructural", "spec_sec": "§38.2", "desc": "Modelo relacional físico completo con 16 tablas normalizadas en SQL Server, reflejando el catálogo Minciencias 2024 (ProductFamily, ProductSubtype con las 70 tipologías canónicas, QualityCategory con pesos), vínculos ortogonales, cola de validación técnica, historial de operaciones de deshacer y tabla de auditoría inmutable.", "code": "erDiagram\n    ResearchGroup ||--o{ GroupMembership : \"tiene\"\n    Researcher ||--o{ GroupMembership : \"pertenece\"\n    ResearchGroup ||--o{ GroupProductLink : \"asocia\"\n    Product ||--o{ GroupProductLink : \"vinculado_a\"\n    ResearchGroup ||--o{ WorkPlan : \"define\"\n    ResearchGroup ||--o{ GroupProjectLink : \"ejecuta\"\n    Project ||--o{ GroupProjectLink : \"asignado_a\"\n    Product ||--o{ ProductAuthor : \"posee\"\n    Researcher ||--o{ ProductAuthor : \"es_autor\"\n    Product ||--o{ ValidationQueueItem : \"encola\"\n    ProductFamily ||--o{ ProductSubtype : \"clasifica\"\n    ProductSubtype ||--o{ QualityCategory : \"pondera\"\n    ProductSubtype ||--o{ Product : \"tipifica\"\n    QualityCategory ||--o{ Product : \"califica\"\n\n    ResearchGroup {\n        int id PK \"Identificador autonumérico\"\n        string external_code UK \"Código Scienti / Institucional\"\n        string name \"Nombre oficial del grupo\"\n        string acronym \"Sigla o acrónimo\"\n        string institution \"Universidad o institución\"\n        string classification \"Categoría A1, A, B, C, Reconocido\"\n        string description \"Objetivos y líneas de acción\"\n        string mission \"Misión declarada\"\n        string vision \"Visión estratégica\"\n        string declared_creation_date \"Fecha de creación\"\n        string knowledge_area \"Gran área del conocimiento\"\n        string knowledge_subarea \"Subárea disciplinar\"\n        string city \"Ciudad sede\"\n        string department \"Departamento\"\n        string website \"Portal web institucional\"\n        string email \"Correo de contacto\"\n        int leader_id FK \"Investigador líder\"\n        string status \"active / inactive\"\n    }\n\n    Researcher {\n        int id PK \"Identificador autonumérico\"\n        string external_code UK \"Código CvLAC o ID único\"\n        string identification_type \"CC, CE, Pasaporte\"\n        string identification_number \"Número de documento\"\n        string first_names \"Nombres del investigador\"\n        string last_names \"Apellidos del investigador\"\n        string nationality \"Nacionalidad\"\n        string country_of_residence \"País de residencia\"\n        string institutional_email \"Correo institucional UPC\"\n        string orcid \"Identificador ORCID\"\n        string highest_education_level \"Pregrado, Maestría, Doctorado\"\n        string education_records \"Historial formativo\"\n        string classification_records \"Historial de categoría Minciencias\"\n        string status \"active / inactive\"\n    }\n\n    GroupMembership {\n        int id PK \"Identificador autonumérico\"\n        int group_id FK \"Referencia a ResearchGroup\"\n        int researcher_id FK \"Referencia a Researcher\"\n        string role \"Director, Investigador, Estudiante\"\n        string start_date \"Fecha inicio vinculación\"\n        string end_date \"Fecha fin vinculación\"\n        string status \"active / closed\"\n    }\n\n    Product {\n        int id PK \"Identificador autonumérico\"\n        string external_code UK \"Código DOI o Hash canónico\"\n        string title \"Título de la obra o producción\"\n        string description \"Resumen o descripción técnica\"\n        int family_id FK \"Referencia a ProductFamily\"\n        int subtype_id FK \"Referencia a ProductSubtype\"\n        int quality_category_id FK \"Referencia a QualityCategory\"\n        string obtained_date \"Fecha de obtención reportada\"\n        string publication_date \"Fecha de publicación formal\"\n        string validation_status \"pending, valid, rejected\"\n        string language \"Idioma de la publicación\"\n        string country \"País de publicación\"\n        string doi \"Digital Object Identifier\"\n        string isbn \"International Standard Book Number\"\n        string issn \"International Standard Serial Number\"\n        string url \"Enlace digital verificable\"\n        string evidence \"Metadatos y soporte documental\"\n        string specialized_attributes \"Atributos propios de la tipología\"\n        string status \"active / inactive\"\n        int year \"Año de obtención\"\n    }\n\n    ProductAuthor {\n        int id PK \"Identificador autonumérico\"\n        int product_id FK \"Referencia a Product\"\n        int researcher_id FK \"Referencia a Researcher (opcional)\"\n        int author_order \"Posición en la firma (1..N)\"\n        string external_author_name \"Nombre autor externo\"\n        string external_author_identifier \"ID externo autor\"\n        string match_status \"verified, unverified, external\"\n    }\n\n    GroupProductLink {\n        int id PK \"Identificador autonumérico\"\n        int group_id FK \"Referencia a ResearchGroup\"\n        int product_id FK \"Referencia a Product\"\n        string status \"approved, pending_validation, rejected\"\n        string source \"gruplac_import, manual, api\"\n        datetime linked_at \"Fecha de asociación\"\n        string notes \"Notas de validación\"\n    }\n\n    WorkPlan {\n        int id PK \"Identificador autonumérico\"\n        int group_id FK \"Referencia a ResearchGroup\"\n        string title \"Título del plan de trabajo\"\n        string description \"Objetivos y metas académicas\"\n        string start_date \"Fecha inicio vigencia\"\n        string end_date \"Fecha fin vigencia\"\n        string status \"active, completed, draft\"\n    }\n\n    Project {\n        int id PK \"Identificador autonumérico\"\n        string title \"Título del proyecto\"\n        string summary \"Resumen ejecutivo\"\n        string project_type \"Investigación, Extensión, Innovación\"\n        string start_date \"Fecha inicio de ejecución\"\n        string end_date \"Fecha fin de ejecución\"\n        string status \"active, completed, formulated\"\n        string funding_type \"Interna, Minciencias, Regalías\"\n        float budget \"Presupuesto asignado en COP\"\n        int principal_investigator_id FK \"Investigador principal\"\n    }\n\n    GroupProjectLink {\n        int id PK \"Identificador autonumérico\"\n        int group_id FK \"Referencia a ResearchGroup\"\n        int project_id FK \"Referencia a Project\"\n    }\n\n    ValidationQueueItem {\n        int id PK \"Identificador autonumérico\"\n        int product_id FK \"Referencia a Product\"\n        datetime enqueued_at \"Fecha y hora de encolamiento\"\n        string status \"pending, in_review, done, rejected\"\n        int attempts \"Número de intentos de revisión\"\n        string assigned_to \"Usuario o evaluador asignado\"\n        string result \"Dictamen técnico final\"\n        datetime processed_at \"Fecha y hora de decisión\"\n    }\n\n    UndoOperation {\n        int id PK \"Identificador autonumérico\"\n        string operation_type \"CREATE, UPDATE, DELETE, LINK, VALIDATE\"\n        string entity_type \"Group, Researcher, Product, Membership...\"\n        int entity_id \"Identificador de la entidad mutada\"\n        string previous_state \"Snapshot serializado de reversión\"\n        datetime performed_at \"Fecha y hora de la mutación\"\n        datetime undone_at \"Fecha y hora de reversión\"\n    }\n\n    AuditLog {\n        int id PK \"Identificador autonumérico\"\n        string action \"INSERT, UPDATE, DELETE, VALIDATE, UNDO\"\n        string entity_type \"Nombre de la tabla mutada\"\n        int entity_id \"Identificador del registro mutado\"\n        string performed_by \"Usuario o agente ejecutor\"\n        datetime performed_at \"Marca de tiempo del servidor\"\n        string details \"Detalle en formato JSON de la acción\"\n    }\n\n    ImportJob {\n        int id PK \"Identificador autonumérico\"\n        string source_type \"gruplac, cvlac, file_json\"\n        string source_target \"URL o nombre de archivo\"\n        string status \"started, previewed, committed, failed\"\n        datetime created_at \"Fecha inicio de ingesta\"\n        datetime completed_at \"Fecha fin de ingesta\"\n        string summary \"Métricas de registros creados y vinculados\"\n    }\n\n    ObservationWindow {\n        int id PK \"Identificador autonumérico\"\n        string name \"Nombre de la ventana\"\n        int start_year \"Año de inicio de corte\"\n        int end_year \"Año de fin de corte\"\n        int window_years \"Duración estándar en años\"\n        boolean is_active \"Estado de activación\"\n    }\n\n    ProductFamily {\n        int id PK \"Identificador autonumérico\"\n        string code UK \"GNC, DTI, ASC, DPC, FRH\"\n        string name \"Nombre descriptivo de la familia\"\n        int sort_order \"Orden de despliegue en reportes\"\n    }\n\n    ProductSubtype {\n        int id PK \"Identificador autonumérico\"\n        int family_id FK \"Referencia a ProductFamily\"\n        string code UK \"Código canónico Minciencias (ej. ART, SFW)\"\n        string name \"Nombre de la tipología específica\"\n        string model_ref \"Referencia en anexo técnico Convocatoria 957\"\n        int sort_order \"Orden relativo dentro de la familia\"\n    }\n\n    QualityCategory {\n        int id PK \"Identificador autonumérico\"\n        int subtype_id FK \"Referencia a ProductSubtype\"\n        string code \"A1, A, B, C, Top, Tipo 1...\"\n        string name \"Descripción de categoría de calidad\"\n        string measurement_class \"Clasificación de producto\"\n        float weight \"Peso ponderado relativo\"\n        float global_weight \"Puntos institucionales para escalafón\"\n        int sort_order \"Jerarquía de calidad\"\n    }\n", "png": "./02_modelo_entidad_relacion.png", "svg": "./02_modelo_entidad_relacion.svg"}, "03_multilista_memoria_ram": {"id": "03_multilista_memoria_ram", "title": "03. Estructura de Memoria RAM — Multilista Ortogonal y Punteros C++", "subtitle": "Puntos 8 y 9: Estructura de Listas, Multilistas, Pilas y Colas en RAM", "category": "Modelado Estructural", "spec_sec": "§38.3.1", "desc": "Mapeo detallado de la memoria física del núcleo C++. Muestra cómo GroupNode conecta con listas subordinadas (membresías, productos, proyectos, planes), cómo MembershipNode y ProductAuthorNode forman cruces ortogonales bidireccionales, la Pila LIFO (UndoStack) y la Cola FIFO (ValidationQueue).", "code": "graph TB\n    classDef headStyle fill:#1a365d,stroke:#2b6cb0,stroke-width:2px,color:#fff;\n    classDef nodeStyle fill:#ebf8ff,stroke:#3182ce,stroke-width:1.5px,color:#1a365d;\n    classDef crossStyle fill:#fefcbf,stroke:#d69e2e,stroke-width:2px,color:#744210;\n    classDef stackStyle fill:#fed7d7,stroke:#e53e3e,stroke-width:1.5px,color:#742a2a;\n    classDef queueStyle fill:#c6f6d5,stroke:#38a169,stroke-width:1.5px,color:#22543d;\n\n    subgraph CabecerasRAM [\"Cabeceras Principales en RAM (Singletons / Servicios)\"]\n        HeadG[\"_headGroup (GroupNode*)\"]:::headStyle\n        HeadR[\"_headResearcher (ResearcherNode*)\"]:::headStyle\n        HeadP[\"_headProduct (ProductNode*)\"]:::headStyle\n        HeadProj[\"_headProject (ProjectNode*)\"]:::headStyle\n        HeadStack[\"_topNode (UndoOperationNode*)\"]:::headStyle\n        HeadQueueF[\"_frontNode (ValidationQueueNode*)\"]:::headStyle\n        HeadQueueR[\"_rearNode (ValidationQueueNode*)\"]:::headStyle\n    end\n\n    subgraph ListaGrupos [\"Lista Principal de Grupos\"]\n        G1[\"GroupNode: G1 (AITICE)\\n- data: Group\\n- firstMembership\\n- firstProductLink\\n- firstProjectLink\\n- firstPlan\\n- nextGroup\"]:::nodeStyle\n        G2[\"GroupNode: G2 (GIE)\\n- data: Group\\n- firstMembership\\n- firstProductLink\\n- firstProjectLink\\n- firstPlan\\n- nextGroup = NULL\"]:::nodeStyle\n        HeadG --> G1\n        G1 -->|nextGroup| G2\n    end\n\n    subgraph ListaInvestigadores [\"Lista Principal de Investigadores\"]\n        R1[\"ResearcherNode: R1 (Adith Pérez)\\n- data: Researcher\\n- nextResearcher\"]:::nodeStyle\n        R2[\"ResearcherNode: R2 (Investigador B)\\n- data: Researcher\\n- nextResearcher = NULL\"]:::nodeStyle\n        HeadR --> R1\n        R1 -->|nextResearcher| R2\n    end\n\n    subgraph MultilistaMembresia [\"Multilista Ortogonal de Membresías (Integrantes)\"]\n        M1[\"MembershipNode (G1-R1)\\n- role: Director\\n- dates: 2018..activo\\n- nextInGroup\\n- nextForResearcher\"]:::crossStyle\n        M2[\"MembershipNode (G1-R2)\\n- role: Investigador\\n- dates: 2020..2024\\n- nextInGroup = NULL\\n- nextForResearcher\"]:::crossStyle\n        M3[\"MembershipNode (G2-R2)\\n- role: Investigador\\n- dates: 2024..activo\\n- nextInGroup = NULL\\n- nextForResearcher = NULL\"]:::crossStyle\n\n        G1 -->|firstMembership| M1\n        M1 -->|nextInGroup| M2\n        G2 -->|firstMembership| M3\n\n        R1 -.->|primera membresía| M1\n        R2 -.->|primera membresía| M2\n        M2 -.->|nextForResearcher| M3\n    end\n\n    subgraph ListaProductos [\"Lista Principal de Productos (20 Atributos 2024)\"]\n        P1[\"ProductNode: P1 (Artículo Q1)\\n- data: Product\\n- firstAuthor\\n- nextProduct\"]:::nodeStyle\n        P2[\"ProductNode: P2 (Software Registrado)\\n- data: Product\\n- firstAuthor\\n- nextProduct = NULL\"]:::nodeStyle\n        HeadP --> P1\n        P1 -->|nextProduct| P2\n    end\n\n    subgraph MultilistaGrupoProducto [\"Multilista Ortogonal Grupo-Producto\"]\n        GP1[\"GroupProductNode (G1-P1)\\n- status: approved\\n- nextInGroup\\n- nextForProduct\"]:::crossStyle\n        GP2[\"GroupProductNode (G1-P2)\\n- status: approved\\n- nextInGroup = NULL\\n- nextForProduct\"]:::crossStyle\n        G1 -->|firstProductLink| GP1\n        GP1 -->|nextInGroup| GP2\n        P1 -.->|nextForProduct| GP1\n        P2 -.->|nextForProduct| GP2\n    end\n\n    subgraph MultilistaAutores [\"Multilista Ortogonal Producto-Autor\"]\n        PA1[\"ProductAuthorNode (P1-R1)\\n- author_order: 1\\n- match: verified\\n- nextInProduct\"]:::crossStyle\n        PA2[\"ProductAuthorNode (P1-R2)\\n- author_order: 2\\n- match: verified\\n- nextInProduct = NULL\"]:::crossStyle\n        P1 -->|firstAuthor| PA1\n        PA1 -->|nextInProduct| PA2\n        R1 -.->|autoría en| PA1\n        R2 -.->|autoría en| PA2\n    end\n\n    subgraph ListaPlanesProyectos [\"Sublistas de Planes y Proyectos\"]\n        PL1[\"WorkPlanNode (G1: Plan 2024-2026)\\n- nextPlan = NULL\"]:::nodeStyle\n        G1 -->|firstPlan| PL1\n\n        PR1[\"ProjectNode (Proyecto Minciencias 2024)\\n- nextProject = NULL\"]:::nodeStyle\n        HeadProj --> PR1\n        GPR1[\"GroupProjectNode (G1-PR1)\\n- nextInGroup = NULL\"]:::crossStyle\n        G1 -->|firstProjectLink| GPR1\n        GPR1 -.->|referencia| PR1\n    end\n\n    subgraph PilaDeshacer [\"Pila LIFO: Historial de Deshacer (UndoStack)\"]\n        U1[\"UndoOperationNode [CIMA / TOP]\\n- op: UPDATE_MEMBER\\n- prev_state: snapshot\\n- next\"]:::stackStyle\n        U2[\"UndoOperationNode\\n- op: CREATE_PRODUCT\\n- prev_state: snapshot\\n- next\"]:::stackStyle\n        U3[\"UndoOperationNode [BASE]\\n- op: CREATE_GROUP\\n- prev_state: snapshot\\n- next = NULL\"]:::stackStyle\n\n        HeadStack -->|top| U1\n        U1 -->|\"next (hacia abajo)\"| U2\n        U2 -->|\"next (hacia abajo)\"| U3\n    end\n\n    subgraph ColaValidacion [\"Cola FIFO: Validación Técnica de Productos\"]\n        Q1[\"ValidationQueueNode [FRENTE / HEAD]\\n- item: P1 (2024-09-01)\\n- status: pending\\n- next\"]:::queueStyle\n        Q2[\"ValidationQueueNode\\n- item: P2 (2024-09-02)\\n- status: in_review\\n- next\"]:::queueStyle\n        Q3[\"ValidationQueueNode [COLA / TAIL]\\n- item: P3 (2024-09-03)\\n- status: pending\\n- next = NULL\"]:::queueStyle\n\n        HeadQueueF -->|\"front (desencola)\"| Q1\n        Q1 -->|next| Q2\n        Q2 -->|next| Q3\n        HeadQueueR -->|\"rear (encola)\"| Q3\n    end\n", "png": "./03_multilista_memoria_ram.png", "svg": "./03_multilista_memoria_ram.svg"}, "04_clases_cpp": {"id": "04_clases_cpp", "title": "04. Diagrama de Clases C++ y Servicios de Datos", "subtitle": "Diseño Orientado a Objetos del núcleo en C++20", "category": "Modelado Estructural", "spec_sec": "§38.3", "desc": "Estructuras de datos dinámicas (nodos), servicios gestores (GroupService, ProductService), estructuras especializadas (UndoStack, ValidationQueue) y adaptadores de persistencia (DBPersistence, JSONPersistence).", "code": "classDiagram\n    class GroupNode {\n        +Group data\n        +GroupNode* nextGroup\n        +MembershipNode* firstMembership\n        +GroupProductNode* firstProductLink\n        +GroupProjectNode* firstProjectLink\n        +WorkPlanNode* firstPlan\n    }\n\n    class ResearcherNode {\n        +Researcher data\n        +ResearcherNode* nextResearcher\n    }\n\n    class MembershipNode {\n        +Membership data\n        +MembershipNode* nextInGroup\n        +MembershipNode* nextForResearcher\n    }\n\n    class ProductNode {\n        +Product data\n        +ProductNode* nextProduct\n        +ProductAuthorNode* firstAuthor\n    }\n\n    class GroupProductNode {\n        +GroupProductLink data\n        +GroupProductNode* nextInGroup\n        +GroupProductNode* nextForProduct\n    }\n\n    class ProductAuthorNode {\n        +ProductAuthor data\n        +ProductAuthorNode* nextInProduct\n        +ProductAuthorNode* nextForResearcher\n    }\n\n    class WorkPlanNode {\n        +WorkPlan data\n        +WorkPlanNode* nextPlan\n    }\n\n    class ProjectNode {\n        +Project data\n        +ProjectNode* nextProject\n    }\n\n    class GroupProjectNode {\n        +GroupProjectLink data\n        +GroupProjectNode* nextInGroup\n    }\n\n    class UndoOperationNode {\n        +UndoOperation data\n        +UndoOperationNode* next\n    }\n\n    class ValidationQueueNode {\n        +ValidationQueueItem data\n        +ValidationQueueNode* next\n    }\n\n    class GroupService {\n        +create_group(Group) Group\n        +get_group(int) optional~Group~\n        +list_groups() vector~Group~\n        +update_group(int, Group) bool\n        +delete_group(int) bool\n        +add_member_to_group(int, int, string, string, string) MembershipNode*\n        +membership_details(int, int) optional~Membership~\n        +update_membership(int, int, string, string, string) bool\n        +members_of_group(int) vector~int~\n        +groups_of_researcher(int) vector~int~\n        +remove_member_from_group(int, int) bool\n        +link_product_to_group(int, int) GroupProductNode*\n        +products_of_group(int) vector~int~\n        +unlink_product_from_group(int, int) bool\n    }\n\n    class ProductService {\n        +create_product(Product) Product\n        +get_product(int) optional~Product~\n        +list_products() vector~Product~\n        +update_product(int, Product) bool\n        +delete_product(int) bool\n        +add_product_author(ProductAuthor) ProductAuthorNode*\n        +authors_of_product(int) vector~ProductAuthor~\n        +products_of_researcher_ram(int) vector~int~\n        +remove_product_author_ram(int, int, string) bool\n        +list_all_product_authors() vector~ProductAuthor~\n        +clear_product_authors() void\n    }\n\n    class UndoStack {\n        -UndoOperationNode* _top\n        -int _size\n        +undo_push(UndoOperation) void\n        +undo_top() UndoOperation*\n        +undo_pop() optional~UndoOperation~\n        +undo_perform() bool\n        +undo_list() vector~UndoOperation~\n        +undo_size() int\n        +undo_clear() void\n    }\n\n    class ValidationQueue {\n        -ValidationQueueNode* _front\n        -ValidationQueueNode* _rear\n        -int _size\n        +vq_enqueue(ValidationQueueItem) void\n        +vq_front() ValidationQueueItem*\n        +vq_dequeue() optional~ValidationQueueItem~\n        +vq_process_next() bool\n        +vq_list() vector~ValidationQueueItem~\n        +vq_size() int\n        +vq_pending_count() int\n        +vq_clear() void\n    }\n\n    class DBPersistence {\n        +load_from_db(string) bool\n        +save_to_db(string) bool\n        +sync_group_to_db(string, Group) bool\n        +sync_product_to_db(string, Product) bool\n        +sync_membership_details_to_db(string, int, int, string, string, string) bool\n        +sync_product_author_to_db(string, int, int, int) bool\n        +set_product_validation_db(string, int, string, string, string) bool\n    }\n\n    class JSONPersistence {\n        +export_to_file(string) bool\n        +load_from_file(string) bool\n    }\n\n    GroupNode --> GroupNode : nextGroup\n    GroupNode --> MembershipNode : firstMembership\n    GroupNode --> GroupProductNode : firstProductLink\n    GroupNode --> GroupProjectNode : firstProjectLink\n    GroupNode --> WorkPlanNode : firstPlan\n\n    ResearcherNode --> ResearcherNode : nextResearcher\n    MembershipNode --> MembershipNode : nextInGroup\n    MembershipNode --> MembershipNode : nextForResearcher\n\n    ProductNode --> ProductNode : nextProduct\n    ProductNode --> ProductAuthorNode : firstAuthor\n    GroupProductNode --> GroupProductNode : nextInGroup\n    GroupProductNode --> GroupProductNode : nextForProduct\n\n    ProductAuthorNode --> ProductAuthorNode : nextInProduct\n    ProductAuthorNode --> ProductAuthorNode : nextForResearcher\n\n    WorkPlanNode --> WorkPlanNode : nextPlan\n    ProjectNode --> ProjectNode : nextProject\n    GroupProjectNode --> GroupProjectNode : nextInGroup\n\n    UndoStack --> UndoOperationNode : _top (LIFO)\n    ValidationQueue --> ValidationQueueNode : _front / _rear (FIFO)\n\n    GroupService ..> GroupNode : gestiona\n    GroupService ..> MembershipNode : gestiona\n    GroupService ..> GroupProductNode : gestiona\n    ProductService ..> ProductNode : gestiona\n    ProductService ..> ProductAuthorNode : gestiona\n\n    DBPersistence ..> GroupService : sincroniza\n    DBPersistence ..> ProductService : sincroniza\n    JSONPersistence ..> GroupService : serializa\n    JSONPersistence ..> ProductService : serializa\n", "png": "./04_clases_cpp.png", "svg": "./04_clases_cpp.svg"}, "05_hipercubo_informacion": {"id": "05_hipercubo_informacion", "title": "05. Hipercubo de Información Multidimensional", "subtitle": "Recomendación del Taller 2: Espacio Analítico H = D1 × D2 × D3 × D4", "category": "Modelado Estructural", "spec_sec": "§38.6", "desc": "Visualización conceptual del hipercubo de información con 4 dimensiones canónicas, 4 dimensiones secundarias del catálogo 2024, vector de medidas analíticas y las 5 operaciones OLAP de consulta (Slice, Dice, Drill-down, Roll-up y Pivot).", "code": "graph TB\n    classDef dimStyle fill:#2b6cb0,stroke:#2c5282,stroke-width:2px,color:#fff;\n    classDef extDimStyle fill:#ebf8ff,stroke:#3182ce,stroke-width:1.5px,color:#1a365d;\n    classDef cubeStyle fill:#fefcbf,stroke:#d69e2e,stroke-width:2px,color:#744210;\n    classDef opStyle fill:#e6fffa,stroke:#319795,stroke-width:1.5px,color:#234e52;\n    classDef measStyle fill:#fed7d7,stroke:#e53e3e,stroke-width:1.5px,color:#742a2a;\n\n    subgraph DimensionesPrimarias [\"Espacio 4D Canónico: H = D1 × D2 × D3 × D4\"]\n        D1[\"D1: Grupo de Investigación\\n(AITICE, GIE, etc.)\"]:::dimStyle\n        D2[\"D2: Investigador / Autor\\n(Adith Pérez, etc.)\"]:::dimStyle\n        D3[\"D3: Producto de Investigación\\n(Artículos, Software, etc.)\"]:::dimStyle\n        D4[\"D4: Tiempo / Ventana de Observación\\n(Años 2020..2026, 2 y 5 años)\"]:::dimStyle\n    end\n\n    subgraph DimensionesSecundarias [\"Dimensiones de Enriquecimiento Minciencias 2024\"]\n        D5[\"D5: Familia Minciencias\\n(GNC, DTI, ASC, DPC, FRH)\"]:::extDimStyle\n        D6[\"D6: Subtipo Canónico\\n(70 Tipologías Oficiales)\"]:::extDimStyle\n        D7[\"D7: Calidad y Peso\\n(A1, A, B, C, Top, Puntos)\"]:::extDimStyle\n        D8[\"D8: Estado Validación\\n(Pendiente, Válido, Rechazado)\"]:::extDimStyle\n    end\n\n    subgraph CeldaHipercubo [\"Celda Multidimensional (Coordenada H)\"]\n        Cell[\"Celda Analítica H(g, i, p, t, fam, sub, q, val)\\nVector de Medidas M:\"]:::cubeStyle\n        M1[\"M1: Conteo de Productos (N)\"]:::measStyle\n        M2[\"M2: Productos Validados vs Pendientes\"]:::measStyle\n        M3[\"M3: Puntaje Ponderado Minciencias\"]:::measStyle\n        M4[\"M4: Duración de Vinculación y Coautorías\"]:::measStyle\n\n        Cell --> M1\n        Cell --> M2\n        Cell --> M3\n        Cell --> M4\n    end\n\n    subgraph OperacionesOLAP [\"Operaciones Analíticas del Hipercubo en PEA-i\"]\n        OpSlice[\"SLICE (Corte Plano)\\nFijar 1 dimensión\\nEj: Productos sólo del año 2025\"]:::opStyle\n        OpDice[\"DICE (Subcubo)\\nFiltrar múltiples rangos\\nEj: GNC A1 en ventana 5 años de AITICE\"]:::opStyle\n        OpDrill[\"DRILL-DOWN (Desglose)\\nFamilia GNC ➔ Subtipo ART ➔ Artículo Q1\"]:::opStyle\n        OpRoll[\"ROLL-UP (Agregación)\\nProducto ➔ Subtipo ➔ Familia ➔ UPC Total\"]:::opStyle\n        OpPivot[\"PIVOT (Rotación)\\nFilas: Grupos UPC ✕ Columnas: Años\"]:::opStyle\n    end\n\n    D1 --> Cell\n    D2 --> Cell\n    D3 --> Cell\n    D4 --> Cell\n    D5 -.-> Cell\n    D6 -.-> Cell\n    D7 -.-> Cell\n    D8 -.-> Cell\n\n    Cell --> OpSlice\n    Cell --> OpDice\n    Cell --> OpDrill\n    Cell --> OpRoll\n    Cell --> OpPivot\n", "png": "./05_hipercubo_informacion.png", "svg": "./05_hipercubo_informacion.svg"}, "06_secuencia_creacion_escritura_dual": {"id": "06_secuencia_creacion_escritura_dual", "title": "06. Secuencia: Creación Write-Through (RAM + BD)", "subtitle": "Flujo sincrónico de mutación con registro en Pila LIFO y SQL Server", "category": "Flujos de Interacción", "spec_sec": "§38.4.1", "desc": "Traza paso a paso la creación de una entidad desde la interfaz React, cruzando FastAPI y pybind11, instanciando nodos en RAM, apilando el snapshot inverso en UndoStack y persistiendo en SQL Server y AuditLog.", "code": "sequenceDiagram\n    autonumber\n    actor Usuario as Gestor de Investigación\n    participant UI as Frontend React\n    participant API as FastAPI (v1.py)\n    participant Repo as repository.py\n    participant Bind as pybind11\n    participant Core as Core C++ (RAM)\n    participant Stack as UndoStack (LIFO)\n    participant DB as SQL Server\n\n    Usuario->>UI: Completa formulario y clic en \"Crear Grupo\"\n    UI->>API: POST /api/v1/groups {name, external_code, ...}\n    API->>Repo: create_group(data)\n    Repo->>Bind: group_create(data)\n    Bind->>Core: GroupService::create_group(Group)\n    Core->>Core: Asignar ID, instanciar GroupNode y enlazar a _headGroup\n    Core->>Stack: undo_push(CREATE, Group, ID, snapshot_null)\n    Core-->>Bind: Group instanciado con ID generado\n    Bind-->>Repo: Objeto Group creado en memoria RAM\n    Repo->>DB: INSERT INTO ResearchGroup ... (Write-Through)\n    DB-->>Repo: Confirmación de inserción en SQL Server\n    Repo->>DB: INSERT INTO AuditLog (Action='CREATE', Entity='Group', ...)\n    Repo-->>API: Respuesta de éxito con entidad completa\n    API-->>UI: HTTP 201 Created {id, name, ...}\n    UI-->>Usuario: Muestra notificación y actualiza tabla en pantalla\n", "png": "./06_secuencia_creacion_escritura_dual.png", "svg": "./06_secuencia_creacion_escritura_dual.svg"}, "07_secuencia_ingesta_scienti": {"id": "07_secuencia_ingesta_scienti", "title": "07. Secuencia: Ingesta desde URL Scienti con Deduplicación", "subtitle": "Punto 7 y Decisión D-03: Scraping GrupLAC/CvLAC en vivo", "category": "Flujos de Interacción", "spec_sec": "§38.4.2", "desc": "Flujo de scraping idempotente: descarga HTML, parseo estructurado, previsualización para el gestor, generación de huellas deterministas / hashes de deduplicación, inserción transaccional en SQL Server y reconstrucción de la RAM.", "code": "sequenceDiagram\n    autonumber\n    actor Usuario as Gestor de Investigación\n    participant UI as Frontend React\n    participant API as FastAPI (v1.py)\n    participant Scraper as GruplacCommitService\n    participant Parser as GruplacScraper (HTML)\n    participant Dedupe as Deduplication Engine\n    participant DB as SQL Server (pyodbc)\n    participant Core as Core C++ (RAM)\n\n    Usuario->>UI: Ingresa URL GrupLAC y selecciona \"Vista Previa\"\n    UI->>API: POST /api/v1/groups/import/gruplac?url=...&preview=true\n    API->>Scraper: fetch_and_preview(url)\n    Scraper->>Parser: parse_html_content(raw_html)\n    Parser-->>Scraper: Grupo, Integrantes, Proyectos, Productos (crudos)\n    Scraper-->>API: DTO de previsualización (conteo de entidades y advertencias)\n    API-->>UI: HTTP 200 OK (Renderiza modal con datos extraídos)\n    Usuario->>UI: Confirma importación (\"Guardar en el Sistema\")\n    UI->>API: POST /api/v1/groups/import/gruplac?url=...&preview=false\n    API->>Scraper: commit_to_database(parsed_data)\n    Scraper->>Dedupe: dedupe_products(products)\n    Dedupe->>Dedupe: Normalizar títulos, generar hash canónico y validar DOI\n    Dedupe-->>Scraper: Productos deduplicados con código único\n    Scraper->>DB: BEGIN TRANSACTION\n    Scraper->>DB: UPSERT ResearchGroup, GroupMembership, Product, ProductAuthor\n    Scraper->>DB: INSERT INTO ValidationQueueItem (status='pending')\n    Scraper->>DB: INSERT INTO ImportJob (status='committed')\n    Scraper->>DB: COMMIT TRANSACTION\n    Scraper-->>API: Resumen de commit exitoso\n    API->>Core: initialize(InitMode::Database, conn)\n    Core->>DB: SELECT * FROM ResearchGroup, Product, ProductAuthor...\n    DB-->>Core: Registros completos\n    Core->>Core: Reconstruir todas las listas y multilistas en RAM\n    API-->>UI: HTTP 200 OK {status: \"success\", imported: N}\n    UI-->>Usuario: Muestra confirmación y actualiza listados\n", "png": "./07_secuencia_ingesta_scienti.png", "svg": "./07_secuencia_ingesta_scienti.svg"}, "08_secuencia_membresias_reglas": {"id": "08_secuencia_membresias_reglas", "title": "08. Secuencia: Vinculación de Integrante y Reglas RV-001/RV-002", "subtitle": "Punto 3 y HU-02: Validación temporal estricta", "category": "Flujos de Interacción", "spec_sec": "§38.4.3", "desc": "Evaluación y aplicación de las reglas RV-001 (rechazo de fecha inicio posterior a fecha fin) y RV-002 (rechazo de periodos solapados en el mismo grupo y aceptación de reingresos discontinuos) con emisión de HTTP 400 o inserción ortogonal.", "code": "sequenceDiagram\n    autonumber\n    actor Usuario as Gestor de Investigación\n    participant UI as Frontend React\n    participant API as FastAPI (v1.py)\n    participant Repo as repository.py\n    participant Bind as pybind11\n    participant Core as Core C++ (GroupService)\n    participant DB as SQL Server\n\n    Usuario->>UI: Selecciona Investigador, Rol, Fecha Inicio y Fecha Fin\n    UI->>API: POST /api/v1/groups/{gid}/members/{rid} {role, start_date, end_date}\n    API->>Repo: add_member_to_group(gid, rid, role, start_date, end_date)\n    Repo->>Repo: validate_membership_period(start_date, end_date)\n    alt Fecha Inicio > Fecha Fin (Regla RV-001)\n        Repo-->>API: raise ValueError(\"RV-001: Periodo invertido...\")\n        API-->>UI: HTTP 400 Bad Request {detail: \"RV-001...\"}\n        UI-->>Usuario: Muestra alerta de error en fechas\n    else Periodo no invertido\n        Repo->>Bind: membership_details(gid, rid)\n        Bind->>Core: membership_details(gid, rid)\n        Core-->>Bind: Vinculación previa (o null)\n        alt Vinculación previa activa sin fin o fechas solapadas (Regla RV-002)\n            Repo-->>API: raise ValueError(\"RV-002: Periodos de vinculación solapados...\")\n            API-->>UI: HTTP 400 Bad Request {detail: \"RV-002...\"}\n            UI-->>Usuario: Muestra alerta de solapamiento\n        else Reingreso no solapado o nuevo miembro\n            Repo->>Bind: add_member_to_group(gid, rid, role, start, end)\n            Bind->>Core: add_member_to_group(...)\n            Core->>Core: new MembershipNode() en cadenas nextInGroup y nextForResearcher\n            Repo->>Bind: sync_membership_details_to_db(conn, gid, rid, role, start, end)\n            Bind->>DB: MERGE INTO GroupMembership...\n            DB-->>Bind: OK\n            Repo-->>API: OK\n            API-->>UI: HTTP 200 OK {status: \"success\"}\n            UI-->>Usuario: Integrante vinculado en la tabla\n        end\n    end\n", "png": "./08_secuencia_membresias_reglas.png", "svg": "./08_secuencia_membresias_reglas.svg"}, "09_secuencia_validacion_fifo": {"id": "09_secuencia_validacion_fifo", "title": "09. Secuencia: Flujo de Validación Técnica en Cola FIFO", "subtitle": "Punto 9 y 12: Encolamiento y dictamen de evidencias", "category": "Flujos de Interacción", "spec_sec": "§38.4.4", "desc": "Inspección y dictamen de productos en orden estricto de llegada (FIFO). La decisión técnica actualiza sincrónicamente el estado en RAM, aprueba el vínculo con el grupo en BD y registra la auditoría inmutable.", "code": "sequenceDiagram\n    autonumber\n    actor Validador as Evaluador Técnico\n    participant UI as Panel Admin (/admin/validation-queue)\n    participant API as FastAPI (v1.py)\n    participant Repo as repository.py\n    participant Bind as pybind11\n    participant VQ as Core C++ (ValidationQueue)\n    participant Core as Core C++ (ProductService)\n    participant DB as SQL Server\n\n    Validador->>UI: Consulta cola de validación\n    UI->>API: GET /api/v1/system/validation-queue\n    API->>Repo: get_validation_queue()\n    Repo->>Bind: vq_list()\n    Bind->>VQ: Recorrer nodos desde _front (FIFO)\n    VQ-->>Bind: Lista de ValidationQueueItem\n    Bind-->>Repo: Items ordenados por fecha de encolamiento\n    Repo-->>API: Lista enriquecida con títulos y códigos\n    API-->>UI: HTTP 200 OK (Muestra cola con botón \"Validar\")\n    Validador->>UI: Dictamina producto: Válido o Rechazado\n    UI->>API: POST /api/v1/system/validation-queue/{id}/validate {decision: \"valid\"}\n    API->>Repo: resolve_validation(product_id, decision, reason, user)\n    Repo->>Bind: set_product_validation_db(conn, product_id, \"valid\", reason, user)\n    Bind->>DB: BEGIN TRANSACTION\n    Bind->>DB: UPDATE Product SET validation_status = 'valid'\n    Bind->>DB: UPDATE GroupProductLink SET status = 'approved'\n    Bind->>DB: UPDATE ValidationQueueItem SET status = 'done'\n    Bind->>DB: INSERT INTO AuditLog (action='VALIDATE_PRODUCT')\n    Bind->>DB: COMMIT TRANSACTION\n    Repo->>Bind: update_product_validation_ram(product_id, \"valid\")\n    Bind->>Core: Actualizar validation_status en ProductNode RAM\n    Repo->>Bind: vq_resolve_for_product(product_id)\n    Bind->>VQ: Desencolar o marcar resuelto en cola RAM\n    Repo-->>API: OK\n    API-->>UI: HTTP 200 OK {status: \"success\"}\n    UI-->>Validador: Actualiza cola FIFO y estado del producto\n", "png": "./09_secuencia_validacion_fifo.png", "svg": "./09_secuencia_validacion_fifo.svg"}, "10_secuencia_deshacer_lifo": {"id": "10_secuencia_deshacer_lifo", "title": "10. Secuencia: Deshacer Última Operación en Pila LIFO", "subtitle": "Punto 9: Reversión de mutaciones sin recursión", "category": "Flujos de Interacción", "spec_sec": "§38.4.5", "desc": "Extracción de la operación en la cima de UndoStack (_topNode), deserialización del snapshot de reversión, mutación inversa simétrica en memoria RAM y base de datos, garantizando consistencia absoluta.", "code": "sequenceDiagram\n    autonumber\n    actor Usuario as Gestor de Investigación\n    participant UI as Historial (/admin/undo)\n    participant Modal as Modal de Confirmación\n    participant API as FastAPI (v1.py)\n    participant Repo as repository.py\n    participant Bind as pybind11\n    participant Stack as Core C++ (UndoStack)\n    participant Core as Core C++ (RAM)\n    participant DB as SQL Server\n\n    Usuario->>UI: Abre panel de Deshacer\n    UI->>API: GET /api/v1/system/undo\n    API->>Repo: get_undo_stack()\n    Repo->>Bind: undo_list()\n    Bind->>Stack: Recorrer desde _topNode (cima primero)\n    Stack-->>Bind: vector~UndoOperation~\n    Bind-->>Repo: Operaciones con snapshots\n    Repo-->>API: Lista formateada con etiquetas descriptivas\n    API-->>UI: HTTP 200 OK (Renderiza pila de operaciones)\n    Usuario->>UI: Clic en \"Deshacer última acción\"\n    UI->>Modal: Abre diálogo modal con datos de la operación en la cima\n    Usuario->>Modal: Confirma reversión\n    Modal->>API: POST /api/v1/system/undo\n    API->>Repo: perform_undo()\n    Repo->>Bind: undo_perform()\n    Bind->>Stack: undo_perform()\n    Stack->>Stack: Extraer cima de la pila (_top)\n    alt Operación era CREATE\n        Stack->>Core: delete_entity(entity_id) en RAM\n        Stack->>DB: DELETE FROM tabla WHERE id = entity_id\n    else Operación era DELETE\n        Stack->>Core: Recrear nodo con datos de previous_state\n        Stack->>DB: INSERT INTO tabla con id original\n    else Operación era UPDATE\n        Stack->>Core: Restaurar atributos anteriores en RAM\n        Stack->>DB: UPDATE tabla SET campos_previos\n    else Operación era LINK / UNLINK\n        Stack->>Core: Invertir enlace de multilista en RAM\n        Stack->>DB: Invertir fila en tabla relacional\n    end\n    Stack-->>Bind: Éxito en reversión\n    Bind-->>Repo: {status: \"success\", operation_type, entity_type}\n    Repo-->>API: Resultado de deshacer\n    API-->>UI: HTTP 200 OK {status: \"success\"}\n    UI-->>Usuario: Muestra notificación de reversión y recarga estado\n", "png": "./10_secuencia_deshacer_lifo.png", "svg": "./10_secuencia_deshacer_lifo.svg"}, "11_arquitectura_despliegue": {"id": "11_arquitectura_despliegue", "title": "11. Diagrama de Arquitectura de Integración y Despliegue Físico", "subtitle": "Complemento d e Integración: Solución de Punta a Punta", "category": "Arquitectura Física", "spec_sec": "§38.5", "desc": "Topología física de los procesos: Navegador con SPA React, proceso Python 3.12 con FastAPI/Uvicorn, módulo nativo abpoxx_pybind.pyd comunicando con el núcleo C++20, y la persistencia dual en SQL Server y pea_data.json.", "code": "graph TB\n    classDef clientStyle fill:#e6fffa,stroke:#319795,stroke-width:2px;\n    classDef serverStyle fill:#ebf8ff,stroke:#3182ce,stroke-width:2px;\n    classDef nativeStyle fill:#fffaf0,stroke:#dd6b20,stroke-width:2px;\n    classDef dataStyle fill:#f7fafc,stroke:#4a5568,stroke-width:2px;\n    classDef extStyle fill:#edf2f7,stroke:#718096,stroke-width:2px,stroke-dasharray: 5 5;\n\n    subgraph Cliente [\"Capa de Cliente (Navegador Web)\"]\n        Browser[\"Navegador Moderno (Chrome / Edge / Firefox)\"]:::clientStyle\n        ReactApp[\"SPA React 18 + Vite\\n(TailwindCSS, Radix UI, TanStack Table, Recharts)\"]:::clientStyle\n        Browser --> ReactApp\n    end\n\n    subgraph Servidor [\"Servidor de Aplicación (Host Local / VPS)\"]\n        subgraph PythonRuntime [\"Proceso Python 3.12 (Uvicorn ASGI)\"]\n            FastAPI[\"Framework FastAPI\\n(71 Rutas REST / OpenAPI)\"]:::serverStyle\n            RepoModule[\"app/repository.py\\n(Orquestador de Dominio)\"]:::serverStyle\n            ScraperEngine[\"Módulo de Scraping\\n(GrupLAC, CvLAC, Dedupe)\"]:::serverStyle\n            PDFEngine[\"Motor de Reportes PDF\\n(ReportLab Engine)\"]:::serverStyle\n        end\n\n        subgraph NativeCore [\"Núcleo Nativo C++20\"]\n            PyBindModule[\"abpoxx_pybind.pyd\\n(Puente de Enlace pybind11)\"]:::nativeStyle\n            CoreRAM[\"Estructuras Manuales en RAM (abpoxx.lib)\\n(Listas, Multilistas, Pila LIFO, Cola FIFO)\"]:::nativeStyle\n            CLI[\"Ejecutable pea_cli.exe\\n(Consola Autónoma C++)\"]:::nativeStyle\n            Tests[\"Ejecutable pea_tests.exe\\n(159 Aserciones de Memoria)\"]:::nativeStyle\n        end\n\n        FastAPI --> RepoModule\n        RepoModule --> ScraperEngine\n        RepoModule --> PDFEngine\n        RepoModule <==>|Llamadas C-ABI Nativa| PyBindModule\n        PyBindModule <==> CoreRAM\n        CLI <==> CoreRAM\n        Tests <==> CoreRAM\n    end\n\n    subgraph Persistencia [\"Capa de Persistencia y Almacenamiento\"]\n        SQLServer[(\"Motor Relacional SQL Server\\n(peai — 16 Tablas Normalizadas)\")]:::dataStyle\n        JSONFile[(\"Archivo JSON Portátil\\n(pea_data.json — 12 Colecciones)\")]:::dataStyle\n        PDFStorage[(\"Informes Generados\\n(Archivos PDF Descargables)\")]:::dataStyle\n    end\n\n    subgraph Externo [\"Fuentes Externas en Línea\"]\n        Scienti[\"Plataforma Minciencias / Scienti\\n(GrupLAC / CvLAC Público)\"]:::extStyle\n        DatosAbiertos[\"Portal Datos Abiertos Colombia\\n(datos.gov.co)\"]:::extStyle\n    end\n\n    ReactApp <==>|\"HTTP / JSON (REST)\"| FastAPI\n    ScraperEngine -.->|\"HTTP GET (Scraping vivo)\"| Scienti\n    ScraperEngine -.->|\"API REST (Enriquecimiento)\"| DatosAbiertos\n\n    CoreRAM ==>|\"ODBC Nativo (SQLExecDirect / MERGE)\"| SQLServer\n    ScraperEngine ==>|\"pyodbc (Bulk Commit Atómico)\"| SQLServer\n    CoreRAM <==>|std::ifstream / std::ofstream| JSONFile\n    PDFEngine ==>|Generación Binaria| PDFStorage\n", "png": "./11_arquitectura_despliegue.png", "svg": "./11_arquitectura_despliegue.svg"}};
+    let currentId = '01_casos_de_uso';
+    let currentView = 'preview';
+
+    function buildNav() {
+      const nav = document.getElementById('nav-list');
+      nav.innerHTML = '';
+      let currentCategory = '';
+
+      Object.values(diagrams).forEach(d => {
+        if (d.category !== currentCategory) {
+          currentCategory = d.category;
+          const catEl = document.createElement('div');
+          catEl.className = 'nav-category';
+          catEl.textContent = currentCategory;
+          nav.appendChild(catEl);
+        }
+        const li = document.createElement('li');
+        const a = document.createElement('a');
+        a.className = 'nav-item' + (d.id === currentId ? ' active' : '');
+        a.onclick = () => selectDiagram(d.id);
+        a.innerHTML = `<span>${d.title.split('. ')[0]}. ${d.title.split('. ')[1].split(' (')[0]}</span><span class="sec-badge">${d.spec_sec}</span>`;
+        li.appendChild(a);
+        nav.appendChild(li);
+      });
+    }
+
+    function selectDiagram(id) {
+      currentId = id;
+      const d = diagrams[id];
+      if (!d) return;
+
+      document.querySelectorAll('.nav-item').forEach(el => el.classList.remove('active'));
+      const activeNav = Array.from(document.querySelectorAll('.nav-item')).find(el => el.textContent.includes(d.spec_sec));
+      if (activeNav) activeNav.classList.add('active');
+
+      document.getElementById('diag-title').textContent = d.title;
+      document.getElementById('diag-subtitle').textContent = d.subtitle;
+      document.getElementById('diag-desc').textContent = d.desc;
+
+      // Actualizar imagen renderizada (usa SVG por defecto para máxima nitidez)
+      const img = document.getElementById('diagram-image');
+      img.src = d.svg;
+
+      // Actualizar enlaces de descarga directa
+      const btnPng = document.getElementById('btn-png');
+      btnPng.href = d.png;
+      btnPng.setAttribute('download', d.id + '.png');
+
+      const btnSvg = document.getElementById('btn-svg');
+      btnSvg.href = d.svg;
+      btnSvg.setAttribute('download', d.id + '.svg');
+
+      // Actualizar caja de código
+      document.getElementById('code-content').textContent = d.code;
+    }
+
+    function switchView(view) {
+      currentView = view;
+      const tabPreview = document.getElementById('tab-preview');
+      const tabSource = document.getElementById('tab-source');
+      const viewport = document.getElementById('viewport');
+      const sourceBox = document.getElementById('source-box');
+
+      if (view === 'preview') {
+        tabPreview.classList.add('active');
+        tabSource.classList.remove('active');
+        viewport.style.display = 'flex';
+        sourceBox.style.display = 'none';
+      } else {
+        tabSource.classList.add('active');
+        tabPreview.classList.remove('active');
+        viewport.style.display = 'none';
+        sourceBox.style.display = 'block';
+      }
+    }
+
+    function copyCode() {
+      const code = diagrams[currentId]?.code || '';
+      navigator.clipboard.writeText(code).then(() => {
+        const btn = document.querySelector('.copy-btn');
+        btn.textContent = '✅ ¡Copiado!';
+        setTimeout(() => { btn.textContent = '📋 Copiar Código'; }, 2000);
+      });
+    }
+
+    window.addEventListener('DOMContentLoaded', () => {
+      buildNav();
+      selectDiagram('01_casos_de_uso');
+    });
+  </script>
+</body>
+</html>

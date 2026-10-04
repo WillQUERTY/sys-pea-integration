@@ -1,0 +1,47 @@
+sequenceDiagram
+    autonumber
+    actor Usuario as Gestor de Investigación
+    participant UI as Historial (/admin/undo)
+    participant Modal as Modal de Confirmación
+    participant API as FastAPI (v1.py)
+    participant Repo as repository.py
+    participant Bind as pybind11
+    participant Stack as Core C++ (UndoStack)
+    participant Core as Core C++ (RAM)
+    participant DB as SQL Server
+
+    Usuario->>UI: Abre panel de Deshacer
+    UI->>API: GET /api/v1/system/undo
+    API->>Repo: get_undo_stack()
+    Repo->>Bind: undo_list()
+    Bind->>Stack: Recorrer desde _topNode (cima primero)
+    Stack-->>Bind: vector~UndoOperation~
+    Bind-->>Repo: Operaciones con snapshots
+    Repo-->>API: Lista formateada con etiquetas descriptivas
+    API-->>UI: HTTP 200 OK (Renderiza pila de operaciones)
+    Usuario->>UI: Clic en "Deshacer última acción"
+    UI->>Modal: Abre diálogo modal con datos de la operación en la cima
+    Usuario->>Modal: Confirma reversión
+    Modal->>API: POST /api/v1/system/undo
+    API->>Repo: perform_undo()
+    Repo->>Bind: undo_perform()
+    Bind->>Stack: undo_perform()
+    Stack->>Stack: Extraer cima de la pila (_top)
+    alt Operación era CREATE
+        Stack->>Core: delete_entity(entity_id) en RAM
+        Stack->>DB: DELETE FROM tabla WHERE id = entity_id
+    else Operación era DELETE
+        Stack->>Core: Recrear nodo con datos de previous_state
+        Stack->>DB: INSERT INTO tabla con id original
+    else Operación era UPDATE
+        Stack->>Core: Restaurar atributos anteriores en RAM
+        Stack->>DB: UPDATE tabla SET campos_previos
+    else Operación era LINK / UNLINK
+        Stack->>Core: Invertir enlace de multilista en RAM
+        Stack->>DB: Invertir fila en tabla relacional
+    end
+    Stack-->>Bind: Éxito en reversión
+    Bind-->>Repo: {status: "success", operation_type, entity_type}
+    Repo-->>API: Resultado de deshacer
+    API-->>UI: HTTP 200 OK {status: "success"}
+    UI-->>Usuario: Muestra notificación de reversión y recarga estado

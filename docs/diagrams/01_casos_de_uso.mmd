@@ -1,0 +1,86 @@
+graph TD
+    classDef actorStyle fill:#2d3748,stroke:#cbd5e0,stroke-width:2px,color:#fff;
+    classDef ucStyle fill:#ebf8ff,stroke:#3182ce,stroke-width:1.5px,color:#2b6cb0;
+
+    subgraph Actores ["Actores del Sistema PEA-i"]
+        Admin["Administrador del Sistema"]:::actorStyle
+        Gestor["Gestor de Investigación"]:::actorStyle
+        Validador["Evaluador / Validador"]:::actorStyle
+        Lider["Líder / Investigador"]:::actorStyle
+        Publico["Visitante / Comunidad UPC"]:::actorStyle
+    end
+
+    subgraph Sistema ["Sistema PEA-i — Plataforma de Producción Científica"]
+        subgraph SubEntidades ["Gestión de Entidades y Estructuras en RAM"]
+            UC_Grupos["Gestionar Grupos de Investigación"]:::ucStyle
+            UC_Investigadores["Gestionar Investigadores"]:::ucStyle
+            UC_Planes["Gestionar Planes de Trabajo"]:::ucStyle
+            UC_Proyectos["Gestionar Proyectos Autónomos"]:::ucStyle
+        end
+
+        subgraph SubMultilista ["Multilista Ortogonal y Autoría"]
+            UC_Membresias["Vincular Integrante con Rol y Fechas"]:::ucStyle
+            UC_ReglasMembresia["Validar Reglas RV-001 y RV-002"]:::ucStyle
+            UC_Productos["Gestionar Productos (20 Atributos 2024)"]:::ucStyle
+            UC_Autores["Asignar Autores y Orden de Autoría"]:::ucStyle
+        end
+
+        subgraph SubIngesta ["Ingesta y Deduplicación Scienti"]
+            UC_Scienti["Buscar Grupos en Directorio Scienti"]:::ucStyle
+            UC_GrupLAC["Scrapear GrupLAC con Vista Previa"]:::ucStyle
+            UC_CvLAC["Scrapear e Integrar CvLAC de Miembros"]:::ucStyle
+            UC_Dedupe["Conciliar Duplicados por DOI y Hash"]:::ucStyle
+        end
+
+        subgraph SubValidacion ["Flujo de Calidad FIFO y Auditoría"]
+            UC_Cola["Consultar Cola FIFO de Validación"]:::ucStyle
+            UC_Dictamen["Aprobar o Rechazar Evidencia"]:::ucStyle
+            UC_Auditoria["Registrar Traza en AuditLog"]:::ucStyle
+        end
+
+        subgraph SubControl ["Control Transaccional LIFO y Persistencia"]
+            UC_Undo["Deshacer Operación en Pila LIFO"]:::ucStyle
+            UC_Snapshot["Restaurar Snapshot Previo"]:::ucStyle
+            UC_Persistencia["Exportar / Importar pea_data.json"]:::ucStyle
+            UC_Init["Inicializar Estado (Database, File, Empty)"]:::ucStyle
+        end
+
+        subgraph SubAnalisis ["Analítica, Hipercubo y Reportes"]
+            UC_Dashboard["Consultar Dashboard Ejecutivo (KPIs)"]:::ucStyle
+            UC_Portal["Explorar Portal Público con Recharts"]:::ucStyle
+            UC_Ventana["Filtrar por Ventana de Observación"]:::ucStyle
+            UC_PDF["Descargar Informe PDF Institucional"]:::ucStyle
+        end
+    end
+
+    Admin --> UC_Grupos
+    Admin --> UC_Investigadores
+    Admin --> UC_Init
+    Admin --> UC_Persistencia
+    Admin --> UC_Undo
+
+    Gestor --> UC_Grupos
+    Gestor --> UC_Planes
+    Gestor --> UC_Proyectos
+    Gestor --> UC_Membresias
+    Gestor --> UC_Productos
+    Gestor --> UC_Scienti
+    Gestor --> UC_GrupLAC
+    Gestor --> UC_PDF
+
+    Validador --> UC_Cola
+    Validador --> UC_Dictamen
+
+    Lider --> UC_Productos
+    Lider --> UC_Autores
+    Lider --> UC_Planes
+
+    Publico --> UC_Portal
+    Publico --> UC_Dashboard
+    Publico --> UC_Ventana
+
+    UC_Membresias -.->|include| UC_ReglasMembresia
+    UC_GrupLAC -.->|include| UC_Dedupe
+    UC_GrupLAC -.->|extend| UC_CvLAC
+    UC_Dictamen -.->|include| UC_Auditoria
+    UC_Undo -.->|include| UC_Snapshot

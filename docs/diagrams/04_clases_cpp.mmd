@@ -1,0 +1,171 @@
+classDiagram
+    class GroupNode {
+        +Group data
+        +GroupNode* nextGroup
+        +MembershipNode* firstMembership
+        +GroupProductNode* firstProductLink
+        +GroupProjectNode* firstProjectLink
+        +WorkPlanNode* firstPlan
+    }
+
+    class ResearcherNode {
+        +Researcher data
+        +ResearcherNode* nextResearcher
+    }
+
+    class MembershipNode {
+        +Membership data
+        +MembershipNode* nextInGroup
+        +MembershipNode* nextForResearcher
+    }
+
+    class ProductNode {
+        +Product data
+        +ProductNode* nextProduct
+        +ProductAuthorNode* firstAuthor
+    }
+
+    class GroupProductNode {
+        +GroupProductLink data
+        +GroupProductNode* nextInGroup
+        +GroupProductNode* nextForProduct
+    }
+
+    class ProductAuthorNode {
+        +ProductAuthor data
+        +ProductAuthorNode* nextInProduct
+        +ProductAuthorNode* nextForResearcher
+    }
+
+    class WorkPlanNode {
+        +WorkPlan data
+        +WorkPlanNode* nextPlan
+    }
+
+    class ProjectNode {
+        +Project data
+        +ProjectNode* nextProject
+    }
+
+    class GroupProjectNode {
+        +GroupProjectLink data
+        +GroupProjectNode* nextInGroup
+    }
+
+    class UndoOperationNode {
+        +UndoOperation data
+        +UndoOperationNode* next
+    }
+
+    class ValidationQueueNode {
+        +ValidationQueueItem data
+        +ValidationQueueNode* next
+    }
+
+    class GroupService {
+        +create_group(Group) Group
+        +get_group(int) optional~Group~
+        +list_groups() vector~Group~
+        +update_group(int, Group) bool
+        +delete_group(int) bool
+        +add_member_to_group(int, int, string, string, string) MembershipNode*
+        +membership_details(int, int) optional~Membership~
+        +update_membership(int, int, string, string, string) bool
+        +members_of_group(int) vector~int~
+        +groups_of_researcher(int) vector~int~
+        +remove_member_from_group(int, int) bool
+        +link_product_to_group(int, int) GroupProductNode*
+        +products_of_group(int) vector~int~
+        +unlink_product_from_group(int, int) bool
+    }
+
+    class ProductService {
+        +create_product(Product) Product
+        +get_product(int) optional~Product~
+        +list_products() vector~Product~
+        +update_product(int, Product) bool
+        +delete_product(int) bool
+        +add_product_author(ProductAuthor) ProductAuthorNode*
+        +authors_of_product(int) vector~ProductAuthor~
+        +products_of_researcher_ram(int) vector~int~
+        +remove_product_author_ram(int, int, string) bool
+        +list_all_product_authors() vector~ProductAuthor~
+        +clear_product_authors() void
+    }
+
+    class UndoStack {
+        -UndoOperationNode* _top
+        -int _size
+        +undo_push(UndoOperation) void
+        +undo_top() UndoOperation*
+        +undo_pop() optional~UndoOperation~
+        +undo_perform() bool
+        +undo_list() vector~UndoOperation~
+        +undo_size() int
+        +undo_clear() void
+    }
+
+    class ValidationQueue {
+        -ValidationQueueNode* _front
+        -ValidationQueueNode* _rear
+        -int _size
+        +vq_enqueue(ValidationQueueItem) void
+        +vq_front() ValidationQueueItem*
+        +vq_dequeue() optional~ValidationQueueItem~
+        +vq_process_next() bool
+        +vq_list() vector~ValidationQueueItem~
+        +vq_size() int
+        +vq_pending_count() int
+        +vq_clear() void
+    }
+
+    class DBPersistence {
+        +load_from_db(string) bool
+        +save_to_db(string) bool
+        +sync_group_to_db(string, Group) bool
+        +sync_product_to_db(string, Product) bool
+        +sync_membership_details_to_db(string, int, int, string, string, string) bool
+        +sync_product_author_to_db(string, int, int, int) bool
+        +set_product_validation_db(string, int, string, string, string) bool
+    }
+
+    class JSONPersistence {
+        +export_to_file(string) bool
+        +load_from_file(string) bool
+    }
+
+    GroupNode --> GroupNode : nextGroup
+    GroupNode --> MembershipNode : firstMembership
+    GroupNode --> GroupProductNode : firstProductLink
+    GroupNode --> GroupProjectNode : firstProjectLink
+    GroupNode --> WorkPlanNode : firstPlan
+
+    ResearcherNode --> ResearcherNode : nextResearcher
+    MembershipNode --> MembershipNode : nextInGroup
+    MembershipNode --> MembershipNode : nextForResearcher
+
+    ProductNode --> ProductNode : nextProduct
+    ProductNode --> ProductAuthorNode : firstAuthor
+    GroupProductNode --> GroupProductNode : nextInGroup
+    GroupProductNode --> GroupProductNode : nextForProduct
+
+    ProductAuthorNode --> ProductAuthorNode : nextInProduct
+    ProductAuthorNode --> ProductAuthorNode : nextForResearcher
+
+    WorkPlanNode --> WorkPlanNode : nextPlan
+    ProjectNode --> ProjectNode : nextProject
+    GroupProjectNode --> GroupProjectNode : nextInGroup
+
+    UndoStack --> UndoOperationNode : _top (LIFO)
+    ValidationQueue --> ValidationQueueNode : _front / _rear (FIFO)
+
+    GroupService ..> GroupNode : gestiona
+    GroupService ..> MembershipNode : gestiona
+    GroupService ..> GroupProductNode : gestiona
+    ProductService ..> ProductNode : gestiona
+    ProductService ..> ProductAuthorNode : gestiona
+
+    DBPersistence ..> GroupService : sincroniza
+    DBPersistence ..> ProductService : sincroniza
+    JSONPersistence ..> GroupService : serializa
+    JSONPersistence ..> ProductService : serializa

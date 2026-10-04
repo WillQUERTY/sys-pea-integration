@@ -1,0 +1,36 @@
+sequenceDiagram
+    autonumber
+    actor Usuario as Gestor de Investigación
+    participant UI as Frontend React
+    participant API as FastAPI (v1.py)
+    participant Scraper as GruplacCommitService
+    participant Parser as GruplacScraper (HTML)
+    participant Dedupe as Deduplication Engine
+    participant DB as SQL Server (pyodbc)
+    participant Core as Core C++ (RAM)
+
+    Usuario->>UI: Ingresa URL GrupLAC y selecciona "Vista Previa"
+    UI->>API: POST /api/v1/groups/import/gruplac?url=...&preview=true
+    API->>Scraper: fetch_and_preview(url)
+    Scraper->>Parser: parse_html_content(raw_html)
+    Parser-->>Scraper: Grupo, Integrantes, Proyectos, Productos (crudos)
+    Scraper-->>API: DTO de previsualización (conteo de entidades y advertencias)
+    API-->>UI: HTTP 200 OK (Renderiza modal con datos extraídos)
+    Usuario->>UI: Confirma importación ("Guardar en el Sistema")
+    UI->>API: POST /api/v1/groups/import/gruplac?url=...&preview=false
+    API->>Scraper: commit_to_database(parsed_data)
+    Scraper->>Dedupe: dedupe_products(products)
+    Dedupe->>Dedupe: Normalizar títulos, generar hash canónico y validar DOI
+    Dedupe-->>Scraper: Productos deduplicados con código único
+    Scraper->>DB: BEGIN TRANSACTION
+    Scraper->>DB: UPSERT ResearchGroup, GroupMembership, Product, ProductAuthor
+    Scraper->>DB: INSERT INTO ValidationQueueItem (status='pending')
+    Scraper->>DB: INSERT INTO ImportJob (status='committed')
+    Scraper->>DB: COMMIT TRANSACTION
+    Scraper-->>API: Resumen de commit exitoso
+    API->>Core: initialize(InitMode::Database, conn)
+    Core->>DB: SELECT * FROM ResearchGroup, Product, ProductAuthor...
+    DB-->>Core: Registros completos
+    Core->>Core: Reconstruir todas las listas y multilistas en RAM
+    API-->>UI: HTTP 200 OK {status: "success", imported: N}
+    UI-->>Usuario: Muestra confirmación y actualiza listados

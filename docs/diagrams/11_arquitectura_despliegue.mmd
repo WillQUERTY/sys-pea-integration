@@ -1,0 +1,56 @@
+graph TB
+    classDef clientStyle fill:#e6fffa,stroke:#319795,stroke-width:2px;
+    classDef serverStyle fill:#ebf8ff,stroke:#3182ce,stroke-width:2px;
+    classDef nativeStyle fill:#fffaf0,stroke:#dd6b20,stroke-width:2px;
+    classDef dataStyle fill:#f7fafc,stroke:#4a5568,stroke-width:2px;
+    classDef extStyle fill:#edf2f7,stroke:#718096,stroke-width:2px,stroke-dasharray: 5 5;
+
+    subgraph Cliente ["Capa de Cliente (Navegador Web)"]
+        Browser["Navegador Moderno (Chrome / Edge / Firefox)"]:::clientStyle
+        ReactApp["SPA React 18 + Vite\n(TailwindCSS, Radix UI, TanStack Table, Recharts)"]:::clientStyle
+        Browser --> ReactApp
+    end
+
+    subgraph Servidor ["Servidor de Aplicación (Host Local / VPS)"]
+        subgraph PythonRuntime ["Proceso Python 3.12 (Uvicorn ASGI)"]
+            FastAPI["Framework FastAPI\n(71 Rutas REST / OpenAPI)"]:::serverStyle
+            RepoModule["app/repository.py\n(Orquestador de Dominio)"]:::serverStyle
+            ScraperEngine["Módulo de Scraping\n(GrupLAC, CvLAC, Dedupe)"]:::serverStyle
+            PDFEngine["Motor de Reportes PDF\n(ReportLab Engine)"]:::serverStyle
+        end
+
+        subgraph NativeCore ["Núcleo Nativo C++20"]
+            PyBindModule["abpoxx_pybind.pyd\n(Puente de Enlace pybind11)"]:::nativeStyle
+            CoreRAM["Estructuras Manuales en RAM (abpoxx.lib)\n(Listas, Multilistas, Pila LIFO, Cola FIFO)"]:::nativeStyle
+            CLI["Ejecutable pea_cli.exe\n(Consola Autónoma C++)"]:::nativeStyle
+            Tests["Ejecutable pea_tests.exe\n(159 Aserciones de Memoria)"]:::nativeStyle
+        end
+
+        FastAPI --> RepoModule
+        RepoModule --> ScraperEngine
+        RepoModule --> PDFEngine
+        RepoModule <==>|Llamadas C-ABI Nativa| PyBindModule
+        PyBindModule <==> CoreRAM
+        CLI <==> CoreRAM
+        Tests <==> CoreRAM
+    end
+
+    subgraph Persistencia ["Capa de Persistencia y Almacenamiento"]
+        SQLServer[("Motor Relacional SQL Server\n(peai — 16 Tablas Normalizadas)")]:::dataStyle
+        JSONFile[("Archivo JSON Portátil\n(pea_data.json — 12 Colecciones)")]:::dataStyle
+        PDFStorage[("Informes Generados\n(Archivos PDF Descargables)")]:::dataStyle
+    end
+
+    subgraph Externo ["Fuentes Externas en Línea"]
+        Scienti["Plataforma Minciencias / Scienti\n(GrupLAC / CvLAC Público)"]:::extStyle
+        DatosAbiertos["Portal Datos Abiertos Colombia\n(datos.gov.co)"]:::extStyle
+    end
+
+    ReactApp <==>|"HTTP / JSON (REST)"| FastAPI
+    ScraperEngine -.->|"HTTP GET (Scraping vivo)"| Scienti
+    ScraperEngine -.->|"API REST (Enriquecimiento)"| DatosAbiertos
+
+    CoreRAM ==>|"ODBC Nativo (SQLExecDirect / MERGE)"| SQLServer
+    ScraperEngine ==>|"pyodbc (Bulk Commit Atómico)"| SQLServer
+    CoreRAM <==>|std::ifstream / std::ofstream| JSONFile
+    PDFEngine ==>|Generación Binaria| PDFStorage

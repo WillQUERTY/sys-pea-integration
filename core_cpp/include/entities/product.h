@@ -51,6 +51,9 @@ struct ProductAuthor {
     int productId    = 0;
     int researcherId = 0;
     int authorOrder  = 1;
+    std::string externalAuthorName;
+    std::string externalAuthorIdentifier;
+    std::string matchStatus = "unverified";
 };
 
 struct ProductAuthorNode {
