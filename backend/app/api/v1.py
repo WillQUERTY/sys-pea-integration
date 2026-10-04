@@ -92,6 +92,65 @@ async def export_data(path: str = "pea_data.json"):
 # LIFO Operation Stack (Undo)
 # -------------------------------------------------------------------
 
+def _get_entity_label(entity_type: str, entity_id: int, prev_state: str) -> Optional[str]:
+    # 1. Intentar extraer título o nombre desde el snapshot JSON
+    if prev_state and prev_state.startswith("{"):
+        try:
+            data = json.loads(prev_state)
+            if "title" in data and data["title"]:
+                return data["title"]
+            if "name" in data and data["name"]:
+                return data["name"]
+            if "first_names" in data:
+                return f"{data.get('first_names', '')} {data.get('last_names', '')}".strip()
+        except Exception:
+            pass
+
+    # 2. Vínculos e interconexiones multilista: gid:rid o gid:pid
+    if ":" in prev_state:
+        try:
+            parts = prev_state.split("\x1F")[0].split(":")
+            if len(parts) == 2:
+                gid, target_id = int(parts[0]), int(parts[1])
+                g = repository.get_group(gid)
+                g_name = g.acronym or g.name if g else f"Grupo #{gid}"
+                if entity_type == "GroupMembership":
+                    r = repository.get_researcher(target_id)
+                    r_name = f"{r.first_names} {r.last_names}".strip() if r else f"Investigador #{target_id}"
+                    return f"{g_name} ↔ {r_name}"
+                elif entity_type == "GroupProductLink":
+                    p = repository.get_product(target_id)
+                    p_name = p.title if p else f"Producto #{target_id}"
+                    return f"{g_name} ↔ {p_name}"
+                elif entity_type == "Project":
+                    proj = repository.get_project(target_id)
+                    proj_name = proj.title if proj else f"Proyecto #{target_id}"
+                    return f"{g_name} ↔ {proj_name}"
+        except Exception:
+            pass
+
+    # 3. Consultar entidad en memoria activa (ej. para CREATE)
+    try:
+        if entity_type == "Product":
+            p = repository.get_product(entity_id)
+            return p.title if p else None
+        elif entity_type == "Group":
+            g = repository.get_group(entity_id)
+            return g.name if g else None
+        elif entity_type == "Researcher":
+            r = repository.get_researcher(entity_id)
+            return f"{r.first_names} {r.last_names}".strip() if r else None
+        elif entity_type == "Project":
+            proj = repository.get_project(entity_id)
+            return proj.title if proj else None
+        elif entity_type == "WorkPlan":
+            wp = repository.get_work_plan(entity_id)
+            return wp.title if wp else None
+    except Exception:
+        pass
+
+    return None
+
 @router.get("/system/undo", tags=["System"])
 async def get_undo_stack():
     """List all operations stored in the LIFO Undo stack."""
@@ -102,6 +161,7 @@ async def get_undo_stack():
             "operation_type": op.operation_type,
             "entity_type": op.entity_type,
             "entity_id": op.entity_id,
+            "entity_name": _get_entity_label(op.entity_type, op.entity_id, op.previous_state),
             "previous_state": op.previous_state,
             "performed_at": op.performed_at
         } for op in ops
@@ -303,6 +363,8 @@ async def add_member_endpoint(group_id: int, researcher_id: int, req: AddMemberR
     try:
         repository.add_member_to_group(group_id, researcher_id, req.role or "Investigador", req.start_date or "", req.end_date or "")
         return {"status": "success", "group_id": group_id, "researcher_id": researcher_id, "role": req.role}
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
@@ -323,6 +385,8 @@ async def update_member_endpoint(group_id: int, researcher_id: int, req: AddMemb
         return {"status": "success", "group_id": group_id, "researcher_id": researcher_id}
     except KeyError as e:
         raise HTTPException(status_code=404, detail=str(e))
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
     except RuntimeError as e:
         raise HTTPException(status_code=400, detail=str(e))
 

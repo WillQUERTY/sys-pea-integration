@@ -142,7 +142,7 @@ def get_group(group_id: int) -> Group:
         status=safe_get_str(g, 'status')
     )
 
-def create_group(group: Group) -> Group:
+def create_group(group: Group, skip_undo: bool = False) -> Group:
     proto = abpoxx_pybind.Group()
     proto.external_code = sanitize_str(group.external_code)
     proto.name = sanitize_str(group.name)
@@ -165,6 +165,9 @@ def create_group(group: Group) -> Group:
     created = abpoxx_pybind.create_group(proto)
     if _active_connection_string:
         abpoxx_pybind.sync_group_to_db(_active_connection_string, created.id)
+
+    if not skip_undo:
+        undo_push("CREATE", "Group", created.id)
 
     return get_group(created.id)
 
@@ -526,7 +529,7 @@ def get_researcher(res_id: int) -> Researcher:
         status=safe_get_str(r, 'status')
     )
 
-def create_researcher(res: Researcher) -> Researcher:
+def create_researcher(res: Researcher, skip_undo: bool = False) -> Researcher:
     proto = abpoxx_pybind.Researcher()
     proto.external_code = sanitize_str(res.external_code)
     proto.identification_type = sanitize_str(res.identification_type)
@@ -545,6 +548,9 @@ def create_researcher(res: Researcher) -> Researcher:
     created = abpoxx_pybind.create_researcher(proto)
     if _active_connection_string:
         abpoxx_pybind.sync_researcher_to_db(_active_connection_string, created.id)
+
+    if not skip_undo:
+        undo_push("CREATE", "Researcher", created.id)
 
     return get_researcher(created.id)
 
@@ -703,7 +709,7 @@ def get_product(prod_id: int) -> Product:
         year=y
     )
 
-def create_product(prod: Product) -> Product:
+def create_product(prod: Product, skip_undo: bool = False) -> Product:
     proto = abpoxx_pybind.Product()
     proto.external_code = sanitize_str(prod.external_code)
     proto.title = sanitize_str(prod.title)
@@ -728,6 +734,9 @@ def create_product(prod: Product) -> Product:
     created = abpoxx_pybind.create_product(proto)
     if _active_connection_string:
         abpoxx_pybind.sync_product_to_db(_active_connection_string, created.id)
+
+    if not skip_undo:
+        undo_push("CREATE", "Product", created.id)
 
     return get_product(created.id)
 
@@ -837,14 +846,16 @@ def set_product_validation(
     prod_id: int,
     validation_status: str,
     quality_category_id: Optional[int] = None,
-    reason: str = "Validacion tecnica manual"
+    reason: str = "Validacion tecnica manual",
+    skip_undo: bool = False
 ) -> Product:
     reason = sanitize_str(reason)
     if validation_status not in ("valid", "rejected", "pending"):
         raise ValueError(f"Estado de validacion invalido: {validation_status}")
 
     prev = get_product(prod_id)
-    undo_push("VALIDATE", "Product", prod_id, prev.model_dump_json())
+    if not skip_undo:
+        undo_push("VALIDATE", "Product", prod_id, prev.model_dump_json())
 
     # Proto completo desde el estado previo (update_product del nucleo aplica
     # todos los campos); solo cambian validation_status y quality_category_id.
@@ -1021,10 +1032,46 @@ def get_product_catalogs() -> dict:
 # Multilista Link Operations (Write-Through)
 # -------------------------------------------------------------------
 
-def add_member_to_group(group_id: int, researcher_id: int, role: str = "Investigador", start_date: str = "", end_date: str = ""):
+def validate_membership_period(start_date: str = "", end_date: str = ""):
+    """Valida reglas de vinculación temporal (RV-001):
+    - RV-001: Rechazar periodo invertido (start_date <= end_date cuando ambas fechas existen).
+    """
+    s = (start_date or "").strip()
+    e = (end_date or "").strip()
+    if s and e and s > e:
+        raise ValueError("RV-001: Periodo de vinculación invertido. La fecha de inicio no puede ser posterior a la fecha de fin.")
+
+def add_member_to_group(group_id: int, researcher_id: int, role: str = "Investigador", start_date: str = "", end_date: str = "", skip_undo: bool = False):
+    s = (start_date or "").strip()
+    e = (end_date or "").strip()
+    validate_membership_period(s, e)
+
+    # Validar periodos existentes en el grupo para este investigador (RV-002: no solapamiento / reingreso no solapado)
+    prev = abpoxx_pybind.membership_details(group_id, researcher_id)
+    if prev:
+        ps = (prev.start_date or "").strip()
+        pe = (prev.end_date or "").strip()
+        if ps or pe:
+            # Si la vinculación anterior no tiene fecha de fin, sigue activa ("vigente")
+            if not pe:
+                raise ValueError("RV-002: Periodos de vinculación solapados. El investigador ya tiene una vinculación vigente activa en este grupo.")
+            # Si tiene fin, verificar que no se solape (reingreso no solapado: nuevo inicio posterior al fin anterior o fin nuevo anterior al inicio previo)
+            if s and not (s > pe or (e and e < ps)):
+                raise ValueError(f"RV-002: Periodos de vinculación solapados. El periodo [{s}, {e or 'actual'}] se solapa con el periodo registrado [{ps}, {pe}].")
+
+        # Reingreso no solapado válido: actualizar membresía existente con nuevo periodo
+        if not skip_undo:
+            undo_push("UPDATE_MEMBERSHIP", "GroupMembership", prev.membership_id, f"{group_id}:{researcher_id}\x1F{prev.role}\x1F{prev.start_date}\x1F{prev.end_date}")
+        abpoxx_pybind.update_membership(group_id, researcher_id, role, start_date, end_date)
+        if _active_connection_string:
+            abpoxx_pybind.sync_membership_details_to_db(_active_connection_string, group_id, researcher_id, role, start_date, end_date)
+        return
+
     abpoxx_pybind.add_member_to_group(group_id, researcher_id, role, start_date, end_date)
     if _active_connection_string:
         abpoxx_pybind.sync_membership_details_to_db(_active_connection_string, group_id, researcher_id, role, start_date, end_date)
+    if not skip_undo:
+        undo_push("LINK_MEMBER", "GroupMembership", group_id, f"{group_id}:{researcher_id}")
 
 def get_group_members_detailed(group_id: int) -> list:
     """Membresias del grupo con rol y fechas (leido de RAM)."""
@@ -1050,6 +1097,10 @@ def get_group_members_detailed(group_id: int) -> list:
 
 def update_member(group_id: int, researcher_id: int, role: str, start_date: str = "", end_date: str = "", skip_undo: bool = False):
     """Actualiza rol y fechas de una membresia existente (RAM y upsert en BD)."""
+    s = (start_date or "").strip()
+    e = (end_date or "").strip()
+    validate_membership_period(s, e)
+
     members = abpoxx_pybind.members_of_group(group_id)
     if researcher_id not in members:
         raise KeyError(f"Researcher {researcher_id} is not a member of group {group_id}")
@@ -1106,10 +1157,12 @@ def remove_product_author(product_id: int, researcher_id: int = 0, external_auth
     if not ok:
         raise RuntimeError("No se pudo eliminar el autor en la base de datos")
 
-def link_product_to_group(group_id: int, product_id: int):
+def link_product_to_group(group_id: int, product_id: int, skip_undo: bool = False):
     abpoxx_pybind.link_product_to_group(group_id, product_id)
     if _active_connection_string:
         abpoxx_pybind.sync_product_link_to_db(_active_connection_string, group_id, product_id)
+    if not skip_undo:
+        undo_push("LINK_PRODUCT", "GroupProductLink", group_id, f"{group_id}:{product_id}")
 
 def propose_product_group_link(
     group_id: int,
@@ -1185,19 +1238,21 @@ def undo_top():
 def undo_pop():
     return abpoxx_pybind.undo_pop()
 
-def remove_member_from_group(group_id: int, researcher_id: int):
+def remove_member_from_group(group_id: int, researcher_id: int, skip_undo: bool = False):
     prev = abpoxx_pybind.membership_details(group_id, researcher_id)
-    if prev:
-        undo_push("UNLINK_MEMBER", "GroupMembership", group_id, f"{group_id}:{researcher_id}\x1F{prev.role}\x1F{prev.start_date}\x1F{prev.end_date}")
-    else:
-        undo_push("UNLINK_MEMBER", "GroupMembership", group_id, f"{group_id}:{researcher_id}")
+    if not skip_undo:
+        if prev:
+            undo_push("UNLINK_MEMBER", "GroupMembership", group_id, f"{group_id}:{researcher_id}\x1F{prev.role}\x1F{prev.start_date}\x1F{prev.end_date}")
+        else:
+            undo_push("UNLINK_MEMBER", "GroupMembership", group_id, f"{group_id}:{researcher_id}")
     abpoxx_pybind.remove_member_from_group(group_id, researcher_id)
     if _active_connection_string:
         if not abpoxx_pybind.delete_membership_from_db(_active_connection_string, group_id, researcher_id):
             raise RuntimeError(f"Error eliminando membresia {group_id}:{researcher_id} en BD")
 
-def unlink_product_from_group(group_id: int, product_id: int):
-    undo_push("UNLINK_PRODUCT", "GroupProductLink", group_id, f"{group_id}:{product_id}")
+def unlink_product_from_group(group_id: int, product_id: int, skip_undo: bool = False):
+    if not skip_undo:
+        undo_push("UNLINK_PRODUCT", "GroupProductLink", group_id, f"{group_id}:{product_id}")
     abpoxx_pybind.unlink_product_from_group(group_id, product_id)
     if _active_connection_string:
         if not abpoxx_pybind.delete_product_link_from_db(_active_connection_string, group_id, product_id):
@@ -1290,7 +1345,22 @@ def undo_perform() -> Dict[str, Any]:
 
         elif op_type == "VALIDATE":
             data = json.loads(prev_state)
-            set_product_validation(e_id, data.get("validation_status", "pending"), data.get("quality_category_id"))
+            prev_status = data.get("validation_status", "pending")
+            set_product_validation(
+                e_id,
+                prev_status,
+                data.get("quality_category_id"),
+                reason="Reversión Undo de validación",
+                skip_undo=True
+            )
+            # Si el estado anterior era pending, asegurar que el producto vuelva a estar en la cola FIFO
+            if prev_status == "pending":
+                try:
+                    already_in_queue = any(i.product_id == e_id and i.status == "pending" for i in vq_list())
+                    if not already_in_queue:
+                        vq_enqueue(e_id, "evaluador_tecnico")
+                except Exception as ex:
+                    logger.warning(f"No se pudo re-encolar producto {e_id} en FIFO tras undo: {ex}")
 
         elif op_type == "UPDATE_MEMBERSHIP":
             parts = prev_state.split("\x1F")
@@ -1302,7 +1372,11 @@ def undo_perform() -> Dict[str, Any]:
 
         elif op_type == "UNLINK_PRODUCT":
             gid, pid = map(int, prev_state.split(":"))
-            link_product_to_group(gid, pid)
+            link_product_to_group(gid, pid, skip_undo=True)
+
+        elif op_type == "LINK_PRODUCT":
+            gid, pid = map(int, prev_state.split(":"))
+            unlink_product_from_group(gid, pid, skip_undo=True)
 
         elif op_type == "UNLINK_MEMBER":
             parts = prev_state.split("\x1F")
@@ -1310,7 +1384,12 @@ def undo_perform() -> Dict[str, Any]:
             role = parts[1] if len(parts) > 1 else "Investigador"
             start_date = parts[2] if len(parts) > 2 else ""
             end_date = parts[3] if len(parts) > 3 else ""
-            add_member_to_group(gid, rid, role, start_date, end_date)
+            add_member_to_group(gid, rid, role, start_date, end_date, skip_undo=True)
+
+        elif op_type == "LINK_MEMBER":
+            parts = prev_state.split("\x1F")
+            gid, rid = map(int, parts[0].split(":"))
+            remove_member_from_group(gid, rid, skip_undo=True)
 
         elif op_type == "UNLINK_PROJECT":
             gid, pid = map(int, prev_state.split(":"))
@@ -1418,16 +1497,40 @@ def _is_endorsed(p: Product) -> bool:
     )
 
 
+def _ram_dashboard_stats(products: List[Product], researchers: List[Researcher]) -> dict:
+    """Agregados base calculados sobre la RAM del core (modo archivo/vacío)."""
+    validation: dict = {}
+    by_year: dict = {}
+    for p in products:
+        status = p.validation_status or "pending"
+        validation[status] = validation.get(status, 0) + 1
+        if p.year:
+            by_year[str(p.year)] = by_year.get(str(p.year), 0) + 1
+    classifications: dict = {}
+    for g in list_groups():
+        key = g.classification or "Sin clasificar"
+        classifications[key] = classifications.get(key, 0) + 1
+    return {
+        "total_researchers": len(researchers),
+        "total_products": len(products),
+        "validation": validation,
+        "by_year": [{"year": y, "count": c} for y, c in sorted(by_year.items())],
+        "groups_by_classification": classifications,
+    }
+
+
 def get_dashboard_stats() -> dict:
-    if not _active_connection_string:
-        return {}
-    # El nucleo C++ ejecuta las 6 agregaciones y devuelve el JSON ya
-    # estructurado con las mismas claves que consumia la API.
-    stats = json.loads(abpoxx_pybind.get_dashboard_stats_json(_active_connection_string))
-    # Métricas del Modelo de Medición 2024, calculadas en Python sobre la
-    # RAM del core (el agregado del C++ no las conoce) y fusionadas al JSON.
     products = list_products()
     researchers = list_researchers()
+    if _active_connection_string:
+        # El nucleo C++ ejecuta las 6 agregaciones y devuelve el JSON ya
+        # estructurado con las mismas claves que consumia la API.
+        stats = json.loads(abpoxx_pybind.get_dashboard_stats_json(_active_connection_string))
+    else:
+        stats = _ram_dashboard_stats(products, researchers)
+
+    # Métricas del Modelo de Medición 2024, calculadas en Python sobre la
+    # RAM del core (el agregado del C++ no las conoce) y fusionadas al JSON.
     _, total_projects = list_projects()
     stats["modelo_2024"] = {
         "products_without_subtype": sum(1 for p in products if not p.subtype_id),

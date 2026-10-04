@@ -2,11 +2,14 @@
 // Product CRUD and multilista traversal.
 
 #include "services/product_service.h"
+#include <algorithm>
 
 namespace peai {
 
-static ProductNode* _productHead = nullptr;
-static int          _nextProductId = 1;
+static ProductNode*       _productHead = nullptr;
+static int                _nextProductId = 1;
+static ProductAuthorNode* _authorHead = nullptr;
+static int                _nextAuthorId = 1;
 
 // =====================================================================
 //  Internal helpers
@@ -102,8 +105,23 @@ bool delete_product(int id) {
         if (cur->data.id == id) {
             if (prev) prev->nextProduct = cur->nextProduct;
             else      _productHead = cur->nextProduct;
-            // TODO: Also cleanup any links from groups to this product
             delete cur;
+
+            // Cascade cleanup of authors of this product in RAM
+            ProductAuthorNode* a_prev = nullptr;
+            ProductAuthorNode* a_cur  = _authorHead;
+            while (a_cur) {
+                if (a_cur->data.productId == id) {
+                    ProductAuthorNode* to_del = a_cur;
+                    if (a_prev) a_prev->nextInProduct = a_cur->nextInProduct;
+                    else        _authorHead           = a_cur->nextInProduct;
+                    a_cur = a_cur->nextInProduct;
+                    delete to_del;
+                } else {
+                    a_prev = a_cur;
+                    a_cur  = a_cur->nextInProduct;
+                }
+            }
             return true;
         }
         prev = cur;
@@ -117,6 +135,121 @@ int total_products() {
     ProductNode* cur = _productHead;
     while (cur) { count++; cur = cur->nextProduct; }
     return count;
+}
+
+// =====================================================================
+//  Product Authors Multilista (RAM)
+// =====================================================================
+
+ProductAuthorNode* add_product_author(const ProductAuthor& prototype) {
+    ProductAuthorNode* cur = _authorHead;
+    while (cur) {
+        if (cur->data.productId == prototype.productId) {
+            if (prototype.researcherId > 0 && cur->data.researcherId == prototype.researcherId) {
+                cur->data.authorOrder = prototype.authorOrder;
+                cur->data.matchStatus = prototype.matchStatus;
+                return cur;
+            }
+            if (!prototype.externalAuthorName.empty() && cur->data.externalAuthorName == prototype.externalAuthorName) {
+                cur->data.authorOrder = prototype.authorOrder;
+                cur->data.externalAuthorIdentifier = prototype.externalAuthorIdentifier;
+                cur->data.matchStatus = prototype.matchStatus;
+                return cur;
+            }
+        }
+        cur = cur->nextInProduct;
+    }
+
+    auto* node = new ProductAuthorNode();
+    node->data = prototype;
+    if (prototype.id > 0) {
+        node->data.id = prototype.id;
+        if (prototype.id >= _nextAuthorId) _nextAuthorId = prototype.id + 1;
+    } else {
+        node->data.id = _nextAuthorId++;
+    }
+
+    if (!_authorHead) {
+        _authorHead = node;
+    } else {
+        ProductAuthorNode* tail = _authorHead;
+        while (tail->nextInProduct) tail = tail->nextInProduct;
+        tail->nextInProduct = node;
+    }
+    return node;
+}
+
+std::vector<ProductAuthor> authors_of_product(int product_id) {
+    std::vector<ProductAuthor> result;
+    ProductAuthorNode* cur = _authorHead;
+    while (cur) {
+        if (cur->data.productId == product_id) {
+            result.push_back(cur->data);
+        }
+        cur = cur->nextInProduct;
+    }
+    std::sort(result.begin(), result.end(), [](const ProductAuthor& a, const ProductAuthor& b){
+        return a.authorOrder < b.authorOrder;
+    });
+    return result;
+}
+
+std::vector<int> products_of_researcher_ram(int researcher_id) {
+    std::vector<int> result;
+    ProductAuthorNode* cur = _authorHead;
+    while (cur) {
+        if (cur->data.researcherId == researcher_id) {
+            result.push_back(cur->data.productId);
+        }
+        cur = cur->nextInProduct;
+    }
+    return result;
+}
+
+bool remove_product_author_ram(int product_id, int researcher_id, const std::string& ext_name) {
+    ProductAuthorNode* prev = nullptr;
+    ProductAuthorNode* cur  = _authorHead;
+    bool any_removed = false;
+    while (cur) {
+        bool match = false;
+        if (cur->data.productId == product_id) {
+            if (researcher_id > 0 && cur->data.researcherId == researcher_id) match = true;
+            else if (!ext_name.empty() && cur->data.externalAuthorName == ext_name) match = true;
+        }
+        if (match) {
+            ProductAuthorNode* to_del = cur;
+            if (prev) prev->nextInProduct = cur->nextInProduct;
+            else      _authorHead           = cur->nextInProduct;
+            cur = cur->nextInProduct;
+            delete to_del;
+            any_removed = true;
+        } else {
+            prev = cur;
+            cur  = cur->nextInProduct;
+        }
+    }
+    return any_removed;
+}
+
+std::vector<ProductAuthor> list_all_product_authors() {
+    std::vector<ProductAuthor> result;
+    ProductAuthorNode* cur = _authorHead;
+    while (cur) {
+        result.push_back(cur->data);
+        cur = cur->nextInProduct;
+    }
+    return result;
+}
+
+void clear_product_authors() {
+    ProductAuthorNode* cur = _authorHead;
+    while (cur) {
+        ProductAuthorNode* next = cur->nextInProduct;
+        delete cur;
+        cur = next;
+    }
+    _authorHead = nullptr;
+    _nextAuthorId = 1;
 }
 
 } // namespace peai

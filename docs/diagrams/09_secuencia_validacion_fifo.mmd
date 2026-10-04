@@ -1,0 +1,37 @@
+sequenceDiagram
+    autonumber
+    actor Validador as Evaluador Técnico
+    participant UI as Panel Admin (/admin/validation-queue)
+    participant API as FastAPI (v1.py)
+    participant Repo as repository.py
+    participant Bind as pybind11
+    participant VQ as Core C++ (ValidationQueue)
+    participant Core as Core C++ (ProductService)
+    participant DB as SQL Server
+
+    Validador->>UI: Consulta cola de validación
+    UI->>API: GET /api/v1/system/validation-queue
+    API->>Repo: get_validation_queue()
+    Repo->>Bind: vq_list()
+    Bind->>VQ: Recorrer nodos desde _front (FIFO)
+    VQ-->>Bind: Lista de ValidationQueueItem
+    Bind-->>Repo: Items ordenados por fecha de encolamiento
+    Repo-->>API: Lista enriquecida con títulos y códigos
+    API-->>UI: HTTP 200 OK (Muestra cola con botón "Validar")
+    Validador->>UI: Dictamina producto: Válido o Rechazado
+    UI->>API: POST /api/v1/system/validation-queue/{id}/validate {decision: "valid"}
+    API->>Repo: resolve_validation(product_id, decision, reason, user)
+    Repo->>Bind: set_product_validation_db(conn, product_id, "valid", reason, user)
+    Bind->>DB: BEGIN TRANSACTION
+    Bind->>DB: UPDATE Product SET validation_status = 'valid'
+    Bind->>DB: UPDATE GroupProductLink SET status = 'approved'
+    Bind->>DB: UPDATE ValidationQueueItem SET status = 'done'
+    Bind->>DB: INSERT INTO AuditLog (action='VALIDATE_PRODUCT')
+    Bind->>DB: COMMIT TRANSACTION
+    Repo->>Bind: update_product_validation_ram(product_id, "valid")
+    Bind->>Core: Actualizar validation_status en ProductNode RAM
+    Repo->>Bind: vq_resolve_for_product(product_id)
+    Bind->>VQ: Desencolar o marcar resuelto en cola RAM
+    Repo-->>API: OK
+    API-->>UI: HTTP 200 OK {status: "success"}
+    UI-->>Validador: Actualiza cola FIFO y estado del producto

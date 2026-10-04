@@ -561,6 +561,37 @@ bool load_from_db(const std::string& connection_string) {
         SQLFreeHandle(SQL_HANDLE_STMT, stmt);
     }
 
+    // Load product authors
+    {
+        SQLHSTMT stmt;
+        SQLAllocHandle(SQL_HANDLE_STMT, dbc, &stmt);
+        SQLExecDirect(stmt, (SQLCHAR*)
+            "SELECT id, product_id, researcher_id, author_order, external_author_name, external_author_identifier, match_status FROM ProductAuthor",
+            SQL_NTS);
+        SQLINTEGER id, pid, rid, ord;
+        SQLCHAR ext_name[512], ext_id[256], m_stat[128];
+        SQLLEN i1, i2, i3, i4, i5, i6, i7;
+        SQLBindCol(stmt, 1, SQL_C_SLONG, &id, 0, &i1);
+        SQLBindCol(stmt, 2, SQL_C_SLONG, &pid, 0, &i2);
+        SQLBindCol(stmt, 3, SQL_C_SLONG, &rid, 0, &i3);
+        SQLBindCol(stmt, 4, SQL_C_SLONG, &ord, 0, &i4);
+        SQLBindCol(stmt, 5, SQL_C_CHAR, ext_name, sizeof(ext_name), &i5);
+        SQLBindCol(stmt, 6, SQL_C_CHAR, ext_id, sizeof(ext_id), &i6);
+        SQLBindCol(stmt, 7, SQL_C_CHAR, m_stat, sizeof(m_stat), &i7);
+        while (SQL_SUCCEEDED(SQLFetch(stmt))) {
+            ProductAuthor pa;
+            pa.id                       = (i1 != SQL_NULL_DATA) ? id : 0;
+            pa.productId                = (i2 != SQL_NULL_DATA) ? pid : 0;
+            pa.researcherId             = (i3 != SQL_NULL_DATA) ? rid : 0;
+            pa.authorOrder              = (i4 != SQL_NULL_DATA) ? ord : 1;
+            pa.externalAuthorName       = (i5 != SQL_NULL_DATA) ? cp1252_to_utf8((char*)ext_name) : "";
+            pa.externalAuthorIdentifier = (i6 != SQL_NULL_DATA) ? cp1252_to_utf8((char*)ext_id) : "";
+            pa.matchStatus              = (i7 != SQL_NULL_DATA) ? cp1252_to_utf8((char*)m_stat) : "unverified";
+            add_product_author(pa);
+        }
+        SQLFreeHandle(SQL_HANDLE_STMT, stmt);
+    }
+
     // Load work plans (multilista Grupo -> planes, T-08). El id RAM se
     // reasigna al de BD para que sync/delete por id funcionen despues.
     {

@@ -1,0 +1,212 @@
+erDiagram
+    ResearchGroup ||--o{ GroupMembership : "tiene"
+    Researcher ||--o{ GroupMembership : "pertenece"
+    ResearchGroup ||--o{ GroupProductLink : "asocia"
+    Product ||--o{ GroupProductLink : "vinculado_a"
+    ResearchGroup ||--o{ WorkPlan : "define"
+    ResearchGroup ||--o{ GroupProjectLink : "ejecuta"
+    Project ||--o{ GroupProjectLink : "asignado_a"
+    Product ||--o{ ProductAuthor : "posee"
+    Researcher ||--o{ ProductAuthor : "es_autor"
+    Product ||--o{ ValidationQueueItem : "encola"
+    ProductFamily ||--o{ ProductSubtype : "clasifica"
+    ProductSubtype ||--o{ QualityCategory : "pondera"
+    ProductSubtype ||--o{ Product : "tipifica"
+    QualityCategory ||--o{ Product : "califica"
+
+    ResearchGroup {
+        int id PK "Identificador autonumérico"
+        string external_code UK "Código Scienti / Institucional"
+        string name "Nombre oficial del grupo"
+        string acronym "Sigla o acrónimo"
+        string institution "Universidad o institución"
+        string classification "Categoría A1, A, B, C, Reconocido"
+        string description "Objetivos y líneas de acción"
+        string mission "Misión declarada"
+        string vision "Visión estratégica"
+        string declared_creation_date "Fecha de creación"
+        string knowledge_area "Gran área del conocimiento"
+        string knowledge_subarea "Subárea disciplinar"
+        string city "Ciudad sede"
+        string department "Departamento"
+        string website "Portal web institucional"
+        string email "Correo de contacto"
+        int leader_id FK "Investigador líder"
+        string status "active / inactive"
+    }
+
+    Researcher {
+        int id PK "Identificador autonumérico"
+        string external_code UK "Código CvLAC o ID único"
+        string identification_type "CC, CE, Pasaporte"
+        string identification_number "Número de documento"
+        string first_names "Nombres del investigador"
+        string last_names "Apellidos del investigador"
+        string nationality "Nacionalidad"
+        string country_of_residence "País de residencia"
+        string institutional_email "Correo institucional UPC"
+        string orcid "Identificador ORCID"
+        string highest_education_level "Pregrado, Maestría, Doctorado"
+        string education_records "Historial formativo"
+        string classification_records "Historial de categoría Minciencias"
+        string status "active / inactive"
+    }
+
+    GroupMembership {
+        int id PK "Identificador autonumérico"
+        int group_id FK "Referencia a ResearchGroup"
+        int researcher_id FK "Referencia a Researcher"
+        string role "Director, Investigador, Estudiante"
+        string start_date "Fecha inicio vinculación"
+        string end_date "Fecha fin vinculación"
+        string status "active / closed"
+    }
+
+    Product {
+        int id PK "Identificador autonumérico"
+        string external_code UK "Código DOI o Hash canónico"
+        string title "Título de la obra o producción"
+        string description "Resumen o descripción técnica"
+        int family_id FK "Referencia a ProductFamily"
+        int subtype_id FK "Referencia a ProductSubtype"
+        int quality_category_id FK "Referencia a QualityCategory"
+        string obtained_date "Fecha de obtención reportada"
+        string publication_date "Fecha de publicación formal"
+        string validation_status "pending, valid, rejected"
+        string language "Idioma de la publicación"
+        string country "País de publicación"
+        string doi "Digital Object Identifier"
+        string isbn "International Standard Book Number"
+        string issn "International Standard Serial Number"
+        string url "Enlace digital verificable"
+        string evidence "Metadatos y soporte documental"
+        string specialized_attributes "Atributos propios de la tipología"
+        string status "active / inactive"
+        int year "Año de obtención"
+    }
+
+    ProductAuthor {
+        int id PK "Identificador autonumérico"
+        int product_id FK "Referencia a Product"
+        int researcher_id FK "Referencia a Researcher (opcional)"
+        int author_order "Posición en la firma (1..N)"
+        string external_author_name "Nombre autor externo"
+        string external_author_identifier "ID externo autor"
+        string match_status "verified, unverified, external"
+    }
+
+    GroupProductLink {
+        int id PK "Identificador autonumérico"
+        int group_id FK "Referencia a ResearchGroup"
+        int product_id FK "Referencia a Product"
+        string status "approved, pending_validation, rejected"
+        string source "gruplac_import, manual, api"
+        datetime linked_at "Fecha de asociación"
+        string notes "Notas de validación"
+    }
+
+    WorkPlan {
+        int id PK "Identificador autonumérico"
+        int group_id FK "Referencia a ResearchGroup"
+        string title "Título del plan de trabajo"
+        string description "Objetivos y metas académicas"
+        string start_date "Fecha inicio vigencia"
+        string end_date "Fecha fin vigencia"
+        string status "active, completed, draft"
+    }
+
+    Project {
+        int id PK "Identificador autonumérico"
+        string title "Título del proyecto"
+        string summary "Resumen ejecutivo"
+        string project_type "Investigación, Extensión, Innovación"
+        string start_date "Fecha inicio de ejecución"
+        string end_date "Fecha fin de ejecución"
+        string status "active, completed, formulated"
+        string funding_type "Interna, Minciencias, Regalías"
+        float budget "Presupuesto asignado en COP"
+        int principal_investigator_id FK "Investigador principal"
+    }
+
+    GroupProjectLink {
+        int id PK "Identificador autonumérico"
+        int group_id FK "Referencia a ResearchGroup"
+        int project_id FK "Referencia a Project"
+    }
+
+    ValidationQueueItem {
+        int id PK "Identificador autonumérico"
+        int product_id FK "Referencia a Product"
+        datetime enqueued_at "Fecha y hora de encolamiento"
+        string status "pending, in_review, done, rejected"
+        int attempts "Número de intentos de revisión"
+        string assigned_to "Usuario o evaluador asignado"
+        string result "Dictamen técnico final"
+        datetime processed_at "Fecha y hora de decisión"
+    }
+
+    UndoOperation {
+        int id PK "Identificador autonumérico"
+        string operation_type "CREATE, UPDATE, DELETE, LINK, VALIDATE"
+        string entity_type "Group, Researcher, Product, Membership..."
+        int entity_id "Identificador de la entidad mutada"
+        string previous_state "Snapshot serializado de reversión"
+        datetime performed_at "Fecha y hora de la mutación"
+        datetime undone_at "Fecha y hora de reversión"
+    }
+
+    AuditLog {
+        int id PK "Identificador autonumérico"
+        string action "INSERT, UPDATE, DELETE, VALIDATE, UNDO"
+        string entity_type "Nombre de la tabla mutada"
+        int entity_id "Identificador del registro mutado"
+        string performed_by "Usuario o agente ejecutor"
+        datetime performed_at "Marca de tiempo del servidor"
+        string details "Detalle en formato JSON de la acción"
+    }
+
+    ImportJob {
+        int id PK "Identificador autonumérico"
+        string source_type "gruplac, cvlac, file_json"
+        string source_target "URL o nombre de archivo"
+        string status "started, previewed, committed, failed"
+        datetime created_at "Fecha inicio de ingesta"
+        datetime completed_at "Fecha fin de ingesta"
+        string summary "Métricas de registros creados y vinculados"
+    }
+
+    ObservationWindow {
+        int id PK "Identificador autonumérico"
+        string name "Nombre de la ventana"
+        int start_year "Año de inicio de corte"
+        int end_year "Año de fin de corte"
+        int window_years "Duración estándar en años"
+        boolean is_active "Estado de activación"
+    }
+
+    ProductFamily {
+        int id PK "Identificador autonumérico"
+        string code UK "GNC, DTI, ASC, DPC, FRH"
+        string name "Nombre descriptivo de la familia"
+        int sort_order "Orden de despliegue en reportes"
+    }
+
+    ProductSubtype {
+        int id PK "Identificador autonumérico"
+        int family_id FK "Referencia a ProductFamily"
+        string code UK "Código canónico Minciencias (ej. ART, SFW)"
+        string name "Nombre de la tipología específica"
+        string model_ref "Referencia en anexo técnico Convocatoria 957"
+        int sort_order "Orden relativo dentro de la familia"
+    }
+
+    QualityCategory {
+        int id PK "Identificador autonumérico"
+        int subtype_id FK "Referencia a ProductSubtype"
+        string code "A1, A, B, C, Top, Tipo 1..."
+        string name "Descripción de categoría de calidad"
+        string measurement_class "Clasificación de producto"
+        float weight "Peso ponderado relativo"
+        float global_weight "Puntos institucionales para escalafón"
+        int sort_order "Jerarquía de calidad"
+    }

@@ -20,6 +20,14 @@ bool                   delete_product(int id);
 // ---- Summary / stats ----
 int total_products();
 
+// ---- Multilista: Product <-> Researcher / External Authors (RAM) ----
+ProductAuthorNode*         add_product_author(const ProductAuthor& pa);
+std::vector<ProductAuthor> authors_of_product(int product_id);
+std::vector<int>           products_of_researcher_ram(int researcher_id);
+bool                       remove_product_author_ram(int product_id, int researcher_id, const std::string& ext_name = "");
+std::vector<ProductAuthor> list_all_product_authors();
+void                       clear_product_authors();
+
 // ---- Internal access (used by persistence layers) ----
 ProductNode* get_product_head();
 

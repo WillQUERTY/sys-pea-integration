@@ -36,6 +36,7 @@ static void reset_state() {
     for (const auto& r : list_researchers()) delete_researcher(r.id);
     for (const auto& p : list_products())    delete_product(p.id);
     for (const auto& p : list_projects())    delete_project(p.id);
+    clear_product_authors();
     vq_clear();
     undo_clear();
 }
@@ -582,6 +583,11 @@ static void test_persistencia_json_roundtrip() {
     int p  = make_product("P-RT");
     add_member_to_group(g, r);
     link_product_to_group(g, p);
+    ProductAuthor pa;
+    pa.productId = p;
+    pa.researcherId = r;
+    pa.authorOrder = 1;
+    add_product_author(pa);
     int pj = make_project("Proyecto RT");
     link_project_to_group(g, pj);
     make_plan(g, "Plan RT");
@@ -601,6 +607,7 @@ static void test_persistencia_json_roundtrip() {
     CHECK(list_products().size() == 1, "el producto se restauró");
     CHECK(members_of_group(g).size() == 1, "la vinculación se restauró");
     CHECK(products_of_group(g).size() == 1, "el enlace producto se restauró");
+    CHECK(authors_of_product(p).size() == 1, "el autor de producto se restauró");
     CHECK(list_projects().size() == 1 && list_projects()[0].title == "Proyecto RT",
           "el proyecto se restauró");
     CHECK(projects_of_group(g).size() == 1, "el enlace proyecto se restauró");

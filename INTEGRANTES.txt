@@ -1,0 +1,41 @@
+UNIVERSIDAD POPULAR DEL CESAR
+FACULTAD DE INGENIERÍAS Y TECNOLÓGICAS
+INGENIERÍA DE SISTEMAS
+ASIGNATURA: ESTRUCTURA DE DATOS
+TALLER 2 — PROGRAMA ESTADÍSTICO DE ANÁLISIS DE INVESTIGACIÓN (PEA-i)
+DOCENTE: ING. ADITH PÉREZ
+
+======================================================================
+IDENTIFICACIÓN DE LOS ESTUDIANTES DEL GRUPO (INICIALES: WP - DN - EO)
+======================================================================
+
+INTEGRANTE 1 (WP):
+- Iniciales: WP
+- Nombres y Apellidos: [Completar Nombre Estudiante 1]
+- Código Estudiantil: [Completar Código]
+- Documento de Identidad: [Completar Documento]
+- Correo Institucional: [usuario1]@unicesar.edu.co
+
+INTEGRANTE 2 (DN):
+- Iniciales: DN
+- Nombres y Apellidos: [Completar Nombre Estudiante 2]
+- Código Estudiantil: [Completar Código]
+- Documento de Identidad: [Completar Documento]
+- Correo Institucional: [usuario2]@unicesar.edu.co
+
+INTEGRANTE 3 (EO):
+- Iniciales: EO
+- Nombres y Apellidos: [Completar Nombre Estudiante 3]
+- Código Estudiantil: [Completar Código]
+- Documento de Identidad: [Completar Documento]
+- Correo Institucional: [usuario3]@unicesar.edu.co
+
+======================================================================
+INFORMACIÓN DE ENTREGA
+======================================================================
+- Asunto del Correo: Estructura de datos Taller 2 Grupo WP-DN-EO 2026
+- Destinatario: adithperez@unicesar.edu.co
+- Repositorio del Proyecto: sys_pea_integration
+- Documento de Especificación: docs/word/Taller2_WP-DN-EO.docx
+- Archivo de Persistencia: pea_data.json (12 colecciones completas)
+- Video Demostrativo (10 min): [Enlace a YouTube / Carpeta compartida]

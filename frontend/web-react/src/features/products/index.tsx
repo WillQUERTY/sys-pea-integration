@@ -207,15 +207,20 @@ export function Products({ isAdmin = false }: { isAdmin?: boolean }) {
       className: 'max-w-[520px]',
       searchable: (p) => p.title,
       cell: (p) => (
-        <div className='flex items-center gap-2'>
+        <div className='flex min-w-0 items-center gap-2'>
           <Link
             to={isAdmin ? '/admin/products/$id' : '/products/$id'}
             params={{ id: String(p.id) }}
-            className='block truncate font-medium text-primary hover:underline'
+            className='block min-w-0 truncate font-medium text-primary hover:underline'
+            title={p.title}
           >
             {p.title}
           </Link>
-          {isEndorsed(p) && <EndorsedBadge />}
+          {isEndorsed(p) && (
+            <span className='shrink-0'>
+              <EndorsedBadge />
+            </span>
+          )}
         </div>
       ),
     },
@@ -267,6 +272,7 @@ export function Products({ isAdmin = false }: { isAdmin?: boolean }) {
     {
       key: 'doi',
       header: 'DOI',
+      className: 'whitespace-nowrap pe-6',
       searchable: (p) => p.doi ?? '',
       cell: (p) =>
         p.doi ? (
@@ -289,7 +295,8 @@ export function Products({ isAdmin = false }: { isAdmin?: boolean }) {
     },
     {
       key: 'actions',
-      header: '',
+      header: 'Acciones',
+      className: 'w-[1%] whitespace-nowrap text-right',
       cell: (p) => (
         <DropdownMenu>
           <DropdownMenuTrigger asChild>

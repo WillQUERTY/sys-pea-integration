@@ -126,7 +126,7 @@ export function Groups({ isAdmin = false }: { isAdmin?: boolean }) {
     {
       key: 'name',
       header: 'Nombre',
-      className: 'max-w-[350px]',
+      className: 'min-w-[260px] max-w-[520px]',
       searchable: (g) => `${g.name} ${g.acronym ?? ''}`,
       cell: (g) => (
         <Link
@@ -141,7 +141,7 @@ export function Groups({ isAdmin = false }: { isAdmin?: boolean }) {
             {g.name?.[0]?.toUpperCase() ?? '?'}
           </div>
           <div className='min-w-0'>
-            <p className='truncate text-sm font-medium'>{g.name}</p>
+            <p className='line-clamp-2 text-sm font-medium' title={g.name}>{g.name}</p>
             {g.institution && (
               <p className='truncate text-xs text-muted-foreground'>{g.institution}</p>
             )}
@@ -180,7 +180,8 @@ export function Groups({ isAdmin = false }: { isAdmin?: boolean }) {
     },
     {
       key: 'actions',
-      header: '',
+      header: 'Acciones',
+      className: 'w-[1%] whitespace-nowrap text-right',
       cell: (g) => (
         <DropdownMenu>
           <DropdownMenuTrigger asChild>

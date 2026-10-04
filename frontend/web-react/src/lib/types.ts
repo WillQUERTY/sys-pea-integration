@@ -204,6 +204,8 @@ export interface UndoOperation {
   operation_type: string
   entity_type: string
   entity_id: number
+  entity_name?: string | null
   previous_state: string
   performed_at: string
 }
+

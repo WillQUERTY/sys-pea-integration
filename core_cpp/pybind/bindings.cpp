@@ -125,6 +125,24 @@ PYBIND11_MODULE(abpoxx_pybind, m) {
     m.def("update_product", &peai::update_product);
     m.def("delete_product", &peai::delete_product);
 
+    // ---- Struct: ProductAuthor ----
+    py::class_<ProductAuthor>(m, "ProductAuthor")
+        .def(py::init<>())
+        .def_readwrite("id",                         &ProductAuthor::id)
+        .def_readwrite("product_id",                 &ProductAuthor::productId)
+        .def_readwrite("researcher_id",              &ProductAuthor::researcherId)
+        .def_readwrite("author_order",               &ProductAuthor::authorOrder)
+        .def_readwrite("external_author_name",       &ProductAuthor::externalAuthorName)
+        .def_readwrite("external_author_identifier", &ProductAuthor::externalAuthorIdentifier)
+        .def_readwrite("match_status",               &ProductAuthor::matchStatus);
+
+    m.def("add_product_author_ram",       &peai::add_product_author, "Add product author in RAM multilist");
+    m.def("authors_of_product_ram",       &peai::authors_of_product, "Get authors of product from RAM");
+    m.def("products_of_researcher_ram",   &peai::products_of_researcher_ram, "Get products of researcher from RAM");
+    m.def("remove_product_author_ram",    &peai::remove_product_author_ram, "Remove product author from RAM");
+    m.def("list_all_product_authors_ram", &peai::list_all_product_authors, "List all product authors in RAM");
+    m.def("clear_product_authors_ram",    &peai::clear_product_authors, "Clear product authors from RAM");
+
     // ---- Struct: Project ----
     py::class_<Project>(m, "Project")
         .def(py::init<>())

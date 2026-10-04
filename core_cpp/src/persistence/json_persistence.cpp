@@ -154,6 +154,7 @@ static void clear_all_state() {
     for (const auto& r : list_researchers()) delete_researcher(r.id);
     for (const auto& p : list_products())  delete_product(p.id);
     for (const auto& p : list_projects())  delete_project(p.id);
+    clear_product_authors();
     vq_clear();
     undo_clear();
 }
@@ -229,20 +230,51 @@ bool export_to_file(const std::string& path) {
     }
     out << "\n  ],\n";
 
-    // Products
+    // Products (20 campos del modelo 2024 / Minciencias)
     out << "  \"products\": [\n";
     first = true;
     for (const auto& p : list_products()) {
         if (!first) out << ",\n";
         first = false;
         out << "    {"
-            << "\"id\": "                 << p.id << ", "
-            << "\"external_code\": \""    << json_escape(p.external_code) << "\", "
-            << "\"title\": \""            << json_escape(p.title) << "\", "
-            << "\"obtained_date\": \""    << json_escape(p.obtained_date) << "\", "
-            << "\"year\": "               << p.year << ", "
-            << "\"validation_status\": \"" << json_escape(p.validation_status) << "\", "
-            << "\"status\": \""           << json_escape(p.status) << "\""
+            << "\"id\": "                     << p.id << ", "
+            << "\"external_code\": \""        << json_escape(p.external_code) << "\", "
+            << "\"title\": \""                << json_escape(p.title) << "\", "
+            << "\"description\": \""          << json_escape(p.description) << "\", "
+            << "\"family_id\": "              << p.family_id << ", "
+            << "\"subtype_id\": "             << p.subtype_id << ", "
+            << "\"quality_category_id\": "    << p.quality_category_id << ", "
+            << "\"obtained_date\": \""        << json_escape(p.obtained_date) << "\", "
+            << "\"publication_date\": \""     << json_escape(p.publication_date) << "\", "
+            << "\"year\": "                   << p.year << ", "
+            << "\"language\": \""             << json_escape(p.language) << "\", "
+            << "\"country\": \""              << json_escape(p.country) << "\", "
+            << "\"doi\": \""                  << json_escape(p.doi) << "\", "
+            << "\"isbn\": \""                 << json_escape(p.isbn) << "\", "
+            << "\"issn\": \""                 << json_escape(p.issn) << "\", "
+            << "\"url\": \""                  << json_escape(p.url) << "\", "
+            << "\"evidence\": \""             << json_escape(p.evidence) << "\", "
+            << "\"specialized_attributes\": \"" << json_escape(p.specialized_attributes) << "\", "
+            << "\"validation_status\": \""    << json_escape(p.validation_status) << "\", "
+            << "\"status\": \""               << json_escape(p.status) << "\""
+            << "}";
+    }
+    out << "\n  ],\n";
+
+    // Authors (§33.2 / ProductAuthor)
+    out << "  \"authors\": [\n";
+    first = true;
+    for (const auto& a : list_all_product_authors()) {
+        if (!first) out << ",\n";
+        first = false;
+        out << "    {"
+            << "\"id\": "                         << a.id << ", "
+            << "\"productId\": "                  << a.productId << ", "
+            << "\"researcherId\": "               << a.researcherId << ", "
+            << "\"authorOrder\": "                << a.authorOrder << ", "
+            << "\"externalAuthorName\": \""       << json_escape(a.externalAuthorName) << "\", "
+            << "\"externalAuthorIdentifier\": \"" << json_escape(a.externalAuthorIdentifier) << "\", "
+            << "\"matchStatus\": \""              << json_escape(a.matchStatus) << "\""
             << "}";
     }
     out << "\n  ],\n";
@@ -398,19 +430,47 @@ bool load_from_file(const std::string& path) {
         add_member_to_group(extract_int(block, "groupId"), extract_int(block, "researcherId"), role, start_date, end_date);
     });
 
-    // Products
+    // Products (20 campos modelo 2024)
     for_each_object(content, "products", [](const std::string& block) {
         Product p;
-        p.id                = extract_int(block, "id");
-        p.external_code     = extract_string(block, "external_code");
-        p.title             = extract_string(block, "title");
-        p.obtained_date     = extract_string(block, "obtained_date");
-        p.year              = extract_int(block, "year");
-        p.validation_status = extract_string(block, "validation_status");
+        p.id                     = extract_int(block, "id");
+        p.external_code          = extract_string(block, "external_code");
+        p.title                  = extract_string(block, "title");
+        p.description            = extract_string(block, "description");
+        p.family_id              = extract_int(block, "family_id");
+        p.subtype_id             = extract_int(block, "subtype_id");
+        p.quality_category_id    = extract_int(block, "quality_category_id");
+        p.obtained_date          = extract_string(block, "obtained_date");
+        p.publication_date       = extract_string(block, "publication_date");
+        p.year                   = extract_int(block, "year");
+        p.language               = extract_string(block, "language");
+        p.country                = extract_string(block, "country");
+        p.doi                    = extract_string(block, "doi");
+        p.isbn                   = extract_string(block, "isbn");
+        p.issn                   = extract_string(block, "issn");
+        p.url                    = extract_string(block, "url");
+        p.evidence               = extract_string(block, "evidence");
+        p.specialized_attributes = extract_string(block, "specialized_attributes");
+        p.validation_status      = extract_string(block, "validation_status");
         if (p.validation_status.empty()) p.validation_status = "pending";
-        p.status            = extract_string(block, "status");
+        p.status                 = extract_string(block, "status");
         if (p.status.empty()) p.status = "active";
         create_product(p);
+    });
+
+    // Authors (§33.2 / ProductAuthor)
+    for_each_object(content, "authors", [](const std::string& block) {
+        ProductAuthor a;
+        a.id                       = extract_int(block, "id");
+        a.productId                = extract_int(block, "productId");
+        a.researcherId             = extract_int(block, "researcherId");
+        a.authorOrder              = extract_int(block, "authorOrder");
+        if (a.authorOrder <= 0) a.authorOrder = 1;
+        a.externalAuthorName       = extract_string(block, "externalAuthorName");
+        a.externalAuthorIdentifier = extract_string(block, "externalAuthorIdentifier");
+        a.matchStatus              = extract_string(block, "matchStatus");
+        if (a.matchStatus.empty()) a.matchStatus = "unverified";
+        add_product_author(a);
     });
 
     // Group-product links

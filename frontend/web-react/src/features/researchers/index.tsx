@@ -7,6 +7,7 @@ import { enrichAllResearchers, enrichResearcher, importCvlacByCodRh, listResearc
 import type { Researcher } from '@/lib/types'
 import { useDebouncedValue } from '@/hooks/use-debounced-value'
 import { Badge } from '@/components/ui/badge'
+import { toTitleCase } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
 import {
   DropdownMenu,
@@ -212,7 +213,7 @@ export function Researchers({ isAdmin = false }: { isAdmin?: boolean }) {
             />
             <div className='min-w-0'>
               <Link to={isAdmin ? '/admin/researchers/$id' : '/researchers/$id'} params={{ id: String(r.id) }} className='truncate text-sm font-medium hover:underline text-primary'>
-                {r.first_names} {r.last_names}
+                {toTitleCase(r.first_names)} {toTitleCase(r.last_names)}
               </Link>
               {r.institutional_email && (
                 <p className='truncate text-xs text-muted-foreground'>{r.institutional_email}</p>
@@ -259,7 +260,8 @@ export function Researchers({ isAdmin = false }: { isAdmin?: boolean }) {
     },
     {
       key: 'actions',
-      header: '',
+      header: 'Acciones',
+      className: 'w-[1%] whitespace-nowrap text-right',
       cell: (r) => (
         <div className="flex items-center gap-2 justify-end">
           <EnrichButton id={r.id} />
