@@ -166,7 +166,7 @@ export function ProjectDetail({ isAdmin = false }: { isAdmin?: boolean }) {
               </div>
               <h3 className='text-lg font-semibold'>Detalles</h3>
             </div>
-            <div className='grid grid-cols-2 gap-4'>
+            <div className='grid grid-cols-1 sm:grid-cols-2 gap-4'>
               <Field label='Tipo de proyecto' value={project.project_type} />
               <Field label='Estado' value={project.status} />
               <Field label='Tipo de financiación' value={project.funding_type} />

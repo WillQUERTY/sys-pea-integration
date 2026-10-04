@@ -139,7 +139,7 @@ export function EntityCombobox({
         </PopoverTrigger>
 
         <PopoverContent
-          className='p-0 w-(--radix-popover-trigger-width) min-w-[300px] shadow-xl'
+          className='p-0 w-(--radix-popover-trigger-width) min-w-[min(300px,calc(100vw-2rem))] max-w-[calc(100vw-2rem)] shadow-xl'
           align='start'
         >
           <Command shouldFilter={false}>

@@ -630,7 +630,7 @@ export function GroupDetail({ isAdmin = false }: { isAdmin?: boolean }) {
                     </Label>
                     <span className='text-[10px] text-muted-foreground'>Ej. 2018 a 2024</span>
                   </div>
-                  <div className='grid grid-cols-2 gap-3'>
+                  <div className='grid grid-cols-1 sm:grid-cols-2 gap-3'>
                     <div className='space-y-1.5'>
                       <Label htmlFor='report-start' className='text-xs text-muted-foreground'>
                         Año inicial (Desde)
@@ -798,7 +798,7 @@ export function GroupDetail({ isAdmin = false }: { isAdmin?: boolean }) {
                         className='bg-muted/30 focus-visible:bg-transparent rounded-xl'
                       />
                     </div>
-                    <div className="grid grid-cols-2 gap-4">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                       <div className="space-y-2">
                         <Label htmlFor="acronym">Sigla</Label>
                         <Input
@@ -819,7 +819,7 @@ export function GroupDetail({ isAdmin = false }: { isAdmin?: boolean }) {
                         />
                       </div>
                     </div>
-                    <div className="grid grid-cols-2 gap-4">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                       <div className="space-y-2">
                         <Label htmlFor="institution">Institución</Label>
                         <Input
@@ -831,7 +831,7 @@ export function GroupDetail({ isAdmin = false }: { isAdmin?: boolean }) {
                       </div>
                       <div className="space-y-2">
                         <Label htmlFor="city">Ciudad / Depto</Label>
-                        <div className="flex gap-2">
+                        <div className="flex flex-col sm:flex-row gap-2">
                           {/* Departamento primero: la ciudad se filtra por sus municipios. */}
                           <div className='flex-1 min-w-0'>
                             <CatalogCombobox
@@ -853,7 +853,7 @@ export function GroupDetail({ isAdmin = false }: { isAdmin?: boolean }) {
                         </div>
                       </div>
                     </div>
-                    <div className="grid grid-cols-2 gap-4">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                       <div className="space-y-2">
                         <Label htmlFor="email">Email</Label>
                         <Input
@@ -873,7 +873,7 @@ export function GroupDetail({ isAdmin = false }: { isAdmin?: boolean }) {
                         />
                       </div>
                     </div>
-                    <div className="grid grid-cols-2 gap-4">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                       <CatalogCombobox
                         label="Área de Conocimiento (OCDE)"
                         options={GRAND_AREAS_OCDE}
@@ -996,7 +996,7 @@ export function GroupDetail({ isAdmin = false }: { isAdmin?: boolean }) {
                       searchPlaceholder="Nombre, apellido u ORCID..."
                       emptyMessage="No se encontraron investigadores disponibles."
                     />
-                    <div className="grid grid-cols-2 gap-4">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                       <CatalogSelect
                         label="Rol en el grupo"
                         options={MEMBER_ROLES}
@@ -1114,7 +1114,7 @@ export function GroupDetail({ isAdmin = false }: { isAdmin?: boolean }) {
                     onChange={setEditRole}
                     allowClear={false}
                   />
-                  <div className="grid grid-cols-2 gap-4">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div className="space-y-2">
                       <Label>Fecha de vinculación</Label>
                       <MonthPicker
@@ -1347,7 +1347,7 @@ export function GroupDetail({ isAdmin = false }: { isAdmin?: boolean }) {
                         placeholder="Objetivos y actividades del plan..."
                       />
                     </div>
-                    <div className="grid grid-cols-2 gap-4">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                       <div className="space-y-2">
                         <Label>Fecha de Inicio</Label>
                         <MonthPicker

@@ -407,7 +407,7 @@ export function ResearcherDetail({ isAdmin = false }: { isAdmin?: boolean }) {
                   </div>
                   <h3 className="font-semibold text-lg">Información Personal</h3>
                 </div>
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <Field label='Nombres' value={researcher.first_names} />
                   <Field label='Apellidos' value={researcher.last_names} />
                   <Field label='Código CvLAC' value={researcher.external_code} mono />
@@ -518,7 +518,7 @@ export function ResearcherDetail({ isAdmin = false }: { isAdmin?: boolean }) {
                       searchPlaceholder="Nombre, sigla o código..."
                       emptyMessage="No se encontraron grupos disponibles."
                     />
-                    <div className="grid grid-cols-2 gap-4">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                       <CatalogSelect
                         label="Rol en el grupo"
                         options={MEMBER_ROLES}

@@ -331,7 +331,7 @@ export function ProductDetail({ isAdmin = false }: { isAdmin?: boolean }) {
               </div>
               <h3 className='text-lg font-semibold'>Identificación</h3>
             </div>
-            <div className='grid grid-cols-2 gap-4'>
+            <div className='grid grid-cols-1 sm:grid-cols-2 gap-4'>
               <Field label='DOI' value={product.doi} mono />
               <Field label='ISBN' value={product.isbn} mono />
               <Field label='ISSN' value={product.issn} mono />
@@ -358,7 +358,7 @@ export function ProductDetail({ isAdmin = false }: { isAdmin?: boolean }) {
               </div>
               <h3 className='text-lg font-semibold'>Fechas y Clasificación</h3>
             </div>
-            <div className='grid grid-cols-2 gap-4'>
+            <div className='grid grid-cols-1 sm:grid-cols-2 gap-4'>
               <Field label='Año' value={year} />
               <Field label='Fecha de obtención' value={product.obtained_date} />
               <Field label='Fecha de publicación' value={product.publication_date} />
@@ -533,7 +533,7 @@ export function ProductDetail({ isAdmin = false }: { isAdmin?: boolean }) {
                 />
               </div>
               {!selectedResearcher && (
-                <div className='grid grid-cols-2 gap-4'>
+                <div className='grid grid-cols-1 gap-4 sm:grid-cols-2'>
                   <div className='grid gap-2'>
                     <Label>Autor externo (nombre)</Label>
                     <Input

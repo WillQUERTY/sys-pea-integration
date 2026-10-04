@@ -207,16 +207,16 @@ export function ProductFormDialog({ open, onOpenChange, product }: Props) {
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className='sm:max-w-2xl max-h-[90vh] overflow-y-auto p-0 gap-0'>
+      <DialogContent className='sm:max-w-2xl max-h-[calc(100dvh-2rem)] sm:max-h-[90vh] overflow-y-auto p-0 gap-0'>
         <form onSubmit={handleSubmit} className='flex flex-col'>
-          <DialogHeader className='px-6 pt-6 pb-4 border-b shrink-0'>
+          <DialogHeader className='px-4 sm:px-6 pt-5 sm:pt-6 pb-4 border-b shrink-0'>
             <DialogTitle>{isEditing ? 'Editar Producto' : 'Nuevo Producto'}</DialogTitle>
             <DialogDescription>
               Ficha completa del producto científico.
             </DialogDescription>
           </DialogHeader>
 
-          <div className='px-6 py-4 space-y-4'>
+          <div className='px-4 sm:px-6 py-4 space-y-4'>
             <div className='grid gap-2'>
               <Label htmlFor='title'>Título del Producto *</Label>
               <Input
@@ -415,7 +415,7 @@ export function ProductFormDialog({ open, onOpenChange, product }: Props) {
             </div>
           </div>
 
-          <DialogFooter className='px-6 py-4 border-t bg-muted/20 shrink-0 gap-2 sm:gap-0'>
+          <DialogFooter className='px-4 sm:px-6 py-3 sm:py-4 border-t bg-muted/20 shrink-0 flex flex-col-reverse sm:flex-row gap-2'>
             <Button
               type='button'
               variant='outline'

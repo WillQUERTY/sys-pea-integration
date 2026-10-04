@@ -101,7 +101,7 @@ export function ResearcherFormDialog({ open, onOpenChange, researcher }: Props) 
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className='sm:max-w-[425px]'>
+      <DialogContent className='sm:max-w-lg max-h-[calc(100dvh-2rem)] sm:max-h-[90vh] overflow-y-auto'>
         <form onSubmit={handleSubmit}>
           <DialogHeader>
             <DialogTitle>{isEditing ? 'Editar Investigador' : 'Nuevo Investigador'}</DialogTitle>
@@ -110,7 +110,7 @@ export function ResearcherFormDialog({ open, onOpenChange, researcher }: Props) 
             </DialogDescription>
           </DialogHeader>
           <div className='grid gap-4 py-4'>
-            <div className='grid grid-cols-2 gap-4'>
+            <div className='grid grid-cols-1 gap-4 sm:grid-cols-2'>
               <div className='grid gap-2'>
                 <Label htmlFor='first_names'>Nombres *</Label>
                 <Input
@@ -130,7 +130,7 @@ export function ResearcherFormDialog({ open, onOpenChange, researcher }: Props) 
                 />
               </div>
             </div>
-            <div className='grid grid-cols-2 gap-4'>
+            <div className='grid grid-cols-1 gap-4 sm:grid-cols-2'>
               <div className='grid gap-2'>
                 <Label htmlFor='external_code'>Código RH *</Label>
                 <Input
@@ -151,7 +151,7 @@ export function ResearcherFormDialog({ open, onOpenChange, researcher }: Props) 
                 />
               </div>
             </div>
-            <div className='grid grid-cols-2 gap-4'>
+            <div className='grid grid-cols-1 gap-4 sm:grid-cols-2'>
               <CatalogSelect
                 label='Tipo de Identificación'
                 options={IDENTIFICATION_TYPES}
@@ -167,7 +167,7 @@ export function ResearcherFormDialog({ open, onOpenChange, researcher }: Props) 
                 />
               </div>
             </div>
-            <div className='grid grid-cols-2 gap-4'>
+            <div className='grid grid-cols-1 gap-4 sm:grid-cols-2'>
               <CatalogCombobox
                 label='Nacionalidad'
                 options={NATIONALITIES}

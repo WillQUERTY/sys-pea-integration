@@ -122,7 +122,7 @@ export function GroupFormDialog({ open, onOpenChange, group }: Props) {
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className='sm:max-w-2xl max-h-[90vh] overflow-y-auto'>
+      <DialogContent className='sm:max-w-2xl max-h-[calc(100dvh-2rem)] sm:max-h-[90vh] overflow-y-auto'>
         <form onSubmit={handleSubmit}>
           <DialogHeader>
             <DialogTitle>{isEditing ? 'Editar Grupo' : 'Nuevo Grupo'}</DialogTitle>
@@ -141,7 +141,7 @@ export function GroupFormDialog({ open, onOpenChange, group }: Props) {
               />
             </div>
 
-            <div className='grid grid-cols-3 gap-4'>
+            <div className='grid grid-cols-1 gap-4 sm:grid-cols-3'>
               <div className='grid gap-2'>
                 <Label htmlFor='external_code'>Código GrupLAC *</Label>
                 <Input
@@ -178,7 +178,7 @@ export function GroupFormDialog({ open, onOpenChange, group }: Props) {
             </div>
 
             {/* Departamento primero: la ciudad se filtra por sus municipios. */}
-            <div className='grid grid-cols-2 gap-4'>
+            <div className='grid grid-cols-1 gap-4 sm:grid-cols-2'>
               <CatalogCombobox
                 label='Departamento'
                 options={DEPARTMENTS}
@@ -196,7 +196,7 @@ export function GroupFormDialog({ open, onOpenChange, group }: Props) {
               />
             </div>
 
-            <div className='grid grid-cols-2 gap-4'>
+            <div className='grid grid-cols-1 gap-4 sm:grid-cols-2'>
               <div className='grid gap-2'>
                 <Label htmlFor='email'>Correo</Label>
                 <Input
@@ -217,7 +217,7 @@ export function GroupFormDialog({ open, onOpenChange, group }: Props) {
               </div>
             </div>
 
-            <div className='grid grid-cols-3 gap-4'>
+            <div className='grid grid-cols-1 gap-4 sm:grid-cols-3'>
               <div className='grid gap-2'>
                 <Label htmlFor='declared_creation_date'>Año/Mes de Formación</Label>
                 <MonthPicker
@@ -325,7 +325,7 @@ export function GroupFormDialog({ open, onOpenChange, group }: Props) {
               />
             </div>
 
-            <div className='grid grid-cols-2 gap-4'>
+            <div className='grid grid-cols-1 gap-4 sm:grid-cols-2'>
               <div className='grid gap-2'>
                 <Label htmlFor='mission'>Misión</Label>
                 <Textarea
