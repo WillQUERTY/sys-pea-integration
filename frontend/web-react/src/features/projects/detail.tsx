@@ -22,6 +22,7 @@ import { ConfigDrawer } from '@/components/config-drawer'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Skeleton } from '@/components/ui/skeleton'
+import { ActionTooltip } from '@/components/action-tooltip'
 
 import { ProjectFormDialog } from '@/features/projects/project-form-dialog'
 
@@ -107,11 +108,13 @@ export function ProjectDetail({ isAdmin = false }: { isAdmin?: boolean }) {
     <>
       <Header>
         <div className='flex items-center gap-4'>
-          <Button variant='ghost' size='icon' asChild className='h-8 w-8 rounded-full'>
-            <Link to={isAdmin ? '/admin/projects' : '/projects'}>
-              <ArrowLeft className='h-4 w-4' />
-            </Link>
-          </Button>
+          <ActionTooltip label='Volver a proyectos'>
+            <Button variant='ghost' size='icon' asChild className='h-8 w-8 rounded-full'>
+              <Link to={isAdmin ? '/admin/projects' : '/projects'}>
+                <ArrowLeft className='h-4 w-4' />
+              </Link>
+            </Button>
+          </ActionTooltip>
           <h1 className='text-sm font-medium'>Ficha del Proyecto</h1>
         </div>
         {isAdmin && (
@@ -163,7 +166,7 @@ export function ProjectDetail({ isAdmin = false }: { isAdmin?: boolean }) {
               </div>
               <h3 className='text-lg font-semibold'>Detalles</h3>
             </div>
-            <div className='grid grid-cols-2 gap-4'>
+            <div className='grid grid-cols-1 sm:grid-cols-2 gap-4'>
               <Field label='Tipo de proyecto' value={project.project_type} />
               <Field label='Estado' value={project.status} />
               <Field label='Tipo de financiación' value={project.funding_type} />

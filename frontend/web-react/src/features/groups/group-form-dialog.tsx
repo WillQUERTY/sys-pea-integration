@@ -3,12 +3,15 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { toast } from 'sonner'
 import { createGroup, updateGroup, getGroupMembers } from '@/lib/api'
 import type { Group } from '@/lib/types'
-import { GROUP_CLASSIFICATIONS, GRAND_AREAS_OCDE, DEPARTMENTS } from '@/lib/catalogs'
+import { GROUP_CLASSIFICATIONS, GRAND_AREAS_OCDE, DEPARTMENTS, citiesOfDepartment } from '@/lib/catalogs'
 import { CatalogSelect, CatalogCombobox } from '@/components/catalog-field'
+import { MonthPicker } from '@/components/month-picker'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
+import { ScrollArea } from '@/components/ui/scroll-area'
+import { ResearcherAvatar } from '@/components/researcher-avatar'
 import {
   Dialog,
   DialogContent,
@@ -119,7 +122,7 @@ export function GroupFormDialog({ open, onOpenChange, group }: Props) {
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className='sm:max-w-2xl max-h-[90vh] overflow-y-auto'>
+      <DialogContent className='sm:max-w-2xl max-h-[calc(100dvh-2rem)] sm:max-h-[90vh] overflow-y-auto'>
         <form onSubmit={handleSubmit}>
           <DialogHeader>
             <DialogTitle>{isEditing ? 'Editar Grupo' : 'Nuevo Grupo'}</DialogTitle>
@@ -138,7 +141,7 @@ export function GroupFormDialog({ open, onOpenChange, group }: Props) {
               />
             </div>
 
-            <div className='grid grid-cols-3 gap-4'>
+            <div className='grid grid-cols-1 gap-4 sm:grid-cols-3'>
               <div className='grid gap-2'>
                 <Label htmlFor='external_code'>Código GrupLAC *</Label>
                 <Input
@@ -174,15 +177,8 @@ export function GroupFormDialog({ open, onOpenChange, group }: Props) {
               />
             </div>
 
-            <div className='grid grid-cols-2 gap-4'>
-              <div className='grid gap-2'>
-                <Label htmlFor='city'>Ciudad</Label>
-                <Input
-                  id='city'
-                  value={formData.city ?? ''}
-                  onChange={(e) => set({ city: e.target.value })}
-                />
-              </div>
+            {/* Departamento primero: la ciudad se filtra por sus municipios. */}
+            <div className='grid grid-cols-1 gap-4 sm:grid-cols-2'>
               <CatalogCombobox
                 label='Departamento'
                 options={DEPARTMENTS}
@@ -190,9 +186,17 @@ export function GroupFormDialog({ open, onOpenChange, group }: Props) {
                 onChange={(v) => set({ department: v })}
                 placeholder='Ej: Cesar'
               />
+              <CatalogCombobox
+                label='Ciudad'
+                options={citiesOfDepartment(formData.department ?? '')}
+                value={formData.city ?? ''}
+                onChange={(v) => set({ city: v })}
+                placeholder={formData.department ? 'Ej: Valledupar' : 'Ciudad (elige departamento)'}
+                emptyMessage='Elige un departamento para ver sus municipios, o escribe la ciudad libre.'
+              />
             </div>
 
-            <div className='grid grid-cols-2 gap-4'>
+            <div className='grid grid-cols-1 gap-4 sm:grid-cols-2'>
               <div className='grid gap-2'>
                 <Label htmlFor='email'>Correo</Label>
                 <Input
@@ -213,14 +217,14 @@ export function GroupFormDialog({ open, onOpenChange, group }: Props) {
               </div>
             </div>
 
-            <div className='grid grid-cols-3 gap-4'>
+            <div className='grid grid-cols-1 gap-4 sm:grid-cols-3'>
               <div className='grid gap-2'>
                 <Label htmlFor='declared_creation_date'>Año/Mes de Formación</Label>
-                <Input
+                <MonthPicker
                   id='declared_creation_date'
-                  type='month'
                   value={formData.declared_creation_date ?? ''}
-                  onChange={(e) => set({ declared_creation_date: e.target.value })}
+                  onChange={(v) => set({ declared_creation_date: v })}
+                  placeholder='Mes y año...'
                 />
               </div>
               <CatalogCombobox
@@ -244,10 +248,17 @@ export function GroupFormDialog({ open, onOpenChange, group }: Props) {
               <div className='grid gap-2'>
                 <Label>Líder del Grupo</Label>
                 {selectedLeader ? (
-                  <div className='flex items-center justify-between rounded-lg border border-border/50 bg-muted/30 px-3 py-2 text-sm'>
-                    <span className='font-medium'>
-                      {selectedLeader.first_names} {selectedLeader.last_names}
-                    </span>
+                  <div className='flex items-center justify-between rounded-lg border border-border/50 bg-muted/30 p-2 text-sm'>
+                    <div className='flex items-center gap-2.5 min-w-0'>
+                      <ResearcherAvatar
+                        firstName={selectedLeader.first_names}
+                        lastName={selectedLeader.last_names}
+                        size='sm'
+                      />
+                      <span className='font-medium truncate'>
+                        {selectedLeader.first_names} {selectedLeader.last_names}
+                      </span>
+                    </div>
                     <Button
                       type='button'
                       variant='ghost'
@@ -264,33 +275,40 @@ export function GroupFormDialog({ open, onOpenChange, group }: Props) {
                       onChange={(e) => setLeaderSearch(e.target.value)}
                       placeholder='Buscar entre los integrantes...'
                     />
-                    <div className='max-h-36 space-y-1 overflow-y-auto rounded-lg border border-border/50 p-1'>
-                      {filteredMembers.length === 0 ? (
-                        <p className='p-2 text-sm text-muted-foreground'>
-                          {(members ?? []).length === 0
-                            ? 'El grupo aún no tiene integrantes.'
-                            : 'Sin resultados.'}
-                        </p>
-                      ) : (
-                        <>
-                          {filteredMembers.slice(0, 8).map((r) => (
-                            <button
-                              key={r.id}
-                              type='button'
-                              onClick={() => { set({ leader_id: r.id }); setLeaderSearch('') }}
-                              className='w-full rounded-md px-3 py-2 text-left text-sm transition-colors hover:bg-muted/60'
-                            >
-                              {r.first_names} {r.last_names}
-                            </button>
-                          ))}
-                          {filteredMembers.length > 8 && (
-                            <p className='px-3 py-1.5 text-center text-xs italic text-muted-foreground'>
-                              … y {filteredMembers.length - 8} más coincidencias (escribe para filtrar)
-                            </p>
-                          )}
-                        </>
-                      )}
-                    </div>
+                    <ScrollArea className='max-h-40 rounded-lg border border-border/50 p-1'>
+                      <div className='space-y-1'>
+                        {filteredMembers.length === 0 ? (
+                          <p className='p-2 text-sm text-muted-foreground'>
+                            {(members ?? []).length === 0
+                              ? 'El grupo aún no tiene integrantes.'
+                              : 'Sin resultados.'}
+                          </p>
+                        ) : (
+                          <>
+                            {filteredMembers.slice(0, 8).map((r) => (
+                              <button
+                                key={r.id}
+                                type='button'
+                                onClick={() => { set({ leader_id: r.id }); setLeaderSearch('') }}
+                                className='flex w-full items-center gap-2 rounded-md px-3 py-1.5 text-left text-sm transition-colors hover:bg-muted/60'
+                              >
+                                <ResearcherAvatar
+                                  firstName={r.first_names}
+                                  lastName={r.last_names}
+                                  size='xs'
+                                />
+                                <span className='truncate'>{r.first_names} {r.last_names}</span>
+                              </button>
+                            ))}
+                            {filteredMembers.length > 8 && (
+                              <p className='px-3 py-1.5 text-center text-xs italic text-muted-foreground'>
+                                … y {filteredMembers.length - 8} más coincidencias (escribe para filtrar)
+                              </p>
+                            )}
+                          </>
+                        )}
+                      </div>
+                    </ScrollArea>
                   </>
                 )}
               </div>
@@ -307,7 +325,7 @@ export function GroupFormDialog({ open, onOpenChange, group }: Props) {
               />
             </div>
 
-            <div className='grid grid-cols-2 gap-4'>
+            <div className='grid grid-cols-1 gap-4 sm:grid-cols-2'>
               <div className='grid gap-2'>
                 <Label htmlFor='mission'>Misión</Label>
                 <Textarea

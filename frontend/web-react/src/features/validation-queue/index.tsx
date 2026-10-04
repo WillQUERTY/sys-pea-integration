@@ -24,6 +24,7 @@ import { ValidateProductDialog } from '@/features/products/validate-product-dial
 import { isEndorsed, EndorsedBadge } from '@/features/products/endorsed'
 import { useDebouncedValue } from '@/hooks/use-debounced-value'
 import { ConfirmDialog } from '@/components/confirm-dialog'
+import { ActionTooltip } from '@/components/action-tooltip'
 
 const statusFilters: DataFilter[] = [
   {
@@ -161,23 +162,25 @@ export function ValidationQueue() {
       cell: (item) =>
         item.status === 'pending' ? (
           <div className='space-x-2 text-right'>
-            <Button
-              size='sm'
-              variant='outline'
-              onClick={() => openValidation(item)}
-              title='Evaluar producto en el diálogo técnico (validar con tipología/categoría o rechazar con motivo)'
-            >
-              Evaluar
-            </Button>
-            <Button
-              size='sm'
-              variant='ghost'
-              disabled={cancelItem.isPending}
-              onClick={() => setCancellingItem(item)}
-              title='Retirar de la cola sin procesar'
-            >
-              Retirar
-            </Button>
+            <ActionTooltip label='Evaluar producto en el diálogo técnico (validar con tipología/categoría o rechazar con motivo)'>
+              <Button
+                size='sm'
+                variant='outline'
+                onClick={() => openValidation(item)}
+              >
+                Evaluar
+              </Button>
+            </ActionTooltip>
+            <ActionTooltip label='Retirar de la cola sin procesar'>
+              <Button
+                size='sm'
+                variant='ghost'
+                disabled={cancelItem.isPending}
+                onClick={() => setCancellingItem(item)}
+              >
+                Retirar
+              </Button>
+            </ActionTooltip>
           </div>
         ) : null,
     },
@@ -205,15 +208,16 @@ export function ValidationQueue() {
               Estructura FIFO: el primero en entrar es el primero en procesarse.
             </p>
           </div>
-          <Button
-            onClick={() => {
-              if (firstPending) openValidation(firstPending)
-            }}
-            disabled={pendingCount === 0 || !firstPending}
-            title='Abre el diálogo de validación del primer ítem pendiente (FIFO); nunca valida en un clic'
-          >
-            Abrir siguiente pendiente
-          </Button>
+          <ActionTooltip label='Abre el diálogo de validación del primer ítem pendiente (FIFO); nunca valida en un clic'>
+            <Button
+              onClick={() => {
+                if (firstPending) openValidation(firstPending)
+              }}
+              disabled={pendingCount === 0 || !firstPending}
+            >
+              Abrir siguiente pendiente
+            </Button>
+          </ActionTooltip>
         </div>
 
         <Card>

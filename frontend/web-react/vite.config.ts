@@ -21,6 +21,13 @@ export default defineConfig({
       '@': path.resolve(__dirname, './src'),
     },
   },
+  // Solo afecta al dev server (vite dev). El build de producción usa URLs
+  // relativas /api/v1 contra la misma origen (nginx), igual que en remoto.
+  server: {
+    proxy: {
+      '/api': 'http://127.0.0.1:8000',
+    },
+  },
   test: {
     silent: 'passed-only',
     unstubEnvs: true,

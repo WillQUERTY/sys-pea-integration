@@ -17,8 +17,13 @@ import pyodbc
 
 ROOT = pathlib.Path(__file__).resolve().parent
 CATALOG = ROOT / "catalog_2024.json"
-CONN = ("Driver={ODBC Driver 18 for SQL Server};Server=127.0.0.1;"
-        "Database=peai;UID=sa;PWD=***REMOVED***;TrustServerCertificate=yes;")
+
+# Credenciales desde backend/.env (nunca horneadas aqui). El insert de sys.path
+# permite correr el script standalone o desde el repositorio raiz.
+sys.path.insert(0, str(ROOT.parent))
+from backend.app.config import settings  # noqa: E402
+
+CONN = settings.connection_string
 
 REQUIRED_COLUMNS = {
     "ProductFamily": {"code", "sort_order"},

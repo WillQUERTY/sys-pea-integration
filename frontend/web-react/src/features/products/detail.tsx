@@ -1,7 +1,12 @@
-import { useState } from 'react'
+import { useState, useMemo } from 'react'
 import { useParams, Link } from '@tanstack/react-router'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { toast } from 'sonner'
+import { EntityCombobox, type EntityItem } from '@/components/entity-combobox'
+import { ConfirmDialog } from '@/components/confirm-dialog'
+import { ActionTooltip } from '@/components/action-tooltip'
+import { ResearcherAvatar } from '@/components/researcher-avatar'
+import { ScrollArea } from '@/components/ui/scroll-area'
 import {
   ArrowLeft,
   BookOpen,
@@ -89,6 +94,13 @@ export function ProductDetail({ isAdmin = false }: { isAdmin?: boolean }) {
   const [validateOpen, setValidateOpen] = useState(false)
   // Estado del diálogo "Editar ficha" (reclasificación: tipología/categoría)
   const [editOpen, setEditOpen] = useState(false)
+  // Estados para confirmaciones destructivas
+  const [confirmRejectOpen, setConfirmRejectOpen] = useState(false)
+  const [unlinkingAuthor, setUnlinkingAuthor] = useState<{
+    researcher_id?: number | null
+    external_author_name?: string | null
+    name: string
+  } | null>(null)
 
   // Catálogo 2024: resolver familia/tipología/categoría por id
   const { data: catalogs } = useQuery({
@@ -115,6 +127,16 @@ export function ProductDetail({ isAdmin = false }: { isAdmin?: boolean }) {
   const linkableResearchers = (pickerResults?.items ?? []).filter(
     (r) => !(authors ?? []).some((a) => a.researcher_id === r.id)
   )
+
+  const researcherItems = useMemo<EntityItem[]>(() => {
+    return linkableResearchers.map((r) => ({
+      id: r.id!,
+      label: `${r.first_names} ${r.last_names}`,
+      subLabel: r.orcid ? `ORCID: ${r.orcid}` : r.institutional_email ?? null,
+      badge: r.highest_education_level ?? null,
+    }))
+  }, [linkableResearchers])
+
   const selectedResearcher = (pickerResults?.items ?? []).find((r) => r.id === selectedResearcherId)
 
   const addAuthorMutation = useMutation({
@@ -225,11 +247,13 @@ export function ProductDetail({ isAdmin = false }: { isAdmin?: boolean }) {
       {isAdmin && (
         <Header>
           <div className='flex items-center gap-4'>
-            <Button variant='ghost' size='icon' asChild className='h-8 w-8 rounded-full'>
-              <Link to={isAdmin ? '/admin/products' : '/products'}>
-                <ArrowLeft className='h-4 w-4' />
-              </Link>
-            </Button>
+            <ActionTooltip label='Volver a productos'>
+              <Button variant='ghost' size='icon' asChild className='h-8 w-8 rounded-full'>
+                <Link to={isAdmin ? '/admin/products' : '/products'}>
+                  <ArrowLeft className='h-4 w-4' />
+                </Link>
+              </Button>
+            </ActionTooltip>
             <h1 className='text-sm font-medium'>Ficha del Producto</h1>
           </div>
           <div className='ms-auto flex items-center space-x-4'>
@@ -277,7 +301,7 @@ export function ProductDetail({ isAdmin = false }: { isAdmin?: boolean }) {
                   <Button
                     size='sm'
                     variant='destructive'
-                    onClick={() => rejectMutation.mutate()}
+                    onClick={() => setConfirmRejectOpen(true)}
                     disabled={rejectMutation.isPending}
                   >
                     <XCircle className='mr-2 h-4 w-4' /> Rechazar
@@ -307,7 +331,7 @@ export function ProductDetail({ isAdmin = false }: { isAdmin?: boolean }) {
               </div>
               <h3 className='text-lg font-semibold'>Identificación</h3>
             </div>
-            <div className='grid grid-cols-2 gap-4'>
+            <div className='grid grid-cols-1 sm:grid-cols-2 gap-4'>
               <Field label='DOI' value={product.doi} mono />
               <Field label='ISBN' value={product.isbn} mono />
               <Field label='ISSN' value={product.issn} mono />
@@ -334,7 +358,7 @@ export function ProductDetail({ isAdmin = false }: { isAdmin?: boolean }) {
               </div>
               <h3 className='text-lg font-semibold'>Fechas y Clasificación</h3>
             </div>
-            <div className='grid grid-cols-2 gap-4'>
+            <div className='grid grid-cols-1 sm:grid-cols-2 gap-4'>
               <Field label='Año' value={year} />
               <Field label='Fecha de obtención' value={product.obtained_date} />
               <Field label='Fecha de publicación' value={product.publication_date} />
@@ -381,55 +405,65 @@ export function ProductDetail({ isAdmin = false }: { isAdmin?: boolean }) {
             {!authors || authors.length === 0 ? (
               <p className='text-sm text-muted-foreground'>Sin autores registrados.</p>
             ) : (
-              <ul className='divide-y divide-border/50'>
-                {authors.map((a) => (
-                  <li key={a.id} className='flex items-center justify-between gap-3 py-2'>
-                    <div className='flex min-w-0 items-center gap-3'>
-                      <Badge variant='outline' className='shrink-0 font-mono text-xs'>
-                        #{a.author_order}
-                      </Badge>
-                      <div className='min-w-0'>
-                        {a.researcher_id ? (
-                          <Link
-                            to={isAdmin ? '/admin/researchers/$id' : '/researchers/$id'}
-                            params={{ id: String(a.researcher_id) }}
-                            className='truncate text-sm font-medium text-primary hover:underline'
-                          >
-                            {a.researcher_name.trim() || a.researcher_external_code}
-                          </Link>
-                        ) : (
-                          <p className='truncate text-sm font-medium'>
-                            {a.external_author_name}
-                            <span className='ml-2 text-xs text-muted-foreground'>(externo)</span>
+              <ScrollArea className='max-h-[360px] pr-2'>
+                <ul className='divide-y divide-border/50'>
+                  {authors.map((a) => (
+                    <li key={a.id} className='flex items-center justify-between gap-3 py-2.5'>
+                      <div className='flex min-w-0 items-center gap-3'>
+                        <Badge variant='outline' className='shrink-0 font-mono text-xs'>
+                          #{a.author_order}
+                        </Badge>
+                        <ResearcherAvatar
+                          name={a.researcher_id ? (a.researcher_name?.trim() || a.researcher_external_code) : a.external_author_name}
+                          size='sm'
+                        />
+                        <div className='min-w-0'>
+                          {a.researcher_id ? (
+                            <Link
+                              to={isAdmin ? '/admin/researchers/$id' : '/researchers/$id'}
+                              params={{ id: String(a.researcher_id) }}
+                              className='truncate text-sm font-medium text-primary hover:underline'
+                            >
+                              {a.researcher_name.trim() || a.researcher_external_code}
+                            </Link>
+                          ) : (
+                            <p className='truncate text-sm font-medium'>
+                              {a.external_author_name}
+                              <span className='ml-2 text-xs text-muted-foreground'>(externo)</span>
+                            </p>
+                          )}
+                          <p className='text-xs text-muted-foreground'>
+                            {a.researcher_id
+                              ? a.researcher_external_code
+                              : a.external_author_identifier || a.match_status}
                           </p>
-                        )}
-                        <p className='text-xs text-muted-foreground'>
-                          {a.researcher_id
-                            ? a.researcher_external_code
-                            : a.external_author_identifier || a.match_status}
-                        </p>
+                        </div>
                       </div>
-                    </div>
-                    {isAdmin && (
-                      <Button
-                        size='icon'
-                        variant='ghost'
-                        className='h-8 w-8 shrink-0 text-destructive'
-                        disabled={removeAuthorMutation.isPending}
-                        onClick={() =>
-                          removeAuthorMutation.mutate(
-                            a.researcher_id
-                              ? { researcher_id: a.researcher_id }
-                              : { external_author_name: a.external_author_name }
-                          )
-                        }
-                      >
-                        <Trash2 className='h-4 w-4' />
-                      </Button>
-                    )}
-                  </li>
-                ))}
-              </ul>
+                      {isAdmin && (
+                        <ActionTooltip label='Desvincular autor'>
+                          <Button
+                            size='icon'
+                            variant='ghost'
+                            className='h-8 w-8 shrink-0 text-destructive'
+                            disabled={removeAuthorMutation.isPending}
+                            onClick={() =>
+                              setUnlinkingAuthor({
+                                researcher_id: a.researcher_id,
+                                external_author_name: a.external_author_name,
+                                name: a.researcher_id
+                                  ? (a.researcher_name?.trim() || a.researcher_external_code || 'Investigador')
+                                  : (a.external_author_name || 'Autor externo'),
+                              })
+                            }
+                          >
+                            <Trash2 className='h-4 w-4' />
+                          </Button>
+                        </ActionTooltip>
+                      )}
+                    </li>
+                  ))}
+                </ul>
+              </ScrollArea>
             )}
           </div>
 
@@ -487,45 +521,19 @@ export function ProductDetail({ isAdmin = false }: { isAdmin?: boolean }) {
             <div className='grid gap-4 py-2'>
               <div className='grid gap-2'>
                 <Label>Investigador del sistema</Label>
-                {selectedResearcher ? (
-                  <div className='flex items-center justify-between rounded-lg border border-border/50 bg-muted/30 px-3 py-2 text-sm'>
-                    <span className='truncate font-medium'>
-                      {selectedResearcher.first_names} {selectedResearcher.last_names}
-                    </span>
-                    <Button type='button' variant='ghost' size='sm' onClick={() => setSelectedResearcherId(null)}>
-                      Quitar
-                    </Button>
-                  </div>
-                ) : (
-                  <>
-                    <Input
-                      value={authorSearch}
-                      onChange={(e) => setAuthorSearch(e.target.value)}
-                      placeholder='Buscar investigador...'
-                    />
-                    {authorSearch && (
-                      <div className='max-h-36 space-y-1 overflow-y-auto rounded-lg border border-border/50 p-1'>
-                        {linkableResearchers.length === 0 ? (
-                          <p className='p-2 text-sm text-muted-foreground'>Sin resultados.</p>
-                        ) : (
-                          linkableResearchers.map((r) => (
-                            <button
-                              key={r.id}
-                              type='button'
-                              onClick={() => setSelectedResearcherId(r.id ?? null)}
-                              className='w-full truncate rounded-md px-3 py-2 text-left text-sm transition-colors hover:bg-muted/60'
-                            >
-                              {r.first_names} {r.last_names}
-                            </button>
-                          ))
-                        )}
-                      </div>
-                    )}
-                  </>
-                )}
+                <EntityCombobox
+                  items={researcherItems}
+                  value={selectedResearcherId}
+                  onChange={(id) => setSelectedResearcherId(id)}
+                  onSearchChange={setAuthorSearch}
+                  placeholder='Buscar o seleccionar investigador...'
+                  searchPlaceholder='Nombre, apellido u ORCID...'
+                  emptyMessage='No se encontraron investigadores.'
+                  allowClear
+                />
               </div>
               {!selectedResearcher && (
-                <div className='grid grid-cols-2 gap-4'>
+                <div className='grid grid-cols-1 gap-4 sm:grid-cols-2'>
                   <div className='grid gap-2'>
                     <Label>Autor externo (nombre)</Label>
                     <Input
@@ -580,6 +588,47 @@ export function ProductDetail({ isAdmin = false }: { isAdmin?: boolean }) {
           open={editOpen}
           onOpenChange={setEditOpen}
           product={product}
+        />
+
+        {/* Confirmación: rechazar producto */}
+        <ConfirmDialog
+          open={confirmRejectOpen}
+          onOpenChange={setConfirmRejectOpen}
+          title="¿Rechazar este producto?"
+          desc="El estado de validación del producto cambiará a «Rechazado». Podrás reclasificarlo o volver a validarlo más adelante."
+          confirmText="Rechazar producto"
+          cancelBtnText="Cancelar"
+          destructive
+          isLoading={rejectMutation.isPending}
+          handleConfirm={() => {
+            rejectMutation.mutate(undefined, {
+              onSettled: () => setConfirmRejectOpen(false),
+            })
+          }}
+        />
+
+        {/* Confirmación: desvincular autor */}
+        <ConfirmDialog
+          open={unlinkingAuthor !== null}
+          onOpenChange={(open) => !open && setUnlinkingAuthor(null)}
+          title="¿Desvincular autor?"
+          desc={`¿Estás seguro de que deseas desvincular a «${unlinkingAuthor?.name ?? ''}» como autor de este producto?`}
+          confirmText="Desvincular"
+          cancelBtnText="Cancelar"
+          destructive
+          isLoading={removeAuthorMutation.isPending}
+          handleConfirm={() => {
+            if (unlinkingAuthor) {
+              removeAuthorMutation.mutate(
+                unlinkingAuthor.researcher_id
+                  ? { researcher_id: unlinkingAuthor.researcher_id }
+                  : { external_author_name: unlinkingAuthor.external_author_name ?? undefined },
+                {
+                  onSettled: () => setUnlinkingAuthor(null),
+                }
+              )
+            }
+          }}
         />
       </Main>
     </>

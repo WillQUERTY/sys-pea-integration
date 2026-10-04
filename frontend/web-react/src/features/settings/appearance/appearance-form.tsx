@@ -1,13 +1,11 @@
 import { z } from 'zod'
 import { useForm } from 'react-hook-form'
-import { ChevronDownIcon } from '@radix-ui/react-icons'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { fonts } from '@/config/fonts'
 import { showSubmittedData } from '@/lib/show-submitted-data'
-import { cn } from '@/lib/utils'
 import { useFont } from '@/context/font-provider'
 import { useTheme } from '@/context/theme-provider'
-import { Button, buttonVariants } from '@/components/ui/button'
+import { Button } from '@/components/ui/button'
 import {
   Form,
   FormControl,
@@ -18,6 +16,13 @@ import {
   FormMessage,
 } from '@/components/ui/form'
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select'
 
 const appearanceFormSchema = z.object({
   theme: z.enum(['light', 'dark']),
@@ -57,25 +62,20 @@ export function AppearanceForm() {
           render={({ field }) => (
             <FormItem>
               <FormLabel>Font</FormLabel>
-              <div className='relative w-max'>
-                <FormControl>
-                  <select
-                    className={cn(
-                      buttonVariants({ variant: 'outline' }),
-                      'w-50 appearance-none font-normal capitalize',
-                      'dark:bg-background dark:hover:bg-background'
-                    )}
-                    {...field}
-                  >
+                <Select onValueChange={field.onChange} defaultValue={field.value}>
+                  <FormControl>
+                    <SelectTrigger className='w-52 capitalize'>
+                      <SelectValue placeholder='Select font' />
+                    </SelectTrigger>
+                  </FormControl>
+                  <SelectContent>
                     {fonts.map((font) => (
-                      <option key={font} value={font}>
+                      <SelectItem key={font} value={font} className='capitalize'>
                         {font}
-                      </option>
+                      </SelectItem>
                     ))}
-                  </select>
-                </FormControl>
-                <ChevronDownIcon className='absolute inset-e-3 top-2.5 h-4 w-4 opacity-50' />
-              </div>
+                  </SelectContent>
+                </Select>
               <FormDescription className='font-manrope'>
                 Set the font you want to use in the dashboard.
               </FormDescription>

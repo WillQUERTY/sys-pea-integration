@@ -91,7 +91,7 @@ npm install                            # solo la primera vez
 npm run dev                            # http://localhost:5173
 ```
 
-Por defecto habla con `http://localhost:8000/api/v1`. Para otro host/puerto, crea `frontend/web-react/.env`:
+El dev server de Vite reenvía `/api/*` al backend local (`http://127.0.0.1:8000`, configurable en `vite.config.ts` → `server.proxy`); el build de producción usa URLs relativas contra la misma origen, igual que en el servidor. Para apuntar a otro host/puerto solo en local, crea `frontend/web-react/.env`:
 
 ```env
 VITE_API_URL=http://localhost:8000/api/v1

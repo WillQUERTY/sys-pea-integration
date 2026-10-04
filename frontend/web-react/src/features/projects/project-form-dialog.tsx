@@ -169,7 +169,7 @@ export function ProjectFormDialog({ open, onOpenChange, project }: Props) {
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className='sm:max-w-2xl max-h-[90vh] overflow-y-auto'>
+      <DialogContent className='sm:max-w-2xl max-h-[calc(100dvh-2rem)] sm:max-h-[90vh] overflow-y-auto'>
         <form onSubmit={handleSubmit}>
           <DialogHeader>
             <DialogTitle>{isEditing ? 'Editar Proyecto' : 'Nuevo Proyecto'}</DialogTitle>
@@ -199,7 +199,7 @@ export function ProjectFormDialog({ open, onOpenChange, project }: Props) {
               />
             </div>
 
-            <div className='grid grid-cols-2 gap-4'>
+            <div className='grid grid-cols-1 gap-4 sm:grid-cols-2'>
               <CatalogCombobox
                 label='Tipo de proyecto'
                 options={PROJECT_TYPES}
@@ -217,7 +217,7 @@ export function ProjectFormDialog({ open, onOpenChange, project }: Props) {
 
             {/* Las fechas reales importadas de GrupLAC son solo el año
                 (verificado en BD: len=4), así que el control es de año. */}
-            <div className='grid grid-cols-2 gap-4'>
+            <div className='grid grid-cols-1 gap-4 sm:grid-cols-2'>
               <div className='grid gap-2'>
                 <Label htmlFor='start_date'>Año de inicio</Label>
                 <Input
@@ -244,7 +244,7 @@ export function ProjectFormDialog({ open, onOpenChange, project }: Props) {
               </div>
             </div>
 
-            <div className='grid grid-cols-2 gap-4'>
+            <div className='grid grid-cols-1 gap-4 sm:grid-cols-2'>
               <div className='grid gap-2'>
                 <Label htmlFor='budget'>Presupuesto</Label>
                 <Input
