@@ -10,6 +10,8 @@ import type {
   ValidationQueueResponse,
   GruplacPreview,
   ImportResult,
+  CsvImportPreview,
+  CsvImportResult,
   GroupSearchResult,
   UndoOperation,
 } from './types'
@@ -50,8 +52,15 @@ export async function getGroupResearchLines(id: number) {
   const { data } = await api.get<string[]>(`/groups/${id}/research-lines`)
   return data
 }
-export async function linkMember(groupId: number, researcherId: number, req: { role?: string, start_date?: string, end_date?: string }) {
-  const { data } = await api.post(`/groups/${groupId}/members/${researcherId}`, req)
+export async function linkMember(
+  groupId: number,
+  researcherId: number,
+  req: { role?: string; start_date?: string; end_date?: string }
+) {
+  const { data } = await api.post(
+    `/groups/${groupId}/members/${researcherId}`,
+    req
+  )
   return data
 }
 export interface GroupMembership {
@@ -74,11 +83,16 @@ export async function updateMember(
   researcherId: number,
   req: { role?: string; start_date?: string; end_date?: string }
 ) {
-  const { data } = await api.put(`/groups/${groupId}/members/${researcherId}`, req)
+  const { data } = await api.put(
+    `/groups/${groupId}/members/${researcherId}`,
+    req
+  )
   return data
 }
 export async function unlinkMember(groupId: number, researcherId: number) {
-  const { data } = await api.delete(`/groups/${groupId}/members/${researcherId}`)
+  const { data } = await api.delete(
+    `/groups/${groupId}/members/${researcherId}`
+  )
   return data
 }
 export async function linkProduct(groupId: number, productId: number) {
@@ -100,12 +114,14 @@ export async function unlinkProject(groupId: number, projectId: number) {
 
 // --- Projects (Req. 3: CRUD standalone) ---
 export async function listProjects(params?: {
-  skip?: number;
-  limit?: number;
-  search?: string;
-  status?: string;
+  skip?: number
+  limit?: number
+  search?: string
+  status?: string
 }) {
-  const { data } = await api.get<PagedResponse<Project>>('/projects', { params })
+  const { data } = await api.get<PagedResponse<Project>>('/projects', {
+    params,
+  })
   return data
 }
 export async function getProject(id: number) {
@@ -159,7 +175,9 @@ export async function linkResearchLine(groupId: number, name: string) {
   return data
 }
 export async function unlinkResearchLine(groupId: number, name: string) {
-  const { data } = await api.delete(`/groups/${groupId}/research-lines/${encodeURIComponent(name)}`)
+  const { data } = await api.delete(
+    `/groups/${groupId}/research-lines/${encodeURIComponent(name)}`
+  )
   return data
 }
 export async function createGroup(group: Partial<Group>) {
@@ -189,14 +207,16 @@ export async function deleteGroup(id: number, soft: boolean = true) {
 
 // --- Researchers ---
 export async function listResearchers(params?: {
-  skip?: number;
-  limit?: number;
-  search?: string;
-  status?: string;
-  educational_level?: string;
-  category?: string;
+  skip?: number
+  limit?: number
+  search?: string
+  status?: string
+  educational_level?: string
+  category?: string
 }) {
-  const { data } = await api.get<PagedResponse<Researcher>>('/researchers', { params })
+  const { data } = await api.get<PagedResponse<Researcher>>('/researchers', {
+    params,
+  })
   return data
 }
 export async function getResearcher(id: number) {
@@ -215,7 +235,10 @@ export async function createResearcher(researcher: Partial<Researcher>) {
   const { data } = await api.post<Researcher>('/researchers', researcher)
   return data
 }
-export async function updateResearcher(id: number, researcher: Partial<Researcher>) {
+export async function updateResearcher(
+  id: number,
+  researcher: Partial<Researcher>
+) {
   const { data } = await api.put<Researcher>(`/researchers/${id}`, researcher)
   return data
 }
@@ -226,7 +249,9 @@ export async function deleteResearcher(id: number, soft: boolean = true) {
 
 // --- Products ---
 export async function listProducts(filters?: ProductFilters) {
-  const { data } = await api.get<PagedResponse<Product>>('/products', { params: filters })
+  const { data } = await api.get<PagedResponse<Product>>('/products', {
+    params: filters,
+  })
   return data
 }
 export async function getProduct(id: number) {
@@ -306,12 +331,20 @@ export async function getProductAuthors(id: number) {
 }
 export async function addProductAuthor(
   id: number,
-  req: { researcher_id?: number; author_order?: number; external_author_name?: string; external_author_identifier?: string }
+  req: {
+    researcher_id?: number
+    author_order?: number
+    external_author_name?: string
+    external_author_identifier?: string
+  }
 ) {
   const { data } = await api.post(`/products/${id}/authors`, req)
   return data
 }
-export async function removeProductAuthor(id: number, params: { researcher_id?: number; external_author_name?: string }) {
+export async function removeProductAuthor(
+  id: number,
+  params: { researcher_id?: number; external_author_name?: string }
+) {
   const { data } = await api.delete(`/products/${id}/authors`, { params })
   return data
 }
@@ -354,9 +387,12 @@ export interface ValidationQueueFilters {
 
 // --- Validation queue (FIFO) ---
 export async function listValidationQueue(filters?: ValidationQueueFilters) {
-  const { data } = await api.get<ValidationQueueResponse>('/system/validation-queue', {
-    params: filters,
-  })
+  const { data } = await api.get<ValidationQueueResponse>(
+    '/system/validation-queue',
+    {
+      params: filters,
+    }
+  )
   return data
 }
 export async function cancelValidationItem(itemId: number) {
@@ -366,22 +402,30 @@ export async function cancelValidationItem(itemId: number) {
   return data
 }
 export async function enqueueValidation(productId: number) {
-  const { data } = await api.post<{ status: string; product_id: number; queue_size: number }>(
-    '/system/validation-queue/enqueue',
-    { product_id: productId }
-  )
+  const { data } = await api.post<{
+    status: string
+    product_id: number
+    queue_size: number
+  }>('/system/validation-queue/enqueue', { product_id: productId })
   return data
 }
 
 // --- Ingestion (GrupLAC two-phase, CvLAC) ---
 export async function previewGruplac(url: string, groupCode?: string) {
-  const { data } = await api.post<GruplacPreview>('/groups/import/gruplac/preview', {
-    url,
-    group_code: groupCode,
-  })
+  const { data } = await api.post<GruplacPreview>(
+    '/groups/import/gruplac/preview',
+    {
+      url,
+      group_code: groupCode,
+    }
+  )
   return data
 }
-export async function importGruplac(url: string, enrichCvlac: boolean = false, groupCode?: string) {
+export async function importGruplac(
+  url: string,
+  enrichCvlac: boolean = false,
+  groupCode?: string
+) {
   const { data } = await api.post<ImportResult>('/groups/import/gruplac', {
     url,
     enrich_cvlac: enrichCvlac,
@@ -396,11 +440,64 @@ export async function importCvlac(text: string, targetGroupCode?: string) {
   })
   return data
 }
-export async function importCvlacByCodRh(codRh: string, targetGroupCode?: string) {
-  const { data } = await api.post<ImportResult>('/researchers/import/cvlac/by-cod-rh', {
-    cod_rh: codRh,
-    target_group_code: targetGroupCode,
-  })
+export async function importCvlacByCodRh(
+  codRh: string,
+  targetGroupCode?: string
+) {
+  const { data } = await api.post<ImportResult>(
+    '/researchers/import/cvlac/by-cod-rh',
+    {
+      cod_rh: codRh,
+      target_group_code: targetGroupCode,
+    }
+  )
+  return data
+}
+
+// --- Importación por archivo (T-12 CSV / T-13 PDF) ---
+// Primer multipart de la app: axios fija el boundary del FormData solo si el
+// body es FormData (sin Content-Type manual).
+function fileForm(file: File, extra?: Record<string, string>) {
+  const form = new FormData()
+  form.append('file', file)
+  for (const [key, value] of Object.entries(extra ?? {}))
+    form.append(key, value)
+  return form
+}
+
+export async function previewCsvImport(file: File) {
+  const { data } = await api.post<CsvImportPreview>(
+    '/groups/import/csv/preview',
+    fileForm(file)
+  )
+  return data
+}
+// timeout: 0 = sin timeout del navegador: cada fila es una transacción
+// idempotente y el backend sigue aunque el cliente se cancele.
+export async function importCsv(file: File, enrichGruplac: boolean = false) {
+  const { data } = await api.post<CsvImportResult>(
+    '/groups/import/csv',
+    fileForm(file, { enrich_gruplac: String(enrichGruplac) }),
+    { timeout: 0 }
+  )
+  return data
+}
+
+export async function previewPdfImport(file: File) {
+  const { data } = await api.post<GruplacPreview>(
+    '/groups/import/pdf/preview',
+    fileForm(file)
+  )
+  return data
+}
+export async function importPdf(file: File) {
+  const { data } = await api.post<ImportResult>(
+    '/groups/import/pdf',
+    fileForm(file),
+    {
+      timeout: 0,
+    }
+  )
   return data
 }
 
@@ -411,7 +508,10 @@ export async function searchGroupsScienti(params: {
   clasificacion?: string
   limit?: number
 }) {
-  const { data } = await api.get<GroupSearchResult[]>('/groups/search/scienti', { params })
+  const { data } = await api.get<GroupSearchResult[]>(
+    '/groups/search/scienti',
+    { params }
+  )
   return data
 }
 
@@ -435,14 +535,22 @@ export interface EnrichAllResult {
 }
 
 export async function enrichResearcher(id: number) {
-  const { data } = await api.post<EnrichResult>(`/researchers/${id}/enrich/datos-abiertos`)
+  const { data } = await api.post<EnrichResult>(
+    `/researchers/${id}/enrich/datos-abiertos`
+  )
   return data
 }
-export async function enrichAllResearchers(opts?: { only_missing?: boolean; limit?: number }) {
-  const { data } = await api.post<EnrichAllResult>('/researchers/enrich/datos-abiertos', {
-    only_missing: opts?.only_missing ?? true,
-    limit: opts?.limit ?? 0,
-  })
+export async function enrichAllResearchers(opts?: {
+  only_missing?: boolean
+  limit?: number
+}) {
+  const { data } = await api.post<EnrichAllResult>(
+    '/researchers/enrich/datos-abiertos',
+    {
+      only_missing: opts?.only_missing ?? true,
+      limit: opts?.limit ?? 0,
+    }
+  )
   return data
 }
 
@@ -470,11 +578,15 @@ export async function initializeFromFile(path: string) {
   return data
 }
 export async function initializeFromDatabase(connectionString: string) {
-  const { data } = await api.post('/system/initialize/database', { connection_string: connectionString })
+  const { data } = await api.post('/system/initialize/database', {
+    connection_string: connectionString,
+  })
   return data
 }
 export async function saveToDatabase(connectionString: string) {
-  const { data } = await api.post('/system/save/database', { connection_string: connectionString })
+  const { data } = await api.post('/system/save/database', {
+    connection_string: connectionString,
+  })
   return data
 }
 export async function exportToFile(path: string = 'pea_data.json') {

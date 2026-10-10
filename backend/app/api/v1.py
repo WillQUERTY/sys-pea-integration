@@ -1,4 +1,4 @@
-from fastapi import APIRouter, HTTPException, Query
+from fastapi import APIRouter, File, Form, HTTPException, Query, UploadFile
 from fastapi.responses import Response
 from pydantic import BaseModel
 from typing import Any, Dict, List, Optional
@@ -1039,5 +1039,94 @@ async def import_gruplac_endpoint(req: GruplacImportRequest):
         result = scrape_gruplac(url, conn_str, enrich_cvlac=req.enrich_cvlac, expected_group_code=expected)
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
+    result["ram_reloaded"] = _reload_ram_from_db(conn_str)
+    return result
+
+@router.post("/groups/import/csv/preview", tags=["Ingestion"])
+async def preview_csv_import_endpoint(file: UploadFile = File(...)):
+    """
+    T-12 phase 1: parse the official datos.gov.co groups CSV (dataset
+    hrhc-c4wu) and return what would be imported WITHOUT persisting anything
+    (Revisión §16/§29: preview antes de confirmar). HTTP 400 if the file is
+    not the expected dataset or exceeds MAX_GROUPS_PER_IMPORT groups.
+    """
+    from ..import_csv import CsvImportError, parse_csv_grupos
+    try:
+        parsed = parse_csv_grupos(await file.read())
+    except CsvImportError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    return {
+        "status": "preview",
+        "total_data_rows": parsed.total_data_rows,
+        "distinct_groups": parsed.distinct_groups,
+        "deduped_count": parsed.deduped_count,
+        "rows": [{k: v for k, v in row.items() if k != "scraped"} for row in parsed.rows],
+        "row_errors": parsed.row_errors,
+    }
+
+@router.post("/groups/import/csv", tags=["Ingestion"])
+async def import_csv_endpoint(file: UploadFile = File(...), enrich_gruplac: bool = Form(False)):
+    """
+    T-12 phase 2 (confirm): import the CSV row by row; each row is an
+    independent transaction so one failure never aborts the batch. Without
+    enrich_gruplac each row writes just its file data; with it, each row
+    resolves its GrupLAC page through the official search endpoint and
+    scrapes the full group, falling back to file data on failure. The C++
+    RAM is reloaded ONCE at the end, never per row.
+    """
+    from ..import_csv import CsvImportError, import_csv_rows, parse_csv_grupos
+    conn_str = repository._active_connection_string or settings.connection_string
+    try:
+        parsed = parse_csv_grupos(await file.read())
+    except CsvImportError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    result = import_csv_rows(
+        parsed.rows,
+        db_conn_str=conn_str,
+        enrich_gruplac=enrich_gruplac,
+        source_name=file.filename or "",
+    )
+    result["row_errors"] = parsed.row_errors
+    result["ram_reloaded"] = _reload_ram_from_db(conn_str)
+    return result
+
+@router.post("/groups/import/pdf/preview", tags=["Ingestion"])
+async def preview_pdf_import_endpoint(file: UploadFile = File(...)):
+    """
+    T-13 phase 1: parse a GrupLAC-style group PDF (the system's own report or
+    a print-to-PDF of the Scienti viewer) and return the SAME preview shape
+    as the URL import so the frontend reuses its review card. Nothing
+    persists. HTTP 400 on PDFs without a usable COL identity.
+    """
+    from ..import_pdf import PdfImportError, parse_pdf_gruplac
+    from ..scraper import build_preview
+    try:
+        data = parse_pdf_gruplac(await file.read())
+    except PdfImportError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    return build_preview(data)
+
+@router.post("/groups/import/pdf", tags=["Ingestion"])
+async def import_pdf_endpoint(file: UploadFile = File(...)):
+    """
+    T-13 phase 2 (confirm): import the PDF group through the same atomic
+    transactional commit as the URL import (ImportJob.source_type='pdf' for
+    traceability). reload_ram=False because this endpoint reloads the C++ RAM
+    once itself instead of paying commit's internal reload too.
+    """
+    from ..import_pdf import PdfImportError, parse_pdf_gruplac
+    from ..scraper import GruplacCommitService
+    conn_str = repository._active_connection_string or settings.connection_string
+    try:
+        data = parse_pdf_gruplac(await file.read())
+    except PdfImportError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    result = GruplacCommitService.commit(
+        data,
+        db_conn_str=conn_str,
+        source_type="pdf",
+        source_url=f"pdf:{file.filename or data.group['external_code']}",
+        reload_ram=False,
+    )
     result["ram_reloaded"] = _reload_ram_from_db(conn_str)
     return result

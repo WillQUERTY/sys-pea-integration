@@ -156,7 +156,7 @@ export function parseMincienciasClassification(raw?: string | null) {
 }
 
 
-/** Normaliza nombres en MAYÚSCULAS/minúsculas a Title Case (es), preservando partículas (de, del, la…). */
+/** Normaliza nombres en MAYÃšSCULAS/minÃºsculas a Title Case (es), preservando partÃ­culas (de, del, laâ€¦). */
 export function toTitleCase(value?: string | null): string {
   if (!value) return ''
   const small = new Set(['de', 'del', 'la', 'las', 'los', 'y', 'e'])

@@ -6,3 +6,7 @@ pydantic>=2.7.0
 pybind11>=2.12.0
 # (SQLAlchemy, databases, etc. can be added later)
 reportlab>=4.0
+# Ingesta por archivo (Taller 2 T-12 CSV / T-13 PDF): multipart para UploadFile
+# y extraccion de texto PDF (PyMuPDF, import name 'fitz').
+python-multipart>=0.0.9
+PyMuPDF>=1.24
