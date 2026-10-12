@@ -175,6 +175,55 @@ export interface ImportResult {
   }
 }
 
+/** Fila de la vista previa CSV (datos del dataset oficial, sin persistir). */
+export interface CsvGroupRow {
+  external_code: string
+  name: string
+  classification: string
+  city: string
+  department: string
+  declared_creation_date: string
+  knowledge_area: string
+  institutions: string[]
+  ano_convo: number | null
+}
+
+/** Fila del CSV descartada por el parser (código inválido, etc.). */
+export interface CsvRowError {
+  line: number
+  error: string
+}
+
+export interface CsvImportPreview {
+  status: string
+  total_data_rows: number
+  distinct_groups: number
+  deduped_count: number
+  rows: CsvGroupRow[]
+  row_errors: CsvRowError[]
+}
+
+/** Resultado por fila del import CSV (cada fila es una transacción propia). */
+export interface CsvRowResult {
+  external_code: string
+  name: string
+  status: 'enriched' | 'file_data' | 'failed'
+  detail?: string
+}
+
+export interface CsvImportResult {
+  status: string
+  summary: {
+    total: number
+    enriched: number
+    file_data: number
+    failed: number
+  }
+  results: CsvRowResult[]
+  row_errors: CsvRowError[]
+  ram_reloaded?: boolean
+}
+
 export interface ProductFilters {
   skip?: number
   limit?: number
@@ -183,6 +232,7 @@ export interface ProductFilters {
   /** Estado del registro (active/inactive) — no confundir con validation_status */
   status?: string
   family_id?: number
+  subtype_id?: number
   group_id?: number
   start_year?: number
   end_year?: number
@@ -208,4 +258,3 @@ export interface UndoOperation {
   previous_state: string
   performed_at: string
 }
-

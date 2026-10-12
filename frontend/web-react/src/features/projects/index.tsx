@@ -23,6 +23,8 @@ import { ThemeSwitch } from '@/components/theme-switch'
 import { ProjectFormDialog } from './project-form-dialog'
 import { ConfirmDialog } from '@/components/confirm-dialog'
 
+import { PROJECT_TYPES } from '@/lib/catalogs'
+
 const projectFilters: DataFilter[] = [
   {
     key: 'status',
@@ -32,6 +34,16 @@ const projectFilters: DataFilter[] = [
       { value: 'all', label: 'Todos' },
       { value: 'active', label: 'Activos' },
       { value: 'inactive', label: 'Inactivos' },
+    ],
+  },
+  {
+    key: 'project_type',
+    label: 'Tipo de proyecto',
+    defaultValue: 'all',
+    options: [
+      { value: 'all', label: 'Todos los tipos' },
+      ...PROJECT_TYPES.map((t) => ({ value: t, label: t })),
+      { value: 'none', label: 'Sin tipo especificado' },
     ],
   },
 ]
@@ -52,13 +64,14 @@ export function Projects({ isAdmin = false }: { isAdmin?: boolean }) {
   const [editingProject, setEditingProject] = useState<Project | null>(null)
   const [deletingProject, setDeletingProject] = useState<Project | null>(null)
 
-  // Estado server-side: búsqueda (debounced), página y filtro de estado
+  // Estado server-side: búsqueda (debounced), página y filtros
   const [search, setSearch] = useState('')
   const debouncedSearch = useDebouncedValue(search, 300)
   const [page, setPage] = useState(0)
   const [pageSize, setPageSize] = useState(20)
   const [filterValues, setFilterValues] = useState<Record<string, string>>({
     status: 'active',
+    project_type: 'all',
   })
 
   const params = useMemo(
@@ -67,6 +80,7 @@ export function Projects({ isAdmin = false }: { isAdmin?: boolean }) {
       limit: pageSize,
       search: debouncedSearch.trim() || undefined,
       status: filterValues.status !== 'all' ? filterValues.status : undefined,
+      project_type: filterValues.project_type !== 'all' ? filterValues.project_type : undefined,
     }),
     [page, pageSize, debouncedSearch, filterValues]
   )

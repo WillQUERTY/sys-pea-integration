@@ -3,7 +3,7 @@ import { Link } from '@tanstack/react-router'
 import { useQuery, useMutation, useQueryClient, keepPreviousData } from '@tanstack/react-query'
 import { toast } from 'sonner'
 import { Plus, MoreHorizontal, Pencil, Trash2, ClipboardCheck, RotateCcw } from 'lucide-react'
-import { listProducts, deleteProduct, enqueueValidation, restoreProduct, getProductCatalogs } from '@/lib/api'
+import { listProducts, deleteProduct, enqueueValidation, restoreProduct, getProductCatalogs, listGroups } from '@/lib/api'
 import type { Product } from '@/lib/types'
 import { useDebouncedValue } from '@/hooks/use-debounced-value'
 import { Badge } from '@/components/ui/badge'
@@ -94,16 +94,23 @@ export function Products({ isAdmin = false }: { isAdmin?: boolean }) {
     record_status: 'active',
     window: 'all',
     family: 'all',
+    subtype: 'all',
+    group: 'all',
     classification: 'all',
   })
   // Ventana personalizada (Req. 10): rango explícito desde–hasta
   const [customStart, setCustomStart] = useState('')
   const [customEnd, setCustomEnd] = useState('')
 
-  // Catálogo 2024: columnas Tipología/Calidad y opciones del filtro de familia.
+  // Catálogo 2024: columnas Tipología/Calidad y opciones del filtro de familia y subtipo.
   const { data: catalogs } = useQuery({
     queryKey: ['product-catalogs'],
     queryFn: getProductCatalogs,
+  })
+  // Grupos para el filtro de grupo de investigación
+  const { data: groups } = useQuery({
+    queryKey: ['groups-for-products-filter'],
+    queryFn: () => listGroups({ limit: 200 }),
   })
   const subtypeById = useMemo(
     () => new Map((catalogs?.subtypes ?? []).map((s) => [s.id, s])),
@@ -117,6 +124,18 @@ export function Products({ isAdmin = false }: { isAdmin?: boolean }) {
     () => [
       ...productFilters,
       {
+        key: 'group',
+        label: 'Grupo de investigación',
+        defaultValue: 'all',
+        options: [
+          { value: 'all', label: 'Todos los grupos' },
+          ...(groups?.items ?? []).map((g) => ({
+            value: String(g.id),
+            label: g.acronym ? `${g.acronym} — ${g.name}` : g.name,
+          })),
+        ],
+      },
+      {
         key: 'family',
         label: 'Familia 2024',
         defaultValue: 'all',
@@ -128,8 +147,22 @@ export function Products({ isAdmin = false }: { isAdmin?: boolean }) {
           })),
         ],
       },
+      {
+        key: 'subtype',
+        label: 'Tipología / Subtipo 2024',
+        defaultValue: 'all',
+        options: [
+          { value: 'all', label: 'Todos los subtipos' },
+          ...(catalogs?.subtypes ?? [])
+            .filter((s) => filterValues.family === 'all' || String(s.family_id) === filterValues.family)
+            .map((s) => ({
+              value: String(s.id),
+              label: s.code ? `${s.code} — ${s.name}` : s.name,
+            })),
+        ],
+      },
     ],
-    [catalogs]
+    [catalogs, groups, filterValues.family]
   )
 
   const params = useMemo(
@@ -140,6 +173,8 @@ export function Products({ isAdmin = false }: { isAdmin?: boolean }) {
       validation_status: filterValues.status !== 'all' ? filterValues.status : undefined,
       status: filterValues.record_status !== 'all' ? filterValues.record_status : undefined,
       family_id: filterValues.family !== 'all' ? Number(filterValues.family) : undefined,
+      subtype_id: filterValues.subtype !== 'all' ? Number(filterValues.subtype) : undefined,
+      group_id: filterValues.group !== 'all' ? Number(filterValues.group) : undefined,
       unclassified: filterValues.classification === 'unclassified' || undefined,
       window_years:
         filterValues.window !== 'all' && filterValues.window !== 'custom'

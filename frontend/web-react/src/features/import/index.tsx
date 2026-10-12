@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
-import { toast } from 'sonner'
 import { DownloadCloud, Eye } from 'lucide-react'
+import { toast } from 'sonner'
 import { importCvlac, importGruplac, previewGruplac } from '@/lib/api'
 import type { GruplacPreview } from '@/lib/types'
 import { Button } from '@/components/ui/button'
@@ -22,8 +22,11 @@ import { Main } from '@/components/layout/main'
 import { ProfileDropdown } from '@/components/profile-dropdown'
 import { Search } from '@/components/search'
 import { ThemeSwitch } from '@/components/theme-switch'
+import { CsvImport } from './csv-import'
 import { GroupSearchImport } from './group-search'
 import { GruplacPreviewCard } from './gruplac-preview-card'
+import { ImportGuideDialog } from './import-guide'
+import { PdfImport } from './pdf-import'
 
 export function ImportPage() {
   return (
@@ -38,25 +41,42 @@ export function ImportPage() {
       </Header>
 
       <Main>
-        <div className='mb-4'>
-          <h1 className='text-2xl font-bold tracking-tight'>Importación de datos</h1>
-          <p className='text-muted-foreground'>
-            Búsqueda en el buscador oficial de Scienti, ingestión desde URL
-            pública de GrupLAC o texto CvLAC.
-          </p>
+        <div className='mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between'>
+          <div>
+            <h1 className='text-2xl font-bold tracking-tight'>
+              Importación de datos
+            </h1>
+            <p className='text-muted-foreground text-sm'>
+              Búsqueda en el buscador oficial de Scienti, ingestión desde URL
+              pública de GrupLAC, CSV del dataset oficial de datos.gov.co, PDF
+              estilo GrupLAC o texto CvLAC.
+            </p>
+          </div>
+          <div className='shrink-0'>
+            <ImportGuideDialog />
+          </div>
         </div>
 
         <Tabs defaultValue='buscar' className='space-y-4'>
           <TabsList>
             <TabsTrigger value='buscar'>Buscar grupo</TabsTrigger>
             <TabsTrigger value='gruplac'>GrupLAC (URL)</TabsTrigger>
+            <TabsTrigger value='csv'>CSV (datos.gov.co)</TabsTrigger>
+            <TabsTrigger value='pdf'>PDF (GrupLAC)</TabsTrigger>
             <TabsTrigger value='cvlac'>CvLAC (investigador)</TabsTrigger>
           </TabsList>
+
           <TabsContent value='buscar'>
             <GroupSearchImport />
           </TabsContent>
           <TabsContent value='gruplac'>
             <GruplacImport />
+          </TabsContent>
+          <TabsContent value='csv'>
+            <CsvImport />
+          </TabsContent>
+          <TabsContent value='pdf'>
+            <PdfImport />
           </TabsContent>
           <TabsContent value='cvlac'>
             <CvlacImport />
@@ -77,9 +97,12 @@ function GruplacImport() {
     mutationFn: () => previewGruplac(url),
     onSuccess: (data) => {
       setPreview(data)
-      toast.success(`Vista previa: ${data.counts.members} integrantes, ${data.counts.products} productos`)
+      toast.success(
+        `Vista previa: ${data.counts.members} integrantes, ${data.counts.products} productos`
+      )
     },
-    onError: (e) => toast.error(e instanceof Error ? e.message : 'Error en la vista previa'),
+    onError: (e) =>
+      toast.error(e instanceof Error ? e.message : 'Error en la vista previa'),
   })
 
   const doImport = useMutation({
@@ -88,10 +111,14 @@ function GruplacImport() {
       const enr = r.cvlac_enrichment
       toast.success(
         `Importación completa: ${r.group_name ?? ''} (${r.new_records ?? 0} registros nuevos)` +
-          (enr ? ` · CvLAC: ${enr.enriched} enriquecidos, ${enr.failed} fallidos` : '')
+          (enr
+            ? ` · CvLAC: ${enr.enriched} enriquecidos, ${enr.failed} fallidos`
+            : '')
       )
       if (r.ram_reloaded === false) {
-        toast.warning('La importación se guardó en la BD, pero la vista no se pudo refrescar. Recarga la página.')
+        toast.warning(
+          'La importación se guardó en la BD, pero la vista no se pudo refrescar. Recarga la página.'
+        )
       }
       setPreview(null)
       queryClient.invalidateQueries({ queryKey: ['groups'] })
@@ -99,7 +126,8 @@ function GruplacImport() {
       queryClient.invalidateQueries({ queryKey: ['products'] })
       queryClient.invalidateQueries({ queryKey: ['validation-queue'] })
     },
-    onError: (e) => toast.error(e instanceof Error ? e.message : 'Error en la importación'),
+    onError: (e) =>
+      toast.error(e instanceof Error ? e.message : 'Error en la importación'),
   })
 
   return (
@@ -108,25 +136,41 @@ function GruplacImport() {
         <CardHeader>
           <CardTitle>Importar grupo desde GrupLAC</CardTitle>
           <CardDescription>
-            Flujo en dos fases: primero revisa la vista previa (no persiste nada) y luego
-            confirma la importación atómica. También acepta el código del grupo
-            (ej. COL0016283) o el nro de GrupLAC.
+            Flujo en dos fases: primero revisa la vista previa (no persiste
+            nada) y luego confirma la importación atómica. También acepta el
+            código del grupo (ej. COL0016283) o el nro de GrupLAC.
           </CardDescription>
         </CardHeader>
         <CardContent className='space-y-3'>
+          <div className='flex items-center justify-between text-xs'>
+            <span className='font-medium text-foreground'>URL oficial de GrupLAC:</span>
+            <button
+              type='button'
+              onClick={() =>
+                setUrl(
+                  'https://scienti.minciencias.gov.co/gruplac/jsp/visualiza/visualizagr.jsp?nro=00000000002668'
+                )
+              }
+              className='text-primary underline hover:text-primary/80 font-medium'
+            >
+              Probar con AITICE (UPC)
+            </button>
+          </div>
           <Input
-            placeholder='https://scienti.minciencias.gov.co/gruplac/jsp/visualiza/visualparam.jsp?nro=...'
+            placeholder='https://scienti.minciencias.gov.co/gruplac/jsp/visualiza/visualizagr.jsp?nro=...'
             value={url}
             onChange={(e) => setUrl(e.target.value)}
           />
+
           <label className='flex items-center gap-2 text-sm'>
             <Checkbox
               checked={enrichCvlac}
               onCheckedChange={(v) => setEnrichCvlac(v === true)}
             />
-            Enriquecer integrantes con su CvLAC automáticamente (1 solicitud/segundo)
+            Enriquecer integrantes con su CvLAC automáticamente (1
+            solicitud/segundo)
           </label>
-          <div className='flex flex-col sm:flex-row gap-2'>
+          <div className='flex flex-col gap-2 sm:flex-row'>
             <Button
               variant='outline'
               onClick={() => doPreview.mutate()}
@@ -165,7 +209,8 @@ function CvlacImport() {
       queryClient.invalidateQueries({ queryKey: ['products'] })
       queryClient.invalidateQueries({ queryKey: ['validation-queue'] })
     },
-    onError: (e) => toast.error(e instanceof Error ? e.message : 'Error en la importación'),
+    onError: (e) =>
+      toast.error(e instanceof Error ? e.message : 'Error en la importación'),
   })
 
   return (
@@ -173,8 +218,9 @@ function CvlacImport() {
       <CardHeader>
         <CardTitle>Importar investigador desde CvLAC</CardTitle>
         <CardDescription>
-          Pega el texto completo de la hoja de vida (copy-paste desde la página CvLAC de
-          Minciencias). Se crean sus productos y se enlazan al grupo indicado.
+          Pega el texto completo de la hoja de vida (copy-paste desde la página
+          CvLAC de Minciencias). Se crean sus productos y se enlazan al grupo
+          indicado.
         </CardDescription>
       </CardHeader>
       <CardContent className='space-y-3'>
@@ -191,7 +237,10 @@ function CvlacImport() {
           rows={14}
           className='font-mono text-xs'
         />
-        <Button onClick={() => doImport.mutate()} disabled={text.trim().length < 50 || doImport.isPending}>
+        <Button
+          onClick={() => doImport.mutate()}
+          disabled={text.trim().length < 50 || doImport.isPending}
+        >
           {doImport.isPending ? 'Importando…' : 'Importar CvLAC'}
         </Button>
       </CardContent>

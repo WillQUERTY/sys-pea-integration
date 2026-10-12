@@ -945,7 +945,9 @@ class GruplacHtmlParser:
 
 class GruplacCommitService:
     @classmethod
-    def commit(cls, data: ScrapedGroupData, db_conn_str: str = "") -> Dict[str, Any]:
+    def commit(cls, data: ScrapedGroupData, db_conn_str: str = "",
+               source_type: str = "url", source_url: str = "",
+               reload_ram: bool = True) -> Dict[str, Any]:
         logger.info(f"Iniciando compromiso transaccional atómico para el grupo: {data.group['name']} ({data.group['external_code']})")
         
         job_id = None
@@ -972,12 +974,17 @@ class GruplacCommitService:
 
             conn = pyodbc.connect(db_conn_str, autocommit=False)
             cur = conn.cursor()
-            # 1. Registrar ImportJob en estado 'processing' dentro de la transacción
+            # 1. Registrar ImportJob en estado 'processing' dentro de la transacción.
+            #    T-12/T-13: source_type parametrizable ('url' | 'csv' | 'pdf') para
+            #    trazabilidad de la vía de ingesta (models.py ya anticipa los tres).
+            effective_source_url = source_url or (
+                data.products[0].source_url if data.products else "https://scienti.minciencias.gov.co/gruplac"
+            )
             cur.execute("""
                 INSERT INTO ImportJob (source_type, source_url, status, total_records, new_records, error_count, created_at)
                 OUTPUT INSERTED.id
-                VALUES ('url', ?, 'processing', 0, 0, 0, GETDATE())
-            """, data.products[0].source_url if data.products else "https://scienti.minciencias.gov.co/gruplac")
+                VALUES (?, ?, 'processing', 0, 0, 0, GETDATE())
+            """, source_type, effective_source_url)
             row = cur.fetchone()
             if row:
                 job_id = row[0]
@@ -1273,7 +1280,10 @@ class GruplacCommitService:
 
             # SQL Server remains the source of truth. Reload the native core to
             # prevent RAM/SQL identifier divergence after idempotent upserts.
-            if db_conn_str:
+            # reload_ram=False deja la recarga en manos del caller (lotes: p. ej.
+            # import CSV fila por fila con una sola recarga al final; mismo
+            # patrón que enrich_members_with_cvlac).
+            if db_conn_str and reload_ram:
                 repository.load_from_db(db_conn_str)
 
             logger.info(f"Compromiso transaccional finalizado exitosamente. {reconciliation_summary}")
@@ -1532,7 +1542,7 @@ def buscar_grupos_scienti(nombre: str = "", institucion: str = "", departamento:
     return results[:limit]
 
 
-def scrape_gruplac(url: str, db_conn_str: str = "", preview: bool = False, enrich_cvlac: bool = False, cvlac_workers: int = 8, expected_group_code: str = "", cvlac_delay: float = 0.5) -> Dict[str, Any]:
+def scrape_gruplac(url: str, db_conn_str: str = "", preview: bool = False, enrich_cvlac: bool = False, cvlac_workers: int = 8, expected_group_code: str = "", cvlac_delay: float = 0.5, source_type: str = "url", source_url: str = "", reload_ram: bool = True) -> Dict[str, Any]:
     print("=" * 65)
     print(f"Khemia Importador GrupLAC (Estructural e Idempotente en SQL)")
     print(f"URL: {url}")
@@ -1569,7 +1579,10 @@ def scrape_gruplac(url: str, db_conn_str: str = "", preview: bool = False, enric
         return build_preview(scraped_data)
 
     # 3. Compromiso transaccional idempotente
-    result = GruplacCommitService.commit(scraped_data, db_conn_str=db_conn_str)
+    #    T-12/T-13: source_type/source_url/reload_ram se pasan intactos para que
+    #    los importadores por archivo (csv/pdf) dejen trazabilidad correcta en
+    #    ImportJob y puedan diferir la recarga de RAM al final del lote.
+    result = GruplacCommitService.commit(scraped_data, db_conn_str=db_conn_str, source_type=source_type, source_url=source_url, reload_ram=reload_ram)
 
     # 3.5 Enriquecimiento CvLAC en cascada (opcional, post-commit)
     if enrich_cvlac:

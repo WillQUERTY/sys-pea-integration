@@ -85,7 +85,7 @@ Para garantizar que el sistema satisfaga los requisitos del Taller 2 sin incurri
 2. **Autores de productos como entidad formal:** Conforme a la sección 30 y 33.2, la relación entre productos e investigadores se implementa mediante la multilista `ProductAuthorNode` en C++, sincronizada tanto con la tabla SQL Server `ProductAuthor` como con la colección `"authors"` del archivo JSON de persistencia.
 3. **Reglas de vinculación temporal (RV-001 y RV-002):** La gestión de integrantes en grupos valida estrictamente la no inversión de periodos (RV-001) y la no superposición de vinculaciones vigentes, admitiendo el reingreso no solapado (RV-002), respondiendo con códigos HTTP 400 y mensajes de negocio explícitos ante infracciones.
 4. **Catálogo canónico 2024:** El catálogo oficial siembra 5 familias de producción y 70 subtipos normalizados (10 en Generación de Nuevo Conocimiento, 26 en Desarrollo Tecnológico e Innovación, 4 en Apropiación Social del Conocimiento, 21 en Divulgación Pública de la Ciencia y 9 en Formación de Recurso Humano), superando el estimado previo de 56 subtipos.
-5. **Alineación con la decisión D-03:** La ingesta oficial se ejecuta por URL directa desde la plataforma Scienti (GrupLAC y CvLAC) y mediante importación del archivo `pea_data.json`. Las rutas de archivos planos antiguos (CSV/PDF) quedan formalmente excluidas por obsolescencia frente a la fuente web viva.
+5. **Alineación con la decisión D-03 (sustituida):** La ingesta oficial se ejecuta por URL directa desde la plataforma Scienti (GrupLAC y CvLAC), mediante importación del archivo `pea_data.json` **y mediante los importadores de archivo CSV (T-12) y PDF (T-13)** implementados posteriormente. La exclususión original de las rutas de archivo fue revertida al incorporarse los importadores oficiales (dataset hrhc-c4wu de datos.gov.co para CSV; reporte propio e impresión del visor Scienti para PDF), todos con flujo de vista previa y confirmación.
 
 ---
 
@@ -106,7 +106,7 @@ A continuación se sintetiza el estado de cobertura de cada requerimiento del Ta
 | **T-09** | Proyectos autónomos | `ProjectNode` (lista global) + `GroupProjectNode` | Endpoints `/projects` + UI "Proyectos" | **Cumplido** |
 | **T-10** | Multilista de Productos | `GroupProductNode` (doble cadena grupo/producto) | Endpoints `/groups/{id}/products` | **Cumplido** |
 | **T-11** | Ingesta desde URL Scienti | Consumo write-through desde backend | Scrapers GrupLAC y CvLAC con dedupe | **Cumplido** |
-| **T-12 / 13** | Ingesta PDF / CSV | Descartada por Decisión D-03 | Sustituida por URL Scienti y `pea_data.json` | **Excluido (D-03)** |
+| **T-12 / 13** | Ingesta PDF / CSV | `ImportJob.source_type` extendido a `csv`/`pdf` | `POST /groups/import/csv(/preview)` y `POST /groups/import/pdf(/preview)` | **Cumplido** |
 | **T-14** | Cola FIFO de validación | `ValidationQueueItem` / `ValidationQueue` | Panel `/admin/validation-queue` | **Cumplido** |
 | **T-15** | Pila LIFO de deshacer | `UndoOperation` / `UndoStack` | Historial interactivo `/admin/undo` | **Cumplido** |
 | **T-16** | Ventana de observación | Filtrado dinámico por fechas y `window_years` | Parámetros query + selector en reportes PDF | **Cumplido** |
@@ -536,9 +536,11 @@ Integración      pybind11 conecta ambas sin duplicar lógica.
 
 **Riesgo residual aceptado.** Si el docente exige un dashboard ejecutable sin navegador, el equipo añadirá un modo `dashboard` en el backend que genere el HTML con matplotlib. Se registra como trabajo futuro de bajo costo, no como incumplimiento.
 
-#### D-03 — La ingesta se cumple por la ruta URL oficial (SCIENTI); PDF y CSV quedan descartados
+#### D-03 — (SUSTITUIDA) La ingesta se cumple por la ruta URL oficial (SCIENTI); PDF y CSV quedan descartados
 
-**Decisión.** No se implementan importadores de PDF ni de CSV. La capacidad de carga de datos se cumple por la vía que el propio taller declara principal: descargar desde SCIENTI por URL.
+> **Nota de sustitución (2026-10).** Esta decisión quedó sustituida al implementarse los importadores de archivo exigidos por T-12/T-13. El texto original se conserva a continuación por trazabilidad. El estado vigente es: **CSV** mediante el dataset oficial de MinCiencias en datos.gov.co (Socrata `hrhc-c4wu`, tope de 200 grupos por importación, enriquecimiento GrupLAC opcional resuelto por el buscador oficial) y **PDF** estilo GrupLAC (el reporte que genera el propio sistema o una impresión del visor de Scienti), ambos con flujo de vista previa y confirmación en los endpoints `/groups/import/csv(/preview)` y `/groups/import/pdf(/preview)`. Las trampas de identidad que motivaron la exclusión original quedaron resueltas: la resolución COL→nro se hace únicamente por el buscador oficial (nunca por heurística de dígitos) y un PDF sin código COL válido se rechaza con HTTP 400.
+
+**Decisión (original, sustituida).** No se implementan importadores de PDF ni de CSV. La capacidad de carga de datos se cumple por la vía que el propio taller declara principal: descargar desde SCIENTI por URL.
 
 ```text
 GrupLAC        scraping del grupo completo con vista previa y confirmación.
@@ -601,7 +603,7 @@ python -m uvicorn app.main:app --host 127.0.0.1 --port 8000
 Responsabilidades:
 
 - Ejecutar FastAPI y exponer la API REST.
-- Importar desde URL: GrupLAC, CvLAC, buscador Scienti y datos abiertos (D-03).
+- Importar desde URL: GrupLAC, CvLAC, buscador Scienti y datos abiertos (D-03); y por archivo: CSV del dataset oficial y PDF estilo GrupLAC, con vista previa y confirmación (D-03 sustituida).
 - Servir las estadísticas del dashboard vía `/api/v1/dashboard/stats`, con agregaciones calculadas por el núcleo C++.
 - Consumir el núcleo C++ mediante pybind11 (interoperabilidad nativa).
 
@@ -636,8 +638,8 @@ La aplicación integrada es la entrega (D-01): no sustituye a las dos soluciones
 | T-09 | Gestionar información personal | `Researcher` | Formulario protegido | Cubierto |
 | T-10 | Identificar entradas y salidas | Catálogo formal | Sección 31 | Cubierto |
 | T-11 | Descargar desde URL | Importador Python (GrupLAC/CvLAC/Scienti) | Prueba con URL real de SCIENTI | Cubierto (implementado) |
-| T-12 | Procesar PDF | No aplica | No aplica | Descartado (D-03) |
-| T-13 | Procesar CSV | No aplica | No aplica | Descartado (D-03) |
+| T-12 | Procesar PDF | Importador `import_pdf.py` (parser de secciones) | Round-trip del reporte propio + `/groups/import/pdf(/preview)` | Cubierto (implementado) |
+| T-13 | Procesar CSV | Importador `import_csv.py` (dataset hrhc-c4wu) | Fixture oficial + `/groups/import/csv(/preview)` | Cubierto (implementado) |
 | T-14 | Diseñar listas | C++ manual | Pruebas de nodos | Cubierto |
 | T-15 | Usar multilistas | C++ manual | Recorridos multidimensionales | Cubierto |
 | T-16 | Usar pilas | Historial deshacer | Push, pop y undo | Cubierto |
@@ -2256,7 +2258,7 @@ para reducir el registro manual y conciliar duplicados con precisión.
 
 Criterios:
 
-- Se extraen y concilian datos directamente de la URL viva de Scienti (Decisión D-03).
+- Se extraen y concilian datos directamente de la URL viva de Scienti (Decisión D-03, posteriormente sustituida para incluir CSV y PDF con el mismo flujo).
 - Se conserva el dato original y se genera huella digital / hash estable determinista.
 - Se muestra vista previa interactiva antes de confirmar el commit.
 - Los errores bloqueantes impiden la confirmación.
@@ -2312,7 +2314,7 @@ para probar distintos escenarios.
 | Pila LIFO (Deshacer) | `UndoOperation` | `POST /api/v1/system/undo`, `pea_cli history undo` | UT-STK-001 | Reversión simétrica y modal de confirmación |
 | Cola FIFO (Validación) | `ValidationQueueItem` | `POST /api/v1/system/validation-queue/{id}/validate`, `pea_cli queue process` | UT-QUE-001 | Orden de llegada FIFO verificado |
 | Ingesta URL Scienti | `ImportJob` | `/groups/import/gruplac`, `/researchers/import/cvlac`, `/groups/search/scienti` | IT-URL-001 | Vista previa + commit con deduplicación |
-| Ingesta CSV / PDF | `ImportJob` | Excluido formalmente por Decisión D-03 | N/A | Sustituido por URL Scienti y `pea_data.json` |
+| Ingesta CSV / PDF | `ImportJob` (`source_type='csv'/'pdf'`) | `POST /groups/import/csv(/preview)`, `POST /groups/import/pdf(/preview)` | IT-FILE-001 | Parser dataset hrhc-c4wu + parser PDF + idempotencia de doble commit |
 | Ventana de observación | `ObservationWindow` | `GET /api/v1/products?start_year&end_year`, `/groups/{id}/report/pdf` | IT-WIN-001 | Filtro 2/5 años y selector en PDF |
 | Persistencia dual | SQL / JSON | `POST /api/v1/system/initialize/*`, `GET /system/export` | IT-PER-001 | Reinicio exitoso y `pea_data.json` íntegro |
 | Dashboard estadístico | Agregados C++ | `/admin` (KPIs), `/portal` (Recharts), `pea_cli summary` | E2E-DASH-001 | Histogramas, donuts y barras dinámicas |
@@ -2398,8 +2400,8 @@ Pilas
 Colas
 CRUD
 Persistencia
-Carga por URL (D-03: GrupLAC, CvLAC, Scienti)
-PDF y CSV (descartados, D-03)
+Carga por URL (GrupLAC, CvLAC, Scienti)
+Carga por archivo: CSV (dataset oficial) y PDF estilo GrupLAC (D-03 sustituida)
 Filtro por año
 Resumen C++
 Dashboard integrado (D-02)
@@ -2518,8 +2520,8 @@ Pendientes de crear para la entrega:
 ### Importación
 
 - [x] URL probada (GrupLAC y CvLAC contra SCIENTI real).
-- [x] CSV probado — no aplica (D-03).
-- [x] PDF probado — no aplica (D-03).
+- [x] CSV probado (parser del dataset oficial hrhc-c4wu, endpoint y commit idempotente).
+- [x] PDF probado (round-trip del reporte propio, endpoint y commit idempotente).
 - [x] Vista previa.
 - [x] Errores por fila.
 - [x] Confirmación idempotente.
@@ -2580,8 +2582,10 @@ Con las ampliaciones de esta versión, el diseño documental cubre explícitamen
 - Los entregables de documentación, video e identificación.
 - Los complementos de Git, base de datos, GUI e interoperabilidad.
 
-Alcance ajustado por las decisiones del equipo (sección 26.1): D-01 entrega ambas soluciones integradas en una sola aplicación, D-02 traslada el dashboard estadístico a la aplicación integrada y D-03 concentra la ingesta en la ruta URL oficial de SCIENTI, descartando PDF y CSV como alternativas equivalentes no implementadas. Ninguna de estas decisiones elimina un requisito obligatorio: reinterpretan su forma de entrega, y el equipo las expondrá y defenderá en el video.
+Alcance ajustado por las decisiones del equipo (sección 26.1): D-01 entrega ambas soluciones integradas en una sola aplicación, D-02 traslada el dashboard estadístico a la aplicación integrada y D-03 concentró originalmente la ingesta en la ruta URL oficial de SCIENTI — decisión posteriormente sustituida al implementarse los importadores de CSV (dataset oficial hrhc-c4wu de datos.gov.co) y de PDF (estilo GrupLAC), ambos con el mismo flujo de vista previa y confirmación. Ninguna de estas decisiones elimina un requisito obligatorio: reinterpretan su forma de entrega, y el equipo las expondrá y defenderá en el video.
 
 La afirmación de cumplimiento total dependerá de completar la implementación y reunir las evidencias enumeradas en la matriz de trazabilidad y en la lista de comprobación.
+
+> **Estado de implementación y verificación integral (2026-10-09, T-12/T-13):** Los importadores por archivo quedaron implementados de punta a punta. **CSV (T-12):** `backend/app/import_csv.py` parsea el dataset oficial de MinCiencias en datos.gov.co (Socrata `hrhc-c4wu`; tolera BOM, fechas ISO con milisegundos, "No registra" y numéricos "16.0"), deduplica por código COL conservando la convocatoria más reciente, aplica un tope de 200 grupos distintos por importación (HTTP 400 con orientación de filtrado) y permite enriquecer cada grupo con su GrupLAC completo resolviendo COL→nro únicamente por el buscador oficial (con fallback a los datos del archivo si la resolución o el scrapeo fallan); cada fila es una transacción independiente y la RAM se recarga una sola vez al final. **PDF (T-13):** `backend/app/import_pdf.py` extrae el texto con PyMuPDF y ataca la estructura de secciones/etiquetas compartida por el reporte que genera el propio sistema y una impresión del visor de Scienti; exige código COL válido (un nro pelado se rechaza con HTTP 400, trampa de identidad) y resuelve el subtipo de producto por nombre contra el catálogo 2024 sin requerir BD. Ambos exponen `/groups/import/csv(/preview)` y `/groups/import/pdf(/preview)` con flujo de vista previa→confirmación, registran `ImportJob.source_type` de `csv`/`pdf`, son idempotentes ante doble importación y tienen UI en React (pestañas "CSV (datos.gov.co)" y "PDF (GrupLAC)" en `/admin/import`). La suite backend cuenta con 13 archivos de prueba: 147 pruebas en verde con SQL Server local activado (`PEAI_TEST_DB=1`; 128 aprobadas y 19 saltadas por el gate sin BD). El build de React (`tsc -b && vite build`) pasa en limpio.
 
 > **Estado de implementación y verificación integral (2026-10-04):** T-08 (gestión de planes) está implementado de punta a punta: `PlanNode` en la multilista C++, `work_plan_service`, persistencia JSON y SQL Server (MERGE por id estable), pybind11, endpoints REST (`/groups/{id}/plans`, `/plans/{id}`), pestaña "Planes" en el detalle de grupo en React, comandos `plans` en `pea_cli` y pruebas unitarias. El CRUD independiente de proyectos (Requerimiento 3) está completo de punta a punta: `ProjectNode` en la lista global C++, `project_service`, persistencia JSON y SQL Server (MERGE por id estable), pybind11, endpoints REST (`/api/v1/projects` con paginación/búsqueda/estado, `/groups/{id}/projects`), página "Proyectos" en React, comandos `projects` en `pea_cli` y pruebas unitarias. El periodo de observación personalizado (T-26 / HU-07) está cubierto en toda la pila: rango arbitrario `start_year`–`end_year` y "últimos N años" (`window_years`) en `/products`, CLI `products by-year`, e informe PDF de grupo con selector de ventana en la UI que muestra la ventana aplicada y filtra la producción por año de obtención. T-07 (Membresías con rol/fechas) y las reglas de vinculación temporal (RV-001 de periodo invertido y RV-002 de periodos solapados/reingreso) están completamente implementadas en C++, RAM, persistencia (JSON/SQL), API (HTTP 400 en infracción) y deshacer bidireccional. La multilista de autores `ProductAuthorNode` y la exportación íntegra de los 20 atributos de producto del modelo Minciencias 2024 están operativas y sincronizadas en `pea_data.json`. La suite de pruebas de estructuras en C++ (`pea_tests.exe`) cuenta con 159/159 aserciones en verde (0 fallos). El backend en Python cuenta con 11 suites de pruebas automatizadas con 84 tests en verde (100% aprobadas) que cubren reglas de membresía, lógica y simetría de deshacer, enriquecimiento y filtros de cola, contratos 2024, scrapers e importadores. Todas las brechas documentales y funcionales detectadas en la auditoría han sido subsanadas.

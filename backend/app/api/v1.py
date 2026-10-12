@@ -1,13 +1,23 @@
-from fastapi import APIRouter, HTTPException, Query
+from fastapi import APIRouter, File, Form, HTTPException, Query, UploadFile
 from fastapi.responses import Response
 from pydantic import BaseModel
 from typing import Any, Dict, List, Optional
+import unicodedata
 from .. import repository
 from .. import reports
 from ..config import settings
 from ..models import Group, Researcher, Product, Project, WorkPlan, PagedResponse, ValidationQueueItem, ValidationQueueResponse
+from ..scraper import GruplacNormalizer
 
 router = APIRouter()
+
+def _normalize_text(text: Any) -> str:
+    if not text:
+        return ""
+    s = str(text)
+    nfkd = unicodedata.normalize('NFKD', s)
+    return "".join(c for c in nfkd if not unicodedata.combining(c)).strip().lower()
+
 
 def _reload_ram_from_db(conn_str: str) -> bool:
     """
@@ -297,7 +307,11 @@ async def list_groups_endpoint(
     if status and status != 'all':
         all_groups = [g for g in all_groups if g.status == status]
     if classification and classification != 'all':
-        all_groups = [g for g in all_groups if g.classification == classification]
+        c_norm = classification.strip().lower()
+        if c_norm in ('none', 'unclassified', 'sin clasificar', 'sin clasificacion'):
+            all_groups = [g for g in all_groups if not GruplacNormalizer.normalize_classification(g.classification or "")]
+        else:
+            all_groups = [g for g in all_groups if GruplacNormalizer.normalize_classification(g.classification or "").upper() == classification.strip().upper()]
     total = len(all_groups)
     return PagedResponse(items=all_groups[skip : skip + limit], total=total, skip=skip, limit=limit)
 
@@ -581,9 +595,12 @@ async def list_projects_endpoint(
     limit: int = Query(20, ge=1, le=200),
     search: Optional[str] = None,
     status: Optional[str] = None,
+    project_type: Optional[str] = None,
 ):
-    """List all projects with server-side pagination, search and status filter."""
-    items, total = repository.list_projects(skip=skip, limit=limit, search=search, status=status)
+    """List all projects with server-side pagination, search, status and project_type filter."""
+    items, total = repository.list_projects(
+        skip=skip, limit=limit, search=search, status=status, project_type=project_type
+    )
     return PagedResponse[Project](items=items, total=total, skip=skip, limit=limit)
 
 @router.post("/projects", response_model=Project, status_code=201, tags=["Projects"])
@@ -653,16 +670,36 @@ async def list_researchers_endpoint(
     search: Optional[str] = None,
     status: Optional[str] = None,
     educational_level: Optional[str] = None,
-    category: Optional[str] = None
+    category: Optional[str] = None,
+    group_id: Optional[int] = None,
 ):
     """Return researchers with server-side pagination, search, filtering and total count."""
     all_res = repository.list_researchers()
+    if group_id is not None:
+        try:
+            m_ids = set(repository.members_of_group(group_id))
+            all_res = [r for r in all_res if r.id in m_ids]
+        except Exception:
+            pass
     if status and status != 'all':
         all_res = [r for r in all_res if r.status == status]
     if educational_level and educational_level != 'all':
-        all_res = [r for r in all_res if r.highest_education_level == educational_level]
+        lvl_norm = _normalize_text(educational_level)
+        all_res = [r for r in all_res if _normalize_text(r.highest_education_level or '') == lvl_norm]
     if category and category != 'all':
-        all_res = [r for r in all_res if r.classification_records == category]
+        c_norm = _normalize_text(category)
+        if c_norm in ('none', 'unclassified', 'sin categoria', 'sin categorizar', 'sin clasificar'):
+            all_res = [r for r in all_res if not (r.classification_records or '').strip()]
+        elif 'junior' in c_norm:
+            all_res = [r for r in all_res if 'junior' in (r.classification_records or '').lower()]
+        elif 'asociado' in c_norm:
+            all_res = [r for r in all_res if 'asociado' in (r.classification_records or '').lower()]
+        elif 'senior' in c_norm:
+            all_res = [r for r in all_res if 'senior' in (r.classification_records or '').lower()]
+        elif 'emerito' in c_norm:
+            all_res = [r for r in all_res if 'emerito' in _normalize_text(r.classification_records or '')]
+        else:
+            all_res = [r for r in all_res if c_norm in _normalize_text(r.classification_records or '')]
     if search:
         s = search.lower()
         all_res = [r for r in all_res if s in r.first_names.lower() or s in r.last_names.lower() or s in r.external_code.lower() or s in (r.orcid or "").lower()]
@@ -751,6 +788,7 @@ async def list_products_endpoint(
     validation_status: Optional[str] = None,
     status: Optional[str] = Query(None, description="Estado del registro (active/inactive), no confundir con validation_status"),
     family_id: Optional[int] = None,
+    subtype_id: Optional[int] = None,
     group_id: Optional[int] = None,
     start_year: Optional[int] = Query(None, description="Año inicial para Ventana de Observación (Requerimiento 10)"),
     end_year: Optional[int] = Query(None, description="Año final para Ventana de Observación (Requerimiento 10)"),
@@ -777,6 +815,7 @@ async def list_products_endpoint(
         start_year=effective_start,
         end_year=effective_end,
         family_id=family_id,
+        subtype_id=subtype_id,
         validation_status=validation_status,
         status=status,
         group_id=group_id,
@@ -1041,3 +1080,128 @@ async def import_gruplac_endpoint(req: GruplacImportRequest):
         raise HTTPException(status_code=400, detail=str(e))
     result["ram_reloaded"] = _reload_ram_from_db(conn_str)
     return result
+
+@router.post("/groups/import/csv/preview", tags=["Ingestion"])
+async def preview_csv_import_endpoint(file: UploadFile = File(...)):
+    """
+    T-12 phase 1: parse the official datos.gov.co groups CSV (dataset
+    hrhc-c4wu) and return what would be imported WITHOUT persisting anything
+    (Revisión §16/§29: preview antes de confirmar). HTTP 400 if the file is
+    not the expected dataset or exceeds MAX_GROUPS_PER_IMPORT groups.
+    """
+    from ..import_csv import CsvImportError, parse_csv_grupos
+    try:
+        parsed = parse_csv_grupos(await file.read())
+    except CsvImportError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    return {
+        "status": "preview",
+        "total_data_rows": parsed.total_data_rows,
+        "distinct_groups": parsed.distinct_groups,
+        "deduped_count": parsed.deduped_count,
+        "rows": [{k: v for k, v in row.items() if k != "scraped"} for row in parsed.rows],
+        "row_errors": parsed.row_errors,
+    }
+
+@router.post("/groups/import/csv", tags=["Ingestion"])
+async def import_csv_endpoint(file: UploadFile = File(...), enrich_gruplac: bool = Form(False)):
+    """
+    T-12 phase 2 (confirm): import the CSV row by row; each row is an
+    independent transaction so one failure never aborts the batch. Without
+    enrich_gruplac each row writes just its file data; with it, each row
+    resolves its GrupLAC page through the official search endpoint and
+    scrapes the full group, falling back to file data on failure. The C++
+    RAM is reloaded ONCE at the end, never per row.
+    """
+    from ..import_csv import CsvImportError, import_csv_rows, parse_csv_grupos
+    conn_str = repository._active_connection_string or settings.connection_string
+    try:
+        parsed = parse_csv_grupos(await file.read())
+    except CsvImportError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    result = import_csv_rows(
+        parsed.rows,
+        db_conn_str=conn_str,
+        enrich_gruplac=enrich_gruplac,
+        source_name=file.filename or "",
+    )
+    result["row_errors"] = parsed.row_errors
+    result["ram_reloaded"] = _reload_ram_from_db(conn_str)
+    return result
+
+@router.post("/groups/import/pdf/preview", tags=["Ingestion"])
+async def preview_pdf_import_endpoint(file: UploadFile = File(...)):
+    """
+    T-13 phase 1: parse a GrupLAC-style group PDF (the system's own report or
+    a print-to-PDF of the Scienti viewer) and return the SAME preview shape
+    as the URL import so the frontend reuses its review card. Nothing
+    persists. HTTP 400 on PDFs without a usable COL identity.
+    """
+    from ..import_pdf import PdfImportError, parse_pdf_gruplac
+    from ..scraper import build_preview
+    try:
+        data = parse_pdf_gruplac(await file.read())
+    except PdfImportError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    return build_preview(data)
+
+@router.post("/groups/import/pdf", tags=["Ingestion"])
+async def import_pdf_endpoint(file: UploadFile = File(...)):
+    """
+    T-13 phase 2 (confirm): import the PDF group through the same atomic
+    transactional commit as the URL import (ImportJob.source_type='pdf' for
+    traceability). reload_ram=False because this endpoint reloads the C++ RAM
+    once itself instead of paying commit's internal reload too.
+    """
+    from ..import_pdf import PdfImportError, parse_pdf_gruplac
+    from ..scraper import GruplacCommitService
+    conn_str = repository._active_connection_string or settings.connection_string
+    try:
+        data = parse_pdf_gruplac(await file.read())
+    except PdfImportError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    result = GruplacCommitService.commit(
+        data,
+        db_conn_str=conn_str,
+        source_type="pdf",
+        source_url=f"pdf:{file.filename or data.group['external_code']}",
+        reload_ram=False,
+    )
+    result["ram_reloaded"] = _reload_ram_from_db(conn_str)
+    return result
+
+@router.post("/groups/import/pdf-scienti/preview", tags=["Ingestion"])
+async def preview_pdf_scienti_import_endpoint(file: UploadFile = File(...)):
+    """
+    Vista previa para PDFs generados al imprimir la página web oficial de Scienti GrupLAC.
+    """
+    from ..import_pdf_scienti import PdfScientiImportError, parse_pdf_scienti
+    from ..scraper import build_preview
+    try:
+        data = parse_pdf_scienti(await file.read())
+    except (PdfScientiImportError, ValueError) as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    return build_preview(data)
+
+@router.post("/groups/import/pdf-scienti", tags=["Ingestion"])
+async def import_pdf_scienti_endpoint(file: UploadFile = File(...)):
+    """
+    Confirmación e importación atómica para PDFs de Scienti Web.
+    """
+    from ..import_pdf_scienti import PdfScientiImportError, parse_pdf_scienti
+    from ..scraper import GruplacCommitService
+    conn_str = repository._active_connection_string or settings.connection_string
+    try:
+        data = parse_pdf_scienti(await file.read())
+    except (PdfScientiImportError, ValueError) as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    result = GruplacCommitService.commit(
+        data,
+        db_conn_str=conn_str,
+        source_type="pdf_scienti",
+        source_url=f"pdf_scienti:{file.filename or data.group['external_code']}",
+        reload_ram=False,
+    )
+    result["ram_reloaded"] = _reload_ram_from_db(conn_str)
+    return result
+
