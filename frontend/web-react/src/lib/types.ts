@@ -232,6 +232,7 @@ export interface ProductFilters {
   /** Estado del registro (active/inactive) — no confundir con validation_status */
   status?: string
   family_id?: number
+  subtype_id?: number
   group_id?: number
   start_year?: number
   end_year?: number

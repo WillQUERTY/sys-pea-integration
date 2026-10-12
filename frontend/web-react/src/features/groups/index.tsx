@@ -43,7 +43,7 @@ const GROUP_FILTERS = [
   },
   {
     key: 'classification',
-    label: 'Clasificación',
+    label: 'Clasificación Minciencias',
     options: [
       { value: 'all', label: 'Cualquiera' },
       { value: 'A1', label: 'A1' },
@@ -51,6 +51,7 @@ const GROUP_FILTERS = [
       { value: 'B', label: 'B' },
       { value: 'C', label: 'C' },
       { value: 'Reconocido', label: 'Reconocido' },
+      { value: 'none', label: 'Sin clasificar' },
     ]
   }
 ]

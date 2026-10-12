@@ -28,6 +28,14 @@ def sanitize_str(text: Any) -> str:
     return text.strip()
 
 
+def _normalize_text(text: Any) -> str:
+    if not text:
+        return ""
+    s = str(text)
+    nfkd = unicodedata.normalize('NFKD', s)
+    return "".join(c for c in nfkd if not unicodedata.combining(c)).strip().lower()
+
+
 def clean_doi(val: Any) -> str:
     """
     Limpia y valida un identificador DOI según la sintaxis estándar de la IDF/Crossref.
@@ -411,10 +419,17 @@ def _to_project_proto(project: Project, base=None):
     return proto
 
 def list_projects(skip: int = 0, limit: int = 20, search: Optional[str] = None,
-                  status: Optional[str] = None) -> Tuple[List[Project], int]:
+                  status: Optional[str] = None,
+                  project_type: Optional[str] = None) -> Tuple[List[Project], int]:
     projects = [_to_project_model(p) for p in abpoxx_pybind.list_projects()]
     if status and status != 'all':
         projects = [p for p in projects if p.status == status]
+    if project_type and project_type != 'all':
+        pt_norm = _normalize_text(project_type)
+        if pt_norm in ('none', 'sin tipo', 'unspecified', 'sin clasificar'):
+            projects = [p for p in projects if not (p.project_type or '').strip()]
+        else:
+            projects = [p for p in projects if _normalize_text(p.project_type or '') == pt_norm]
     if search:
         s = search.lower()
         projects = [p for p in projects if (p.title and s in p.title.lower())
@@ -1277,6 +1292,7 @@ def filter_products(
     start_year: Optional[int] = None,
     end_year: Optional[int] = None,
     family_id: Optional[int] = None,
+    subtype_id: Optional[int] = None,
     validation_status: Optional[str] = None,
     status: Optional[str] = None,
     group_id: Optional[int] = None,
@@ -1294,6 +1310,8 @@ def filter_products(
         products = [p for p in products if _product_year(p) > 0 and _product_year(p) <= end_year]
     if family_id is not None:
         products = [p for p in products if p.family_id == family_id]
+    if subtype_id is not None:
+        products = [p for p in products if p.subtype_id == subtype_id]
     if unclassified:
         # Sin tipología 2024: desde el core llega como 0 o None.
         products = [p for p in products if not p.subtype_id]

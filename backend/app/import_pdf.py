@@ -370,6 +370,7 @@ def _parse_products(lines: List[Dict[str, Any]], warnings: List[str]) -> List[Sc
         warnings.append(f"catalogo no disponible: {exc}")
     # Etiquetas literales del informe para agrupaciones sin catalogo.
     family_names[_norm("Otros productos")] = None
+    family_names[_norm("Otras actividades y producción institucional declarada")] = None
     _UNCLASSIFIED_LABEL = _norm("Sin subtipo clasificado")
 
     subtype_code: Optional[str] = None

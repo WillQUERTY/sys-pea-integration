@@ -219,5 +219,46 @@ class TestPdfImportEndpoints(unittest.TestCase):
         self.assertIn("codigo GrupLAC", resp.json()["detail"])
 
 
+class TestPdfScientiImportEndpoints(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls):
+        from fastapi.testclient import TestClient
+        from backend.app.main import app
+        cls.client = TestClient(app)
+
+    def _post_pdf(self, path, content, filename="scienti_web.pdf"):
+        return self.client.post(
+            path, files={"file": (filename, content, "application/pdf")}
+        )
+
+    def test_preview_pdf_scienti(self):
+        from backend.tests.test_import_pdf_scienti import _build_synthetic_scienti_pdf
+        resp = self._post_pdf("/api/v1/groups/import/pdf-scienti/preview", _build_synthetic_scienti_pdf())
+        self.assertEqual(resp.status_code, 200, resp.text)
+        body = resp.json()
+        self.assertEqual(body["status"], "preview")
+        self.assertEqual(body["group"]["name"], "GRUPO PRUEBA SCIENTI WEB")
+        self.assertEqual(body["counts"]["members"], 2)
+        self.assertEqual(body["counts"]["products"], 1)
+
+    def test_import_pdf_scienti_comete(self):
+        from backend.tests.test_import_pdf_scienti import _build_synthetic_scienti_pdf
+        with patch("backend.app.scraper.GruplacCommitService.commit",
+                   return_value={"status": "success", "group_id": 99}) as commit, \
+             patch("backend.app.repository.load_from_db") as reload:
+            resp = self._post_pdf("/api/v1/groups/import/pdf-scienti", _build_synthetic_scienti_pdf())
+        self.assertEqual(resp.status_code, 200, resp.text)
+        body = resp.json()
+        self.assertEqual(body["status"], "success")
+        self.assertTrue(body["ram_reloaded"])
+        self.assertEqual(commit.call_count, 1)
+        self.assertEqual(commit.call_args.kwargs["source_type"], "pdf_scienti")
+
+    def test_preview_pdf_scienti_invalido_es_400(self):
+        resp = self._post_pdf("/api/v1/groups/import/pdf-scienti/preview", b"no es un pdf")
+        self.assertEqual(resp.status_code, 400, resp.text)
+
+
 if __name__ == "__main__":
     unittest.main()
+

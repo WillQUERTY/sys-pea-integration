@@ -118,6 +118,7 @@ export async function listProjects(params?: {
   limit?: number
   search?: string
   status?: string
+  project_type?: string
 }) {
   const { data } = await api.get<PagedResponse<Project>>('/projects', {
     params,
@@ -213,6 +214,7 @@ export async function listResearchers(params?: {
   status?: string
   educational_level?: string
   category?: string
+  group_id?: number
 }) {
   const { data } = await api.get<PagedResponse<Researcher>>('/researchers', {
     params,
@@ -500,6 +502,25 @@ export async function importPdf(file: File) {
   )
   return data
 }
+
+export async function previewPdfScientiImport(file: File) {
+  const { data } = await api.post<GruplacPreview>(
+    '/groups/import/pdf-scienti/preview',
+    fileForm(file)
+  )
+  return data
+}
+export async function importPdfScienti(file: File) {
+  const { data } = await api.post<ImportResult>(
+    '/groups/import/pdf-scienti',
+    fileForm(file),
+    {
+      timeout: 0,
+    }
+  )
+  return data
+}
+
 
 export async function searchGroupsScienti(params: {
   q?: string

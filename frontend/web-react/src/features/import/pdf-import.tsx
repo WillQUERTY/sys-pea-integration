@@ -1,9 +1,15 @@
 import { useState } from 'react'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
-import { DownloadCloud, Eye } from 'lucide-react'
+import { DownloadCloud, Eye, Globe, FileText } from 'lucide-react'
 import { toast } from 'sonner'
-import { importPdf, previewPdfImport } from '@/lib/api'
+import {
+  importPdf,
+  previewPdfImport,
+  importPdfScienti,
+  previewPdfScientiImport,
+} from '@/lib/api'
 import type { GruplacPreview } from '@/lib/types'
+import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import {
   Card,
@@ -14,11 +20,13 @@ import {
 } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { GruplacPreviewCard } from './gruplac-preview-card'
+import { PdfFoolproofGuideCard } from './import-guide'
 
 export function PdfImport() {
   const queryClient = useQueryClient()
   const [file, setFile] = useState<File | null>(null)
   const [preview, setPreview] = useState<GruplacPreview | null>(null)
+  const [parserType, setParserType] = useState<'scienti' | 'system'>('scienti')
 
   const onFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setFile(e.target.files?.[0] ?? null)
@@ -28,12 +36,16 @@ export function PdfImport() {
   const doPreview = useMutation({
     mutationFn: async () => {
       if (!file) throw new Error('Selecciona primero un archivo PDF')
-      return previewPdfImport(file)
+      return parserType === 'scienti'
+        ? previewPdfScientiImport(file)
+        : previewPdfImport(file)
     },
     onSuccess: (data) => {
       setPreview(data)
       toast.success(
-        `Vista previa: ${data.counts.members} integrantes, ${data.counts.products} productos`
+        `Vista previa: ${data.counts.members} integrantes, ${data.counts.products} productos (${
+          parserType === 'scienti' ? 'Scienti Web' : 'Informe Institucional'
+        })`
       )
     },
     onError: (e) =>
@@ -43,7 +55,7 @@ export function PdfImport() {
   const doImport = useMutation({
     mutationFn: async () => {
       if (!file) throw new Error('Selecciona primero un archivo PDF')
-      return importPdf(file)
+      return parserType === 'scienti' ? importPdfScienti(file) : importPdf(file)
     },
     onSuccess: (r) => {
       toast.success(
@@ -67,19 +79,75 @@ export function PdfImport() {
 
   return (
     <div className='space-y-4'>
+      <PdfFoolproofGuideCard />
+
       <Card>
         <CardHeader>
           <CardTitle>Importar grupo desde PDF</CardTitle>
           <CardDescription>
-            PDF con estructura de secciones estilo GrupLAC: el informe que
-            genera este sistema (reporte de grupo) o un «imprimir a PDF» del
-            visor de Scienti. El PDF debe traer el código GrupLAC (COL…) del
-            grupo. Flujo en dos fases: primero revisa la vista previa (no
-            persiste nada) y luego confirma la importación atómica.
+            Selecciona el motor de importación según el origen del documento PDF.
+            Puedes probar ambos importadores para comparar la extracción.
           </CardDescription>
         </CardHeader>
-        <CardContent className='space-y-3'>
+
+        <CardContent className='space-y-4'>
+          {/* Selector de Importador */}
+          <div className='grid grid-cols-1 gap-3 sm:grid-cols-2'>
+            <div
+              onClick={() => {
+                setParserType('scienti')
+                setPreview(null)
+              }}
+              className={`cursor-pointer rounded-lg border p-3.5 transition-all ${
+                parserType === 'scienti'
+                  ? 'border-primary bg-primary/5 ring-1 ring-primary'
+                  : 'border-border hover:border-muted-foreground/50'
+              }`}
+            >
+              <div className='flex items-center justify-between'>
+                <div className='flex items-center space-x-2 font-medium'>
+                  <Globe className='h-4 w-4 text-primary' />
+                  <span>Impresión Web Scienti</span>
+                </div>
+                <Badge variant='default' className='text-xs'>
+                  Nuevo / Web
+                </Badge>
+              </div>
+              <p className='mt-1 text-xs text-muted-foreground'>
+                Para PDFs generados con «Imprimir a PDF» (Ctrl+P) directamente
+                desde el visor público de Scienti Minciencias.
+              </p>
+            </div>
+
+            <div
+              onClick={() => {
+                setParserType('system')
+                setPreview(null)
+              }}
+              className={`cursor-pointer rounded-lg border p-3.5 transition-all ${
+                parserType === 'system'
+                  ? 'border-primary bg-primary/5 ring-1 ring-primary'
+                  : 'border-border hover:border-muted-foreground/50'
+              }`}
+            >
+              <div className='flex items-center justify-between'>
+                <div className='flex items-center space-x-2 font-medium'>
+                  <FileText className='h-4 w-4 text-muted-foreground' />
+                  <span>Informe Institucional</span>
+                </div>
+                <Badge variant='outline' className='text-xs'>
+                  Sistema
+                </Badge>
+              </div>
+              <p className='mt-1 text-xs text-muted-foreground'>
+                Para el informe estructurado generado internamente por este
+                sistema (requiere etiqueta «Código GrupLAC COL…»).
+              </p>
+            </div>
+          </div>
+
           <Input type='file' accept='.pdf' onChange={onFileChange} />
+
           <div className='flex flex-col gap-2 sm:flex-row'>
             <Button
               variant='outline'
@@ -87,7 +155,9 @@ export function PdfImport() {
               disabled={!file || doPreview.isPending}
             >
               <Eye className='me-2 h-4 w-4' />
-              {doPreview.isPending ? 'Analizando…' : 'Vista previa'}
+              {doPreview.isPending
+                ? 'Analizando…'
+                : `Vista previa (${parserType === 'scienti' ? 'Scienti Web' : 'Informe'})`}
             </Button>
             <Button
               onClick={() => doImport.mutate()}
@@ -104,3 +174,4 @@ export function PdfImport() {
     </div>
   )
 }
+

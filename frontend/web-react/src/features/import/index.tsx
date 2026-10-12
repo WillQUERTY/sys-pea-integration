@@ -25,6 +25,7 @@ import { ThemeSwitch } from '@/components/theme-switch'
 import { CsvImport } from './csv-import'
 import { GroupSearchImport } from './group-search'
 import { GruplacPreviewCard } from './gruplac-preview-card'
+import { ImportGuideDialog } from './import-guide'
 import { PdfImport } from './pdf-import'
 
 export function ImportPage() {
@@ -40,15 +41,20 @@ export function ImportPage() {
       </Header>
 
       <Main>
-        <div className='mb-4'>
-          <h1 className='text-2xl font-bold tracking-tight'>
-            Importación de datos
-          </h1>
-          <p className='text-muted-foreground'>
-            Búsqueda en el buscador oficial de Scienti, ingestión desde URL
-            pública de GrupLAC, CSV del dataset oficial de datos.gov.co, PDF
-            estilo GrupLAC o texto CvLAC.
-          </p>
+        <div className='mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between'>
+          <div>
+            <h1 className='text-2xl font-bold tracking-tight'>
+              Importación de datos
+            </h1>
+            <p className='text-muted-foreground text-sm'>
+              Búsqueda en el buscador oficial de Scienti, ingestión desde URL
+              pública de GrupLAC, CSV del dataset oficial de datos.gov.co, PDF
+              estilo GrupLAC o texto CvLAC.
+            </p>
+          </div>
+          <div className='shrink-0'>
+            <ImportGuideDialog />
+          </div>
         </div>
 
         <Tabs defaultValue='buscar' className='space-y-4'>
@@ -59,6 +65,7 @@ export function ImportPage() {
             <TabsTrigger value='pdf'>PDF (GrupLAC)</TabsTrigger>
             <TabsTrigger value='cvlac'>CvLAC (investigador)</TabsTrigger>
           </TabsList>
+
           <TabsContent value='buscar'>
             <GroupSearchImport />
           </TabsContent>
@@ -135,11 +142,26 @@ function GruplacImport() {
           </CardDescription>
         </CardHeader>
         <CardContent className='space-y-3'>
+          <div className='flex items-center justify-between text-xs'>
+            <span className='font-medium text-foreground'>URL oficial de GrupLAC:</span>
+            <button
+              type='button'
+              onClick={() =>
+                setUrl(
+                  'https://scienti.minciencias.gov.co/gruplac/jsp/visualiza/visualizagr.jsp?nro=00000000002668'
+                )
+              }
+              className='text-primary underline hover:text-primary/80 font-medium'
+            >
+              Probar con AITICE (UPC)
+            </button>
+          </div>
           <Input
-            placeholder='https://scienti.minciencias.gov.co/gruplac/jsp/visualiza/visualparam.jsp?nro=...'
+            placeholder='https://scienti.minciencias.gov.co/gruplac/jsp/visualiza/visualizagr.jsp?nro=...'
             value={url}
             onChange={(e) => setUrl(e.target.value)}
           />
+
           <label className='flex items-center gap-2 text-sm'>
             <Checkbox
               checked={enrichCvlac}

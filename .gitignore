@@ -46,3 +46,7 @@ docs/_uvicorn*.log
 ~$*
 .pytest_cache/
 
+# Agent & IDE local state
+.agents/
+.claude/settings.json
+

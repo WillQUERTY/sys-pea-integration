@@ -168,3 +168,60 @@ export function toTitleCase(value?: string | null): string {
     )
     .join(' ')
 }
+
+/**
+ * Normaliza las cadenas de categoría de investigadores de CvLAC / Minciencias
+ * ('Investigador Junior (IJ) con vigencia...', 'Investigador Senior (IS)...')
+ * a etiquetas limpias y estilos temáticos de badge.
+ */
+export function parseResearcherCategory(raw?: string | null) {
+  if (!raw || !raw.trim()) {
+    return {
+      code: 'none',
+      label: 'Sin categoría',
+      shortLabel: '—',
+      badgeVariant: 'border-slate-500/20 text-muted-foreground bg-slate-500/10',
+    }
+  }
+
+  const clean = raw.trim().toLowerCase()
+  if (clean.includes('senior')) {
+    return {
+      code: 'Senior',
+      label: 'Investigador Senior (IS)',
+      shortLabel: 'Senior (IS)',
+      badgeVariant: 'border-amber-500/40 text-amber-700 dark:text-amber-300 bg-amber-500/10 font-semibold',
+    }
+  }
+  if (clean.includes('asociado')) {
+    return {
+      code: 'Asociado',
+      label: 'Investigador Asociado (I)',
+      shortLabel: 'Asociado (I)',
+      badgeVariant: 'border-blue-500/40 text-blue-700 dark:text-blue-300 bg-blue-500/10 font-medium',
+    }
+  }
+  if (clean.includes('junior')) {
+    return {
+      code: 'Junior',
+      label: 'Investigador Junior (IJ)',
+      shortLabel: 'Junior (IJ)',
+      badgeVariant: 'border-emerald-500/40 text-emerald-700 dark:text-emerald-300 bg-emerald-500/10 font-medium',
+    }
+  }
+  if (clean.includes('emerito') || clean.includes('emérito')) {
+    return {
+      code: 'Emérito',
+      label: 'Investigador Emérito',
+      shortLabel: 'Emérito',
+      badgeVariant: 'border-purple-500/40 text-purple-700 dark:text-purple-300 bg-purple-500/10 font-bold',
+    }
+  }
+
+  return {
+    code: raw.trim(),
+    label: raw.trim(),
+    shortLabel: raw.trim().length > 15 ? raw.trim().slice(0, 13) + '…' : raw.trim(),
+    badgeVariant: 'border-slate-500/30 text-foreground bg-muted/40',
+  }
+}

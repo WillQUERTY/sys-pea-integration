@@ -7,7 +7,7 @@ import { enrichAllResearchers, enrichResearcher, importCvlacByCodRh, listResearc
 import type { Researcher } from '@/lib/types'
 import { useDebouncedValue } from '@/hooks/use-debounced-value'
 import { Badge } from '@/components/ui/badge'
-import { toTitleCase } from '@/lib/utils'
+import { toTitleCase, parseResearcherCategory } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
 import {
   DropdownMenu,
@@ -112,13 +112,14 @@ const RESEARCHER_FILTERS = [
   },
   {
     key: 'category',
-    label: 'Categoría',
+    label: 'Categoría Minciencias',
     options: [
       { value: 'all', label: 'Cualquiera' },
-      { value: 'Investigador Emérito', label: 'Emérito' },
-      { value: 'Investigador Senior', label: 'Senior' },
-      { value: 'Investigador Asociado', label: 'Asociado' },
-      { value: 'Investigador Junior', label: 'Junior' },
+      { value: 'Senior', label: 'Senior (IS)' },
+      { value: 'Asociado', label: 'Asociado (I)' },
+      { value: 'Junior', label: 'Junior (IJ)' },
+      { value: 'Emérito', label: 'Emérito' },
+      { value: 'none', label: 'Sin categorizar' },
     ]
   }
 ]
@@ -240,6 +241,18 @@ export function Researchers({ isAdmin = false }: { isAdmin?: boolean }) {
         ) : (
           <span className='text-muted-foreground'>—</span>
         ),
+    },
+    {
+      key: 'category',
+      header: 'Categoría Minciencias',
+      cell: (r) => {
+        const cat = parseResearcherCategory(r.classification_records)
+        return (
+          <Badge variant='outline' className={`text-xs ${cat.badgeVariant}`}>
+            {cat.shortLabel}
+          </Badge>
+        )
+      },
     },
     {
       key: 'orcid',
