@@ -1723,6 +1723,12 @@ def get_group_stats(group_id: int) -> dict:
         return json.loads(abpoxx_pybind.get_group_stats_json(_active_connection_string, group_id))
     return _ram_group_stats(group_id)
 
+def get_group_minciencias_diagnosis(group_id: int) -> dict:
+    import sys
+    from .minciencias_evaluator import evaluate_group_minciencias
+    get_group(group_id)  # 404 si no existe
+    return evaluate_group_minciencias(group_id, sys.modules[__name__])
+
 def _ram_researcher_stats(researcher_id: int) -> dict:
     res = get_researcher(researcher_id)
     pids = products_of_researcher(researcher_id)

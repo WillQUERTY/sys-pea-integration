@@ -711,6 +711,58 @@ export async function getGroupStats(groupId: number) {
   return data
 }
 
+export interface MincienciasRequirement {
+  id: string
+  label: string
+  description: string
+  target: number | string
+  current: number | string
+  met: boolean
+  unit?: string
+}
+
+export interface MincienciasTierDiagnosis {
+  tier: 'Reconocido' | 'C' | 'B' | 'A' | 'A1'
+  title: string
+  description: string
+  qualifies: boolean
+  completion_percentage: number
+  requirements: MincienciasRequirement[]
+  missing_summary: string[]
+}
+
+export interface MincienciasGroupDiagnosis {
+  group_id: number
+  group_name: string
+  current_classification: string
+  raw_classification: string
+  max_qualified_tier: string
+  next_tier: string | null
+  next_tier_progress: number
+  next_tier_gap: string[]
+  summary: {
+    years_active: number
+    creation_year?: number
+    total_members: number
+    phd_count: number
+    masters_count: number
+    total_products: number
+    products_in_window: number
+    gnc_count: number
+    dti_count: number
+    frh_count: number
+    asc_count: number
+    dpc_count: number
+    projects_count: number
+  }
+  tiers: MincienciasTierDiagnosis[]
+}
+
+export async function getGroupMincienciasDiagnosis(groupId: number) {
+  const { data } = await api.get<MincienciasGroupDiagnosis>(`/groups/${groupId}/minciencias-diagnosis`)
+  return data
+}
+
 export interface ResearcherGroupContributionItem {
   id: number
   name: string

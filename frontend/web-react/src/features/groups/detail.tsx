@@ -29,7 +29,7 @@ import {
   linkProduct, unlinkProduct, listProducts,
   getGroupMemberships, updateMember,
   getGroupPlans, createPlan, updatePlan, deletePlan,
-  groupReportPdfUrl, getProductCatalogs, getGroupStats
+  groupReportPdfUrl, getProductCatalogs, getGroupStats, getGroupMincienciasDiagnosis
 } from '@/lib/api'
 import {
   ProductionHistogram,
@@ -37,6 +37,7 @@ import {
   EducationDonut,
   GroupTopResearchers,
   TopSubtypesRanking,
+  MincienciasDiagnosisCard,
 } from '@/components/charts'
 import type { Researcher } from '@/lib/types'
 import type { Group, WorkPlan, Project, Product } from '@/lib/types'
@@ -181,6 +182,12 @@ export function GroupDetail({ isAdmin = false }: { isAdmin?: boolean }) {
   const { data: stats } = useQuery({
     queryKey: ['groups', groupId, 'stats'],
     queryFn: () => getGroupStats(groupId),
+  })
+
+  // Diagnóstico Minciencias 2024
+  const { data: mincienciasDiagnosis } = useQuery({
+    queryKey: ['groups', groupId, 'minciencias-diagnosis'],
+    queryFn: () => getGroupMincienciasDiagnosis(groupId),
   })
 
   const [formData, setFormData] = useState<Partial<Group>>({})
@@ -1347,6 +1354,11 @@ export function GroupDetail({ isAdmin = false }: { isAdmin?: boolean }) {
                 </CardContent>
               </Card>
             </div>
+
+            {/* Diagnóstico y Semáforo de Categorización Minciencias 2024 */}
+            {mincienciasDiagnosis && (
+              <MincienciasDiagnosisCard data={mincienciasDiagnosis} />
+            )}
 
             {/* Fila 2: Dinámica Temporal + Familias */}
             <div className="grid grid-cols-1 gap-6 lg:grid-cols-7">
