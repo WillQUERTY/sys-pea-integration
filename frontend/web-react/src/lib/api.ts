@@ -710,3 +710,43 @@ export async function getGroupStats(groupId: number) {
   const { data } = await api.get<GroupStats>(`/groups/${groupId}/stats`)
   return data
 }
+
+export interface ResearcherGroupContributionItem {
+  id: number
+  name: string
+  acronym?: string
+  role?: string
+  products_count: number
+  percentage: number
+}
+
+export interface ResearcherTopCoauthorItem {
+  id: number
+  name: string
+  highest_education?: string
+  shared_products: number
+}
+
+export interface ResearcherStrategicRatios {
+  endorsed_count: number
+  endorsement_rate: number
+  valid_count: number
+  validation_rate: number
+  total_coauthors: number
+}
+
+export interface ResearcherStats {
+  total_products: number
+  by_year: Array<{ year: string; count: number }>
+  families_distribution?: FamilyDistributionItem[]
+  top_subtypes?: TopSubtypeItem[]
+  groups_contribution?: ResearcherGroupContributionItem[]
+  top_coauthors?: ResearcherTopCoauthorItem[]
+  strategic_ratios?: ResearcherStrategicRatios
+}
+
+export async function getResearcherStats(researcherId: number) {
+  const { data } = await api.get<ResearcherStats>(`/researchers/${researcherId}/stats`)
+  return data
+}
+

@@ -1723,6 +1723,114 @@ def get_group_stats(group_id: int) -> dict:
         return json.loads(abpoxx_pybind.get_group_stats_json(_active_connection_string, group_id))
     return _ram_group_stats(group_id)
 
+def _ram_researcher_stats(researcher_id: int) -> dict:
+    res = get_researcher(researcher_id)
+    pids = products_of_researcher(researcher_id)
+    prods = [get_product(pid) for pid in pids if abpoxx_pybind.get_product(pid) is not None]
+    total_products = len(prods)
+
+    by_year: dict = {}
+    for p in prods:
+        d = p.obtained_date or p.publication_date or "Sin fecha"
+        yr = d[:4] if len(d) >= 4 and d[:4].isdigit() else "Sin fecha"
+        by_year[yr] = by_year.get(yr, 0) + 1
+
+    families_map = {1: {"code": "GNC", "name": "Generación de Nuevo Conocimiento"},
+                    2: {"code": "DTI", "name": "Desarrollo Tecnológico e Innovación"},
+                    3: {"code": "ASC", "name": "Apropiación Social del Conocimiento"},
+                    4: {"code": "DPC", "name": "Divulgación Pública de la Ciencia"},
+                    5: {"code": "FRH", "name": "Formación de Recurso Humano"}}
+    fam_counts: dict = {}
+    for p in prods:
+        if p.family_id:
+            fam_counts[p.family_id] = fam_counts.get(p.family_id, 0) + 1
+    families_distribution = [
+        {
+            "code": families_map.get(f_id, {}).get("code", f"FAM_{f_id}"),
+            "name": families_map.get(f_id, {}).get("name", f"Familia {f_id}"),
+            "count": cnt,
+            "percentage": round((cnt / max(total_products, 1)) * 100, 1),
+        }
+        for f_id, cnt in sorted(fam_counts.items(), key=lambda x: x[1], reverse=True)
+    ]
+
+    st_counts: dict = {}
+    for p in prods:
+        if p.subtype_id:
+            st_counts[p.subtype_id] = st_counts.get(p.subtype_id, 0) + 1
+    top_subtypes = [
+        {"subtype_id": sid, "code": "", "name": f"Subtipo {sid}", "count": cnt}
+        for sid, cnt in sorted(st_counts.items(), key=lambda x: x[1], reverse=True)[:6]
+    ]
+
+    gids = groups_of_researcher(researcher_id)
+    prod_set = set(pids)
+    groups_contrib = []
+    for gid in gids:
+        try:
+            g = get_group(gid)
+            g_pids = set(products_of_group(gid)).intersection(prod_set)
+            cnt = len(g_pids)
+            groups_contrib.append({
+                "id": gid,
+                "name": g.name,
+                "acronym": g.acronym or "",
+                "role": "Integrante",
+                "products_count": cnt,
+                "percentage": round((cnt / max(total_products, 1)) * 100, 1),
+            })
+        except KeyError:
+            pass
+    groups_contrib.sort(key=lambda x: x["products_count"], reverse=True)
+
+    coauthor_counts: dict = {}
+    for pid in pids:
+        try:
+            aids = abpoxx_pybind.authors_of_product_ram(pid)
+            for aid in aids:
+                if aid != researcher_id:
+                    coauthor_counts[aid] = coauthor_counts.get(aid, 0) + 1
+        except Exception:
+            pass
+
+    top_coauthors = []
+    for aid, cnt in sorted(coauthor_counts.items(), key=lambda x: x[1], reverse=True)[:5]:
+        try:
+            cres = get_researcher(aid)
+            top_coauthors.append({
+                "id": aid,
+                "name": f"{cres.first_names} {cres.last_names}".strip(),
+                "highest_education": cres.highest_education_level or "Pregrado",
+                "shared_products": cnt,
+            })
+        except KeyError:
+            pass
+
+    endorsed_count = sum(1 for p in prods if getattr(p, "is_endorsed", False))
+    valid_count = sum(1 for p in prods if p.validation_status == "valid")
+
+    return {
+        "total_products": total_products,
+        "by_year": [{"year": y, "count": c} for y, c in sorted(by_year.items())],
+        "families_distribution": families_distribution,
+        "top_subtypes": top_subtypes,
+        "groups_contribution": groups_contrib,
+        "top_coauthors": top_coauthors,
+        "strategic_ratios": {
+            "endorsed_count": endorsed_count,
+            "endorsement_rate": round((endorsed_count / max(total_products, 1)) * 100, 1),
+            "valid_count": valid_count,
+            "validation_rate": round((valid_count / max(total_products, 1)) * 100, 1),
+            "total_coauthors": len(coauthor_counts),
+        },
+    }
+
+def get_researcher_stats(researcher_id: int) -> dict:
+    get_researcher(researcher_id)  # 404 si no existe
+    if _active_connection_string:
+        return json.loads(abpoxx_pybind.get_researcher_stats_json(_active_connection_string, researcher_id))
+    return _ram_researcher_stats(researcher_id)
+
 def get_group_projects(group_id: int) -> List[Project]:
     get_group(group_id)  # 404 si no existe
     return [_to_project_model(abpoxx_pybind.get_project(pid))

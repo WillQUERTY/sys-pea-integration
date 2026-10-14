@@ -781,6 +781,16 @@ async def list_researcher_products(res_id: int):
             pass
     return products
 
+@router.get("/researchers/{res_id}/stats", tags=["Researchers"])
+async def get_researcher_stats_endpoint(res_id: int):
+    """Retrieve statistical indicators, production dynamics, and group contributions for a researcher."""
+    try:
+        return repository.get_researcher_stats(res_id)
+    except KeyError:
+        raise HTTPException(status_code=404, detail="Investigador no encontrado")
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
 # -------------------------------------------------------------------
 # Product Endpoints (CRUD, Ventana de Observación & Validación)
 # -------------------------------------------------------------------
