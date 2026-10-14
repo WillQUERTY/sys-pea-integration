@@ -1328,7 +1328,7 @@ async def compare_groups_get_endpoint(
     parsed_ids: Optional[List[int]] = None
     if group_ids:
         try:
-            parsed_ids = [int(x.strip()) for x in group_ids.split(",") if x.strip().isdigit()]
+            parsed_ids = [int(x.strip()) for x in group_ids.split(",") if x.strip().lstrip("-").isdigit()]
         except Exception:
             parsed_ids = None
     from .. import analytics_comparator

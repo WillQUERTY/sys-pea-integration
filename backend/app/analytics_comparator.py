@@ -58,7 +58,7 @@ def compare_groups_analytics(group_ids: Optional[List[int]] = None) -> Dict[str,
         # Mantener orden y eliminar duplicados
         seen = set()
         for gid in group_ids:
-            if gid not in seen and gid > 0:
+            if gid not in seen and gid != 0:
                 seen.add(gid)
                 target_ids.append(gid)
                 
@@ -81,6 +81,108 @@ def compare_groups_analytics(group_ids: Optional[List[int]] = None) -> Dict[str,
     # 2. Recolectar datos por cada grupo
     groups_data = []
     for gid in target_ids:
+        if gid == -1:
+            # Benchmark 1: Media Institucional UPC
+            all_groups = repository.list_groups()
+            all_stats = []
+            for ag in all_groups:
+                if ag.id:
+                    try:
+                        all_stats.append(repository.get_group_stats(ag.id))
+                    except Exception:
+                        pass
+            cnt = len(all_stats) or 1
+            avg_products = round(sum(s.get("total_products", 0) for s in all_stats) / cnt, 1)
+            avg_members = round(sum(s.get("total_members", 0) for s in all_stats) / cnt, 1)
+            avg_gnc = round(sum(
+                next((it.get("count", 0) for it in s.get("families_distribution", []) if it.get("code") in ("GNC", "FAM_6")), 0)
+                for s in all_stats
+            ) / cnt, 1)
+            avg_dti = round(sum(
+                next((it.get("count", 0) for it in s.get("families_distribution", []) if it.get("code") in ("DTI", "FAM_7")), 0)
+                for s in all_stats
+            ) / cnt, 1)
+            avg_asc = round(sum(
+                next((it.get("count", 0) for it in s.get("families_distribution", []) if it.get("code") in ("ASC", "DPC", "FAM_9")), 0)
+                for s in all_stats
+            ) / cnt, 1)
+            avg_frh = round(sum(
+                next((it.get("count", 0) for it in s.get("families_distribution", []) if it.get("code") in ("FRH", "FAM_10")), 0)
+                for s in all_stats
+            ) / cnt, 1)
+            avg_prod = round(avg_products / (avg_members or 1), 2)
+            avg_cohesion = 20.0
+
+            groups_data.append({
+                "id": -1,
+                "name": "Promedio Institucional UPC",
+                "acronym": "Media UPC",
+                "classification": "Línea Base",
+                "institution": "Universidad Popular del Cesar",
+                "external_code": "BENCHMARK-UPC",
+                "status": "benchmark",
+                "total_products": avg_products,
+                "total_members": avg_members,
+                "top_researchers": [],
+                "strategic_ratios": {
+                    "avg_products_per_member": avg_prod,
+                    "postgraduate_rate": 25.0,
+                    "postgraduate_count": 0,
+                    "endorsement_rate": 100.0,
+                    "validation_rate": 100.0,
+                },
+                "network_summary": {
+                    "cohesion_index": avg_cohesion,
+                    "density": 0.15,
+                    "total_edges": 0,
+                },
+                "raw_dimensions": {
+                    "gnc": avg_gnc,
+                    "dti": avg_dti,
+                    "asc": avg_asc,
+                    "frh": avg_frh,
+                    "cohesion": avg_cohesion,
+                    "productivity": avg_prod,
+                }
+            })
+            continue
+
+        if gid == -2:
+            # Benchmark 2: Estándar Minciencias A1
+            groups_data.append({
+                "id": -2,
+                "name": "Estándar Minciencias (Cat. A1)",
+                "acronym": "Meta A1",
+                "classification": "Meta A1",
+                "institution": "Minciencias",
+                "external_code": "BENCHMARK-MINCIENCIAS",
+                "status": "benchmark",
+                "total_products": 150,
+                "total_members": 15,
+                "top_researchers": [],
+                "strategic_ratios": {
+                    "avg_products_per_member": 10.0,
+                    "postgraduate_rate": 40.0,
+                    "postgraduate_count": 6,
+                    "endorsement_rate": 100.0,
+                    "validation_rate": 100.0,
+                },
+                "network_summary": {
+                    "cohesion_index": 45.0,
+                    "density": 0.35,
+                    "total_edges": 25,
+                },
+                "raw_dimensions": {
+                    "gnc": 45,
+                    "dti": 15,
+                    "asc": 25,
+                    "frh": 35,
+                    "cohesion": 45.0,
+                    "productivity": 10.0,
+                }
+            })
+            continue
+
         try:
             grp = repository.get_group(gid)
         except KeyError:

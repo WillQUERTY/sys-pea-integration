@@ -1,4 +1,3 @@
-import pytest
 from fastapi.testclient import TestClient
 from backend.app.main import app
 from backend.app import repository, analytics_comparator
@@ -55,3 +54,15 @@ def test_compare_groups_api_endpoints():
     pdata = post_resp.json()
     assert "groups" in pdata
     assert "radar_chart_data" in pdata
+
+def test_compare_groups_virtual_benchmarks():
+    # Test GET with virtual benchmark IDs -1 (Media UPC) and -2 (Meta A1)
+    response = client.get("/api/v1/analytics/compare-groups?group_ids=-1,-2")
+    assert response.status_code == 200
+    data = response.json()
+    assert len(data["groups"]) == 2
+    acronyms = [g["acronym"] for g in data["groups"]]
+    assert "Media UPC" in acronyms
+    assert "Meta A1" in acronyms
+    assert len(data["radar_chart_data"]) == 6
+

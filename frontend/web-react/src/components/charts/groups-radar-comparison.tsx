@@ -38,25 +38,27 @@ import {
   Users,
   Award,
   Layers,
+  Plus,
+  ChevronDown,
 } from 'lucide-react'
 import {
   compareGroupsAnalytics,
   listGroups,
   type GroupsComparisonResponse,
-  type GroupRadarChartRow,
 } from '@/lib/api'
 import { parseMincienciasClassification } from '@/lib/utils'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select'
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu'
 
 export const COMPARISON_GROUP_PALETTE = [
   {
@@ -103,6 +105,23 @@ export const COMPARISON_GROUP_PALETTE = [
   },
 ]
 
+export const BENCHMARK_OPTIONS = [
+  {
+    id: -1,
+    acronym: 'Media UPC',
+    name: 'Promedio Institucional UPC',
+    description: 'Línea base institucional calculada',
+    badgeText: 'Línea Base',
+  },
+  {
+    id: -2,
+    acronym: 'Meta A1',
+    name: 'Estándar Minciencias (Cat. A1)',
+    description: 'Meta normativa de investigación de excelencia',
+    badgeText: 'Meta A1',
+  },
+]
+
 const DIMENSION_ICONS: Record<string, React.ElementType> = {
   gnc: BookOpen,
   dti: Cpu,
@@ -118,7 +137,8 @@ interface CustomTooltipProps {
     name: string
     value: number
     color: string
-    payload: GroupRadarChartRow
+    dataKey?: string
+    payload: any
   }>
 }
 
@@ -136,7 +156,7 @@ function RadarCustomTooltip({ active, payload }: CustomTooltipProps) {
       </div>
       <div className='space-y-1.5'>
         {payload.map((item) => {
-          const rawVal = row[`${item.name}_raw`]
+          const rawVal = item.dataKey ? row[`${item.dataKey}_raw`] : row[`${item.name}_raw`]
           return (
             <div key={item.name} className='flex items-center justify-between gap-3'>
               <div className='flex items-center gap-1.5 min-w-0'>
@@ -147,7 +167,7 @@ function RadarCustomTooltip({ active, payload }: CustomTooltipProps) {
                 <span className='font-medium text-foreground truncate'>{item.name}:</span>
               </div>
               <div className='text-right font-mono font-semibold text-foreground'>
-                {rawVal !== undefined ? rawVal : ''} {row.unit}{' '}
+                {rawVal !== undefined && rawVal !== null ? rawVal : ''} {row.unit}{' '}
                 <span className='text-[10px] font-normal text-muted-foreground'>
                   ({item.value}%)
                 </span>
@@ -172,11 +192,9 @@ export function GroupsRadarComparison({
   showGroupSelector = true,
 }: GroupsRadarComparisonProps) {
   const [selectedIds, setSelectedIds] = useState<number[]>(initialGroupIds)
-  const [candidateId, setCandidateId] = useState<string>('')
   const [hoveredGroupId, setHoveredGroupId] = useState<number | null>(null)
   const [hiddenGroupIds, setHiddenGroupIds] = useState<number[]>([])
   const [viewMode, setViewMode] = useState<'radar' | 'bars'>('radar')
-  const [showTalent, setShowTalent] = useState(false)
 
   // 1. Cargar datos comparativos
   const { data, isLoading, isError, refetch } = useQuery<GroupsComparisonResponse>({
@@ -197,20 +215,26 @@ export function GroupsRadarComparison({
     return all.filter((g) => g.id && !selectedIds.includes(g.id))
   }, [groupsListQuery.data, selectedIds])
 
+  const availableBenchmarks = useMemo(() => {
+    return BENCHMARK_OPTIONS.filter((b) => !selectedIds.includes(b.id))
+  }, [selectedIds])
+
   const handleAddGroup = (idStr: string) => {
     const id = parseInt(idStr, 10)
     if (!isNaN(id) && !selectedIds.includes(id)) {
       if (selectedIds.length >= 6) {
-        toast.info('Máximo 6 grupos simultáneos para garantizar legibilidad analítica')
+        toast.info('Máximo 6 grupos o referentes simultáneos')
         return
       }
       setSelectedIds([...selectedIds, id])
-      setCandidateId('')
     }
   }
 
   const handleRemoveGroup = (id: number) => {
-    if (selectedIds.length <= 1) return
+    if (selectedIds.length <= 1) {
+      toast.info('Debe haber al menos un grupo o referente en la comparación')
+      return
+    }
     setSelectedIds(selectedIds.filter((item) => item !== id))
     setHiddenGroupIds(hiddenGroupIds.filter((item) => item !== id))
   }
@@ -360,26 +384,20 @@ export function GroupsRadarComparison({
   return (
     <Card className={`border-border/60 shadow-sm overflow-hidden ${className}`}>
       {/* Header & Acciones del Comparador */}
-      <CardHeader className='pb-4 border-b border-border/40 bg-gradient-to-r from-card via-card to-primary/5'>
-        <div className='flex flex-col lg:flex-row lg:items-center justify-between gap-4'>
-          <div className='space-y-1'>
-            <div className='flex items-center gap-2'>
-              <Badge className='bg-primary/20 text-primary border-primary/30 text-[10px] uppercase font-bold tracking-wider'>
-                Fase 5 • Benchmarking
-              </Badge>
-              <CardTitle className='text-xl sm:text-2xl font-black tracking-tight'>
-                Benchmarking Inter-grupal & Tablero de Rendimiento
-              </CardTitle>
-            </div>
-            <CardDescription className='text-xs sm:text-sm text-muted-foreground'>
-              Evaluación relativa multidimensional bajo el Modelo Minciencias 2024 e indicadores de
-              red de coautoría.
+      <CardHeader className='pb-3.5 border-b border-border/40 bg-gradient-to-r from-card via-card to-primary/5'>
+        <div className='flex flex-col sm:flex-row sm:items-center justify-between gap-3'>
+          <div className='space-y-0.5'>
+            <CardTitle className='text-lg font-bold tracking-tight text-foreground'>
+              Benchmarking Inter-grupal
+            </CardTitle>
+            <CardDescription className='text-xs text-muted-foreground'>
+              Comparativa multidimensional bajo el Modelo Minciencias 2024 e indicadores de red.
             </CardDescription>
           </div>
 
-          <div className='flex flex-wrap items-center gap-2'>
-            {/* View Switcher: Radar vs Barras */}
-            <div className='flex items-center bg-muted/70 rounded-xl p-1 border border-border/60'>
+          <div className='flex items-center gap-2'>
+            {/* Switcher de Vista: Radar vs Barras */}
+            <div className='flex items-center bg-muted/70 rounded-xl p-0.5 border border-border/60'>
               <button
                 type='button'
                 onClick={() => setViewMode('radar')}
@@ -388,7 +406,7 @@ export function GroupsRadarComparison({
                     ? 'bg-background text-foreground shadow-2xs'
                     : 'text-muted-foreground hover:text-foreground'
                 }`}
-                title='Ver como Polígono de Radar'
+                title='Polígono de Radar'
               >
                 <RadarIcon className='h-3.5 w-3.5' />
                 <span>Radar</span>
@@ -401,357 +419,565 @@ export function GroupsRadarComparison({
                     ? 'bg-background text-foreground shadow-2xs'
                     : 'text-muted-foreground hover:text-foreground'
                 }`}
-                title='Ver como Barras Agrupadas por Dimensión'
+                title='Barras Agrupadas'
               >
                 <BarChart3 className='h-3.5 w-3.5' />
                 <span>Barras</span>
               </button>
             </div>
 
-            {/* Acciones de Exportación */}
-            <Button
-              variant='outline'
-              size='sm'
-              onClick={handleExportCsv}
-              className='h-8 text-xs font-medium border-border/80 hover:bg-background'
-              title='Descargar matriz de datos en Excel/CSV'
-            >
-              <Download className='mr-1.5 h-3.5 w-3.5 text-emerald-600' />
-              Exportar (CSV)
-            </Button>
-
-            <Button
-              variant='outline'
-              size='sm'
-              onClick={handleCopySummary}
-              className='h-8 text-xs font-medium border-border/80 hover:bg-background'
-              title='Copiar resumen ejecutivo para informes'
-            >
-              <Copy className='mr-1.5 h-3.5 w-3.5 text-primary' />
-              Copiar Resumen
-            </Button>
-
-            {showGroupSelector && (
-              <>
-                <Button
-                  variant='outline'
-                  size='sm'
-                  onClick={handleResetLeaders}
-                  className='h-8 text-xs font-semibold border-amber-500/30 text-amber-600 dark:text-amber-400 hover:bg-amber-500/10'
-                  title='Comparar los colectivos insignia AITICE vs GISICO'
-                >
-                  <Sparkles className='mr-1.5 h-3.5 w-3.5 text-amber-500' />
-                  Líderes UPC
+            {/* Menú compacto de Exportación y Opciones */}
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant='outline' size='sm' className='h-8 text-xs font-medium'>
+                  <Download className='mr-1.5 h-3.5 w-3.5 text-muted-foreground' />
+                  Exportar
+                  <ChevronDown className='ml-1 h-3 w-3 text-muted-foreground' />
                 </Button>
-
-                {selectedIds.length < 6 && (
-                  <Select value={candidateId} onValueChange={handleAddGroup}>
-                    <SelectTrigger className='h-8 w-44 text-xs bg-background'>
-                      <SelectValue placeholder='+ Añadir grupo…' />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {availableGroups.map((g) => (
-                        <SelectItem key={g.id} value={String(g.id)} className='text-xs'>
-                          {g.acronym || g.name}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                )}
-              </>
-            )}
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align='end' className='w-56'>
+                <DropdownMenuItem onClick={handleExportCsv} className='text-xs cursor-pointer'>
+                  <Download className='mr-2 h-3.5 w-3.5 text-emerald-600' />
+                  Descargar Matriz (CSV / Excel)
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={handleCopySummary} className='text-xs cursor-pointer'>
+                  <Copy className='mr-2 h-3.5 w-3.5 text-primary' />
+                  Copiar Resumen para Informe
+                </DropdownMenuItem>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem onClick={handleResetLeaders} className='text-xs cursor-pointer'>
+                  <Sparkles className='mr-2 h-3.5 w-3.5 text-amber-500' />
+                  Restablecer Selección Inicial
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
           </div>
         </div>
 
-        {/* Chips de Grupos Activos con Toggle de Visibilidad e Interacción Hover */}
-        <div className='flex flex-wrap items-center gap-2 pt-2'>
-          <span className='text-xs font-semibold text-muted-foreground mr-1'>Comparando:</span>
-          {groups.map((grp, index) => {
-            const palette = COMPARISON_GROUP_PALETTE[index % COMPARISON_GROUP_PALETTE.length]
-            const isHidden = hiddenGroupIds.includes(grp.id)
-            const isHovered = hoveredGroupId === grp.id
+        {/* Barra de Grupos Comparados y Selector Inline */}
+        <div className='flex flex-wrap items-center justify-between gap-2 pt-2'>
+          <div className='flex flex-wrap items-center gap-2'>
+            <span className='text-xs font-semibold text-muted-foreground mr-1'>Comparando:</span>
+            {groups.map((grp, index) => {
+              const palette = COMPARISON_GROUP_PALETTE[index % COMPARISON_GROUP_PALETTE.length]
+              const isHidden = hiddenGroupIds.includes(grp.id)
+              const isHovered = hoveredGroupId === grp.id
+              const isBenchmark = grp.id < 0
 
-            return (
-              <div
-                key={grp.id}
-                onMouseEnter={() => setHoveredGroupId(grp.id)}
-                onMouseLeave={() => setHoveredGroupId(null)}
-                className={`flex items-center gap-1.5 px-2.5 py-1 text-xs font-bold rounded-lg border transition-all cursor-pointer ${
-                  isHidden
-                    ? 'opacity-40 bg-muted/30 border-dashed border-border text-muted-foreground'
-                    : isHovered
-                      ? `${palette.badge} ring-2 ring-primary/40 shadow-xs scale-102`
-                      : palette.badge
-                }`}
-              >
-                <span className={`h-2 w-2 rounded-full ${palette.dot}`} />
-                <span className='font-extrabold'>{grp.acronym}</span>
-                <span className='text-[10px] opacity-80 font-mono font-semibold'>
-                  ({parseMincienciasClassification(grp.classification).badgeText || grp.classification})
-                </span>
-
-                {/* Botón de Visibilidad (Ojo) */}
-                <button
-                  type='button'
-                  onClick={(e) => {
-                    e.stopPropagation()
-                    handleToggleHide(grp.id)
-                  }}
-                  className='ml-1 text-muted-foreground hover:text-foreground'
-                  title={isHidden ? 'Mostrar en gráficos' : 'Ocultar temporalmente'}
+              return (
+                <div
+                  key={grp.id}
+                  onMouseEnter={() => setHoveredGroupId(grp.id)}
+                  onMouseLeave={() => setHoveredGroupId(null)}
+                  className={`flex items-center gap-1.5 px-2.5 py-1 text-xs font-bold rounded-lg border transition-all cursor-pointer ${
+                    isHidden
+                      ? 'opacity-40 bg-muted/30 border-dashed border-border text-muted-foreground'
+                      : isBenchmark
+                        ? grp.id === -1
+                          ? 'bg-purple-500/10 text-purple-700 dark:text-purple-300 border-dashed border-purple-500/40'
+                          : 'bg-amber-500/10 text-amber-700 dark:text-amber-300 border-dashed border-amber-500/40'
+                        : isHovered
+                          ? `${palette.badge} ring-2 ring-primary/40 shadow-xs scale-102`
+                          : palette.badge
+                  }`}
                 >
-                  {isHidden ? <EyeOff className='h-3 w-3' /> : <Eye className='h-3 w-3' />}
-                </button>
+                  <span
+                    className={`h-2 w-2 rounded-full ${
+                      isBenchmark
+                        ? grp.id === -1
+                          ? 'bg-purple-500'
+                          : 'bg-amber-500'
+                        : palette.dot
+                    }`}
+                  />
+                  <span className='font-extrabold'>{grp.acronym}</span>
+                  <span className='text-[10px] opacity-80 font-mono font-semibold'>
+                    ({grp.id < 0 ? grp.classification : parseMincienciasClassification(grp.classification).badgeText || grp.classification})
+                  </span>
 
-                {/* Botón de Remover */}
-                {groups.length > 2 && (
+                  {/* Botón de Visibilidad (Ojo) */}
                   <button
                     type='button'
                     onClick={(e) => {
                       e.stopPropagation()
-                      handleRemoveGroup(grp.id)
+                      handleToggleHide(grp.id)
                     }}
-                    className='ml-0.5 text-muted-foreground hover:text-destructive'
-                    title='Remover grupo de la comparación'
+                    className='ml-1 text-muted-foreground hover:text-foreground'
+                    title={isHidden ? 'Mostrar en gráficos' : 'Ocultar temporalmente'}
                   >
-                    <X className='h-3 w-3' />
+                    {isHidden ? <EyeOff className='h-3 w-3' /> : <Eye className='h-3 w-3' />}
                   </button>
-                )}
-              </div>
-            )
-          })}
 
-          <Button
-            size='sm'
-            variant='ghost'
-            onClick={() => setShowTalent(!showTalent)}
-            className='h-7 text-[11px] text-muted-foreground hover:text-foreground px-2'
-          >
-            <Users className='mr-1 h-3 w-3' />
-            {showTalent ? 'Ocultar Investigadores Clave' : 'Ver Investigadores Clave'}
-          </Button>
-        </div>
-      </CardHeader>
-
-      <CardContent className='pt-6 space-y-6'>
-        {/* Píldoras de Liderazgo por Dimensión */}
-        <div>
-          <div className='flex items-center gap-1.5 mb-2.5'>
-            <Trophy className='h-4 w-4 text-amber-500' />
-            <h4 className='text-xs font-bold uppercase tracking-wider text-muted-foreground'>
-              Liderazgo Institucional por Dimensión
-            </h4>
-          </div>
-          <div className='grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2.5'>
-            {leaders.map((leader) => {
-              const IconComp = DIMENSION_ICONS[leader.dimension_key] || Trophy
-              const groupIndex = groups.findIndex((g) => g.id === leader.leader_group_id)
-              const palette =
-                groupIndex >= 0
-                  ? COMPARISON_GROUP_PALETTE[groupIndex % COMPARISON_GROUP_PALETTE.length]
-                  : COMPARISON_GROUP_PALETTE[0]
-              const isGroupHovered = hoveredGroupId === leader.leader_group_id
-
-              return (
-                <div
-                  key={leader.dimension_key}
-                  onMouseEnter={() => setHoveredGroupId(leader.leader_group_id)}
-                  onMouseLeave={() => setHoveredGroupId(null)}
-                  className={`flex flex-col justify-between p-3 rounded-xl border transition-all cursor-pointer ${
-                    isGroupHovered
-                      ? 'border-primary ring-1 ring-primary/40 bg-card shadow-xs scale-102'
-                      : 'border-border/70 bg-card/60 shadow-2xs hover:border-primary/40'
-                  }`}
-                >
-                  <div className='flex items-center justify-between text-muted-foreground mb-1.5'>
-                    <span className='text-[11px] font-bold uppercase truncate' title={leader.dimension_label}>
-                      {leader.dimension_label.split('(')[1]?.replace(')', '') || leader.dimension_label}
-                    </span>
-                    <IconComp className='h-3.5 w-3.5 text-primary opacity-80 shrink-0' />
-                  </div>
-                  <div className='space-y-0.5'>
-                    <div className='flex items-center gap-1.5'>
-                      <span className={`h-2 w-2 rounded-full shrink-0 ${palette.dot}`} />
-                      <span className='text-xs font-extrabold text-foreground truncate' title={leader.leader_group_name}>
-                        {leader.leader_acronym}
-                      </span>
-                    </div>
-                    <p className='text-sm font-black font-mono tracking-tight text-foreground'>
-                      {leader.value}{' '}
-                      <span className='text-[10px] font-normal text-muted-foreground'>
-                        {leader.unit}
-                      </span>
-                    </p>
-                  </div>
+                  {/* Botón de Remover */}
+                  {groups.length > 1 && (
+                    <button
+                      type='button'
+                      onClick={(e) => {
+                        e.stopPropagation()
+                        handleRemoveGroup(grp.id)
+                      }}
+                      className='ml-0.5 text-muted-foreground hover:text-destructive'
+                      title='Remover de la comparación'
+                    >
+                      <X className='h-3 w-3' />
+                    </button>
+                  )}
                 </div>
               )
             })}
+
+            {/* Botón Inline Añadir Grupo / Referente */}
+            {showGroupSelector && (
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button
+                    variant='outline'
+                    size='sm'
+                    className='h-7 px-2.5 text-xs font-semibold rounded-lg border-dashed border-primary/40 text-primary hover:bg-primary/5 transition-colors'
+                  >
+                    <Plus className='mr-1 h-3 w-3' />
+                    Añadir a la comparación
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align='start' className='w-72 max-h-80 overflow-y-auto'>
+                  {availableGroups.length > 0 && (
+                    <>
+                      <div className='px-2 py-1 text-[10px] font-bold uppercase tracking-wider text-muted-foreground'>
+                        Grupos Registrados
+                      </div>
+                      {availableGroups.map((g) => (
+                        <DropdownMenuItem
+                          key={g.id}
+                          onClick={() => handleAddGroup(String(g.id))}
+                          className='flex items-center justify-between text-xs cursor-pointer py-1.5'
+                        >
+                          <span className='font-semibold truncate mr-2'>{g.acronym || g.name}</span>
+                          {g.classification && (
+                            <Badge variant='outline' className='text-[10px] font-mono shrink-0'>
+                              {parseMincienciasClassification(g.classification).badgeText || g.classification}
+                            </Badge>
+                          )}
+                        </DropdownMenuItem>
+                      ))}
+                    </>
+                  )}
+
+                  {availableBenchmarks.length > 0 && (
+                    <>
+                      {availableGroups.length > 0 && <DropdownMenuSeparator />}
+                      <div className='px-2 py-1 text-[10px] font-bold uppercase tracking-wider text-muted-foreground'>
+                        Líneas Base y Benchmarks
+                      </div>
+                      {availableBenchmarks.map((b) => (
+                        <DropdownMenuItem
+                          key={b.id}
+                          onClick={() => handleAddGroup(String(b.id))}
+                          className='flex items-center justify-between text-xs cursor-pointer py-1.5'
+                        >
+                          <div className='flex items-center gap-2 min-w-0'>
+                            <Sparkles className='h-3.5 w-3.5 text-amber-500 shrink-0' />
+                            <div className='truncate'>
+                              <p className='font-bold text-foreground'>{b.name}</p>
+                              <p className='text-[10px] text-muted-foreground'>{b.description}</p>
+                            </div>
+                          </div>
+                          <Badge variant='secondary' className='text-[10px] font-mono shrink-0 ml-2'>
+                            {b.badgeText}
+                          </Badge>
+                        </DropdownMenuItem>
+                      ))}
+                    </>
+                  )}
+
+                  {availableGroups.length === 0 && availableBenchmarks.length === 0 && (
+                    <div className='p-3 text-center text-xs text-muted-foreground'>
+                      Todos los grupos y referentes disponibles ya están incluidos
+                    </div>
+                  )}
+                </DropdownMenuContent>
+              </DropdownMenu>
+            )}
           </div>
         </div>
+      </CardHeader>
 
-        {/* Sección Central: Visualizador Comparativo (Radar o Barras) */}
-        <div className='grid grid-cols-1 lg:grid-cols-12 gap-6 items-center'>
-          {/* Contenedor del Gráfico */}
-          <div className='lg:col-span-8 bg-card/40 border border-border/60 rounded-2xl p-4 sm:p-6 shadow-2xs'>
-            <div className='flex items-center justify-between mb-2'>
+      <CardContent className='pt-5 space-y-5'>
+        {/* Sistema de Pestañas: Radar, Matriz Detallada, Autores Clave */}
+        <Tabs defaultValue='radar' className='w-full space-y-4'>
+          <div className='flex flex-wrap items-center justify-between gap-3 border-b border-border/50 pb-3'>
+            <TabsList className='bg-muted/60 p-1 rounded-xl h-9'>
+              <TabsTrigger
+                value='radar'
+                className='text-xs font-semibold px-3 py-1.5 gap-1.5 data-[state=active]:bg-background data-[state=active]:shadow-xs'
+              >
+                <RadarIcon className='h-3.5 w-3.5 text-primary' />
+                <span>Radar y Diagnóstico</span>
+              </TabsTrigger>
+              <TabsTrigger
+                value='matrix'
+                className='text-xs font-semibold px-3 py-1.5 gap-1.5 data-[state=active]:bg-background data-[state=active]:shadow-xs'
+              >
+                <Scale className='h-3.5 w-3.5 text-amber-500' />
+                <span>Matriz de Indicadores</span>
+              </TabsTrigger>
+              <TabsTrigger
+                value='talent'
+                className='text-xs font-semibold px-3 py-1.5 gap-1.5 data-[state=active]:bg-background data-[state=active]:shadow-xs'
+              >
+                <Users className='h-3.5 w-3.5 text-blue-500' />
+                <span>Autores Clave ({groups.filter((g) => g.id > 0).length})</span>
+              </TabsTrigger>
+            </TabsList>
+
+            <span className='text-[11px] text-muted-foreground hidden sm:inline'>
+              {visibleGroups.length} serie{visibleGroups.length !== 1 ? 's' : ''} activa{visibleGroups.length !== 1 ? 's' : ''}
+            </span>
+          </div>
+
+          {/* PESTAÑA 1: RADAR Y DIAGNOSTICO */}
+          <TabsContent value='radar' className='mt-0 space-y-4'>
+            {/* Strip compacto de líderes por dimensión */}
+            <div className='grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2'>
+              {leaders.map((leader) => {
+                const IconComp = DIMENSION_ICONS[leader.dimension_key] || Trophy
+                const isGroupHovered = hoveredGroupId === leader.leader_group_id
+
+                return (
+                  <div
+                    key={leader.dimension_key}
+                    onMouseEnter={() => setHoveredGroupId(leader.leader_group_id)}
+                    onMouseLeave={() => setHoveredGroupId(null)}
+                    className={`flex items-center gap-2 p-2 rounded-xl border transition-all cursor-pointer ${
+                      isGroupHovered
+                        ? 'border-primary ring-1 ring-primary/40 bg-card shadow-xs'
+                        : 'border-border/60 bg-card/50 hover:border-primary/40'
+                    }`}
+                  >
+                    <div className='p-1.5 rounded-lg bg-primary/10 shrink-0 text-primary'>
+                      <IconComp className='h-3 w-3' />
+                    </div>
+                    <div className='min-w-0'>
+                      <div className='text-[10px] font-bold text-muted-foreground uppercase truncate'>
+                        {leader.dimension_label.split('(')[1]?.replace(')', '') || leader.dimension_label}
+                      </div>
+                      <div className='flex items-baseline gap-1'>
+                        <span className='text-xs font-black text-foreground truncate'>
+                          {leader.leader_acronym}
+                        </span>
+                        <span className='text-[10px] font-mono text-muted-foreground'>
+                          ({leader.value} {leader.unit})
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                )
+              })}
+            </div>
+
+            {/* Gráfico Radar / Barras (8 cols) + Hallazgos Clave (4 cols) */}
+            <div className='grid grid-cols-1 lg:grid-cols-12 gap-5 items-stretch'>
+              <div className='lg:col-span-8 bg-card/40 border border-border/60 rounded-2xl p-4 sm:p-5 shadow-2xs flex flex-col justify-between'>
+                <div className='flex items-center justify-between mb-2'>
+                  <div>
+                    <h4 className='text-sm font-bold text-foreground'>
+                      {viewMode === 'radar'
+                        ? 'Polígono de Capacidades Comparadas (0 - 100%)'
+                        : 'Distribución Comparativa por Dimensión (Puntuación Relativa %)'}
+                    </h4>
+                    <p className='text-[11px] text-muted-foreground'>
+                      Puntuaciones normalizadas en relación al colectivo líder de cada categoría
+                    </p>
+                  </div>
+                </div>
+
+                <div className='h-[350px] sm:h-[390px] w-full'>
+                  <ResponsiveContainer width='100%' height='100%'>
+                    {viewMode === 'radar' ? (
+                      <RadarChart data={radarChartData} outerRadius='75%'>
+                        <PolarGrid stroke='hsl(var(--border))' strokeDasharray='3 3' />
+                        <PolarAngleAxis
+                          dataKey='short_label'
+                          tick={{
+                            fill: 'hsl(var(--foreground))',
+                            fontSize: 12,
+                            fontWeight: 600,
+                          }}
+                        />
+                        <PolarRadiusAxis
+                          angle={30}
+                          domain={[0, 100]}
+                          stroke='hsl(var(--muted-foreground))'
+                          tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 10 }}
+                        />
+                        <Tooltip content={<RadarCustomTooltip />} />
+                        <Legend
+                          wrapperStyle={{ paddingTop: 16 }}
+                          formatter={(value) => {
+                            const grp = groups.find((g) => `group_${g.id}` === value)
+                            return (
+                              <span
+                                onMouseEnter={() => grp && setHoveredGroupId(grp.id)}
+                                onMouseLeave={() => setHoveredGroupId(null)}
+                                className={`text-xs font-semibold cursor-pointer mr-3 ${
+                                  hoveredGroupId && grp?.id === hoveredGroupId
+                                    ? 'text-primary underline'
+                                    : 'text-foreground'
+                                }`}
+                              >
+                                {grp?.acronym ?? value}
+                              </span>
+                            )
+                          }}
+                        />
+                        {visibleGroups.map((grp) => {
+                          const origIndex = groups.findIndex((g) => g.id === grp.id)
+                          const palette =
+                            COMPARISON_GROUP_PALETTE[origIndex % COMPARISON_GROUP_PALETTE.length]
+                          const isHovered = hoveredGroupId === grp.id
+                          const isBenchmark = grp.id < 0
+
+                          return (
+                            <Radar
+                              key={grp.id}
+                              name={grp.acronym}
+                              dataKey={`group_${grp.id}`}
+                              stroke={isBenchmark ? (grp.id === -1 ? '#8b5cf6' : '#f59e0b') : palette.stroke}
+                              fill={isBenchmark ? (grp.id === -1 ? '#8b5cf6' : '#f59e0b') : palette.fill}
+                              fillOpacity={isHovered ? 0.45 : isBenchmark ? 0.08 : hoveredGroupId !== null ? 0.08 : 0.22}
+                              strokeWidth={isHovered ? 3.5 : isBenchmark ? 2 : hoveredGroupId !== null ? 1.5 : 2.5}
+                              strokeDasharray={grp.id === -1 ? '4 4' : grp.id === -2 ? '3 3' : undefined}
+                              dot={{
+                                r: isHovered ? 5 : 3.5,
+                                fill: isBenchmark ? (grp.id === -1 ? '#8b5cf6' : '#f59e0b') : palette.stroke,
+                              }}
+                            />
+                          )
+                        })}
+                      </RadarChart>
+                    ) : (
+                      <BarChart data={radarChartData} margin={{ top: 20, right: 30, left: 10, bottom: 20 }}>
+                        <CartesianGrid strokeDasharray='3 3' stroke='hsl(var(--border))' opacity={0.6} />
+                        <XAxis
+                          dataKey='short_label'
+                          tick={{ fill: 'hsl(var(--foreground))', fontSize: 12, fontWeight: 600 }}
+                        />
+                        <YAxis
+                          domain={[0, 100]}
+                          tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 11 }}
+                          unit='%'
+                        />
+                        <Tooltip content={<RadarCustomTooltip />} />
+                        <Legend
+                          wrapperStyle={{ paddingTop: 12 }}
+                          formatter={(value) => (
+                            <span className='text-xs font-semibold text-foreground mr-3'>
+                              {value}
+                            </span>
+                          )}
+                        />
+                        {visibleGroups.map((grp) => {
+                          const origIndex = groups.findIndex((g) => g.id === grp.id)
+                          const palette =
+                            COMPARISON_GROUP_PALETTE[origIndex % COMPARISON_GROUP_PALETTE.length]
+                          const isHovered = hoveredGroupId === grp.id
+                          const isBenchmark = grp.id < 0
+
+                          return (
+                            <Bar
+                              key={grp.id}
+                              name={grp.acronym}
+                              dataKey={`group_${grp.id}`}
+                              fill={isBenchmark ? (grp.id === -1 ? '#8b5cf6' : '#f59e0b') : palette.fill}
+                              opacity={isHovered ? 1 : hoveredGroupId !== null ? 0.35 : 0.85}
+                              radius={[4, 4, 0, 0]}
+                            />
+                          )
+                        })}
+                      </BarChart>
+                    )}
+                  </ResponsiveContainer>
+                </div>
+              </div>
+
+              {/* Hallazgos Clave y Metodología */}
+              <div className='lg:col-span-4 space-y-4 flex flex-col justify-between'>
+                <div className='p-4 rounded-2xl bg-gradient-to-br from-primary/10 via-primary/5 to-transparent border border-primary/20 space-y-3 flex-1'>
+                  <div className='flex items-center gap-2'>
+                    <Sparkles className='h-4 w-4 text-primary' />
+                    <h4 className='text-sm font-bold text-foreground'>
+                      Hallazgos Clave de Benchmarking
+                    </h4>
+                  </div>
+                  <ul className='space-y-2.5 text-xs text-muted-foreground'>
+                    {data.insights.slice(0, 5).map((insight, idx) => (
+                      <li key={idx} className='flex items-start gap-2'>
+                        <CheckCircle2 className='h-3.5 w-3.5 text-primary shrink-0 mt-0.5' />
+                        <span className='leading-snug text-foreground/90'>{insight}</span>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+
+                <div className='p-3.5 rounded-2xl border border-border/70 bg-card/40 space-y-1.5 text-xs'>
+                  <div className='flex items-center gap-1.5 font-semibold text-foreground'>
+                    <Info className='h-3.5 w-3.5 text-muted-foreground' />
+                    <span>Metodología de Normalización</span>
+                  </div>
+                  <p className='text-muted-foreground leading-relaxed text-[11px]'>
+                    El 100% representa el puntaje del colectivo o referente líder en cada categoría.
+                    GNC, DTI, ASC y FRH corresponden a las 4 familias de Minciencias 2024.
+                  </p>
+                </div>
+              </div>
+            </div>
+          </TabsContent>
+
+          {/* PESTAÑA 2: MATRIZ DETALLADA */}
+          <TabsContent value='matrix' className='mt-0 space-y-3'>
+            <div className='flex flex-col sm:flex-row sm:items-center justify-between gap-2 bg-muted/20 p-3 rounded-xl border border-border/60'>
               <div>
                 <h4 className='text-sm font-bold text-foreground'>
-                  {viewMode === 'radar'
-                    ? 'Polígono de Capacidades Comparadas (0 - 100%)'
-                    : 'Distribución Comparativa por Dimensión (Puntuación Relativa %)'}
+                  Matriz de Indicadores Clave Lado a Lado
                 </h4>
-                <p className='text-[11px] text-muted-foreground'>
-                  Puntuaciones normalizadas en relación al colectivo líder de cada categoría
+                <p className='text-xs text-muted-foreground'>
+                  Valores absolutos y porcentuales con identificación del colectivo o referente líder
                 </p>
               </div>
+              <div className='flex items-center gap-2'>
+                <Button
+                  variant='outline'
+                  size='sm'
+                  onClick={handleExportCsv}
+                  className='h-7 text-xs font-medium'
+                >
+                  <Download className='mr-1.5 h-3 w-3 text-emerald-600' />
+                  Descargar CSV
+                </Button>
+                <Button
+                  variant='outline'
+                  size='sm'
+                  onClick={handleCopySummary}
+                  className='h-7 text-xs font-medium'
+                >
+                  <Copy className='mr-1.5 h-3 w-3 text-primary' />
+                  Copiar Resumen
+                </Button>
+              </div>
             </div>
 
-            <div className='h-[350px] sm:h-[400px] w-full'>
-              <ResponsiveContainer width='100%' height='100%'>
-                {viewMode === 'radar' ? (
-                  <RadarChart data={radarChartData} outerRadius='75%'>
-                    <PolarGrid stroke='hsl(var(--border))' strokeDasharray='3 3' />
-                    <PolarAngleAxis
-                      dataKey='short_label'
-                      tick={{
-                        fill: 'hsl(var(--foreground))',
-                        fontSize: 12,
-                        fontWeight: 600,
-                      }}
-                    />
-                    <PolarRadiusAxis
-                      angle={30}
-                      domain={[0, 100]}
-                      stroke='hsl(var(--muted-foreground))'
-                      tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 10 }}
-                    />
-                    <Tooltip content={<RadarCustomTooltip />} />
-                    <Legend
-                      wrapperStyle={{ paddingTop: 16 }}
-                      formatter={(value) => {
-                        const grp = groups.find((g) => `group_${g.id}` === value)
+            <div className='overflow-x-auto rounded-xl border border-border/70 shadow-2xs'>
+              <table className='w-full text-xs text-left border-collapse'>
+                <thead>
+                  <tr className='bg-muted/60 border-b border-border/80'>
+                    <th className='p-3 font-semibold text-muted-foreground uppercase text-[10px] tracking-wider min-w-[200px]'>
+                      Indicador Clave
+                    </th>
+                    <th className='p-3 font-semibold text-muted-foreground uppercase text-[10px] tracking-wider w-[120px]'>
+                      Categoría
+                    </th>
+                    {visibleGroups.map((grp) => {
+                      const origIndex = groups.findIndex((g) => g.id === grp.id)
+                      const palette =
+                        COMPARISON_GROUP_PALETTE[origIndex % COMPARISON_GROUP_PALETTE.length]
+                      const isHovered = hoveredGroupId === grp.id
+                      const isBenchmark = grp.id < 0
+
+                      return (
+                        <th
+                          key={grp.id}
+                          onMouseEnter={() => setHoveredGroupId(grp.id)}
+                          onMouseLeave={() => setHoveredGroupId(null)}
+                          className={`p-3 font-extrabold text-foreground min-w-[130px] border-l border-border/50 text-center transition-colors ${
+                            isHovered ? 'bg-primary/10' : ''
+                          }`}
+                        >
+                          <div className='flex items-center justify-center gap-1.5'>
+                            <span
+                              className={`h-2 w-2 rounded-full ${
+                                isBenchmark
+                                  ? grp.id === -1
+                                    ? 'bg-purple-500'
+                                    : 'bg-amber-500'
+                                  : palette.dot
+                              }`}
+                            />
+                            <span>{grp.acronym}</span>
+                          </div>
+                        </th>
+                      )
+                    })}
+                  </tr>
+                </thead>
+                <tbody className='divide-y divide-border/60'>
+                  {matrix.map((row, idx) => (
+                    <tr key={idx} className='hover:bg-muted/40 transition-colors even:bg-muted/10'>
+                      <td className='p-3 font-medium text-foreground flex items-center justify-between gap-2'>
+                        <span>{row.indicator}</span>
+                        {row.unit && (
+                          <span className='text-[10px] text-muted-foreground font-mono'>
+                            ({row.unit})
+                          </span>
+                        )}
+                      </td>
+                      <td className='p-3 text-muted-foreground text-[11px]'>
+                        <Badge variant='outline' className='text-[10px] font-normal py-0'>
+                          {row.category}
+                        </Badge>
+                      </td>
+                      {visibleGroups.map((grp) => {
+                        const val = row.values[grp.id]
+                        const isLeader = row.leader_id === grp.id
+                        const isColHovered = hoveredGroupId === grp.id
+                        const isPercentage = row.unit === '%' && typeof val === 'number'
+
                         return (
-                          <span
-                            onMouseEnter={() => grp && setHoveredGroupId(grp.id)}
-                            onMouseLeave={() => setHoveredGroupId(null)}
-                            className={`text-xs font-semibold cursor-pointer mr-3 ${
-                              hoveredGroupId && grp?.id === hoveredGroupId
-                                ? 'text-primary underline'
-                                : 'text-foreground'
+                          <td
+                            key={grp.id}
+                            className={`p-3 text-center font-mono font-medium border-l border-border/40 transition-colors ${
+                              isLeader
+                                ? 'bg-amber-500/15 font-bold text-foreground'
+                                : isColHovered
+                                  ? 'bg-primary/5 text-foreground'
+                                  : 'text-muted-foreground'
                             }`}
                           >
-                            {grp?.acronym ?? value}
-                          </span>
-                        )
-                      }}
-                    />
-                    {visibleGroups.map((grp) => {
-                      const origIndex = groups.findIndex((g) => g.id === grp.id)
-                      const palette =
-                        COMPARISON_GROUP_PALETTE[origIndex % COMPARISON_GROUP_PALETTE.length]
-                      const isHovered = hoveredGroupId === grp.id
-
-                      return (
-                        <Radar
-                          key={grp.id}
-                          name={grp.acronym}
-                          dataKey={`group_${grp.id}`}
-                          stroke={palette.stroke}
-                          fill={palette.fill}
-                          fillOpacity={isHovered ? 0.45 : hoveredGroupId !== null ? 0.08 : 0.25}
-                          strokeWidth={isHovered ? 3.5 : hoveredGroupId !== null ? 1.5 : 2.5}
-                          strokeOpacity={isHovered ? 1 : hoveredGroupId !== null ? 0.35 : 1}
-                          dot={{ r: isHovered ? 5 : 4, fill: palette.stroke }}
-                        />
-                      )
-                    })}
-                  </RadarChart>
-                ) : (
-                  <BarChart data={radarChartData} margin={{ top: 20, right: 30, left: 10, bottom: 20 }}>
-                    <CartesianGrid strokeDasharray='3 3' stroke='hsl(var(--border))' opacity={0.6} />
-                    <XAxis
-                      dataKey='short_label'
-                      tick={{ fill: 'hsl(var(--foreground))', fontSize: 12, fontWeight: 600 }}
-                    />
-                    <YAxis
-                      domain={[0, 100]}
-                      tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 11 }}
-                      unit='%'
-                    />
-                    <Tooltip content={<RadarCustomTooltip />} />
-                    <Legend
-                      wrapperStyle={{ paddingTop: 12 }}
-                      formatter={(value) => (
-                        <span className='text-xs font-semibold text-foreground mr-3'>
-                          {value}
-                        </span>
-                      )}
-                    />
-                    {visibleGroups.map((grp) => {
-                      const origIndex = groups.findIndex((g) => g.id === grp.id)
-                      const palette =
-                        COMPARISON_GROUP_PALETTE[origIndex % COMPARISON_GROUP_PALETTE.length]
-                      const isHovered = hoveredGroupId === grp.id
-
-                      return (
-                        <Bar
-                          key={grp.id}
-                          name={grp.acronym}
-                          dataKey={`group_${grp.id}`}
-                          fill={palette.fill}
-                          opacity={isHovered ? 1 : hoveredGroupId !== null ? 0.35 : 0.85}
-                          radius={[4, 4, 0, 0]}
-                        />
-                      )
-                    })}
-                  </BarChart>
-                )}
-              </ResponsiveContainer>
+                            <div className='flex flex-col items-center justify-center gap-1'>
+                              <div className='flex items-center gap-1'>
+                                <span>
+                                  {row.indicator === 'Clasificación Minciencias' && typeof val === 'string'
+                                    ? parseMincienciasClassification(val).badgeText || val
+                                    : val !== undefined && val !== null
+                                      ? val
+                                      : '—'}
+                                </span>
+                                {isLeader && <Trophy className='h-3 w-3 text-amber-500 shrink-0' />}
+                              </div>
+                              {isPercentage && val > 0 && (
+                                <div className='w-16 h-1 rounded-full bg-muted overflow-hidden'>
+                                  <div
+                                    className='h-full bg-primary/70 rounded-full'
+                                    style={{ width: `${Math.min(val, 100)}%` }}
+                                  />
+                                </div>
+                              )}
+                            </div>
+                          </td>
+                        );
+                      })}
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
             </div>
-          </div>
+          </TabsContent>
 
-          {/* Hallazgos y Conclusiones Diagnósticas */}
-          <div className='lg:col-span-4 space-y-4'>
-            <div className='p-4 rounded-2xl bg-gradient-to-br from-primary/10 via-primary/5 to-transparent border border-primary/20 space-y-3'>
-              <div className='flex items-center gap-2'>
-                <Sparkles className='h-4 w-4 text-primary' />
-                <h4 className='text-sm font-bold text-foreground'>
-                  Hallazgos Clave de Benchmarking
-                </h4>
-              </div>
-              <ul className='space-y-2 text-xs text-muted-foreground'>
-                {data.insights.slice(0, 6).map((insight, idx) => (
-                  <li key={idx} className='flex items-start gap-2'>
-                    <CheckCircle2 className='h-3.5 w-3.5 text-primary shrink-0 mt-0.5' />
-                    <span className='leading-snug text-foreground/90'>{insight}</span>
-                  </li>
-                ))}
-              </ul>
-            </div>
-
-            <div className='p-4 rounded-2xl border border-border/70 bg-card/40 space-y-2 text-xs'>
-              <div className='flex items-center gap-1.5 font-semibold text-foreground'>
-                <Info className='h-3.5 w-3.5 text-muted-foreground' />
-                <span>Metodología de Normalización</span>
-              </div>
-              <p className='text-muted-foreground leading-relaxed text-[11px]'>
-                El valor 100% corresponde al grupo con el desempeño más alto en el eje analizado.
-                Las dimensiones GNC, DTI, ASC y FRH evalúan el volumen de producción categorizada;
-                Cohesión evalúa la densidad de coautorías internas, y Productividad evalúa obras por
-                investigador.
-              </p>
-            </div>
-          </div>
-        </div>
-
-        {/* Sección de Investigadores Clave / Talent Showcase (opcional expandible) */}
-        {showTalent && (
-          <div className='p-4 sm:p-5 rounded-2xl border border-border/70 bg-muted/20 space-y-4'>
-            <div className='flex items-center justify-between'>
+          {/* PESTAÑA 3: AUTORES CLAVE */}
+          <TabsContent value='talent' className='mt-0 space-y-4'>
+            <div className='flex items-center justify-between bg-muted/20 p-3 rounded-xl border border-border/60'>
               <div className='flex items-center gap-2'>
                 <Award className='h-4 w-4 text-amber-500' />
                 <h4 className='text-sm font-bold text-foreground'>
-                  Puntales Científicos: Investigadores Más Productivos por Grupo
+                  Puntales Científicos: Investigadores Más Productivos por Colectivo
                 </h4>
               </div>
               <span className='text-xs text-muted-foreground'>
@@ -760,7 +986,7 @@ export function GroupsRadarComparison({
             </div>
 
             <div className='grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3'>
-              {visibleGroups.map((grp, index) => {
+              {visibleGroups.filter((g) => g.id > 0).map((grp, index) => {
                 const palette = COMPARISON_GROUP_PALETTE[index % COMPARISON_GROUP_PALETTE.length]
                 const authors = grp.top_researchers || []
 
@@ -780,36 +1006,41 @@ export function GroupsRadarComparison({
                     </div>
 
                     <div className='space-y-1.5'>
-                      {authors.map((auth, aIdx) => (
-                        <div
-                          key={auth.id || aIdx}
-                          className='flex items-center justify-between text-xs gap-2 p-1.5 rounded-lg hover:bg-muted/40 transition-colors'
-                        >
-                          <div className='min-w-0'>
-                            <p className='font-semibold text-foreground truncate' title={auth.name}>
-                              {auth.name}
-                            </p>
-                            <span className='text-[10px] text-muted-foreground'>
-                              {(auth as any).highest_education || 'Investigador'}
-                            </span>
+                      {authors.length > 0 ? (
+                        authors.map((auth, aIdx) => (
+                          <div
+                            key={auth.id || aIdx}
+                            className='flex items-center justify-between text-xs gap-2 p-1.5 rounded-lg hover:bg-muted/40 transition-colors'
+                          >
+                            <div className='min-w-0'>
+                              <p className='font-semibold text-foreground truncate' title={auth.name}>
+                                {auth.name}
+                              </p>
+                              <span className='text-[10px] text-muted-foreground'>
+                                {(auth as any).highest_education || 'Investigador'}
+                              </span>
+                            </div>
+                            <div className='text-right shrink-0'>
+                              <span className='font-mono font-bold text-foreground'>
+                                {auth.products_count} obras
+                              </span>
+                              <p className='text-[10px] text-muted-foreground'>
+                                {auth.percentage_of_group}% del grupo
+                              </p>
+                            </div>
                           </div>
-                          <div className='text-right shrink-0'>
-                            <span className='font-mono font-bold text-foreground'>
-                              {auth.products_count} obras
-                            </span>
-                            <p className='text-[10px] text-muted-foreground'>
-                              {auth.percentage_of_group}% del grupo
-                            </p>
-                          </div>
-                        </div>
-                      ))}
+                        ))
+                      ) : (
+                        <p className='text-xs text-muted-foreground text-center py-2'>
+                          Sin registros de integrantes
+                        </p>
+                      )}
                     </div>
                   </div>
                 )
               })}
             </div>
 
-            {/* Detección de autores inter-grupales */}
             {sharedResearchers.length > 0 && (
               <div className='p-3 rounded-xl bg-primary/10 border border-primary/20 flex items-start gap-2.5 text-xs'>
                 <Layers className='h-4 w-4 text-primary shrink-0 mt-0.5' />
@@ -825,130 +1056,10 @@ export function GroupsRadarComparison({
                 </div>
               </div>
             )}
-          </div>
-        )}
-
-        {/* Matriz Comparativa Lado a Lado */}
-        <div className='space-y-3 pt-2'>
-          <div className='flex flex-col sm:flex-row sm:items-center justify-between gap-2'>
-            <div>
-              <h4 className='text-sm font-bold tracking-tight text-foreground'>
-                Matriz de Indicadores Clave Lado a Lado
-              </h4>
-              <p className='text-xs text-muted-foreground'>
-                Valores absolutos y porcentuales por colectivo con resaltado de liderazgo
-              </p>
-            </div>
-            <div className='flex items-center gap-1.5 text-xs text-muted-foreground'>
-              <span className='h-2 w-2 rounded-full bg-amber-500' />
-              <span>Celda sombreada con trofeo indica liderazgo del indicador</span>
-            </div>
-          </div>
-
-          <div className='overflow-x-auto rounded-xl border border-border/70 shadow-2xs'>
-            <table className='w-full text-xs text-left border-collapse'>
-              <thead>
-                <tr className='bg-muted/60 border-b border-border/80'>
-                  <th className='p-3 font-semibold text-muted-foreground uppercase text-[10px] tracking-wider min-w-[200px]'>
-                    Indicador Clave
-                  </th>
-                  <th className='p-3 font-semibold text-muted-foreground uppercase text-[10px] tracking-wider w-[120px]'>
-                    Categoría
-                  </th>
-                  {visibleGroups.map((grp) => {
-                    const origIndex = groups.findIndex((g) => g.id === grp.id)
-                    const palette =
-                      COMPARISON_GROUP_PALETTE[origIndex % COMPARISON_GROUP_PALETTE.length]
-                    const isHovered = hoveredGroupId === grp.id
-
-                    return (
-                      <th
-                        key={grp.id}
-                        onMouseEnter={() => setHoveredGroupId(grp.id)}
-                        onMouseLeave={() => setHoveredGroupId(null)}
-                        className={`p-3 font-extrabold text-foreground min-w-[130px] border-l border-border/50 text-center transition-colors ${
-                          isHovered ? 'bg-primary/10' : ''
-                        }`}
-                      >
-                        <div className='flex items-center justify-center gap-1.5'>
-                          <span className={`h-2 w-2 rounded-full ${palette.dot}`} />
-                          <span>{grp.acronym}</span>
-                        </div>
-                      </th>
-                    )
-                  })}
-                </tr>
-              </thead>
-              <tbody className='divide-y divide-border/60'>
-                {matrix.map((row, idx) => (
-                  <tr
-                    key={idx}
-                    className='hover:bg-muted/40 transition-colors even:bg-muted/10'
-                  >
-                    <td className='p-3 font-medium text-foreground flex items-center justify-between gap-2'>
-                      <span>{row.indicator}</span>
-                      {row.unit && (
-                        <span className='text-[10px] text-muted-foreground font-mono'>
-                          ({row.unit})
-                        </span>
-                      )}
-                    </td>
-                    <td className='p-3 text-muted-foreground text-[11px]'>
-                      <Badge variant='outline' className='text-[10px] font-normal py-0'>
-                        {row.category}
-                      </Badge>
-                    </td>
-                    {visibleGroups.map((grp) => {
-                      const val = row.values[grp.id]
-                      const isLeader = row.leader_id === grp.id
-                      const isColHovered = hoveredGroupId === grp.id
-                      const isPercentage = row.unit === '%' && typeof val === 'number'
-
-                      return (
-                        <td
-                          key={grp.id}
-                          className={`p-3 text-center font-mono font-medium border-l border-border/40 transition-colors ${
-                            isLeader
-                              ? 'bg-amber-500/15 font-bold text-foreground'
-                              : isColHovered
-                                ? 'bg-primary/5 text-foreground'
-                                : 'text-muted-foreground'
-                          }`}
-                        >
-                          <div className='flex flex-col items-center justify-center gap-1'>
-                            <div className='flex items-center gap-1'>
-                              <span>
-                                {row.indicator === 'Clasificación Minciencias' && typeof val === 'string'
-                                  ? parseMincienciasClassification(val).badgeText || val
-                                  : val !== undefined && val !== null
-                                    ? val
-                                    : '—'}
-                              </span>
-                              {isLeader && (
-                                <Trophy className='h-3 w-3 text-amber-500 shrink-0' />
-                              )}
-                            </div>
-
-                            {/* Mini barra de progreso inline para porcentajes */}
-                            {isPercentage && val > 0 && (
-                              <div className='w-16 h-1 rounded-full bg-muted overflow-hidden'>
-                                <div
-                                  className='h-full bg-primary/70 rounded-full'
-                                  style={{ width: `${Math.min(val, 100)}%` }}
-                                />
-                              </div>
-                            )}
-                          </div>
-                        </td>
-                      )
-                    })}
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </div>
+          </TabsContent>
+        </Tabs>
       </CardContent>
     </Card>
   )
 }
+
