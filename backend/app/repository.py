@@ -1723,6 +1723,86 @@ def get_group_stats(group_id: int) -> dict:
         return json.loads(abpoxx_pybind.get_group_stats_json(_active_connection_string, group_id))
     return _ram_group_stats(group_id)
 
+def _ram_group_collaboration_network(group_id: int) -> dict:
+    mids = abpoxx_pybind.members_of_group(group_id)
+    members = [get_researcher(mid) for mid in mids if abpoxx_pybind.get_researcher(mid) is not None]
+    pids = set(abpoxx_pybind.products_of_group(group_id))
+    
+    nodes = []
+    node_id_set = set()
+    res_products = {}
+    for r in members:
+        if r.id is None: continue
+        node_id_set.add(r.id)
+        author_prods = set(products_of_researcher(r.id))
+        res_products[r.id] = author_prods
+        in_group_cnt = len(author_prods.intersection(pids))
+        nodes.append({
+            "id": r.id,
+            "name": f"{r.first_names} {r.last_names}".strip(),
+            "education": r.highest_education_level or "Pregrado",
+            "role": "Integrante",
+            "products_count": in_group_cnt,
+            "degree": 0,
+        })
+
+    nodes.sort(key=lambda x: x["products_count"], reverse=True)
+    node_idx = {n["id"]: idx for idx, n in enumerate(nodes)}
+
+    edges = []
+    max_weight = 0
+    member_ids = list(node_id_set)
+    for i in range(len(member_ids)):
+        r1 = member_ids[i]
+        prods1 = res_products.get(r1, set())
+        for j in range(i + 1, len(member_ids)):
+            r2 = member_ids[j]
+            prods2 = res_products.get(r2, set())
+            shared = prods1.intersection(prods2)
+            if shared:
+                w = len(shared)
+                src = min(r1, r2)
+                tgt = max(r1, r2)
+                edges.append({"source": src, "target": tgt, "weight": w})
+                if w > max_weight:
+                    max_weight = w
+                if src in node_idx:
+                    nodes[node_idx[src]]["degree"] += 1
+                if tgt in node_idx:
+                    nodes[node_idx[tgt]]["degree"] += 1
+
+    edges.sort(key=lambda x: x["weight"], reverse=True)
+    total_nodes = len(nodes)
+    total_edges = len(edges)
+    isolated_nodes = sum(1 for n in nodes if n["degree"] == 0)
+    max_possible = (total_nodes * (total_nodes - 1)) / 2.0 if total_nodes > 1 else 0.0
+    density = (total_edges / max_possible) if max_possible > 0 else 0.0
+
+    return {
+        "nodes": nodes,
+        "edges": edges,
+        "metrics": {
+            "total_nodes": total_nodes,
+            "total_edges": total_edges,
+            "isolated_nodes": isolated_nodes,
+            "max_weight": max_weight,
+            "density": round(density, 4),
+            "cohesion_index": round(density * 100, 1),
+        }
+    }
+
+def get_group_collaboration_network(group_id: int) -> dict:
+    get_group(group_id)  # 404 si no existe
+    if _active_connection_string:
+        try:
+            raw = abpoxx_pybind.get_group_collaboration_network_json(_active_connection_string, group_id)
+            if raw and raw != "{}":
+                return json.loads(raw)
+        except Exception as e:
+            logger.warning(f"Error calling native get_group_collaboration_network_json for group {group_id}: {e}")
+    return _ram_group_collaboration_network(group_id)
+
+
 def get_group_minciencias_diagnosis(group_id: int) -> dict:
     import sys
     from .minciencias_evaluator import evaluate_group_minciencias

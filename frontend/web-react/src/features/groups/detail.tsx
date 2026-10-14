@@ -29,7 +29,8 @@ import {
   linkProduct, unlinkProduct, listProducts,
   getGroupMemberships, updateMember,
   getGroupPlans, createPlan, updatePlan, deletePlan,
-  groupReportPdfUrl, getProductCatalogs, getGroupStats, getGroupMincienciasDiagnosis
+  groupReportPdfUrl, getProductCatalogs, getGroupStats, getGroupMincienciasDiagnosis,
+  getGroupCollaborationNetwork,
 } from '@/lib/api'
 import {
   ProductionHistogram,
@@ -38,6 +39,7 @@ import {
   GroupTopResearchers,
   TopSubtypesRanking,
   MincienciasDiagnosisCard,
+  GroupCollaborationNetwork,
 } from '@/components/charts'
 import type { Researcher } from '@/lib/types'
 import type { Group, WorkPlan, Project, Product } from '@/lib/types'
@@ -188,6 +190,12 @@ export function GroupDetail({ isAdmin = false }: { isAdmin?: boolean }) {
   const { data: mincienciasDiagnosis } = useQuery({
     queryKey: ['groups', groupId, 'minciencias-diagnosis'],
     queryFn: () => getGroupMincienciasDiagnosis(groupId),
+  })
+
+  // Grafo de Colaboración y Coautorías (Fase 3)
+  const { data: collaborationNetwork, isLoading: isLoadingNetwork } = useQuery({
+    queryKey: ['groups', groupId, 'network'],
+    queryFn: () => getGroupCollaborationNetwork(groupId),
   })
 
   const [formData, setFormData] = useState<Partial<Group>>({})
@@ -1359,6 +1367,14 @@ export function GroupDetail({ isAdmin = false }: { isAdmin?: boolean }) {
             {mincienciasDiagnosis && (
               <MincienciasDiagnosisCard data={mincienciasDiagnosis} />
             )}
+
+            {/* Red de Colaboración y Grafo de Coautorías Interactivas (Fase 3) */}
+            <GroupCollaborationNetwork
+              data={collaborationNetwork}
+              groupName={group?.name}
+              isLoading={isLoadingNetwork}
+            />
+
 
             {/* Fila 2: Dinámica Temporal + Familias */}
             <div className="grid grid-cols-1 gap-6 lg:grid-cols-7">

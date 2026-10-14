@@ -448,6 +448,17 @@ async def get_group_minciencias_diagnosis_endpoint(group_id: int):
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
+@router.get("/groups/{group_id}/network", tags=["Groups"])
+async def get_group_collaboration_network_endpoint(group_id: int):
+    """Grafo de colaboración y red de coautorías internas entre investigadores del grupo."""
+    try:
+        return repository.get_group_collaboration_network(group_id)
+    except KeyError:
+        raise HTTPException(status_code=404, detail="Grupo no encontrado")
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
 @router.get("/groups/{group_id}/projects", response_model=List[Project], tags=["Groups"])
 async def list_group_projects(group_id: int):
     """Retrieve all projects linked to this research group."""

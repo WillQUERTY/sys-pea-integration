@@ -802,3 +802,40 @@ export async function getResearcherStats(researcherId: number) {
   return data
 }
 
+// --- Collaboration Network (Phase 3) ---
+export interface NetworkNode {
+  id: number
+  name: string
+  education: string
+  role: string
+  products_count: number
+  degree: number
+}
+
+export interface NetworkEdge {
+  source: number
+  target: number
+  weight: number
+}
+
+export interface NetworkMetrics {
+  total_nodes: number
+  total_edges: number
+  isolated_nodes: number
+  max_weight: number
+  density: number
+  cohesion_index: number
+}
+
+export interface GroupCollaborationNetworkData {
+  nodes: NetworkNode[]
+  edges: NetworkEdge[]
+  metrics: NetworkMetrics
+}
+
+export async function getGroupCollaborationNetwork(groupId: number) {
+  const { data } = await api.get<GroupCollaborationNetworkData>(`/groups/${groupId}/network`)
+  return data
+}
+
+
