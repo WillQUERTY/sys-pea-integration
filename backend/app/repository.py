@@ -1550,13 +1550,98 @@ def get_dashboard_stats() -> dict:
     # Métricas del Modelo de Medición 2024, calculadas en Python sobre la
     # RAM del core (el agregado del C++ no las conoce) y fusionadas al JSON.
     _, total_projects = list_projects()
+    endorsed_count = sum(1 for p in products if _is_endorsed(p))
+    orcid_count = sum(1 for r in researchers if r.orcid)
+    without_subtype = sum(1 for p in products if not p.subtype_id)
+
     stats["modelo_2024"] = {
-        "products_without_subtype": sum(1 for p in products if not p.subtype_id),
+        "products_without_subtype": without_subtype,
         "products_with_quality": sum(1 for p in products if p.quality_category_id),
-        "endorsed_products": sum(1 for p in products if _is_endorsed(p)),
-        "researchers_with_orcid": sum(1 for r in researchers if r.orcid),
+        "endorsed_products": endorsed_count,
+        "researchers_with_orcid": orcid_count,
         "total_projects": total_projects,
     }
+
+    # Distribución por Familias Minciencias 2024
+    catalogs = get_product_catalogs()
+    families_map = {f["id"]: f for f in catalogs.get("families", [])}
+    subtypes_map = {s["id"]: s for s in catalogs.get("subtypes", [])}
+
+    fam_counts: dict = {}
+    for p in products:
+        if p.family_id:
+            fam_counts[p.family_id] = fam_counts.get(p.family_id, 0) + 1
+
+    total_classified_fam = sum(fam_counts.get(f_id, 0) for f_id in families_map)
+    stats["families_distribution"] = [
+        {
+            "family_id": f_id,
+            "code": f_data.get("code") or "",
+            "name": f_data.get("name") or "",
+            "count": fam_counts.get(f_id, 0),
+            "percentage": round((fam_counts.get(f_id, 0) / max(total_classified_fam, 1)) * 100, 1),
+        }
+        for f_id, f_data in sorted(families_map.items(), key=lambda x: x[1].get("sort_order", 99))
+    ]
+
+    # Composición del Talento Humano según máximo nivel de formación
+    edu_counts: dict = {}
+    for r in researchers:
+        lvl = (r.highest_education_level or "").strip()
+        if lvl:
+            edu_counts[lvl] = edu_counts.get(lvl, 0) + 1
+
+    total_edu = sum(edu_counts.values())
+    canonical_levels = ["Doctorado", "Maestría", "Especialización", "Pregrado"]
+    edu_dist = []
+    for lvl in canonical_levels:
+        if lvl in edu_counts:
+            cnt = edu_counts[lvl]
+            edu_dist.append({
+                "level": lvl,
+                "count": cnt,
+                "percentage": round((cnt / max(total_edu, 1)) * 100, 1),
+            })
+    for lvl, cnt in edu_counts.items():
+        if lvl not in canonical_levels:
+            edu_dist.append({
+                "level": lvl,
+                "count": cnt,
+                "percentage": round((cnt / max(total_edu, 1)) * 100, 1),
+            })
+    stats["researchers_education"] = edu_dist
+
+    # Top Tipologías de mayor volumen
+    sub_counts: dict = {}
+    for p in products:
+        if p.subtype_id:
+            sub_counts[p.subtype_id] = sub_counts.get(p.subtype_id, 0) + 1
+
+    sorted_subtypes = sorted(sub_counts.items(), key=lambda x: x[1], reverse=True)[:8]
+    stats["top_subtypes"] = [
+        {
+            "subtype_id": s_id,
+            "name": subtypes_map.get(s_id, {}).get("name") or f"Tipología {s_id}",
+            "code": subtypes_map.get(s_id, {}).get("code") or "",
+            "count": cnt,
+        }
+        for s_id, cnt in sorted_subtypes
+    ]
+
+    # Ratios estratégicos institucionales
+    postgraduate_count = sum(
+        1 for r in researchers if (r.highest_education_level or "").strip() in ["Doctorado", "Maestría", "Especialización"]
+    )
+    total_prods = len(products)
+    total_res = len(researchers)
+
+    stats["strategic_ratios"] = {
+        "endorsement_rate": round((endorsed_count / max(total_prods, 1)) * 100, 1),
+        "postgraduate_rate": round((postgraduate_count / max(total_res, 1)) * 100, 1),
+        "avg_products_per_researcher": round(total_prods / max(total_res, 1), 1),
+        "orcid_coverage_rate": round((orcid_count / max(total_res, 1)) * 100, 1),
+    }
+
     return stats
 
 def get_group_projects(group_id: int) -> List[Project]:

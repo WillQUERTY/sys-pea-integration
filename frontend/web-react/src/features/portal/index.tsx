@@ -9,6 +9,9 @@ import {
   Tooltip,
   XAxis,
   YAxis,
+  PieChart,
+  Pie,
+  Cell,
 } from 'recharts'
 import {
   FlaskConical,
@@ -78,6 +81,21 @@ function HeroStat({ label, value, loading }: { label: string; value?: number; lo
   )
 }
 
+const FAMILY_COLORS: Record<string, string> = {
+  GNC: '#059669',
+  DPC: '#2563eb',
+  DTI: '#d97706',
+  FRH: '#7c3aed',
+  ASC: '#0891b2',
+}
+
+const EDUCATION_COLORS: Record<string, string> = {
+  Doctorado: '#059669',
+  Maestría: '#d97706',
+  Especialización: '#2563eb',
+  Pregrado: '#64748b',
+}
+
 export function PublicPortal() {
   const navigate = useNavigate()
   const [heroSearch, setHeroSearch] = useState('')
@@ -90,6 +108,22 @@ export function PublicPortal() {
 
   const stats = statsQuery.data
   const byYear = stats?.by_year ?? []
+  const [portalTimeWindow, setPortalTimeWindow] = useState<'5y' | '10y' | 'all'>('5y')
+
+  const filteredByYear = useMemo(() => {
+    if (!byYear.length) return []
+    const allYears = [...byYear].filter((y) => Number(y.count) > 0)
+    if (portalTimeWindow === 'all') return allYears
+
+    const numericYears = allYears.map((item) => Number(item.year)).filter((n) => !isNaN(n))
+    const maxYear = numericYears.length > 0 ? Math.max(...numericYears) : 2026
+    const minYear = portalTimeWindow === '5y' ? maxYear - 5 : maxYear - 10
+
+    return allYears.filter((item) => {
+      const y = Number(item.year)
+      return !isNaN(y) && y >= minYear && y <= maxYear
+    })
+  }, [byYear, portalTimeWindow])
 
   const normalizedClassifications = useMemo(() => {
     const map = new Map<string, { info: ReturnType<typeof parseMincienciasClassification>; count: number }>()
@@ -285,7 +319,7 @@ export function PublicPortal() {
         {/* Analytics */}
         <div className='grid grid-cols-1 gap-6 lg:grid-cols-7'>
           {/* Histogram */}
-          <Card className='col-span-1 lg:col-span-4 border-border/60 shadow-xs'>
+          <Card className='col-span-1 lg:col-span-4 border-border/60 shadow-xs flex flex-col justify-between'>
             <CardHeader className='pb-3'>
               <div className='flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between'>
                 <div className='min-w-0'>
@@ -298,23 +332,60 @@ export function PublicPortal() {
                     Distribución de publicaciones según el año de obtención declarado.
                   </CardDescription>
                 </div>
-                <div className='flex w-fit shrink-0 items-center gap-1.5 text-xs text-muted-foreground bg-muted/60 px-2.5 py-1 rounded-md'>
-                  <BookOpen className='h-3.5 w-3.5 text-primary' />
-                  <span className='font-semibold text-foreground'>{totalProducts.toLocaleString()}</span> obras
+                <div className='flex items-center gap-2 shrink-0'>
+                  <div className='flex items-center rounded-lg bg-muted p-0.5 text-xs'>
+                    <button
+                      type='button'
+                      onClick={() => setPortalTimeWindow('5y')}
+                      className={`px-2 py-0.5 rounded-md font-medium text-[11px] transition-all ${
+                        portalTimeWindow === '5y'
+                          ? 'bg-background text-foreground shadow-xs'
+                          : 'text-muted-foreground hover:text-foreground'
+                      }`}
+                    >
+                      5 Años (Minciencias)
+                    </button>
+                    <button
+                      type='button'
+                      onClick={() => setPortalTimeWindow('10y')}
+                      className={`px-2 py-0.5 rounded-md font-medium text-[11px] transition-all ${
+                        portalTimeWindow === '10y'
+                          ? 'bg-background text-foreground shadow-xs'
+                          : 'text-muted-foreground hover:text-foreground'
+                      }`}
+                    >
+                      10 Años
+                    </button>
+                    <button
+                      type='button'
+                      onClick={() => setPortalTimeWindow('all')}
+                      className={`px-2 py-0.5 rounded-md font-medium text-[11px] transition-all ${
+                        portalTimeWindow === 'all'
+                          ? 'bg-background text-foreground shadow-xs'
+                          : 'text-muted-foreground hover:text-foreground'
+                      }`}
+                    >
+                      Histórico
+                    </button>
+                  </div>
+                  <div className='hidden sm:flex items-center gap-1.5 text-xs text-muted-foreground bg-muted/60 px-2.5 py-1 rounded-md'>
+                    <BookOpen className='h-3.5 w-3.5 text-primary' />
+                    <span className='font-semibold text-foreground'>{totalProducts.toLocaleString()}</span> obras
+                  </div>
                 </div>
               </div>
             </CardHeader>
             <CardContent className='ps-2'>
               {statsQuery.isLoading ? (
                 <Skeleton className='h-[290px] w-full rounded-xl' />
-              ) : byYear.length === 0 ? (
+              ) : filteredByYear.length === 0 ? (
                 <div className='flex flex-col items-center justify-center h-[290px] text-muted-foreground text-sm'>
                   <BookOpen className='h-8 w-8 mb-2 opacity-40' />
                   <span>Sin registros de producción por año aún</span>
                 </div>
               ) : (
                 <ResponsiveContainer width='100%' height={290}>
-                  <BarChart data={byYear} margin={{ top: 12, right: 12, left: -10, bottom: 0 }}>
+                  <BarChart data={filteredByYear} margin={{ top: 12, right: 12, left: -10, bottom: 0 }}>
                     <CartesianGrid strokeDasharray='3 3' vertical={false} stroke='var(--border)' opacity={0.6} />
                     <XAxis dataKey='year' tickLine={false} axisLine={false} fontSize={11} tick={{ fill: 'var(--muted-foreground)' }} />
                     <YAxis tickLine={false} axisLine={false} fontSize={11} allowDecimals={false} tick={{ fill: 'var(--muted-foreground)' }} />
@@ -384,6 +455,199 @@ export function PublicPortal() {
               <span>Total grupos evaluados:</span>
               <span className='font-bold text-foreground'>{totalGroups}</span>
             </div>
+          </Card>
+        </div>
+
+        {/* Balance de Familias y Formación Humana */}
+        <div className='grid grid-cols-1 gap-6 md:grid-cols-2'>
+          {/* Donut Familias Minciencias */}
+          <Card className='border-border/60 shadow-xs flex flex-col justify-between'>
+            <CardHeader className='pb-2'>
+              <div className='flex items-center justify-between'>
+                <div className='flex items-center gap-2'>
+                  <Award className='h-4 w-4 text-emerald-600' />
+                  <CardTitle className='text-base font-semibold'>Familias de Productos Minciencias</CardTitle>
+                </div>
+                <Badge variant='outline' className='text-[10px] font-normal'>
+                  Modelo 2024
+                </Badge>
+              </div>
+              <CardDescription className='text-xs'>
+                Distribución de la producción según las familias oficiales de Minciencias.
+              </CardDescription>
+            </CardHeader>
+            <CardContent className='pb-4 pt-1'>
+              {stats?.families_distribution?.length ? (
+                <div className='space-y-4'>
+                  <div className='relative h-[180px] w-full'>
+                    <ResponsiveContainer width='100%' height='100%'>
+                      <PieChart>
+                        <Pie
+                          data={stats.families_distribution}
+                          dataKey='count'
+                          nameKey='name'
+                          innerRadius={50}
+                          outerRadius={75}
+                          paddingAngle={3}
+                        >
+                          {stats.families_distribution.map((entry) => (
+                            <Cell
+                              key={entry.code}
+                              fill={FAMILY_COLORS[entry.code] || '#64748b'}
+                              stroke='var(--card)'
+                              strokeWidth={2}
+                            />
+                          ))}
+                        </Pie>
+                        <Tooltip
+                          content={({ active, payload }) => {
+                            if (!active || !payload?.length) return null
+                            const item = payload[0].payload
+                            return (
+                              <div className='rounded-xl border border-border/80 bg-popover/95 p-2.5 shadow-lg backdrop-blur-md text-xs space-y-1 min-w-[150px]'>
+                                <div className='font-bold text-foreground'>{item.name}</div>
+                                <div className='flex items-center justify-between text-muted-foreground'>
+                                  <span>Código: <strong>{item.code}</strong></span>
+                                  <span className='font-bold text-foreground'>{item.count} obras</span>
+                                </div>
+                                <div className='text-[11px] text-primary font-semibold pt-1 border-t border-border/50'>
+                                  {item.percentage}% del total clasificado
+                                </div>
+                              </div>
+                            )
+                          }}
+                        />
+                      </PieChart>
+                    </ResponsiveContainer>
+                    <div className='absolute inset-0 flex flex-col items-center justify-center pointer-events-none'>
+                      <span className='text-xl font-extrabold text-foreground tracking-tight'>
+                        {stats.families_distribution.reduce((acc, c) => acc + c.count, 0).toLocaleString()}
+                      </span>
+                      <span className='text-[10px] text-muted-foreground uppercase font-medium'>
+                        Obras
+                      </span>
+                    </div>
+                  </div>
+                  <div className='grid grid-cols-2 gap-2 text-xs pt-1 border-t border-border/50'>
+                    {stats.families_distribution.map((f) => (
+                      <div key={f.code} className='flex items-center justify-between gap-1.5 p-1 rounded-md hover:bg-muted/40'>
+                        <div className='flex items-center gap-1.5 min-w-0'>
+                          <span
+                            className='size-2.5 rounded-full shrink-0'
+                            style={{ backgroundColor: FAMILY_COLORS[f.code] || '#64748b' }}
+                          />
+                          <span className='truncate text-[11px] font-medium text-foreground' title={f.name}>
+                            {f.code}
+                          </span>
+                        </div>
+                        <span className='text-[11px] font-bold text-muted-foreground tabular-nums shrink-0'>
+                          {f.percentage}%
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              ) : (
+                <div className='flex h-[180px] items-center justify-center text-xs text-muted-foreground'>
+                  Sin datos de familias disponibles
+                </div>
+              )}
+            </CardContent>
+          </Card>
+
+          {/* Donut Formación del Talento Humano */}
+          <Card className='border-border/60 shadow-xs flex flex-col justify-between'>
+            <CardHeader className='pb-2'>
+              <div className='flex items-center justify-between'>
+                <div className='flex items-center gap-2'>
+                  <GraduationCap className='h-4 w-4 text-amber-500' />
+                  <CardTitle className='text-base font-semibold'>Talento Humano y Formación</CardTitle>
+                </div>
+                <Badge variant='outline' className='text-[10px] font-normal'>
+                  {totalResearchers} Investigadores
+                </Badge>
+              </div>
+              <CardDescription className='text-xs'>
+                Máximo nivel académico alcanzado por los investigadores activos.
+              </CardDescription>
+            </CardHeader>
+            <CardContent className='pb-4 pt-1'>
+              {stats?.researchers_education?.length ? (
+                <div className='space-y-4'>
+                  <div className='relative h-[180px] w-full'>
+                    <ResponsiveContainer width='100%' height='100%'>
+                      <PieChart>
+                        <Pie
+                          data={stats.researchers_education}
+                          dataKey='count'
+                          nameKey='level'
+                          innerRadius={50}
+                          outerRadius={75}
+                          paddingAngle={3}
+                        >
+                          {stats.researchers_education.map((entry) => (
+                            <Cell
+                              key={entry.level}
+                              fill={EDUCATION_COLORS[entry.level] || '#64748b'}
+                              stroke='var(--card)'
+                              strokeWidth={2}
+                            />
+                          ))}
+                        </Pie>
+                        <Tooltip
+                          content={({ active, payload }) => {
+                            if (!active || !payload?.length) return null
+                            const item = payload[0].payload
+                            return (
+                              <div className='rounded-xl border border-border/80 bg-popover/95 p-2.5 shadow-lg backdrop-blur-md text-xs space-y-1 min-w-[150px]'>
+                                <div className='font-bold text-foreground'>{item.level}</div>
+                                <div className='flex items-center justify-between text-muted-foreground'>
+                                  <span>Investigadores:</span>
+                                  <span className='font-bold text-foreground'>{item.count}</span>
+                                </div>
+                                <div className='text-[11px] text-amber-600 dark:text-amber-400 font-semibold pt-1 border-t border-border/50'>
+                                  {item.percentage}% de la comunidad
+                                </div>
+                              </div>
+                            )
+                          }}
+                        />
+                      </PieChart>
+                    </ResponsiveContainer>
+                    <div className='absolute inset-0 flex flex-col items-center justify-center pointer-events-none'>
+                      <span className='text-xl font-extrabold text-foreground tracking-tight'>
+                        {totalResearchers}
+                      </span>
+                      <span className='text-[10px] text-muted-foreground uppercase font-medium'>
+                        Talento
+                      </span>
+                    </div>
+                  </div>
+                  <div className='grid grid-cols-2 gap-2 text-xs pt-1 border-t border-border/50'>
+                    {stats.researchers_education.map((e) => (
+                      <div key={e.level} className='flex items-center justify-between gap-1.5 p-1 rounded-md hover:bg-muted/40'>
+                        <div className='flex items-center gap-1.5 min-w-0'>
+                          <span
+                            className='size-2.5 rounded-full shrink-0'
+                            style={{ backgroundColor: EDUCATION_COLORS[e.level] || '#64748b' }}
+                          />
+                          <span className='truncate text-[11px] font-medium text-foreground' title={e.level}>
+                            {e.level}
+                          </span>
+                        </div>
+                        <span className='text-[11px] font-bold text-muted-foreground tabular-nums shrink-0'>
+                          {e.count} ({e.percentage}%)
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              ) : (
+                <div className='flex h-[180px] items-center justify-center text-xs text-muted-foreground'>
+                  Sin datos de formación registrados
+                </div>
+              )}
+            </CardContent>
           </Card>
         </div>
 

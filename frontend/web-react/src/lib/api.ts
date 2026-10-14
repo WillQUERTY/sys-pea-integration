@@ -623,6 +623,35 @@ export interface Modelo2024Stats {
   researchers_with_orcid: number
   total_projects: number
 }
+
+export interface FamilyDistributionItem {
+  family_id: number
+  code: string
+  name: string
+  count: number
+  percentage: number
+}
+
+export interface ResearcherEducationItem {
+  level: string
+  count: number
+  percentage: number
+}
+
+export interface TopSubtypeItem {
+  subtype_id: number
+  name: string
+  code: string
+  count: number
+}
+
+export interface StrategicRatios {
+  endorsement_rate: number
+  postgraduate_rate: number
+  avg_products_per_researcher: number
+  orcid_coverage_rate: number
+}
+
 export interface DashboardStats {
   total_groups: number
   total_researchers: number
@@ -632,6 +661,10 @@ export interface DashboardStats {
   groups_by_classification: Record<string, number>
   /** Métricas del Modelo de Medición 2024 (calculadas en la API sobre la RAM) */
   modelo_2024?: Modelo2024Stats
+  families_distribution?: FamilyDistributionItem[]
+  researchers_education?: ResearcherEducationItem[]
+  top_subtypes?: TopSubtypeItem[]
+  strategic_ratios?: StrategicRatios
 }
 
 export async function getDashboardStats() {
