@@ -49,4 +49,5 @@ docs/_uvicorn*.log
 # Agent & IDE local state
 .agents/
 .claude/settings.json
+.zcode/
 
