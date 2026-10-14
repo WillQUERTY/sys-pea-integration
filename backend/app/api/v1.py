@@ -428,6 +428,16 @@ async def list_group_products(group_id: int):
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
+@router.get("/groups/{group_id}/stats", tags=["Groups"])
+async def get_group_stats_endpoint(group_id: int):
+    """Retrieve statistical indicators, production dynamics, and author ranking for a research group."""
+    try:
+        return repository.get_group_stats(group_id)
+    except KeyError:
+        raise HTTPException(status_code=404, detail="Grupo no encontrado")
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
 @router.get("/groups/{group_id}/projects", response_model=List[Project], tags=["Groups"])
 async def list_group_projects(group_id: int):
     """Retrieve all projects linked to this research group."""

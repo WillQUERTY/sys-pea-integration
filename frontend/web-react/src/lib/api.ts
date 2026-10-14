@@ -671,3 +671,42 @@ export async function getDashboardStats() {
   const { data } = await api.get<DashboardStats>('/dashboard/stats')
   return data
 }
+
+export interface GroupTopResearcherItem {
+  id: number
+  name: string
+  highest_education: string
+  orcid: string
+  role: string
+  products_count: number
+  total_authored_count: number
+  percentage_of_group: number
+}
+
+export interface GroupStrategicRatios {
+  endorsed_count: number
+  endorsement_rate: number
+  valid_count: number
+  validation_rate: number
+  postgraduate_count: number
+  postgraduate_rate: number
+  avg_products_per_member: number
+  orcid_count: number
+  orcid_coverage_rate: number
+}
+
+export interface GroupStats {
+  total_products: number
+  total_members: number
+  by_year: Array<{ year: string; count: number }>
+  families_distribution?: FamilyDistributionItem[]
+  researchers_education?: ResearcherEducationItem[]
+  top_researchers?: GroupTopResearcherItem[]
+  top_subtypes?: TopSubtypeItem[]
+  strategic_ratios?: GroupStrategicRatios
+}
+
+export async function getGroupStats(groupId: number) {
+  const { data } = await api.get<GroupStats>(`/groups/${groupId}/stats`)
+  return data
+}

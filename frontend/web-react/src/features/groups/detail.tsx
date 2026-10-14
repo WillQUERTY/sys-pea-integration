@@ -16,7 +16,10 @@ import {
   UserPlus,
   Pencil,
   FileDown,
-  ClipboardList
+  ClipboardList,
+  TrendingUp,
+  Sparkles,
+  GraduationCap
 } from 'lucide-react'
 
 import {
@@ -26,8 +29,15 @@ import {
   linkProduct, unlinkProduct, listProducts,
   getGroupMemberships, updateMember,
   getGroupPlans, createPlan, updatePlan, deletePlan,
-  groupReportPdfUrl, getProductCatalogs
+  groupReportPdfUrl, getProductCatalogs, getGroupStats
 } from '@/lib/api'
+import {
+  ProductionHistogram,
+  FamiliesDonut,
+  EducationDonut,
+  GroupTopResearchers,
+  TopSubtypesRanking,
+} from '@/components/charts'
 import type { Researcher } from '@/lib/types'
 import type { Group, WorkPlan, Project, Product } from '@/lib/types'
 import { parseMincienciasClassification } from '@/lib/utils'
@@ -53,6 +63,12 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Badge } from '@/components/ui/badge'
+import {
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+} from '@/components/ui/card'
 import {
   Select,
   SelectContent,
@@ -159,6 +175,12 @@ export function GroupDetail({ isAdmin = false }: { isAdmin?: boolean }) {
   const { data: plans, isLoading: isLoadingPlans } = useQuery({
     queryKey: ['groups', groupId, 'plans'],
     queryFn: () => getGroupPlans(groupId),
+  })
+
+  // Estadísticas e Impacto del Grupo
+  const { data: stats } = useQuery({
+    queryKey: ['groups', groupId, 'stats'],
+    queryFn: () => getGroupStats(groupId),
   })
 
   const [formData, setFormData] = useState<Partial<Group>>({})
@@ -754,6 +776,12 @@ export function GroupDetail({ isAdmin = false }: { isAdmin?: boolean }) {
               <BookOpen className='mr-2 h-4 w-4' /> Productos ({products?.length ?? 0})
             </TabsTrigger>
             <TabsTrigger 
+              value="estadisticas" 
+              className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:shadow-none px-6 h-full"
+            >
+              <TrendingUp className='mr-2 h-4 w-4' /> Estadísticas e Impacto
+            </TabsTrigger>
+            <TabsTrigger 
               value="proyectos" 
               className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:shadow-none px-6 h-full"
             >
@@ -1244,6 +1272,125 @@ export function GroupDetail({ isAdmin = false }: { isAdmin?: boolean }) {
               searchPlaceholder="Buscar por título del producto..."
             />
           </TabsContent>
+
+          {/* Estadísticas e Impacto del Grupo */}
+          <TabsContent value="estadisticas" className="focus-visible:outline-none space-y-6">
+            {/* Top KPI Cards del Grupo */}
+            <div className="grid grid-cols-2 gap-3 sm:gap-4 md:grid-cols-4">
+              <Card className="border-border/60 shadow-xs">
+                <CardHeader className="pb-2">
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+                      Total Producción
+                    </span>
+                    <BookOpen className="h-4 w-4 text-primary" />
+                  </div>
+                  <CardTitle className="text-2xl sm:text-3xl font-extrabold tracking-tight">
+                    {stats?.total_products?.toLocaleString('es-CO') ?? 0}
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="pt-0 text-xs text-muted-foreground">
+                  Obras científicas registradas en este grupo
+                </CardContent>
+              </Card>
+
+              <Card className="border-border/60 shadow-xs">
+                <CardHeader className="pb-2">
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+                      Pilar Científico
+                    </span>
+                    <Trophy className="h-4 w-4 text-amber-500" />
+                  </div>
+                  <CardTitle className="text-sm sm:text-base font-bold tracking-tight truncate" title={stats?.top_researchers?.[0]?.name}>
+                    {stats?.top_researchers?.[0]?.name ?? 'N/A'}
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="pt-0 text-xs text-muted-foreground">
+                  {stats?.top_researchers?.[0]
+                    ? `${stats.top_researchers[0].products_count} obras (${stats.top_researchers[0].percentage_of_group}% del grupo)`
+                    : 'Sin registros de autoría'}
+                </CardContent>
+              </Card>
+
+              <Card className="border-border/60 shadow-xs">
+                <CardHeader className="pb-2">
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+                      Productividad Media
+                    </span>
+                    <Sparkles className="h-4 w-4 text-violet-500" />
+                  </div>
+                  <CardTitle className="text-2xl sm:text-3xl font-extrabold tracking-tight">
+                    {stats?.strategic_ratios?.avg_products_per_member ?? 0}
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="pt-0 text-xs text-muted-foreground">
+                  Promedio de obras por integrante activo
+                </CardContent>
+              </Card>
+
+              <Card className="border-border/60 shadow-xs">
+                <CardHeader className="pb-2">
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+                      Masa Posgrado
+                    </span>
+                    <GraduationCap className="h-4 w-4 text-emerald-600" />
+                  </div>
+                  <CardTitle className="text-2xl sm:text-3xl font-extrabold tracking-tight">
+                    {stats?.strategic_ratios?.postgraduate_rate ?? 0}%
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="pt-0 text-xs text-muted-foreground">
+                  {stats?.strategic_ratios?.postgraduate_count ?? 0} investigadores con posgrado
+                </CardContent>
+              </Card>
+            </div>
+
+            {/* Fila 2: Dinámica Temporal + Familias */}
+            <div className="grid grid-cols-1 gap-6 lg:grid-cols-7">
+              <ProductionHistogram
+                data={stats?.by_year ?? []}
+                totalProducts={stats?.total_products}
+                height={270}
+                className="col-span-1 lg:col-span-4"
+                title="Dinámica Temporal del Grupo"
+                description="Evolución anual de obtención de productos científicos en este colectivo."
+              />
+              <FamiliesDonut
+                data={stats?.families_distribution}
+                className="col-span-1 lg:col-span-3"
+                title="Familias Minciencias del Grupo"
+                description="Balance tipológico entre GNC, DTI, ASC y FRH en el grupo."
+              />
+            </div>
+
+            {/* Fila 3: Ranking de Autores de Mayor Impacto + Nivel Académico y Subtipos */}
+            <div className="grid grid-cols-1 gap-6 lg:grid-cols-7">
+              <GroupTopResearchers
+                data={stats?.top_researchers}
+                totalGroupProducts={stats?.total_products}
+                className="col-span-1 lg:col-span-4"
+              />
+              <div className="col-span-1 lg:col-span-3 space-y-6">
+                <EducationDonut
+                  data={stats?.researchers_education}
+                  totalResearchers={stats?.total_members}
+                  title="Formación del Talento Humano"
+                  description="Composición del equipo según su máximo título académico."
+                />
+                {stats?.top_subtypes && stats.top_subtypes.length > 0 && (
+                  <TopSubtypesRanking
+                    data={stats.top_subtypes}
+                    title="Top Tipologías en el Grupo"
+                    description="Formatos y subtipos con mayor volumen en este grupo."
+                  />
+                )}
+              </div>
+            </div>
+          </TabsContent>
+
           <TabsContent value="proyectos" className="focus-visible:outline-none bg-card border border-border/50 rounded-2xl p-6 shadow-sm">
             <div className="flex justify-between items-center mb-4">
               <h3 className="font-semibold text-lg">Proyectos del Grupo</h3>

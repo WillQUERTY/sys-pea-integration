@@ -1629,6 +1629,100 @@ def get_dashboard_stats() -> dict:
     researchers = list_researchers()
     return _ram_dashboard_stats(products, researchers)
 
+def _ram_group_stats(group_id: int) -> dict:
+    pids = abpoxx_pybind.products_of_group(group_id)
+    prods = [get_product(pid) for pid in pids if abpoxx_pybind.get_product(pid) is not None]
+    mids = abpoxx_pybind.members_of_group(group_id)
+    members = [get_researcher(mid) for mid in mids if abpoxx_pybind.get_researcher(mid) is not None]
+
+    total_products = len(prods)
+    total_members = len(members)
+
+    by_year: dict = {}
+    for p in prods:
+        y = (p.obtained_date or p.publication_date or "")[:4]
+        if y and y.isdigit():
+            by_year[y] = by_year.get(y, 0) + 1
+
+    families_map = {1: {"code": "GNC", "name": "Generación de Nuevo Conocimiento"},
+                    2: {"code": "DTI", "name": "Desarrollo Tecnológico e Innovación"},
+                    3: {"code": "ASC", "name": "Apropiación Social del Conocimiento"},
+                    4: {"code": "DPC", "name": "Divulgación Pública de la Ciencia"},
+                    5: {"code": "FRH", "name": "Formación de Recurso Humano"}}
+    fam_counts: dict = {}
+    for p in prods:
+        if p.family_id:
+            fam_counts[p.family_id] = fam_counts.get(p.family_id, 0) + 1
+    families_distribution = [
+        {
+            "code": families_map.get(f_id, {}).get("code", f"FAM_{f_id}"),
+            "name": families_map.get(f_id, {}).get("name", f"Familia {f_id}"),
+            "count": cnt,
+            "percentage": round((cnt / max(total_products, 1)) * 100, 1),
+        }
+        for f_id, cnt in sorted(fam_counts.items(), key=lambda x: x[1], reverse=True)
+    ]
+
+    edu_counts: dict = {}
+    for r in members:
+        lvl = (r.highest_education_level or "").strip()
+        if lvl:
+            edu_counts[lvl] = edu_counts.get(lvl, 0) + 1
+    edu_dist = [
+        {"level": lvl, "count": cnt, "percentage": round((cnt / max(total_members, 1)) * 100, 1)}
+        for lvl, cnt in sorted(edu_counts.items(), key=lambda x: x[1], reverse=True)
+    ]
+
+    prod_set = set(pids)
+    res_ranking = []
+    for r in members:
+        if r.id is None: continue
+        r_pids = set(products_of_researcher(r.id)).intersection(prod_set)
+        cnt = len(r_pids)
+        res_ranking.append({
+            "id": r.id,
+            "name": f"{r.first_names} {r.last_names}".strip(),
+            "highest_education": r.highest_education_level or "Pregrado",
+            "orcid": r.orcid or "",
+            "role": "Integrante",
+            "products_count": cnt,
+            "total_authored_count": len(products_of_researcher(r.id)),
+            "percentage_of_group": round((cnt / max(total_products, 1)) * 100, 1),
+        })
+    res_ranking.sort(key=lambda x: x["products_count"], reverse=True)
+
+    endorsed_count = sum(1 for p in prods if getattr(p, "is_endorsed", False))
+    valid_count = sum(1 for p in prods if p.validation_status == "valid")
+    postgrad_count = sum(1 for r in members if (r.highest_education_level or "").startswith(("Doc", "Maest", "Esp")))
+    orcid_count = sum(1 for r in members if r.orcid)
+
+    return {
+        "total_products": total_products,
+        "total_members": total_members,
+        "by_year": [{"year": y, "count": c} for y, c in sorted(by_year.items())],
+        "families_distribution": families_distribution,
+        "researchers_education": edu_dist,
+        "top_researchers": res_ranking[:12],
+        "top_subtypes": [],
+        "strategic_ratios": {
+            "endorsed_count": endorsed_count,
+            "endorsement_rate": round((endorsed_count / max(total_products, 1)) * 100, 1),
+            "valid_count": valid_count,
+            "validation_rate": round((valid_count / max(total_products, 1)) * 100, 1),
+            "postgraduate_count": postgrad_count,
+            "postgraduate_rate": round((postgrad_count / max(total_members, 1)) * 100, 1),
+            "avg_products_per_member": round(total_products / max(total_members, 1), 1),
+            "orcid_count": orcid_count,
+            "orcid_coverage_rate": round((orcid_count / max(total_members, 1)) * 100, 1),
+        },
+    }
+
+def get_group_stats(group_id: int) -> dict:
+    get_group(group_id)  # 404 si no existe
+    if _active_connection_string:
+        return json.loads(abpoxx_pybind.get_group_stats_json(_active_connection_string, group_id))
+    return _ram_group_stats(group_id)
+
 def get_group_projects(group_id: int) -> List[Project]:
     get_group(group_id)  # 404 si no existe
     return [_to_project_model(abpoxx_pybind.get_project(pid))
