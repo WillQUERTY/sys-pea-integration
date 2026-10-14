@@ -21,7 +21,8 @@ import {
   ClipboardList,
   TrendingUp,
   Sparkles,
-  GraduationCap
+  GraduationCap,
+  Scale
 } from 'lucide-react'
 
 import {
@@ -43,6 +44,7 @@ import {
   TopSubtypesRanking,
   MincienciasDiagnosisCard,
   GroupCollaborationNetwork,
+  GroupsRadarComparison,
 } from '@/components/charts'
 import type { Researcher } from '@/lib/types'
 import type { Group, WorkPlan, Project, Product } from '@/lib/types'
@@ -126,6 +128,7 @@ export function GroupDetail({ isAdmin = false }: { isAdmin?: boolean }) {
 
   // Ventana de observación del informe PDF (Requerimiento 10): presets o rango
   const [pdfDialogOpen, setPdfDialogOpen] = useState(false)
+  const [compareDialogOpen, setCompareDialogOpen] = useState(false)
   const [reportWindow, setReportWindow] = useState('all')
   const [reportStart, setReportStart] = useState('')
   const [reportEnd, setReportEnd] = useState('')
@@ -879,11 +882,11 @@ export function GroupDetail({ isAdmin = false }: { isAdmin?: boolean }) {
 
           <TabsContent value="perfil" className="focus-visible:outline-none">
             {isAdmin ? (
-              <form onSubmit={handleSubmit} className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <form onSubmit={handleSubmit} className="grid min-w-0 grid-cols-1 xl:grid-cols-2 gap-6">
               
               {/* Información Básica */}
-              <div className="space-y-6">
-                <div className="bg-card border border-border/50 rounded-2xl p-6 shadow-sm">
+              <div className="min-w-0 space-y-6">
+                <div className="min-w-0 bg-card border border-border/50 rounded-2xl p-6 shadow-sm">
                   <div className='flex items-center gap-2 mb-6'>
                     <div className='p-2 bg-blue-500/10 rounded-lg'>
                       <GroupIcon className='h-4 w-4 text-blue-500' />
@@ -902,7 +905,7 @@ export function GroupDetail({ isAdmin = false }: { isAdmin?: boolean }) {
                         className='bg-muted/30 focus-visible:bg-transparent rounded-xl'
                       />
                     </div>
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div className="grid min-w-0 grid-cols-1 sm:grid-cols-2 gap-4">
                       <div className="space-y-2">
                         <Label htmlFor="acronym">Sigla</Label>
                         <Input
@@ -923,7 +926,7 @@ export function GroupDetail({ isAdmin = false }: { isAdmin?: boolean }) {
                         />
                       </div>
                     </div>
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div className="grid min-w-0 grid-cols-1 sm:grid-cols-2 gap-4">
                       <div className="space-y-2">
                         <Label htmlFor="institution">Institución</Label>
                         <Input
@@ -957,7 +960,7 @@ export function GroupDetail({ isAdmin = false }: { isAdmin?: boolean }) {
                         </div>
                       </div>
                     </div>
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div className="grid min-w-0 grid-cols-1 sm:grid-cols-2 gap-4">
                       <div className="space-y-2">
                         <Label htmlFor="email">Email</Label>
                         <Input
@@ -977,7 +980,7 @@ export function GroupDetail({ isAdmin = false }: { isAdmin?: boolean }) {
                         />
                       </div>
                     </div>
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div className="grid min-w-0 grid-cols-1 sm:grid-cols-2 gap-4">
                       <CatalogCombobox
                         label="Área de Conocimiento (OCDE)"
                         options={GRAND_AREAS_OCDE}
@@ -1000,7 +1003,7 @@ export function GroupDetail({ isAdmin = false }: { isAdmin?: boolean }) {
               </div>
 
               {/* Misión y Visión */}
-              <div className="bg-card border border-border/50 rounded-2xl p-6 shadow-sm">
+              <div className="min-w-0 bg-card border border-border/50 rounded-2xl p-6 shadow-sm">
                 <div className='flex items-center gap-2 mb-6'>
                   <div className='p-2 bg-purple-500/10 rounded-lg'>
                     <Trophy className='h-4 w-4 text-purple-500' />
@@ -1038,16 +1041,16 @@ export function GroupDetail({ isAdmin = false }: { isAdmin?: boolean }) {
               
             </form>
             ) : (
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div className="space-y-6">
-                  <div className="bg-card border border-border/50 rounded-2xl p-6 shadow-sm space-y-6">
+              <div className="grid min-w-0 grid-cols-1 xl:grid-cols-2 gap-6">
+                <div className="min-w-0 space-y-6">
+                  <div className="min-w-0 bg-card border border-border/50 rounded-2xl p-6 shadow-sm space-y-6">
                     <div className='flex items-center gap-2 mb-2'>
                       <div className='p-2 bg-blue-500/10 rounded-lg'>
                         <GroupIcon className='h-4 w-4 text-blue-500' />
                       </div>
                       <h3 className="font-semibold text-lg">Información Básica</h3>
                     </div>
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+                    <div className="grid min-w-0 grid-cols-1 sm:grid-cols-2 gap-6">
                       <Field label="Nombre del Grupo" value={group.name} />
                       <Field label="Sigla" value={group.acronym} />
                       <Field label="Código GrupLAC" value={group.external_code} mono />
@@ -1060,7 +1063,7 @@ export function GroupDetail({ isAdmin = false }: { isAdmin?: boolean }) {
                   </div>
                 </div>
 
-                <div className="bg-card border border-border/50 rounded-2xl p-6 shadow-sm space-y-6">
+                <div className="min-w-0 bg-card border border-border/50 rounded-2xl p-6 shadow-sm space-y-6">
                   <div className='flex items-center gap-2 mb-2'>
                     <div className='p-2 bg-purple-500/10 rounded-lg'>
                       <Trophy className='h-4 w-4 text-purple-500' />
@@ -1379,6 +1382,15 @@ export function GroupDetail({ isAdmin = false }: { isAdmin?: boolean }) {
                 <Button
                   size="sm"
                   variant="outline"
+                  onClick={() => setCompareDialogOpen(true)}
+                  className="rounded-xl border-primary/30 text-primary hover:bg-primary/5 text-xs font-semibold"
+                >
+                  <Scale className="mr-1.5 h-3.5 w-3.5 text-primary" />
+                  Benchmarking (Radar)
+                </Button>
+                <Button
+                  size="sm"
+                  variant="outline"
                   onClick={() => window.open(groupExportRankingCsvUrl(groupId), '_blank')}
                   className="rounded-xl border-border/80 text-xs font-medium bg-background/80 hover:bg-background"
                 >
@@ -1488,6 +1500,12 @@ export function GroupDetail({ isAdmin = false }: { isAdmin?: boolean }) {
               data={collaborationNetwork}
               groupName={group?.name}
               isLoading={isLoadingNetwork}
+            />
+
+            {/* Benchmarking Inter-grupal & Tablero Multidimensional (Fase 5) */}
+            <GroupsRadarComparison
+              initialGroupIds={[groupId, ...(groupId === 10 ? [35] : [10])]}
+              showGroupSelector={true}
             />
 
 
@@ -1867,6 +1885,19 @@ export function GroupDetail({ isAdmin = false }: { isAdmin?: boolean }) {
             }
           }}
         />
+
+        {/* Modal dedicado de Benchmarking Inter-grupal */}
+        <Dialog open={compareDialogOpen} onOpenChange={setCompareDialogOpen}>
+          <DialogContent className="sm:max-w-6xl w-[95vw] max-h-[92vh] overflow-y-auto p-2 sm:p-6">
+            <DialogHeader className="sr-only">
+              <DialogTitle>Benchmarking Inter-grupal</DialogTitle>
+            </DialogHeader>
+            <GroupsRadarComparison
+              initialGroupIds={[groupId, ...(groupId === 10 ? [35] : [10])]}
+              showGroupSelector={true}
+            />
+          </DialogContent>
+        </Dialog>
       </Main>
     </>
   )

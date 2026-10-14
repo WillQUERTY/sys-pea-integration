@@ -871,4 +871,82 @@ export async function getGroupCollaborationNetwork(groupId: number) {
   return data
 }
 
+// --- Inter-Group Benchmarking & Radar Comparison (Phase 5) ---
+export interface GroupComparisonGroupItem {
+  id: number
+  name: string
+  acronym: string
+  classification: string
+  institution: string
+  external_code: string
+  status: string
+  total_products: number
+  total_members: number
+  top_researchers: Array<{
+    id: number
+    name: string
+    products_count: number
+    percentage_of_group: number
+  }>
+  strategic_ratios: {
+    avg_products_per_member: number
+    postgraduate_rate: number
+    postgraduate_count: number
+    endorsement_rate: number
+    validation_rate: number
+  }
+  network_summary: {
+    cohesion_index: number
+    density: number
+    total_edges: number
+  }
+  raw_dimensions: Record<string, number>
+  radar_scores: Record<string, number>
+}
+
+export interface GroupRadarChartRow {
+  dimension: string
+  short_label: string
+  key: string
+  unit: string
+  description: string
+  [key: string]: string | number
+}
+
+export interface DimensionLeaderItem {
+  dimension_key: string
+  dimension_label: string
+  leader_group_id: number
+  leader_group_name: string
+  leader_acronym: string
+  value: number
+  unit: string
+}
+
+export interface ComparisonMatrixRow {
+  indicator: string
+  category: string
+  values: Record<string, string | number>
+  unit: string
+  leader_id?: number | null
+}
+
+export interface GroupsComparisonResponse {
+  groups: GroupComparisonGroupItem[]
+  radar_chart_data: GroupRadarChartRow[]
+  dimension_leaders: DimensionLeaderItem[]
+  insights: string[]
+  comparison_matrix: ComparisonMatrixRow[]
+}
+
+export async function compareGroupsAnalytics(groupIds?: number[]) {
+  const params =
+    groupIds && groupIds.length > 0 ? { group_ids: groupIds.join(',') } : undefined
+  const { data } = await api.get<GroupsComparisonResponse>('/analytics/compare-groups', {
+    params,
+  })
+  return data
+}
+
+
 

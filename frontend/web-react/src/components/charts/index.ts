@@ -8,3 +8,5 @@ export * from './group-top-researchers'
 export * from './researcher-groups-contribution'
 export * from './minciencias-diagnosis-card'
 export * from './group-collaboration-network'
+export * from './groups-radar-comparison'
+
