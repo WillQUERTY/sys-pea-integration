@@ -2,21 +2,11 @@ import { useState, useMemo, useEffect } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { Link, useNavigate } from '@tanstack/react-router'
 import {
-  Bar,
-  BarChart,
-  CartesianGrid,
-  ResponsiveContainer,
-  Tooltip,
-  XAxis,
-  YAxis,
-} from 'recharts'
-import {
   FlaskConical,
   UserRound,
   Users,
   Lightbulb,
   ArrowRight,
-  BookOpen,
   Search as SearchIcon,
   Award,
   ChevronRight,
@@ -25,8 +15,12 @@ import {
   Building2,
   GraduationCap,
   ShieldCheck,
-  TrendingUp,
 } from 'lucide-react'
+import {
+  ProductionHistogram,
+  FamiliesDonut,
+  EducationDonut,
+} from '@/components/charts'
 import { getDashboardStats, listGroups, groupReportPdfUrl } from '@/lib/api'
 import { parseMincienciasClassification } from '@/lib/utils'
 import { Badge } from '@/components/ui/badge'
@@ -78,6 +72,8 @@ function HeroStat({ label, value, loading }: { label: string; value?: number; lo
   )
 }
 
+
+
 export function PublicPortal() {
   const navigate = useNavigate()
   const [heroSearch, setHeroSearch] = useState('')
@@ -90,6 +86,7 @@ export function PublicPortal() {
 
   const stats = statsQuery.data
   const byYear = stats?.by_year ?? []
+
 
   const normalizedClassifications = useMemo(() => {
     const map = new Map<string, { info: ReturnType<typeof parseMincienciasClassification>; count: number }>()
@@ -285,46 +282,12 @@ export function PublicPortal() {
         {/* Analytics */}
         <div className='grid grid-cols-1 gap-6 lg:grid-cols-7'>
           {/* Histogram */}
-          <Card className='col-span-1 lg:col-span-4 border-border/60 shadow-xs'>
-            <CardHeader className='pb-3'>
-              <div className='flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between'>
-                <div className='min-w-0'>
-                  <div className='flex flex-wrap items-center gap-2'>
-                    <TrendingUp className='h-4 w-4 text-primary' />
-                    <CardTitle className='text-base font-semibold'>Dinámica Temporal de Producción</CardTitle>
-                    <Badge variant='secondary' className='text-[11px] font-normal'>Crecimiento Histórico</Badge>
-                  </div>
-                  <CardDescription className='text-xs mt-1'>
-                    Distribución de publicaciones según el año de obtención declarado.
-                  </CardDescription>
-                </div>
-                <div className='flex w-fit shrink-0 items-center gap-1.5 text-xs text-muted-foreground bg-muted/60 px-2.5 py-1 rounded-md'>
-                  <BookOpen className='h-3.5 w-3.5 text-primary' />
-                  <span className='font-semibold text-foreground'>{totalProducts.toLocaleString()}</span> obras
-                </div>
-              </div>
-            </CardHeader>
-            <CardContent className='ps-2'>
-              {statsQuery.isLoading ? (
-                <Skeleton className='h-[290px] w-full rounded-xl' />
-              ) : byYear.length === 0 ? (
-                <div className='flex flex-col items-center justify-center h-[290px] text-muted-foreground text-sm'>
-                  <BookOpen className='h-8 w-8 mb-2 opacity-40' />
-                  <span>Sin registros de producción por año aún</span>
-                </div>
-              ) : (
-                <ResponsiveContainer width='100%' height={290}>
-                  <BarChart data={byYear} margin={{ top: 12, right: 12, left: -10, bottom: 0 }}>
-                    <CartesianGrid strokeDasharray='3 3' vertical={false} stroke='var(--border)' opacity={0.6} />
-                    <XAxis dataKey='year' tickLine={false} axisLine={false} fontSize={11} tick={{ fill: 'var(--muted-foreground)' }} />
-                    <YAxis tickLine={false} axisLine={false} fontSize={11} allowDecimals={false} tick={{ fill: 'var(--muted-foreground)' }} />
-                    <Tooltip cursor={{ fill: 'var(--accent)' }} content={<CustomTooltip />} />
-                    <Bar dataKey='count' name='Productos científicos' fill='var(--primary)' radius={[6, 6, 0, 0]} />
-                  </BarChart>
-                </ResponsiveContainer>
-              )}
-            </CardContent>
-          </Card>
+          <ProductionHistogram
+            data={byYear}
+            totalProducts={totalProducts}
+            height={290}
+            className='col-span-1 lg:col-span-4'
+          />
 
           {/* Classification */}
           <Card className='col-span-1 lg:col-span-3 border-border/60 shadow-xs flex flex-col justify-between'>
@@ -385,6 +348,12 @@ export function PublicPortal() {
               <span className='font-bold text-foreground'>{totalGroups}</span>
             </div>
           </Card>
+        </div>
+
+        {/* Balance de Familias y Formación Humana */}
+        <div className='grid grid-cols-1 gap-6 md:grid-cols-2'>
+          <FamiliesDonut data={stats?.families_distribution} />
+          <EducationDonut data={stats?.researchers_education} totalResearchers={totalResearchers} />
         </div>
 
         {/* Showcase: featured groups */}
@@ -570,23 +539,4 @@ function DiscoveryCard({
   )
 }
 
-function CustomTooltip({ active, payload, label }: any) {
-  if (active && payload && payload.length) {
-    return (
-      <div className='rounded-xl border bg-popover/95 backdrop-blur-sm p-3 shadow-lg text-popover-foreground'>
-        {label && <p className='mb-1.5 text-xs font-semibold text-muted-foreground'>Año {label}</p>}
-        {payload.map((entry: any, index: number) => (
-          <div key={index} className='flex items-center gap-2'>
-            <div
-              className='h-2.5 w-2.5 rounded-full'
-              style={{ backgroundColor: entry.color && !entry.color.startsWith('url') ? entry.color : 'var(--primary)' }}
-            />
-            <span className='text-xs font-medium text-muted-foreground'>{entry.name}:</span>
-            <span className='text-sm font-bold text-foreground'>{entry.value}</span>
-          </div>
-        ))}
-      </div>
-    )
-  }
-  return null
-}
+

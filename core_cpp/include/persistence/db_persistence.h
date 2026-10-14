@@ -29,6 +29,9 @@ bool sync_project_link_to_db(const std::string& conn, int group_id, int project_
 
 // ---- Option A Refactor ----
 std::string get_dashboard_stats_json(const std::string& connection_string);
+std::string get_group_stats_json(const std::string& connection_string, int group_id);
+std::string get_group_collaboration_network_json(const std::string& connection_string, int group_id);
+std::string get_researcher_stats_json(const std::string& connection_string, int researcher_id);
 // Product catalogs (ProductFamily / ProductSubtype / QualityCategory) as JSON.
 std::string get_product_catalogs_json(const std::string& connection_string);
 int link_project_to_group_db(const std::string& conn, int group_id, const Project& p);

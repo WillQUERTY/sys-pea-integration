@@ -33,6 +33,7 @@ import { ProfileDropdown } from '@/components/profile-dropdown'
 import { Search } from '@/components/search'
 import { ThemeSwitch } from '@/components/theme-switch'
 import { KhemiaLogo } from '@/assets/khemia-logo'
+import { AnalyticsSection } from './analytics-section'
 
 export function Dashboard() {
   const statsQuery = useQuery({ queryKey: ['dashboard-stats'], queryFn: getDashboardStats })
@@ -199,6 +200,9 @@ export function Dashboard() {
             </CardContent>
           </Card>
         </div>
+
+        {/* ANALÍTICA Y RENDIMIENTO INSTITUCIONAL (MINCIENCIAS 2024) */}
+        <AnalyticsSection stats={stats} isLoading={loadingStats} />
 
         {/* ACCIONES Y HERRAMIENTAS DE GESTIÓN */}
         <div className='space-y-3'>

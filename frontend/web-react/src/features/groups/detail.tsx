@@ -16,7 +16,13 @@ import {
   UserPlus,
   Pencil,
   FileDown,
-  ClipboardList
+  FileText,
+  FileSpreadsheet,
+  ClipboardList,
+  TrendingUp,
+  Sparkles,
+  GraduationCap,
+  Scale
 } from 'lucide-react'
 
 import {
@@ -26,8 +32,20 @@ import {
   linkProduct, unlinkProduct, listProducts,
   getGroupMemberships, updateMember,
   getGroupPlans, createPlan, updatePlan, deletePlan,
-  groupReportPdfUrl, getProductCatalogs
+  groupReportPdfUrl, groupDossierPdfUrl, groupExportRankingCsvUrl, groupExportProductsCsvUrl,
+  getProductCatalogs, getGroupStats, getGroupMincienciasDiagnosis,
+  getGroupCollaborationNetwork,
 } from '@/lib/api'
+import {
+  ProductionHistogram,
+  FamiliesDonut,
+  EducationDonut,
+  GroupTopResearchers,
+  TopSubtypesRanking,
+  MincienciasDiagnosisCard,
+  GroupCollaborationNetwork,
+  GroupsRadarComparison,
+} from '@/components/charts'
 import type { Researcher } from '@/lib/types'
 import type { Group, WorkPlan, Project, Product } from '@/lib/types'
 import { parseMincienciasClassification } from '@/lib/utils'
@@ -53,6 +71,12 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Badge } from '@/components/ui/badge'
+import {
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+} from '@/components/ui/card'
 import {
   Select,
   SelectContent,
@@ -104,6 +128,7 @@ export function GroupDetail({ isAdmin = false }: { isAdmin?: boolean }) {
 
   // Ventana de observación del informe PDF (Requerimiento 10): presets o rango
   const [pdfDialogOpen, setPdfDialogOpen] = useState(false)
+  const [compareDialogOpen, setCompareDialogOpen] = useState(false)
   const [reportWindow, setReportWindow] = useState('all')
   const [reportStart, setReportStart] = useState('')
   const [reportEnd, setReportEnd] = useState('')
@@ -159,6 +184,24 @@ export function GroupDetail({ isAdmin = false }: { isAdmin?: boolean }) {
   const { data: plans, isLoading: isLoadingPlans } = useQuery({
     queryKey: ['groups', groupId, 'plans'],
     queryFn: () => getGroupPlans(groupId),
+  })
+
+  // Estadísticas e Impacto del Grupo
+  const { data: stats } = useQuery({
+    queryKey: ['groups', groupId, 'stats'],
+    queryFn: () => getGroupStats(groupId),
+  })
+
+  // Diagnóstico Minciencias 2024
+  const { data: mincienciasDiagnosis } = useQuery({
+    queryKey: ['groups', groupId, 'minciencias-diagnosis'],
+    queryFn: () => getGroupMincienciasDiagnosis(groupId),
+  })
+
+  // Grafo de Colaboración y Coautorías (Fase 3)
+  const { data: collaborationNetwork, isLoading: isLoadingNetwork } = useQuery({
+    queryKey: ['groups', groupId, 'network'],
+    queryFn: () => getGroupCollaborationNetwork(groupId),
   })
 
   const [formData, setFormData] = useState<Partial<Group>>({})
@@ -535,14 +578,14 @@ export function GroupDetail({ isAdmin = false }: { isAdmin?: boolean }) {
               </div>
               
               <div className='pb-1 w-full sm:w-auto flex items-center gap-2.5'>
-                <ActionTooltip label='Configurar ventana de observación y generar informe PDF oficial'>
+                <ActionTooltip label='Descargar Dossier Ejecutivo PDF, Informe GrupLAC o matrices CSV/Excel'>
                   <Button
                     variant='outline'
                     onClick={() => setPdfDialogOpen(true)}
                     className='rounded-xl shadow-sm border-primary/20 hover:border-primary/40 bg-card/60 backdrop-blur-sm'
                   >
                     <FileDown className='mr-2 h-4 w-4 text-primary' />
-                    Informe PDF
+                    Exportar Informes y Datos
                   </Button>
                 </ActionTooltip>
                 {isAdmin && (
@@ -560,175 +603,233 @@ export function GroupDetail({ isAdmin = false }: { isAdmin?: boolean }) {
           </div>
         </div>
 
-        {/* Dialog para Configurar y Generar Informe PDF (Requerimiento 10) */}
+        {/* Dialog para Centro de Exportación y Dossier de Gestión (Fase 4) */}
         <Dialog open={pdfDialogOpen} onOpenChange={setPdfDialogOpen}>
-          <DialogContent className='sm:max-w-[520px] rounded-2xl'>
+          <DialogContent className='sm:max-w-[620px] rounded-2xl'>
             <DialogHeader>
               <div className='flex items-center gap-2.5 mb-1'>
                 <div className='p-2.5 rounded-xl bg-primary/10 text-primary'>
                   <FileDown className='h-5 w-5' />
                 </div>
                 <div>
-                  <DialogTitle className='text-lg font-bold'>Informe Ejecutivo GrupLAC</DialogTitle>
-                  <p className='text-xs text-muted-foreground'>Ventana de Observación Temporal</p>
+                  <DialogTitle className='text-lg font-bold'>Centro de Exportación & Dossier de Gestión</DialogTitle>
+                  <p className='text-xs text-muted-foreground'>Universidad Popular del Cesar · Sistema Institucional Khemia</p>
                 </div>
               </div>
               <DialogDescription className='text-xs text-muted-foreground pt-1'>
-                Genera el reporte institucional en PDF para <span className='font-semibold text-foreground'>{group.name}</span> ({group.external_code}), delimitando la producción científica y proyectos según los lineamientos de Minciencias.
+                Descarga informes oficiales para Decanatura y Vicerrectoría, o exporta los datos analíticos para <span className='font-semibold text-foreground'>{group.name}</span> ({group.external_code}).
               </DialogDescription>
             </DialogHeader>
 
-            <div className='space-y-4 py-2'>
-              <div className='space-y-2'>
-                <Label className='text-xs font-semibold uppercase tracking-wider text-muted-foreground'>
-                  Ventana de observación de la producción
-                </Label>
-                <Select value={reportWindow} onValueChange={setReportWindow}>
-                  <SelectTrigger className='w-full rounded-xl'>
-                    <SelectValue placeholder='Seleccione una ventana...' />
-                  </SelectTrigger>
-                  <SelectContent className='rounded-xl'>
-                    <SelectItem value='all'>
-                      <div className='py-0.5 text-left'>
-                        <span className='font-medium block'>Toda la producción</span>
-                        <span className='text-[11px] text-muted-foreground block'>Histórico completo sin restricciones de año</span>
-                      </div>
-                    </SelectItem>
-                    <SelectItem value='2'>
-                      <div className='py-0.5 text-left'>
-                        <span className='font-medium block'>Últimos 2 años</span>
-                        <span className='text-[11px] text-muted-foreground block'>Monitoreo de producción reciente</span>
-                      </div>
-                    </SelectItem>
-                    <SelectItem value='5'>
-                      <div className='py-0.5 text-left'>
-                        <span className='font-medium block'>Últimos 5 años</span>
-                        <span className='text-[11px] text-muted-foreground block'>Ventana estándar de convocatorias Minciencias</span>
-                      </div>
-                    </SelectItem>
-                    <SelectItem value='10'>
-                      <div className='py-0.5 text-left'>
-                        <span className='font-medium block'>Últimos 10 años</span>
-                        <span className='text-[11px] text-muted-foreground block'>Trayectoria científica consolidada</span>
-                      </div>
-                    </SelectItem>
-                    <SelectItem value='custom'>
-                      <div className='py-0.5 text-left'>
-                        <span className='font-medium block'>Rango de años personalizado…</span>
-                        <span className='text-[11px] text-muted-foreground block'>Definir año inicial y final manualmente</span>
-                      </div>
-                    </SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
+            <Tabs defaultValue='dossier' className='space-y-4 py-1'>
+              <TabsList className='grid grid-cols-3 w-full rounded-xl bg-muted/60 p-1'>
+                <TabsTrigger value='dossier' className='rounded-lg text-xs font-semibold gap-1.5'>
+                  <FileText className='h-3.5 w-3.5 text-primary' />
+                  Dossier Ejecutivo
+                </TabsTrigger>
+                <TabsTrigger value='gruplac' className='rounded-lg text-xs font-semibold gap-1.5'>
+                  <FileDown className='h-3.5 w-3.5 text-blue-600' />
+                  Informe GrupLAC
+                </TabsTrigger>
+                <TabsTrigger value='csv' className='rounded-lg text-xs font-semibold gap-1.5'>
+                  <FileSpreadsheet className='h-3.5 w-3.5 text-emerald-600' />
+                  Excel / CSV
+                </TabsTrigger>
+              </TabsList>
 
-              {reportWindow === 'custom' && (
-                <div className='p-4 rounded-xl border border-border/60 bg-muted/30 space-y-3 animate-in fade-in-50 duration-200'>
-                  <div className='flex items-center justify-between'>
-                    <Label className='text-xs font-semibold text-foreground'>
-                      Definir Rango de Años (Desde – Hasta)
-                    </Label>
-                    <span className='text-[10px] text-muted-foreground'>Ej. 2018 a 2024</span>
+              {/* TAB 1: DOSSIER EJECUTIVO */}
+              <TabsContent value='dossier' className='space-y-4 pt-1'>
+                <div className='p-3.5 rounded-xl bg-primary/5 border border-primary/20 space-y-1.5 text-xs'>
+                  <div className='flex items-center justify-between font-semibold text-foreground'>
+                    <span>Dossier Ejecutivo Oficial (3 Páginas)</span>
+                    <Badge variant='outline' className='border-primary/40 text-primary text-[10px] font-bold'>
+                      DECANATURA & VICERRECTORÍA
+                    </Badge>
                   </div>
-                  <div className='grid grid-cols-1 sm:grid-cols-2 gap-3'>
-                    <div className='space-y-1.5'>
-                      <Label htmlFor='report-start' className='text-xs text-muted-foreground'>
-                        Año inicial (Desde)
-                      </Label>
-                      <Input
-                        id='report-start'
-                        type='number'
-                        inputMode='numeric'
-                        placeholder='Ej. 2018'
-                        min='1970'
-                        max={new Date().getFullYear()}
-                        value={reportStart}
-                        onChange={(e) => setReportStart(e.target.value)}
-                        className='rounded-lg'
-                      />
-                    </div>
-                    <div className='space-y-1.5'>
-                      <Label htmlFor='report-end' className='text-xs text-muted-foreground'>
-                        Año final (Hasta)
-                      </Label>
-                      <Input
-                        id='report-end'
-                        type='number'
-                        inputMode='numeric'
-                        placeholder='Ej. 2024'
-                        min='1970'
-                        max={new Date().getFullYear()}
-                        value={reportEnd}
-                        onChange={(e) => setReportEnd(e.target.value)}
-                        className='rounded-lg'
-                      />
-                    </div>
-                  </div>
-                  {reportStart && reportEnd && Number(reportStart) > Number(reportEnd) && (
-                    <p className='text-xs font-medium text-destructive flex items-center gap-1.5'>
-                      ⚠️ El año inicial ({reportStart}) no puede ser mayor que el año final ({reportEnd}).
-                    </p>
-                  )}
-                  {(!reportStart || !reportEnd) && (
-                    <p className='text-[11px] text-muted-foreground'>
-                      * Complete ambos años para filtrar la producción por este rango exacto.
-                    </p>
-                  )}
+                  <p className='text-muted-foreground text-[11px] leading-relaxed'>
+                    Resumen condensado de alto impacto con: Portada institucional, 4 KPIs clave, Diagnóstico Minciencias 2024 (criterios y brechas), Dinámica de familias de conocimiento, Ranking de investigadores, Red de colaboración y Bloque de formalización de firmas.
+                  </p>
                 </div>
-              )}
 
-              {/* Resumen del alcance del reporte */}
-              <div className='p-3 rounded-xl bg-primary/5 border border-primary/10 text-xs space-y-1.5'>
-                <div className='font-semibold text-foreground flex items-center justify-between'>
-                  <span>Alcance del reporte a descargar:</span>
-                  <Badge
-                    variant='outline'
-                    className={`text-[11px] font-medium ${
-                      reportWindow === 'custom' && reportStart && reportEnd && Number(reportStart) > Number(reportEnd)
-                        ? 'border-destructive/40 text-destructive bg-destructive/10'
-                        : 'border-primary/30 text-primary'
-                    }`}
+                <div className='space-y-2'>
+                  <Label className='text-xs font-semibold uppercase tracking-wider text-muted-foreground'>
+                    Ventana de observación de la producción
+                  </Label>
+                  <Select value={reportWindow} onValueChange={setReportWindow}>
+                    <SelectTrigger className='w-full rounded-xl'>
+                      <SelectValue placeholder='Seleccione una ventana...' />
+                    </SelectTrigger>
+                    <SelectContent className='rounded-xl'>
+                      <SelectItem value='all'>
+                        <div className='py-0.5 text-left'>
+                          <span className='font-medium block'>Toda la producción</span>
+                          <span className='text-[11px] text-muted-foreground block'>Histórico completo sin restricciones de año</span>
+                        </div>
+                      </SelectItem>
+                      <SelectItem value='5'>
+                        <div className='py-0.5 text-left'>
+                          <span className='font-medium block'>Últimos 5 años (Recomendado Minciencias)</span>
+                          <span className='text-[11px] text-muted-foreground block'>Ventana estándar de convocatorias institucionales</span>
+                        </div>
+                      </SelectItem>
+                      <SelectItem value='2'>
+                        <div className='py-0.5 text-left'>
+                          <span className='font-medium block'>Últimos 2 años</span>
+                          <span className='text-[11px] text-muted-foreground block'>Monitoreo de producción reciente</span>
+                        </div>
+                      </SelectItem>
+                      <SelectItem value='custom'>
+                        <div className='py-0.5 text-left'>
+                          <span className='font-medium block'>Rango de años personalizado…</span>
+                          <span className='text-[11px] text-muted-foreground block'>Definir año inicial y final manualmente</span>
+                        </div>
+                      </SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                {reportWindow === 'custom' && (
+                  <div className='p-3 rounded-xl border border-border/60 bg-muted/30 space-y-2.5 animate-in fade-in-50 duration-200'>
+                    <div className='grid grid-cols-2 gap-3'>
+                      <div className='space-y-1'>
+                        <Label htmlFor='dossier-start' className='text-xs text-muted-foreground'>Año inicial</Label>
+                        <Input
+                          id='dossier-start'
+                          type='number'
+                          value={reportStart}
+                          onChange={(e) => setReportStart(e.target.value)}
+                          placeholder='Ej. 2019'
+                          className='rounded-lg h-8 text-xs'
+                        />
+                      </div>
+                      <div className='space-y-1'>
+                        <Label htmlFor='dossier-end' className='text-xs text-muted-foreground'>Año final</Label>
+                        <Input
+                          id='dossier-end'
+                          type='number'
+                          value={reportEnd}
+                          onChange={(e) => setReportEnd(e.target.value)}
+                          placeholder='Ej. 2024'
+                          className='rounded-lg h-8 text-xs'
+                        />
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                <DialogFooter className='pt-2'>
+                  <Button
+                    onClick={() => {
+                      window.open(groupDossierPdfUrl(groupId, reportWindowParams), '_blank')
+                      setPdfDialogOpen(false)
+                    }}
+                    className='w-full rounded-xl shadow-md'
                   >
-                    {reportWindow === 'all'
-                      ? 'Histórico completo'
-                      : reportWindow === 'custom'
-                        ? reportStart && reportEnd
-                          ? Number(reportStart) > Number(reportEnd)
-                            ? 'Rango inválido'
-                            : `${reportStart} – ${reportEnd}`
-                          : 'Rango pendiente'
-                        : `Últimos ${reportWindow} años`}
-                  </Badge>
-                </div>
-                <p className='text-muted-foreground text-[11px] leading-relaxed'>
-                  El archivo PDF contendrá la ficha técnica, categorización Minciencias, integrantes y producción científica filtrada por la ventana de observación seleccionada.
-                </p>
-              </div>
-            </div>
+                    <FileDown className='mr-2 h-4 w-4' />
+                    Descargar Dossier Ejecutivo (PDF)
+                  </Button>
+                </DialogFooter>
+              </TabsContent>
 
-            <DialogFooter className='gap-2 sm:gap-0'>
-              <Button
-                variant='outline'
-                onClick={() => setPdfDialogOpen(false)}
-                className='rounded-xl'
-              >
-                Cancelar
-              </Button>
-              <Button
-                disabled={
-                  reportWindow === 'custom' &&
-                  (!reportStart || !reportEnd || Number(reportStart) > Number(reportEnd))
-                }
-                onClick={() => {
-                  window.open(groupReportPdfUrl(groupId, reportWindowParams), '_blank')
-                  setPdfDialogOpen(false)
-                }}
-                className='rounded-xl shadow-md'
-              >
-                <FileDown className='mr-2 h-4 w-4' />
-                Descargar Informe PDF
-              </Button>
-            </DialogFooter>
+              {/* TAB 2: INFORME GRUPLAC COMPLETO */}
+              <TabsContent value='gruplac' className='space-y-4 pt-1'>
+                <div className='p-3.5 rounded-xl bg-blue-500/5 border border-blue-500/20 space-y-1.5 text-xs'>
+                  <div className='flex items-center justify-between font-semibold text-foreground'>
+                    <span>Informe Exhaustivo GrupLAC</span>
+                    <Badge variant='outline' className='border-blue-500/40 text-blue-600 text-[10px] font-bold'>
+                      FORMATO SCIENTI MINCIENCIAS
+                    </Badge>
+                  </div>
+                  <p className='text-muted-foreground text-[11px] leading-relaxed'>
+                    Reporte técnico extendido con el inventario detallado de cada producto bibliográfico, subtipos Minciencias, integrantes y proyectos registrados en la plataforma.
+                  </p>
+                </div>
+
+                <div className='space-y-2'>
+                  <Label className='text-xs font-semibold uppercase tracking-wider text-muted-foreground'>
+                    Ventana de observación de la producción
+                  </Label>
+                  <Select value={reportWindow} onValueChange={setReportWindow}>
+                    <SelectTrigger className='w-full rounded-xl'>
+                      <SelectValue placeholder='Seleccione una ventana...' />
+                    </SelectTrigger>
+                    <SelectContent className='rounded-xl'>
+                      <SelectItem value='all'>Toda la producción (Histórico completo)</SelectItem>
+                      <SelectItem value='5'>Últimos 5 años (Ventana Minciencias)</SelectItem>
+                      <SelectItem value='2'>Últimos 2 años</SelectItem>
+                      <SelectItem value='10'>Últimos 10 años</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <DialogFooter className='pt-2'>
+                  <Button
+                    variant='default'
+                    onClick={() => {
+                      window.open(groupReportPdfUrl(groupId, reportWindowParams), '_blank')
+                      setPdfDialogOpen(false)
+                    }}
+                    className='w-full rounded-xl shadow-md'
+                  >
+                    <FileDown className='mr-2 h-4 w-4' />
+                    Descargar Informe GrupLAC (PDF)
+                  </Button>
+                </DialogFooter>
+              </TabsContent>
+
+              {/* TAB 3: EXCEL / CSV EXPORTS */}
+              <TabsContent value='csv' className='space-y-3 pt-1'>
+                <div className='p-3 rounded-xl bg-muted/40 border border-border/60 text-xs text-muted-foreground leading-relaxed'>
+                  Archivos CSV delimitados por punto y coma (;) con codificación UTF-8 BOM, optimizados para abrirse directamente en Microsoft Excel sin problemas de formato ni caracteres especiales.
+                </div>
+
+                <div className='grid grid-cols-1 sm:grid-cols-2 gap-3'>
+                  {/* Tarjeta Ranking */}
+                  <div className='p-3.5 rounded-xl border border-emerald-500/20 bg-emerald-500/5 flex flex-col justify-between space-y-3'>
+                    <div className='space-y-1'>
+                      <div className='flex items-center gap-1.5 font-bold text-xs text-emerald-800 dark:text-emerald-300'>
+                        <FileSpreadsheet className='h-4 w-4 text-emerald-600' />
+                        Ranking de Investigadores
+                      </div>
+                      <p className='text-[11px] text-muted-foreground leading-normal'>
+                        Matriz de integrantes con sus niveles académicos, obras en grupo, % de contribución y obras totales.
+                      </p>
+                    </div>
+                    <Button
+                      size='sm'
+                      variant='outline'
+                      onClick={() => window.open(groupExportRankingCsvUrl(groupId), '_blank')}
+                      className='w-full rounded-xl border-emerald-500/30 text-emerald-700 dark:text-emerald-300 hover:bg-emerald-500/10 text-xs font-semibold'
+                    >
+                      <FileSpreadsheet className='mr-1.5 h-3.5 w-3.5' />
+                      Descargar Ranking (.CSV)
+                    </Button>
+                  </div>
+
+                  {/* Tarjeta Productos */}
+                  <div className='p-3.5 rounded-xl border border-blue-500/20 bg-blue-500/5 flex flex-col justify-between space-y-3'>
+                    <div className='space-y-1'>
+                      <div className='flex items-center gap-1.5 font-bold text-xs text-blue-800 dark:text-blue-300'>
+                        <FileSpreadsheet className='h-4 w-4 text-blue-600' />
+                        Catálogo de Productos
+                      </div>
+                      <p className='text-[11px] text-muted-foreground leading-normal'>
+                        Inventario completo de obras con familia Minciencias, subtipo, año, DOI, aval y coautores.
+                      </p>
+                    </div>
+                    <Button
+                      size='sm'
+                      variant='outline'
+                      onClick={() => window.open(groupExportProductsCsvUrl(groupId, reportWindowParams), '_blank')}
+                      className='w-full rounded-xl border-blue-500/30 text-blue-700 dark:text-blue-300 hover:bg-blue-500/10 text-xs font-semibold'
+                    >
+                      <FileSpreadsheet className='mr-1.5 h-3.5 w-3.5' />
+                      Descargar Productos (.CSV)
+                    </Button>
+                  </div>
+                </div>
+              </TabsContent>
+            </Tabs>
           </DialogContent>
         </Dialog>
 
@@ -754,6 +855,12 @@ export function GroupDetail({ isAdmin = false }: { isAdmin?: boolean }) {
               <BookOpen className='mr-2 h-4 w-4' /> Productos ({products?.length ?? 0})
             </TabsTrigger>
             <TabsTrigger 
+              value="estadisticas" 
+              className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:shadow-none px-6 h-full"
+            >
+              <TrendingUp className='mr-2 h-4 w-4' /> Estadísticas e Impacto
+            </TabsTrigger>
+            <TabsTrigger 
               value="proyectos" 
               className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:shadow-none px-6 h-full"
             >
@@ -775,11 +882,11 @@ export function GroupDetail({ isAdmin = false }: { isAdmin?: boolean }) {
 
           <TabsContent value="perfil" className="focus-visible:outline-none">
             {isAdmin ? (
-              <form onSubmit={handleSubmit} className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <form onSubmit={handleSubmit} className="grid min-w-0 grid-cols-1 xl:grid-cols-2 gap-6">
               
               {/* Información Básica */}
-              <div className="space-y-6">
-                <div className="bg-card border border-border/50 rounded-2xl p-6 shadow-sm">
+              <div className="min-w-0 space-y-6">
+                <div className="min-w-0 bg-card border border-border/50 rounded-2xl p-6 shadow-sm">
                   <div className='flex items-center gap-2 mb-6'>
                     <div className='p-2 bg-blue-500/10 rounded-lg'>
                       <GroupIcon className='h-4 w-4 text-blue-500' />
@@ -798,7 +905,7 @@ export function GroupDetail({ isAdmin = false }: { isAdmin?: boolean }) {
                         className='bg-muted/30 focus-visible:bg-transparent rounded-xl'
                       />
                     </div>
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div className="grid min-w-0 grid-cols-1 sm:grid-cols-2 gap-4">
                       <div className="space-y-2">
                         <Label htmlFor="acronym">Sigla</Label>
                         <Input
@@ -819,7 +926,7 @@ export function GroupDetail({ isAdmin = false }: { isAdmin?: boolean }) {
                         />
                       </div>
                     </div>
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div className="grid min-w-0 grid-cols-1 sm:grid-cols-2 gap-4">
                       <div className="space-y-2">
                         <Label htmlFor="institution">Institución</Label>
                         <Input
@@ -853,7 +960,7 @@ export function GroupDetail({ isAdmin = false }: { isAdmin?: boolean }) {
                         </div>
                       </div>
                     </div>
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div className="grid min-w-0 grid-cols-1 sm:grid-cols-2 gap-4">
                       <div className="space-y-2">
                         <Label htmlFor="email">Email</Label>
                         <Input
@@ -873,7 +980,7 @@ export function GroupDetail({ isAdmin = false }: { isAdmin?: boolean }) {
                         />
                       </div>
                     </div>
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div className="grid min-w-0 grid-cols-1 sm:grid-cols-2 gap-4">
                       <CatalogCombobox
                         label="Área de Conocimiento (OCDE)"
                         options={GRAND_AREAS_OCDE}
@@ -896,7 +1003,7 @@ export function GroupDetail({ isAdmin = false }: { isAdmin?: boolean }) {
               </div>
 
               {/* Misión y Visión */}
-              <div className="bg-card border border-border/50 rounded-2xl p-6 shadow-sm">
+              <div className="min-w-0 bg-card border border-border/50 rounded-2xl p-6 shadow-sm">
                 <div className='flex items-center gap-2 mb-6'>
                   <div className='p-2 bg-purple-500/10 rounded-lg'>
                     <Trophy className='h-4 w-4 text-purple-500' />
@@ -934,16 +1041,16 @@ export function GroupDetail({ isAdmin = false }: { isAdmin?: boolean }) {
               
             </form>
             ) : (
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div className="space-y-6">
-                  <div className="bg-card border border-border/50 rounded-2xl p-6 shadow-sm space-y-6">
+              <div className="grid min-w-0 grid-cols-1 xl:grid-cols-2 gap-6">
+                <div className="min-w-0 space-y-6">
+                  <div className="min-w-0 bg-card border border-border/50 rounded-2xl p-6 shadow-sm space-y-6">
                     <div className='flex items-center gap-2 mb-2'>
                       <div className='p-2 bg-blue-500/10 rounded-lg'>
                         <GroupIcon className='h-4 w-4 text-blue-500' />
                       </div>
                       <h3 className="font-semibold text-lg">Información Básica</h3>
                     </div>
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+                    <div className="grid min-w-0 grid-cols-1 sm:grid-cols-2 gap-6">
                       <Field label="Nombre del Grupo" value={group.name} />
                       <Field label="Sigla" value={group.acronym} />
                       <Field label="Código GrupLAC" value={group.external_code} mono />
@@ -956,7 +1063,7 @@ export function GroupDetail({ isAdmin = false }: { isAdmin?: boolean }) {
                   </div>
                 </div>
 
-                <div className="bg-card border border-border/50 rounded-2xl p-6 shadow-sm space-y-6">
+                <div className="min-w-0 bg-card border border-border/50 rounded-2xl p-6 shadow-sm space-y-6">
                   <div className='flex items-center gap-2 mb-2'>
                     <div className='p-2 bg-purple-500/10 rounded-lg'>
                       <Trophy className='h-4 w-4 text-purple-500' />
@@ -1244,6 +1351,207 @@ export function GroupDetail({ isAdmin = false }: { isAdmin?: boolean }) {
               searchPlaceholder="Buscar por título del producto..."
             />
           </TabsContent>
+
+          {/* Estadísticas e Impacto del Grupo */}
+          <TabsContent value="estadisticas" className="focus-visible:outline-none space-y-6">
+            {/* Banner de Acciones Ejecutivas: Dossier Oficial & Exportaciones (Fase 4) */}
+            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 p-4 rounded-2xl bg-gradient-to-r from-primary/10 via-primary/5 to-transparent border border-primary/20 shadow-xs">
+              <div className="space-y-0.5">
+                <div className="flex items-center gap-2">
+                  <Badge className="bg-primary/20 text-primary border-primary/30 text-[10px] uppercase font-bold tracking-wider">
+                    Dossier Ejecutivo
+                  </Badge>
+                  <h3 className="text-sm font-bold tracking-tight text-foreground">
+                    Reportes Oficiales de Gestión & Exportación
+                  </h3>
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  Descarga el dossier ejecutivo para Decanatura/Vicerrectoría o exporta las matrices analíticas en formato Excel/CSV.
+                </p>
+              </div>
+              <div className="flex flex-wrap items-center gap-2 w-full sm:w-auto">
+                <Button
+                  size="sm"
+                  variant="default"
+                  onClick={() => window.open(groupDossierPdfUrl(groupId, reportWindowParams), '_blank')}
+                  className="rounded-xl shadow-xs text-xs font-semibold"
+                >
+                  <FileDown className="mr-1.5 h-3.5 w-3.5" />
+                  Dossier Ejecutivo (PDF)
+                </Button>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={() => setCompareDialogOpen(true)}
+                  className="rounded-xl border-primary/30 text-primary hover:bg-primary/5 text-xs font-semibold"
+                >
+                  <Scale className="mr-1.5 h-3.5 w-3.5 text-primary" />
+                  Benchmarking (Radar)
+                </Button>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={() => window.open(groupExportRankingCsvUrl(groupId), '_blank')}
+                  className="rounded-xl border-border/80 text-xs font-medium bg-background/80 hover:bg-background"
+                >
+                  <FileSpreadsheet className="mr-1.5 h-3.5 w-3.5 text-emerald-600" />
+                  Ranking (CSV)
+                </Button>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={() => window.open(groupExportProductsCsvUrl(groupId, reportWindowParams), '_blank')}
+                  className="rounded-xl border-border/80 text-xs font-medium bg-background/80 hover:bg-background"
+                >
+                  <FileSpreadsheet className="mr-1.5 h-3.5 w-3.5 text-blue-600" />
+                  Productos (CSV)
+                </Button>
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  onClick={() => setPdfDialogOpen(true)}
+                  className="rounded-xl text-xs text-muted-foreground hover:text-foreground"
+                >
+                  Más opciones…
+                </Button>
+              </div>
+            </div>
+
+            {/* Top KPI Cards del Grupo */}
+            <div className="grid grid-cols-2 gap-3 sm:gap-4 md:grid-cols-4">
+              <Card className="border-border/60 shadow-xs">
+                <CardHeader className="pb-2">
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+                      Total Producción
+                    </span>
+                    <BookOpen className="h-4 w-4 text-primary" />
+                  </div>
+                  <CardTitle className="text-2xl sm:text-3xl font-extrabold tracking-tight">
+                    {stats?.total_products?.toLocaleString('es-CO') ?? 0}
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="pt-0 text-xs text-muted-foreground">
+                  Obras científicas registradas en este grupo
+                </CardContent>
+              </Card>
+
+              <Card className="border-border/60 shadow-xs">
+                <CardHeader className="pb-2">
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+                      Pilar Científico
+                    </span>
+                    <Trophy className="h-4 w-4 text-amber-500" />
+                  </div>
+                  <CardTitle className="text-sm sm:text-base font-bold tracking-tight truncate" title={stats?.top_researchers?.[0]?.name}>
+                    {stats?.top_researchers?.[0]?.name ?? 'N/A'}
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="pt-0 text-xs text-muted-foreground">
+                  {stats?.top_researchers?.[0]
+                    ? `${stats.top_researchers[0].products_count} obras (${stats.top_researchers[0].percentage_of_group}% del grupo)`
+                    : 'Sin registros de autoría'}
+                </CardContent>
+              </Card>
+
+              <Card className="border-border/60 shadow-xs">
+                <CardHeader className="pb-2">
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+                      Productividad Media
+                    </span>
+                    <Sparkles className="h-4 w-4 text-violet-500" />
+                  </div>
+                  <CardTitle className="text-2xl sm:text-3xl font-extrabold tracking-tight">
+                    {stats?.strategic_ratios?.avg_products_per_member ?? 0}
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="pt-0 text-xs text-muted-foreground">
+                  Promedio de obras por integrante activo
+                </CardContent>
+              </Card>
+
+              <Card className="border-border/60 shadow-xs">
+                <CardHeader className="pb-2">
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+                      Masa Posgrado
+                    </span>
+                    <GraduationCap className="h-4 w-4 text-emerald-600" />
+                  </div>
+                  <CardTitle className="text-2xl sm:text-3xl font-extrabold tracking-tight">
+                    {stats?.strategic_ratios?.postgraduate_rate ?? 0}%
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="pt-0 text-xs text-muted-foreground">
+                  {stats?.strategic_ratios?.postgraduate_count ?? 0} investigadores con posgrado
+                </CardContent>
+              </Card>
+            </div>
+
+            {/* Diagnóstico y Semáforo de Categorización Minciencias 2024 */}
+            {mincienciasDiagnosis && (
+              <MincienciasDiagnosisCard data={mincienciasDiagnosis} />
+            )}
+
+            {/* Red de Colaboración y Grafo de Coautorías Interactivas (Fase 3) */}
+            <GroupCollaborationNetwork
+              data={collaborationNetwork}
+              groupName={group?.name}
+              isLoading={isLoadingNetwork}
+            />
+
+            {/* Benchmarking Inter-grupal & Tablero Multidimensional (Fase 5) */}
+            <GroupsRadarComparison
+              initialGroupIds={[groupId, ...(groupId === 10 ? [35] : [10])]}
+              showGroupSelector={true}
+            />
+
+
+            {/* Fila 2: Dinámica Temporal + Familias */}
+            <div className="grid grid-cols-1 gap-6 lg:grid-cols-7">
+              <ProductionHistogram
+                data={stats?.by_year ?? []}
+                totalProducts={stats?.total_products}
+                height={270}
+                className="col-span-1 lg:col-span-4"
+                title="Dinámica Temporal del Grupo"
+                description="Evolución anual de obtención de productos científicos en este colectivo."
+              />
+              <FamiliesDonut
+                data={stats?.families_distribution}
+                className="col-span-1 lg:col-span-3"
+                title="Familias Minciencias del Grupo"
+                description="Balance tipológico entre GNC, DTI, ASC y FRH en el grupo."
+              />
+            </div>
+
+            {/* Fila 3: Ranking de Autores de Mayor Impacto + Nivel Académico y Subtipos */}
+            <div className="grid grid-cols-1 gap-6 lg:grid-cols-7">
+              <GroupTopResearchers
+                data={stats?.top_researchers}
+                totalGroupProducts={stats?.total_products}
+                className="col-span-1 lg:col-span-4"
+              />
+              <div className="col-span-1 lg:col-span-3 space-y-6">
+                <EducationDonut
+                  data={stats?.researchers_education}
+                  totalResearchers={stats?.total_members}
+                  title="Formación del Talento Humano"
+                  description="Composición del equipo según su máximo título académico."
+                />
+                {stats?.top_subtypes && stats.top_subtypes.length > 0 && (
+                  <TopSubtypesRanking
+                    data={stats.top_subtypes}
+                    title="Top Tipologías en el Grupo"
+                    description="Formatos y subtipos con mayor volumen en este grupo."
+                  />
+                )}
+              </div>
+            </div>
+          </TabsContent>
+
           <TabsContent value="proyectos" className="focus-visible:outline-none bg-card border border-border/50 rounded-2xl p-6 shadow-sm">
             <div className="flex justify-between items-center mb-4">
               <h3 className="font-semibold text-lg">Proyectos del Grupo</h3>
@@ -1577,6 +1885,19 @@ export function GroupDetail({ isAdmin = false }: { isAdmin?: boolean }) {
             }
           }}
         />
+
+        {/* Modal dedicado de Benchmarking Inter-grupal */}
+        <Dialog open={compareDialogOpen} onOpenChange={setCompareDialogOpen}>
+          <DialogContent className="sm:max-w-6xl w-[95vw] max-h-[92vh] overflow-y-auto p-2 sm:p-6">
+            <DialogHeader className="sr-only">
+              <DialogTitle>Benchmarking Inter-grupal</DialogTitle>
+            </DialogHeader>
+            <GroupsRadarComparison
+              initialGroupIds={[groupId, ...(groupId === 10 ? [35] : [10])]}
+              showGroupSelector={true}
+            />
+          </DialogContent>
+        </Dialog>
       </Main>
     </>
   )

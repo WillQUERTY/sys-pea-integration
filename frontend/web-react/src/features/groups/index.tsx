@@ -2,9 +2,11 @@ import { useState, useMemo, useEffect } from 'react'
 import { useQuery, useMutation, useQueryClient, keepPreviousData } from '@tanstack/react-query'
 import { Link, useSearch } from '@tanstack/react-router'
 import { toast } from 'sonner'
-import { Plus, MoreHorizontal, Pencil, Trash2, RotateCcw } from 'lucide-react'
+import { Plus, MoreHorizontal, Pencil, Trash2, RotateCcw, Scale } from 'lucide-react'
 import { listGroups, deleteGroup, restoreGroup } from '@/lib/api'
 import type { Group } from '@/lib/types'
+import { GroupsRadarComparison } from '@/components/charts'
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { useDebouncedValue } from '@/hooks/use-debounced-value'
 import { parseMincienciasClassification } from '@/lib/utils'
 import { Badge } from '@/components/ui/badge'
@@ -61,6 +63,8 @@ export function Groups({ isAdmin = false }: { isAdmin?: boolean }) {
   const [formOpen, setFormOpen] = useState(false)
   const [editingGroup, setEditingGroup] = useState<Group | null>(null)
   const [deletingGroup, setDeletingGroup] = useState<Group | null>(null)
+  const [compareOpen, setCompareOpen] = useState(false)
+  const [compareGroupIds, setCompareGroupIds] = useState<number[]>([10, 35])
 
   // Estado server-side: búsqueda (debounced), página y filtros
   // El término llega por URL desde el hero-search del dashboard
@@ -198,6 +202,17 @@ export function Groups({ isAdmin = false }: { isAdmin?: boolean }) {
                 Ver / Editar Perfil
               </Link>
             </DropdownMenuItem>
+            <DropdownMenuItem
+              onClick={() => {
+                if (g.id) {
+                  setCompareGroupIds([g.id, ...(g.id === 10 ? [35] : [10])])
+                  setCompareOpen(true)
+                }
+              }}
+            >
+              <Scale className='mr-2 h-4 w-4 text-primary' />
+              Comparar en Radar
+            </DropdownMenuItem>
             <DropdownMenuSeparator />
             {g.status === 'inactive' ? (
               <DropdownMenuItem onClick={() => restoreMutation.mutate(g.id!)}>
@@ -269,9 +284,22 @@ export function Groups({ isAdmin = false }: { isAdmin?: boolean }) {
                 Grupos importados desde GrupLAC o creados manualmente.
               </p>
             </div>
-            <Button onClick={() => { setEditingGroup(null); setFormOpen(true) }}>
-              <Plus className='mr-2 h-4 w-4' /> Agregar Grupo
-            </Button>
+            <div className='flex items-center gap-2'>
+              <Button
+                variant='outline'
+                onClick={() => {
+                  setCompareGroupIds([10, 35])
+                  setCompareOpen(true)
+                }}
+                className='border-primary/40 text-primary hover:bg-primary/5 font-semibold'
+              >
+                <Scale className='mr-2 h-4 w-4 text-primary' />
+                Benchmarking Inter-grupal
+              </Button>
+              <Button onClick={() => { setEditingGroup(null); setFormOpen(true) }}>
+                <Plus className='mr-2 h-4 w-4' /> Agregar Grupo
+              </Button>
+            </div>
           </div>
         )}
 
@@ -333,6 +361,18 @@ export function Groups({ isAdmin = false }: { isAdmin?: boolean }) {
           }
         }}
       />
+
+      <Dialog open={compareOpen} onOpenChange={setCompareOpen}>
+        <DialogContent className='sm:max-w-6xl w-[95vw] max-h-[92vh] overflow-y-auto p-2 sm:p-6'>
+          <DialogHeader className='sr-only'>
+            <DialogTitle>Benchmarking Inter-grupal</DialogTitle>
+          </DialogHeader>
+          <GroupsRadarComparison
+            initialGroupIds={compareGroupIds}
+            showGroupSelector={true}
+          />
+        </DialogContent>
+      </Dialog>
     </>
   )
 }
