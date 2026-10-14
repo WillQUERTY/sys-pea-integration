@@ -1528,41 +1528,12 @@ def _ram_dashboard_stats(products: List[Product], researchers: List[Researcher])
     for g in list_groups():
         key = g.classification or "Sin clasificar"
         classifications[key] = classifications.get(key, 0) + 1
-    return {
-        "total_researchers": len(researchers),
-        "total_products": len(products),
-        "validation": validation,
-        "by_year": [{"year": y, "count": c} for y, c in sorted(by_year.items())],
-        "groups_by_classification": classifications,
-    }
 
-
-def get_dashboard_stats() -> dict:
-    products = list_products()
-    researchers = list_researchers()
-    if _active_connection_string:
-        # El nucleo C++ ejecuta las 6 agregaciones y devuelve el JSON ya
-        # estructurado con las mismas claves que consumia la API.
-        stats = json.loads(abpoxx_pybind.get_dashboard_stats_json(_active_connection_string))
-    else:
-        stats = _ram_dashboard_stats(products, researchers)
-
-    # Métricas del Modelo de Medición 2024, calculadas en Python sobre la
-    # RAM del core (el agregado del C++ no las conoce) y fusionadas al JSON.
     _, total_projects = list_projects()
     endorsed_count = sum(1 for p in products if _is_endorsed(p))
     orcid_count = sum(1 for r in researchers if r.orcid)
     without_subtype = sum(1 for p in products if not p.subtype_id)
 
-    stats["modelo_2024"] = {
-        "products_without_subtype": without_subtype,
-        "products_with_quality": sum(1 for p in products if p.quality_category_id),
-        "endorsed_products": endorsed_count,
-        "researchers_with_orcid": orcid_count,
-        "total_projects": total_projects,
-    }
-
-    # Distribución por Familias Minciencias 2024
     catalogs = get_product_catalogs()
     families_map = {f["id"]: f for f in catalogs.get("families", [])}
     subtypes_map = {s["id"]: s for s in catalogs.get("subtypes", [])}
@@ -1571,9 +1542,9 @@ def get_dashboard_stats() -> dict:
     for p in products:
         if p.family_id:
             fam_counts[p.family_id] = fam_counts.get(p.family_id, 0) + 1
-
     total_classified_fam = sum(fam_counts.get(f_id, 0) for f_id in families_map)
-    stats["families_distribution"] = [
+
+    families_distribution = [
         {
             "family_id": f_id,
             "code": f_data.get("code") or "",
@@ -1584,41 +1555,28 @@ def get_dashboard_stats() -> dict:
         for f_id, f_data in sorted(families_map.items(), key=lambda x: x[1].get("sort_order", 99))
     ]
 
-    # Composición del Talento Humano según máximo nivel de formación
     edu_counts: dict = {}
     for r in researchers:
         lvl = (r.highest_education_level or "").strip()
         if lvl:
             edu_counts[lvl] = edu_counts.get(lvl, 0) + 1
-
     total_edu = sum(edu_counts.values())
     canonical_levels = ["Doctorado", "Maestría", "Especialización", "Pregrado"]
     edu_dist = []
     for lvl in canonical_levels:
         if lvl in edu_counts:
             cnt = edu_counts[lvl]
-            edu_dist.append({
-                "level": lvl,
-                "count": cnt,
-                "percentage": round((cnt / max(total_edu, 1)) * 100, 1),
-            })
+            edu_dist.append({"level": lvl, "count": cnt, "percentage": round((cnt / max(total_edu, 1)) * 100, 1)})
     for lvl, cnt in edu_counts.items():
         if lvl not in canonical_levels:
-            edu_dist.append({
-                "level": lvl,
-                "count": cnt,
-                "percentage": round((cnt / max(total_edu, 1)) * 100, 1),
-            })
-    stats["researchers_education"] = edu_dist
+            edu_dist.append({"level": lvl, "count": cnt, "percentage": round((cnt / max(total_edu, 1)) * 100, 1)})
 
-    # Top Tipologías de mayor volumen
     sub_counts: dict = {}
     for p in products:
         if p.subtype_id:
             sub_counts[p.subtype_id] = sub_counts.get(p.subtype_id, 0) + 1
-
     sorted_subtypes = sorted(sub_counts.items(), key=lambda x: x[1], reverse=True)[:8]
-    stats["top_subtypes"] = [
+    top_subtypes = [
         {
             "subtype_id": s_id,
             "name": subtypes_map.get(s_id, {}).get("name") or f"Tipología {s_id}",
@@ -1628,21 +1586,48 @@ def get_dashboard_stats() -> dict:
         for s_id, cnt in sorted_subtypes
     ]
 
-    # Ratios estratégicos institucionales
     postgraduate_count = sum(
         1 for r in researchers if (r.highest_education_level or "").strip() in ["Doctorado", "Maestría", "Especialización"]
     )
     total_prods = len(products)
     total_res = len(researchers)
 
-    stats["strategic_ratios"] = {
-        "endorsement_rate": round((endorsed_count / max(total_prods, 1)) * 100, 1),
-        "postgraduate_rate": round((postgraduate_count / max(total_res, 1)) * 100, 1),
-        "avg_products_per_researcher": round(total_prods / max(total_res, 1), 1),
-        "orcid_coverage_rate": round((orcid_count / max(total_res, 1)) * 100, 1),
+    return {
+        "total_groups": len(list_groups()),
+        "total_researchers": total_res,
+        "total_products": total_prods,
+        "validation": validation,
+        "by_year": [{"year": y, "count": c} for y, c in sorted(by_year.items())],
+        "groups_by_classification": classifications,
+        "modelo_2024": {
+            "products_without_subtype": without_subtype,
+            "products_with_quality": sum(1 for p in products if p.quality_category_id),
+            "endorsed_products": endorsed_count,
+            "researchers_with_orcid": orcid_count,
+            "total_projects": total_projects,
+        },
+        "families_distribution": families_distribution,
+        "researchers_education": edu_dist,
+        "top_subtypes": top_subtypes,
+        "strategic_ratios": {
+            "endorsement_rate": round((endorsed_count / max(total_prods, 1)) * 100, 1),
+            "postgraduate_rate": round((postgraduate_count / max(total_res, 1)) * 100, 1),
+            "avg_products_per_researcher": round(total_prods / max(total_res, 1), 1),
+            "orcid_coverage_rate": round((orcid_count / max(total_res, 1)) * 100, 1),
+        },
     }
 
-    return stats
+
+def get_dashboard_stats() -> dict:
+    if _active_connection_string:
+        # El núcleo C++ ejecuta todas las agregaciones nativamente en SQL Server vía ODBC
+        # y devuelve el JSON ya completamente estructurado.
+        return json.loads(abpoxx_pybind.get_dashboard_stats_json(_active_connection_string))
+
+    # Modo fallback sin base de datos SQL (calculado sobre la RAM del core C++)
+    products = list_products()
+    researchers = list_researchers()
+    return _ram_dashboard_stats(products, researchers)
 
 def get_group_projects(group_id: int) -> List[Project]:
     get_group(group_id)  # 404 si no existe
