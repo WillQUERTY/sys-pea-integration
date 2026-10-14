@@ -1,5 +1,6 @@
 import { useState, useMemo } from 'react'
 import { useQuery } from '@tanstack/react-query'
+import { toast } from 'sonner'
 import {
   RadarChart,
   PolarGrid,
@@ -9,6 +10,11 @@ import {
   Legend,
   Tooltip,
   ResponsiveContainer,
+  BarChart,
+  Bar,
+  XAxis,
+  YAxis,
+  CartesianGrid,
 } from 'recharts'
 import {
   Trophy,
@@ -23,6 +29,15 @@ import {
   X,
   Info,
   CheckCircle2,
+  BarChart3,
+  Radar as RadarIcon,
+  Download,
+  Copy,
+  Eye,
+  EyeOff,
+  Users,
+  Award,
+  Layers,
 } from 'lucide-react'
 import {
   compareGroupsAnalytics,
@@ -49,36 +64,42 @@ export const COMPARISON_GROUP_PALETTE = [
     fill: '#059669',
     badge: 'bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 border-emerald-500/30',
     dot: 'bg-emerald-500',
+    pill: 'bg-emerald-50 dark:bg-emerald-950/40 text-emerald-800 dark:text-emerald-300 border-emerald-300 dark:border-emerald-800',
   },
   {
     stroke: '#2563eb', // Blue
     fill: '#2563eb',
     badge: 'bg-blue-500/10 text-blue-700 dark:text-blue-400 border-blue-500/30',
     dot: 'bg-blue-500',
+    pill: 'bg-blue-50 dark:bg-blue-950/40 text-blue-800 dark:text-blue-300 border-blue-300 dark:border-blue-800',
   },
   {
     stroke: '#d97706', // Amber
     fill: '#d97706',
     badge: 'bg-amber-500/10 text-amber-700 dark:text-amber-400 border-amber-500/30',
     dot: 'bg-amber-500',
+    pill: 'bg-amber-50 dark:bg-amber-950/40 text-amber-800 dark:text-amber-300 border-amber-300 dark:border-amber-800',
   },
   {
     stroke: '#7c3aed', // Violet
     fill: '#7c3aed',
     badge: 'bg-violet-500/10 text-violet-700 dark:text-violet-400 border-violet-500/30',
     dot: 'bg-violet-500',
+    pill: 'bg-violet-50 dark:bg-violet-950/40 text-violet-800 dark:text-violet-300 border-violet-300 dark:border-violet-800',
   },
   {
     stroke: '#e11d48', // Rose
     fill: '#e11d48',
     badge: 'bg-rose-500/10 text-rose-700 dark:text-rose-400 border-rose-500/30',
     dot: 'bg-rose-500',
+    pill: 'bg-rose-50 dark:bg-rose-950/40 text-rose-800 dark:text-rose-300 border-rose-300 dark:border-rose-800',
   },
   {
     stroke: '#0891b2', // Cyan
     fill: '#0891b2',
     badge: 'bg-cyan-500/10 text-cyan-700 dark:text-cyan-400 border-cyan-500/30',
     dot: 'bg-cyan-500',
+    pill: 'bg-cyan-50 dark:bg-cyan-950/40 text-cyan-800 dark:text-cyan-300 border-cyan-300 dark:border-cyan-800',
   },
 ]
 
@@ -108,7 +129,7 @@ function RadarCustomTooltip({ active, payload }: CustomTooltipProps) {
   if (!row) return null
 
   return (
-    <div className='rounded-xl border border-border/80 bg-popover/95 p-3.5 shadow-xl backdrop-blur-md text-xs min-w-[240px]'>
+    <div className='rounded-xl border border-border/80 bg-popover/95 p-3.5 shadow-xl backdrop-blur-md text-xs min-w-[260px]'>
       <div className='border-b border-border/60 pb-1.5 mb-2'>
         <p className='font-bold text-sm text-foreground'>{row.dimension}</p>
         <p className='text-[11px] text-muted-foreground leading-tight'>{row.description}</p>
@@ -152,6 +173,10 @@ export function GroupsRadarComparison({
 }: GroupsRadarComparisonProps) {
   const [selectedIds, setSelectedIds] = useState<number[]>(initialGroupIds)
   const [candidateId, setCandidateId] = useState<string>('')
+  const [hoveredGroupId, setHoveredGroupId] = useState<number | null>(null)
+  const [hiddenGroupIds, setHiddenGroupIds] = useState<number[]>([])
+  const [viewMode, setViewMode] = useState<'radar' | 'bars'>('radar')
+  const [showTalent, setShowTalent] = useState(false)
 
   // 1. Cargar datos comparativos
   const { data, isLoading, isError, refetch } = useQuery<GroupsComparisonResponse>({
@@ -176,7 +201,8 @@ export function GroupsRadarComparison({
     const id = parseInt(idStr, 10)
     if (!isNaN(id) && !selectedIds.includes(id)) {
       if (selectedIds.length >= 6) {
-        return // Máximo 6 para legibilidad del radar
+        toast.info('Máximo 6 grupos simultáneos para garantizar legibilidad analítica')
+        return
       }
       setSelectedIds([...selectedIds, id])
       setCandidateId('')
@@ -186,11 +212,110 @@ export function GroupsRadarComparison({
   const handleRemoveGroup = (id: number) => {
     if (selectedIds.length <= 1) return
     setSelectedIds(selectedIds.filter((item) => item !== id))
+    setHiddenGroupIds(hiddenGroupIds.filter((item) => item !== id))
+  }
+
+  const handleToggleHide = (id: number) => {
+    if (hiddenGroupIds.includes(id)) {
+      setHiddenGroupIds(hiddenGroupIds.filter((item) => item !== id))
+    } else {
+      if (selectedIds.length - hiddenGroupIds.length <= 1) {
+        toast.info('Debe mantenerse al menos un grupo visible')
+        return
+      }
+      setHiddenGroupIds([...hiddenGroupIds, id])
+    }
   }
 
   const handleResetLeaders = () => {
     setSelectedIds([10, 35])
+    setHiddenGroupIds([])
   }
+
+  // Exportar Matriz a CSV con UTF-8 BOM
+  const handleExportCsv = () => {
+    if (!data || !data.comparison_matrix.length) return
+
+    const visibleGroups = data.groups.filter((g) => !hiddenGroupIds.includes(g.id))
+    const headers = ['Indicador', 'Categoría', 'Unidad', ...visibleGroups.map((g) => g.acronym)]
+
+    const rows = data.comparison_matrix.map((row) => {
+      const line = [
+        `"${row.indicator.replace(/"/g, '""')}"`,
+        `"${row.category}"`,
+        `"${row.unit}"`,
+        ...visibleGroups.map((g) => {
+          const val = row.values[g.id]
+          return val !== undefined && val !== null ? `"${val}"` : '""'
+        }),
+      ]
+      return line.join(';')
+    })
+
+    const csvContent = '\uFEFF' + [headers.join(';'), ...rows].join('\r\n')
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' })
+    const url = URL.createObjectURL(blob)
+    const link = document.createElement('a')
+    link.href = url
+    link.setAttribute('download', `benchmarking_grupos_khemia_${new Date().toISOString().slice(0, 10)}.csv`)
+    document.body.appendChild(link)
+    link.click()
+    document.body.removeChild(link)
+    URL.revokeObjectURL(url)
+    toast.success('Matriz comparativa exportada en formato Excel / CSV')
+  }
+
+  // Copiar Resumen Ejecutivo a Portapapeles
+  const handleCopySummary = async () => {
+    if (!data) return
+
+    const visibleGroups = data.groups.filter((g) => !hiddenGroupIds.includes(g.id))
+    const groupNames = visibleGroups.map((g) => `${g.acronym} (${g.classification})`).join(' vs ')
+
+    let text = `📊 BENCHMARKING INTER-GRUPAL KHEMIA (UPC)\n`
+    text += `Comparativa: ${groupNames}\n`
+    text += `Fecha: ${new Date().toLocaleDateString('es-CO')}\n\n`
+    text += `🏆 LIDERAZGO INSTITUCIONAL:\n`
+    data.dimension_leaders.forEach((dl) => {
+      text += `• ${dl.dimension_label}: ${dl.leader_acronym} (${dl.value} ${dl.unit})\n`
+    })
+    text += `\n🔍 HALLAZGOS CLAVE:\n`
+    data.insights.forEach((ins) => {
+      text += `• ${ins}\n`
+    })
+
+    try {
+      await navigator.clipboard.writeText(text)
+      toast.success('Resumen ejecutivo copiado al portapapeles')
+    } catch {
+      toast.error('No se pudo acceder al portapapeles')
+    }
+  }
+
+  // Detección de investigadores compartidos entre grupos comparados
+  const sharedResearchers = useMemo(() => {
+    if (!data || data.groups.length < 2) return []
+    const authorMap = new Map<number, { name: string; education: string; groups: string[] }>()
+
+    data.groups.forEach((g) => {
+      g.top_researchers?.forEach((r) => {
+        const existing = authorMap.get(r.id)
+        if (existing) {
+          if (!existing.groups.includes(g.acronym)) {
+            existing.groups.push(g.acronym)
+          }
+        } else {
+          authorMap.set(r.id, {
+            name: r.name,
+            education: (r as any).highest_education || 'Investigador',
+            groups: [g.acronym],
+          })
+        }
+      })
+    })
+
+    return Array.from(authorMap.values()).filter((item) => item.groups.length > 1)
+  }, [data])
 
   if (isLoading) {
     return (
@@ -227,6 +352,7 @@ export function GroupsRadarComparison({
   }
 
   const groups = data.groups
+  const visibleGroups = groups.filter((g) => !hiddenGroupIds.includes(g.id))
   const radarChartData = data.radar_chart_data
   const leaders = data.dimension_leaders
   const matrix = data.comparison_matrix
@@ -235,7 +361,7 @@ export function GroupsRadarComparison({
     <Card className={`border-border/60 shadow-sm overflow-hidden ${className}`}>
       {/* Header & Acciones del Comparador */}
       <CardHeader className='pb-4 border-b border-border/40 bg-gradient-to-r from-card via-card to-primary/5'>
-        <div className='flex flex-col md:flex-row md:items-center justify-between gap-4'>
+        <div className='flex flex-col lg:flex-row lg:items-center justify-between gap-4'>
           <div className='space-y-1'>
             <div className='flex items-center gap-2'>
               <Badge className='bg-primary/20 text-primary border-primary/30 text-[10px] uppercase font-bold tracking-wider'>
@@ -251,21 +377,74 @@ export function GroupsRadarComparison({
             </CardDescription>
           </div>
 
-          {showGroupSelector && (
-            <div className='flex flex-wrap items-center gap-2'>
-              <Button
-                variant='outline'
-                size='sm'
-                onClick={handleResetLeaders}
-                className='h-8 text-xs font-semibold'
-                title='Comparar los colectivos insignia AITICE vs GISICO'
+          <div className='flex flex-wrap items-center gap-2'>
+            {/* View Switcher: Radar vs Barras */}
+            <div className='flex items-center bg-muted/70 rounded-xl p-1 border border-border/60'>
+              <button
+                type='button'
+                onClick={() => setViewMode('radar')}
+                className={`flex items-center gap-1.5 px-2.5 py-1 text-xs font-semibold rounded-lg transition-all ${
+                  viewMode === 'radar'
+                    ? 'bg-background text-foreground shadow-2xs'
+                    : 'text-muted-foreground hover:text-foreground'
+                }`}
+                title='Ver como Polígono de Radar'
               >
-                <Sparkles className='mr-1.5 h-3.5 w-3.5 text-amber-500' />
-                Líderes UPC
-              </Button>
+                <RadarIcon className='h-3.5 w-3.5' />
+                <span>Radar</span>
+              </button>
+              <button
+                type='button'
+                onClick={() => setViewMode('bars')}
+                className={`flex items-center gap-1.5 px-2.5 py-1 text-xs font-semibold rounded-lg transition-all ${
+                  viewMode === 'bars'
+                    ? 'bg-background text-foreground shadow-2xs'
+                    : 'text-muted-foreground hover:text-foreground'
+                }`}
+                title='Ver como Barras Agrupadas por Dimensión'
+              >
+                <BarChart3 className='h-3.5 w-3.5' />
+                <span>Barras</span>
+              </button>
+            </div>
 
-              {selectedIds.length < 6 && (
-                <div className='flex items-center gap-1.5'>
+            {/* Acciones de Exportación */}
+            <Button
+              variant='outline'
+              size='sm'
+              onClick={handleExportCsv}
+              className='h-8 text-xs font-medium border-border/80 hover:bg-background'
+              title='Descargar matriz de datos en Excel/CSV'
+            >
+              <Download className='mr-1.5 h-3.5 w-3.5 text-emerald-600' />
+              Exportar (CSV)
+            </Button>
+
+            <Button
+              variant='outline'
+              size='sm'
+              onClick={handleCopySummary}
+              className='h-8 text-xs font-medium border-border/80 hover:bg-background'
+              title='Copiar resumen ejecutivo para informes'
+            >
+              <Copy className='mr-1.5 h-3.5 w-3.5 text-primary' />
+              Copiar Resumen
+            </Button>
+
+            {showGroupSelector && (
+              <>
+                <Button
+                  variant='outline'
+                  size='sm'
+                  onClick={handleResetLeaders}
+                  className='h-8 text-xs font-semibold border-amber-500/30 text-amber-600 dark:text-amber-400 hover:bg-amber-500/10'
+                  title='Comparar los colectivos insignia AITICE vs GISICO'
+                >
+                  <Sparkles className='mr-1.5 h-3.5 w-3.5 text-amber-500' />
+                  Líderes UPC
+                </Button>
+
+                {selectedIds.length < 6 && (
                   <Select value={candidateId} onValueChange={handleAddGroup}>
                     <SelectTrigger className='h-8 w-44 text-xs bg-background'>
                       <SelectValue placeholder='+ Añadir grupo…' />
@@ -278,40 +457,79 @@ export function GroupsRadarComparison({
                       ))}
                     </SelectContent>
                   </Select>
-                </div>
-              )}
-            </div>
-          )}
+                )}
+              </>
+            )}
+          </div>
         </div>
 
-        {/* Chips de Grupos Activos en la Comparación */}
+        {/* Chips de Grupos Activos con Toggle de Visibilidad e Interacción Hover */}
         <div className='flex flex-wrap items-center gap-2 pt-2'>
           <span className='text-xs font-semibold text-muted-foreground mr-1'>Comparando:</span>
           {groups.map((grp, index) => {
             const palette = COMPARISON_GROUP_PALETTE[index % COMPARISON_GROUP_PALETTE.length]
+            const isHidden = hiddenGroupIds.includes(grp.id)
+            const isHovered = hoveredGroupId === grp.id
+
             return (
-              <Badge
+              <div
                 key={grp.id}
-                variant='outline'
-                className={`flex items-center gap-1.5 px-2.5 py-1 text-xs font-bold rounded-lg border ${palette.badge}`}
+                onMouseEnter={() => setHoveredGroupId(grp.id)}
+                onMouseLeave={() => setHoveredGroupId(null)}
+                className={`flex items-center gap-1.5 px-2.5 py-1 text-xs font-bold rounded-lg border transition-all cursor-pointer ${
+                  isHidden
+                    ? 'opacity-40 bg-muted/30 border-dashed border-border text-muted-foreground'
+                    : isHovered
+                      ? `${palette.badge} ring-2 ring-primary/40 shadow-xs scale-102`
+                      : palette.badge
+                }`}
               >
                 <span className={`h-2 w-2 rounded-full ${palette.dot}`} />
-                <span>{grp.acronym}</span>
+                <span className='font-extrabold'>{grp.acronym}</span>
                 <span className='text-[10px] opacity-80 font-mono font-semibold'>
                   ({parseMincienciasClassification(grp.classification).badgeText || grp.classification})
                 </span>
+
+                {/* Botón de Visibilidad (Ojo) */}
+                <button
+                  type='button'
+                  onClick={(e) => {
+                    e.stopPropagation()
+                    handleToggleHide(grp.id)
+                  }}
+                  className='ml-1 text-muted-foreground hover:text-foreground'
+                  title={isHidden ? 'Mostrar en gráficos' : 'Ocultar temporalmente'}
+                >
+                  {isHidden ? <EyeOff className='h-3 w-3' /> : <Eye className='h-3 w-3' />}
+                </button>
+
+                {/* Botón de Remover */}
                 {groups.length > 2 && (
                   <button
-                    onClick={() => handleRemoveGroup(grp.id)}
-                    className='ml-1 text-muted-foreground hover:text-foreground'
-                    title='Remover grupo'
+                    type='button'
+                    onClick={(e) => {
+                      e.stopPropagation()
+                      handleRemoveGroup(grp.id)
+                    }}
+                    className='ml-0.5 text-muted-foreground hover:text-destructive'
+                    title='Remover grupo de la comparación'
                   >
                     <X className='h-3 w-3' />
                   </button>
                 )}
-              </Badge>
+              </div>
             )
           })}
+
+          <Button
+            size='sm'
+            variant='ghost'
+            onClick={() => setShowTalent(!showTalent)}
+            className='h-7 text-[11px] text-muted-foreground hover:text-foreground px-2'
+          >
+            <Users className='mr-1 h-3 w-3' />
+            {showTalent ? 'Ocultar Investigadores Clave' : 'Ver Investigadores Clave'}
+          </Button>
         </div>
       </CardHeader>
 
@@ -332,11 +550,18 @@ export function GroupsRadarComparison({
                 groupIndex >= 0
                   ? COMPARISON_GROUP_PALETTE[groupIndex % COMPARISON_GROUP_PALETTE.length]
                   : COMPARISON_GROUP_PALETTE[0]
+              const isGroupHovered = hoveredGroupId === leader.leader_group_id
 
               return (
                 <div
                   key={leader.dimension_key}
-                  className='flex flex-col justify-between p-3 rounded-xl border border-border/70 bg-card/60 shadow-2xs hover:border-primary/40 transition-colors'
+                  onMouseEnter={() => setHoveredGroupId(leader.leader_group_id)}
+                  onMouseLeave={() => setHoveredGroupId(null)}
+                  className={`flex flex-col justify-between p-3 rounded-xl border transition-all cursor-pointer ${
+                    isGroupHovered
+                      ? 'border-primary ring-1 ring-primary/40 bg-card shadow-xs scale-102'
+                      : 'border-border/70 bg-card/60 shadow-2xs hover:border-primary/40'
+                  }`}
                 >
                   <div className='flex items-center justify-between text-muted-foreground mb-1.5'>
                     <span className='text-[11px] font-bold uppercase truncate' title={leader.dimension_label}>
@@ -364,14 +589,16 @@ export function GroupsRadarComparison({
           </div>
         </div>
 
-        {/* Sección Central: Radar Chart Multidimensional */}
+        {/* Sección Central: Visualizador Comparativo (Radar o Barras) */}
         <div className='grid grid-cols-1 lg:grid-cols-12 gap-6 items-center'>
-          {/* Radar Chart */}
+          {/* Contenedor del Gráfico */}
           <div className='lg:col-span-8 bg-card/40 border border-border/60 rounded-2xl p-4 sm:p-6 shadow-2xs'>
             <div className='flex items-center justify-between mb-2'>
               <div>
                 <h4 className='text-sm font-bold text-foreground'>
-                  Polígono de Capacidades Comparadas (0 - 100%)
+                  {viewMode === 'radar'
+                    ? 'Polígono de Capacidades Comparadas (0 - 100%)'
+                    : 'Distribución Comparativa por Dimensión (Puntuación Relativa %)'}
                 </h4>
                 <p className='text-[11px] text-muted-foreground'>
                   Puntuaciones normalizadas en relación al colectivo líder de cada categoría
@@ -381,51 +608,104 @@ export function GroupsRadarComparison({
 
             <div className='h-[350px] sm:h-[400px] w-full'>
               <ResponsiveContainer width='100%' height='100%'>
-                <RadarChart data={radarChartData} outerRadius='75%'>
-                  <PolarGrid stroke='hsl(var(--border))' strokeDasharray='3 3' />
-                  <PolarAngleAxis
-                    dataKey='short_label'
-                    tick={{
-                      fill: 'hsl(var(--foreground))',
-                      fontSize: 12,
-                      fontWeight: 600,
-                    }}
-                  />
-                  <PolarRadiusAxis
-                    angle={30}
-                    domain={[0, 100]}
-                    stroke='hsl(var(--muted-foreground))'
-                    tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 10 }}
-                  />
-                  <Tooltip content={<RadarCustomTooltip />} />
-                  <Legend
-                    wrapperStyle={{ paddingTop: 16 }}
-                    formatter={(value) => {
-                      const grp = groups.find((g) => `group_${g.id}` === value)
+                {viewMode === 'radar' ? (
+                  <RadarChart data={radarChartData} outerRadius='75%'>
+                    <PolarGrid stroke='hsl(var(--border))' strokeDasharray='3 3' />
+                    <PolarAngleAxis
+                      dataKey='short_label'
+                      tick={{
+                        fill: 'hsl(var(--foreground))',
+                        fontSize: 12,
+                        fontWeight: 600,
+                      }}
+                    />
+                    <PolarRadiusAxis
+                      angle={30}
+                      domain={[0, 100]}
+                      stroke='hsl(var(--muted-foreground))'
+                      tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 10 }}
+                    />
+                    <Tooltip content={<RadarCustomTooltip />} />
+                    <Legend
+                      wrapperStyle={{ paddingTop: 16 }}
+                      formatter={(value) => {
+                        const grp = groups.find((g) => `group_${g.id}` === value)
+                        return (
+                          <span
+                            onMouseEnter={() => grp && setHoveredGroupId(grp.id)}
+                            onMouseLeave={() => setHoveredGroupId(null)}
+                            className={`text-xs font-semibold cursor-pointer mr-3 ${
+                              hoveredGroupId && grp?.id === hoveredGroupId
+                                ? 'text-primary underline'
+                                : 'text-foreground'
+                            }`}
+                          >
+                            {grp?.acronym ?? value}
+                          </span>
+                        )
+                      }}
+                    />
+                    {visibleGroups.map((grp) => {
+                      const origIndex = groups.findIndex((g) => g.id === grp.id)
+                      const palette =
+                        COMPARISON_GROUP_PALETTE[origIndex % COMPARISON_GROUP_PALETTE.length]
+                      const isHovered = hoveredGroupId === grp.id
+
                       return (
-                        <span className='text-xs font-semibold text-foreground mr-3'>
-                          {grp?.acronym ?? value}
-                        </span>
+                        <Radar
+                          key={grp.id}
+                          name={grp.acronym}
+                          dataKey={`group_${grp.id}`}
+                          stroke={palette.stroke}
+                          fill={palette.fill}
+                          fillOpacity={isHovered ? 0.45 : hoveredGroupId !== null ? 0.08 : 0.25}
+                          strokeWidth={isHovered ? 3.5 : hoveredGroupId !== null ? 1.5 : 2.5}
+                          strokeOpacity={isHovered ? 1 : hoveredGroupId !== null ? 0.35 : 1}
+                          dot={{ r: isHovered ? 5 : 4, fill: palette.stroke }}
+                        />
                       )
-                    }}
-                  />
-                  {groups.map((grp, index) => {
-                    const palette =
-                      COMPARISON_GROUP_PALETTE[index % COMPARISON_GROUP_PALETTE.length]
-                    return (
-                      <Radar
-                        key={grp.id}
-                        name={`group_${grp.id}`}
-                        dataKey={`group_${grp.id}`}
-                        stroke={palette.stroke}
-                        fill={palette.fill}
-                        fillOpacity={0.25}
-                        strokeWidth={2.5}
-                        dot={{ r: 4, fill: palette.stroke }}
-                      />
-                    )
-                  })}
-                </RadarChart>
+                    })}
+                  </RadarChart>
+                ) : (
+                  <BarChart data={radarChartData} margin={{ top: 20, right: 30, left: 10, bottom: 20 }}>
+                    <CartesianGrid strokeDasharray='3 3' stroke='hsl(var(--border))' opacity={0.6} />
+                    <XAxis
+                      dataKey='short_label'
+                      tick={{ fill: 'hsl(var(--foreground))', fontSize: 12, fontWeight: 600 }}
+                    />
+                    <YAxis
+                      domain={[0, 100]}
+                      tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 11 }}
+                      unit='%'
+                    />
+                    <Tooltip content={<RadarCustomTooltip />} />
+                    <Legend
+                      wrapperStyle={{ paddingTop: 12 }}
+                      formatter={(value) => (
+                        <span className='text-xs font-semibold text-foreground mr-3'>
+                          {value}
+                        </span>
+                      )}
+                    />
+                    {visibleGroups.map((grp) => {
+                      const origIndex = groups.findIndex((g) => g.id === grp.id)
+                      const palette =
+                        COMPARISON_GROUP_PALETTE[origIndex % COMPARISON_GROUP_PALETTE.length]
+                      const isHovered = hoveredGroupId === grp.id
+
+                      return (
+                        <Bar
+                          key={grp.id}
+                          name={grp.acronym}
+                          dataKey={`group_${grp.id}`}
+                          fill={palette.fill}
+                          opacity={isHovered ? 1 : hoveredGroupId !== null ? 0.35 : 0.85}
+                          radius={[4, 4, 0, 0]}
+                        />
+                      )
+                    })}
+                  </BarChart>
+                )}
               </ResponsiveContainer>
             </div>
           </div>
@@ -440,7 +720,7 @@ export function GroupsRadarComparison({
                 </h4>
               </div>
               <ul className='space-y-2 text-xs text-muted-foreground'>
-                {data.insights.slice(0, 5).map((insight, idx) => (
+                {data.insights.slice(0, 6).map((insight, idx) => (
                   <li key={idx} className='flex items-start gap-2'>
                     <CheckCircle2 className='h-3.5 w-3.5 text-primary shrink-0 mt-0.5' />
                     <span className='leading-snug text-foreground/90'>{insight}</span>
@@ -464,15 +744,105 @@ export function GroupsRadarComparison({
           </div>
         </div>
 
+        {/* Sección de Investigadores Clave / Talent Showcase (opcional expandible) */}
+        {showTalent && (
+          <div className='p-4 sm:p-5 rounded-2xl border border-border/70 bg-muted/20 space-y-4'>
+            <div className='flex items-center justify-between'>
+              <div className='flex items-center gap-2'>
+                <Award className='h-4 w-4 text-amber-500' />
+                <h4 className='text-sm font-bold text-foreground'>
+                  Puntales Científicos: Investigadores Más Productivos por Grupo
+                </h4>
+              </div>
+              <span className='text-xs text-muted-foreground'>
+                Top autores según volumen de obras asociadas
+              </span>
+            </div>
+
+            <div className='grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3'>
+              {visibleGroups.map((grp, index) => {
+                const palette = COMPARISON_GROUP_PALETTE[index % COMPARISON_GROUP_PALETTE.length]
+                const authors = grp.top_researchers || []
+
+                return (
+                  <div
+                    key={grp.id}
+                    className='p-3.5 rounded-xl border border-border/60 bg-card shadow-2xs space-y-2.5'
+                  >
+                    <div className='flex items-center justify-between border-b border-border/50 pb-1.5'>
+                      <div className='flex items-center gap-2'>
+                        <span className={`h-2.5 w-2.5 rounded-full ${palette.dot}`} />
+                        <span className='text-xs font-black text-foreground'>{grp.acronym}</span>
+                      </div>
+                      <Badge variant='outline' className='text-[10px] font-mono'>
+                        {grp.total_members} integrantes
+                      </Badge>
+                    </div>
+
+                    <div className='space-y-1.5'>
+                      {authors.map((auth, aIdx) => (
+                        <div
+                          key={auth.id || aIdx}
+                          className='flex items-center justify-between text-xs gap-2 p-1.5 rounded-lg hover:bg-muted/40 transition-colors'
+                        >
+                          <div className='min-w-0'>
+                            <p className='font-semibold text-foreground truncate' title={auth.name}>
+                              {auth.name}
+                            </p>
+                            <span className='text-[10px] text-muted-foreground'>
+                              {(auth as any).highest_education || 'Investigador'}
+                            </span>
+                          </div>
+                          <div className='text-right shrink-0'>
+                            <span className='font-mono font-bold text-foreground'>
+                              {auth.products_count} obras
+                            </span>
+                            <p className='text-[10px] text-muted-foreground'>
+                              {auth.percentage_of_group}% del grupo
+                            </p>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )
+              })}
+            </div>
+
+            {/* Detección de autores inter-grupales */}
+            {sharedResearchers.length > 0 && (
+              <div className='p-3 rounded-xl bg-primary/10 border border-primary/20 flex items-start gap-2.5 text-xs'>
+                <Layers className='h-4 w-4 text-primary shrink-0 mt-0.5' />
+                <div>
+                  <span className='font-bold text-foreground'>Colaboración Cruzada Detectada:</span>{' '}
+                  <span className='text-muted-foreground'>
+                    {sharedResearchers.map((sr) => (
+                      <span key={sr.name} className='inline-block mr-2'>
+                        «<strong className='text-foreground'>{sr.name}</strong>» ({sr.groups.join(' y ')})
+                      </span>
+                    ))}
+                  </span>
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+
         {/* Matriz Comparativa Lado a Lado */}
         <div className='space-y-3 pt-2'>
-          <div className='flex items-center justify-between'>
-            <h4 className='text-sm font-bold tracking-tight text-foreground'>
-              Matriz de Indicadores Clave Lado a Lado
-            </h4>
-            <span className='text-xs text-muted-foreground'>
-              Valores absolutos y porcentuales por colectivo
-            </span>
+          <div className='flex flex-col sm:flex-row sm:items-center justify-between gap-2'>
+            <div>
+              <h4 className='text-sm font-bold tracking-tight text-foreground'>
+                Matriz de Indicadores Clave Lado a Lado
+              </h4>
+              <p className='text-xs text-muted-foreground'>
+                Valores absolutos y porcentuales por colectivo con resaltado de liderazgo
+              </p>
+            </div>
+            <div className='flex items-center gap-1.5 text-xs text-muted-foreground'>
+              <span className='h-2 w-2 rounded-full bg-amber-500' />
+              <span>Celda sombreada con trofeo indica liderazgo del indicador</span>
+            </div>
           </div>
 
           <div className='overflow-x-auto rounded-xl border border-border/70 shadow-2xs'>
@@ -485,13 +855,20 @@ export function GroupsRadarComparison({
                   <th className='p-3 font-semibold text-muted-foreground uppercase text-[10px] tracking-wider w-[120px]'>
                     Categoría
                   </th>
-                  {groups.map((grp, index) => {
+                  {visibleGroups.map((grp) => {
+                    const origIndex = groups.findIndex((g) => g.id === grp.id)
                     const palette =
-                      COMPARISON_GROUP_PALETTE[index % COMPARISON_GROUP_PALETTE.length]
+                      COMPARISON_GROUP_PALETTE[origIndex % COMPARISON_GROUP_PALETTE.length]
+                    const isHovered = hoveredGroupId === grp.id
+
                     return (
                       <th
                         key={grp.id}
-                        className='p-3 font-extrabold text-foreground min-w-[130px] border-l border-border/50 text-center'
+                        onMouseEnter={() => setHoveredGroupId(grp.id)}
+                        onMouseLeave={() => setHoveredGroupId(null)}
+                        className={`p-3 font-extrabold text-foreground min-w-[130px] border-l border-border/50 text-center transition-colors ${
+                          isHovered ? 'bg-primary/10' : ''
+                        }`}
                       >
                         <div className='flex items-center justify-center gap-1.5'>
                           <span className={`h-2 w-2 rounded-full ${palette.dot}`} />
@@ -521,28 +898,45 @@ export function GroupsRadarComparison({
                         {row.category}
                       </Badge>
                     </td>
-                    {groups.map((grp) => {
+                    {visibleGroups.map((grp) => {
                       const val = row.values[grp.id]
                       const isLeader = row.leader_id === grp.id
+                      const isColHovered = hoveredGroupId === grp.id
+                      const isPercentage = row.unit === '%' && typeof val === 'number'
+
                       return (
                         <td
                           key={grp.id}
-                          className={`p-3 text-center font-mono font-medium border-l border-border/40 ${
+                          className={`p-3 text-center font-mono font-medium border-l border-border/40 transition-colors ${
                             isLeader
-                              ? 'bg-amber-500/10 font-bold text-foreground'
-                              : 'text-muted-foreground'
+                              ? 'bg-amber-500/15 font-bold text-foreground'
+                              : isColHovered
+                                ? 'bg-primary/5 text-foreground'
+                                : 'text-muted-foreground'
                           }`}
                         >
-                          <div className='flex items-center justify-center gap-1'>
-                            <span>
-                              {row.indicator === 'Clasificación Minciencias' && typeof val === 'string'
-                                ? parseMincienciasClassification(val).badgeText || val
-                                : val !== undefined && val !== null
-                                  ? val
-                                  : '—'}
-                            </span>
-                            {isLeader && (
-                              <Trophy className='h-3 w-3 text-amber-500 shrink-0' />
+                          <div className='flex flex-col items-center justify-center gap-1'>
+                            <div className='flex items-center gap-1'>
+                              <span>
+                                {row.indicator === 'Clasificación Minciencias' && typeof val === 'string'
+                                  ? parseMincienciasClassification(val).badgeText || val
+                                  : val !== undefined && val !== null
+                                    ? val
+                                    : '—'}
+                              </span>
+                              {isLeader && (
+                                <Trophy className='h-3 w-3 text-amber-500 shrink-0' />
+                              )}
+                            </div>
+
+                            {/* Mini barra de progreso inline para porcentajes */}
+                            {isPercentage && val > 0 && (
+                              <div className='w-16 h-1 rounded-full bg-muted overflow-hidden'>
+                                <div
+                                  className='h-full bg-primary/70 rounded-full'
+                                  style={{ width: `${Math.min(val, 100)}%` }}
+                                />
+                              </div>
                             )}
                           </div>
                         </td>
