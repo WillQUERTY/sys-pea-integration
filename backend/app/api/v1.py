@@ -500,6 +500,71 @@ async def get_group_report_pdf(
         headers={"Content-Disposition": f'attachment; filename="informe_grupo_{group_id}.pdf"'},
     )
 
+@router.get("/groups/{group_id}/dossier/pdf", tags=["Groups"])
+async def get_group_dossier_pdf(
+    group_id: int,
+    start_year: Optional[int] = Query(None, description="Año inicial para Ventana de Observación"),
+    end_year: Optional[int] = Query(None, description="Año final para Ventana de Observación"),
+    window_years: Optional[int] = Query(None, description="Ventana de observación en años hacia atrás"),
+):
+    """Dossier Ejecutivo de Gestión Científica Oficial UPC (Fase 4):
+    Diseñado para Decanatura y Vicerrectoría con portada institucional, KPIs ejecutivos,
+    diagnóstico Minciencias 2024, familias, dinámica quinquenal, ranking de investigadores,
+    métricas de red y bloque de formalización de firmas."""
+    try:
+        pdf = reports.build_group_executive_dossier_pdf(
+            group_id, start_year=start_year, end_year=end_year, window_years=window_years
+        )
+    except KeyError:
+        raise HTTPException(status_code=404, detail="Grupo no encontrado")
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error generando el dossier ejecutivo: {e}")
+    return Response(
+        content=pdf,
+        media_type="application/pdf",
+        headers={"Content-Disposition": f'attachment; filename="dossier_ejecutivo_grupo_{group_id}.pdf"'},
+    )
+
+@router.get("/groups/{group_id}/export/ranking.csv", tags=["Groups"])
+async def get_group_ranking_csv(group_id: int):
+    """Exporta el ranking de investigadores del colectivo en formato CSV delimitado por
+    punto y coma (;) con codificación UTF-8 BOM para apertura directa en Microsoft Excel."""
+    try:
+        csv_content = reports.export_group_ranking_csv(group_id)
+    except KeyError:
+        raise HTTPException(status_code=404, detail="Grupo no encontrado")
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error exportando el ranking: {e}")
+    return Response(
+        content=csv_content.encode("utf-8"),
+        media_type="text/csv; charset=utf-8",
+        headers={"Content-Disposition": f'attachment; filename="ranking_investigadores_grupo_{group_id}.csv"'},
+    )
+
+@router.get("/groups/{group_id}/export/products.csv", tags=["Groups"])
+async def get_group_products_csv(
+    group_id: int,
+    start_year: Optional[int] = Query(None, description="Año inicial para Ventana de Observación"),
+    end_year: Optional[int] = Query(None, description="Año final para Ventana de Observación"),
+    window_years: Optional[int] = Query(None, description="Ventana de observación en años hacia atrás"),
+):
+    """Exporta el catálogo de productos científicos del grupo en formato CSV delimitado por
+    punto y coma (;) con codificación UTF-8 BOM, admitiendo filtros temporales."""
+    try:
+        csv_content = reports.export_group_products_csv(
+            group_id, start_year=start_year, end_year=end_year, window_years=window_years
+        )
+    except KeyError:
+        raise HTTPException(status_code=404, detail="Grupo no encontrado")
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error exportando catálogo de productos: {e}")
+    return Response(
+        content=csv_content.encode("utf-8"),
+        media_type="text/csv; charset=utf-8",
+        headers={"Content-Disposition": f'attachment; filename="productos_grupo_{group_id}.csv"'},
+    )
+
+
 @router.post("/groups/{group_id}/products/{product_id}", tags=["Groups"])
 async def link_product_endpoint(group_id: int, product_id: int):
     """Link a scientific product to a research group."""
