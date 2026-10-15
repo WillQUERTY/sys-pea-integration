@@ -29,8 +29,19 @@ else()
     target_link_libraries(abpoxx PUBLIC odbc)
 endif()
 
-# ---- CLI executable ----
-add_executable(pea_cli src/pea_cli.cpp)
+# ---- CLI executable (modular sources) ----
+add_executable(pea_cli
+    src/pea_cli.cpp
+    src/cli/cli_helpers.cpp
+    src/cli/group_commands.cpp
+    src/cli/researcher_commands.cpp
+    src/cli/product_commands.cpp
+    src/cli/plan_project_commands.cpp
+    src/cli/queue_history_commands.cpp
+    src/cli/structure_commands.cpp
+    src/cli/interactive_repl.cpp
+)
+target_include_directories(pea_cli PRIVATE src)
 target_link_libraries(pea_cli PRIVATE abpoxx)
 
 # ---- Structure tests (sección 41.1) ----
