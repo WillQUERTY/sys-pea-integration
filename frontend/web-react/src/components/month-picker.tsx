@@ -102,14 +102,14 @@ export function MonthPicker({
           variant='outline'
           disabled={disabled}
           className={cn(
-            'w-full justify-between font-normal text-left h-10 px-3',
+            'w-full min-w-0 max-w-full justify-between font-normal text-left h-10 px-3 shrink overflow-hidden',
             !displayLabel && 'text-muted-foreground',
             className
           )}
         >
-          <span className='flex items-center gap-2 truncate'>
+          <span className='flex items-center gap-2 truncate min-w-0 flex-1'>
             <CalendarIcon className='h-4 w-4 shrink-0 opacity-60' />
-            <span className='truncate'>{displayLabel || placeholder}</span>
+            <span className='truncate min-w-0'>{displayLabel || placeholder}</span>
           </span>
 
           <span className='flex items-center gap-1 shrink-0'>
