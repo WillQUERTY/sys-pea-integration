@@ -709,7 +709,7 @@ export function GroupsRadarComparison({
                           stroke='hsl(var(--muted-foreground))'
                           tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 10 }}
                         />
-                        <Tooltip content={<RadarCustomTooltip />} />
+                        <Tooltip content={<RadarCustomTooltip />} wrapperStyle={{ zIndex: 100, pointerEvents: 'none' }} />
                         <Legend
                           wrapperStyle={{ paddingTop: 16 }}
                           formatter={(value) => {
@@ -766,7 +766,7 @@ export function GroupsRadarComparison({
                           tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 11 }}
                           unit='%'
                         />
-                        <Tooltip content={<RadarCustomTooltip />} />
+                        <Tooltip content={<RadarCustomTooltip />} wrapperStyle={{ zIndex: 100, pointerEvents: 'none' }} />
                         <Legend
                           wrapperStyle={{ paddingTop: 12 }}
                           formatter={(value) => (
