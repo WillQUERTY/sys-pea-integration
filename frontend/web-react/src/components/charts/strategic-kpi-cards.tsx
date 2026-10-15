@@ -31,7 +31,10 @@ export function StrategicKpiCards({
             <div className='text-2xl font-extrabold text-foreground tracking-tight'>
               {ratios?.endorsement_rate ?? 50.8}%
             </div>
-            <Badge variant='secondary' className='text-[10px] font-normal text-emerald-700 dark:text-emerald-400'>
+            <Badge
+              variant='outline'
+              className='text-[10px] font-medium border-emerald-500/30 bg-emerald-500/10 text-emerald-700 dark:text-emerald-300'
+            >
               ✓ Minciencias
             </Badge>
           </div>
@@ -54,7 +57,10 @@ export function StrategicKpiCards({
             <div className='text-2xl font-extrabold text-foreground tracking-tight'>
               {ratios?.postgraduate_rate ?? 66.9}%
             </div>
-            <Badge variant='secondary' className='text-[10px] font-normal text-amber-700 dark:text-amber-400'>
+            <Badge
+              variant='outline'
+              className='text-[10px] font-medium border-amber-500/30 bg-amber-500/10 text-amber-700 dark:text-amber-300'
+            >
               Masa Crítica
             </Badge>
           </div>
@@ -77,7 +83,12 @@ export function StrategicKpiCards({
             <div className='text-2xl font-extrabold text-foreground tracking-tight'>
               {ratios?.avg_products_per_researcher ?? 10.7}
             </div>
-            <span className='text-xs text-muted-foreground'>obras / persona</span>
+            <Badge
+              variant='outline'
+              className='text-[10px] font-medium border-blue-500/30 bg-blue-500/10 text-blue-700 dark:text-blue-300'
+            >
+              obras / persona
+            </Badge>
           </div>
           <p className='text-[11px] text-muted-foreground mt-1'>
             Promedio general en el claustro científico
@@ -98,7 +109,10 @@ export function StrategicKpiCards({
             <div className='text-2xl font-extrabold text-foreground tracking-tight'>
               {ratios?.orcid_coverage_rate ?? 13.9}%
             </div>
-            <Badge variant='outline' className='text-[10px] font-normal border-violet-500/30 text-violet-600'>
+            <Badge
+              variant='outline'
+              className='text-[10px] font-medium border-violet-500/30 bg-violet-500/10 text-violet-700 dark:text-violet-300'
+            >
               Visibilidad
             </Badge>
           </div>

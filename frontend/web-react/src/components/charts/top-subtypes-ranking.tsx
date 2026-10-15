@@ -54,7 +54,10 @@ export function TopSubtypesRanking({
                         {sub.name}
                       </span>
                       {sub.code && (
-                        <Badge variant='secondary' className='text-[9px] px-1 py-0 font-mono text-muted-foreground'>
+                        <Badge
+                          variant='outline'
+                          className='text-[9px] px-1.5 py-0 font-mono text-muted-foreground border-border/70 bg-muted/40'
+                        >
                           {sub.code}
                         </Badge>
                       )}
