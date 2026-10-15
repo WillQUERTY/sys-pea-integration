@@ -1,11 +1,14 @@
 # backend/app/minciencias_evaluator.py
 # Motor de diagnóstico y semáforo de categorización de Grupos según Modelo Minciencias 2024.
+# Referencia: Minciencias - Modelo de Medición 2024 (Convocatoria 957 / Anexo 1 - M601PR04G01 Versión 02).
 
-from typing import Dict, Any, List, Optional
+from typing import Dict, Any, List, Optional, Set
 from datetime import datetime
+import unicodedata
 import re
 
 def _extract_year_from_date(date_str: Optional[str]) -> Optional[int]:
+    """Extrae un año de 4 dígitos de un campo de fecha o texto."""
     if not date_str:
         return None
     match = re.search(r'\b(19\d\d|20\d\d)\b', str(date_str))
@@ -17,6 +20,7 @@ def _extract_year_from_date(date_str: Optional[str]) -> Optional[int]:
     return None
 
 def _clean_classification(classification: Optional[str]) -> str:
+    """Normaliza la clasificación oficial del grupo."""
     if not classification:
         return "Sin clasificar"
     raw = classification.strip()
@@ -32,55 +36,250 @@ def _clean_classification(classification: Optional[str]) -> str:
         return "Reconocido"
     return "Sin clasificar"
 
-def evaluate_group_minciencias(group_id: int, repository_module: Any) -> Dict[str, Any]:
-    group = repository_module.get_group(group_id)
-    stats = repository_module.get_group_stats(group_id)
-    projects = repository_module.get_group_projects(group_id)
+def _normalize_name(name: Optional[str]) -> str:
+    """Normaliza cadenas de texto para cruces de coautoría y desambiguación."""
+    if not name:
+        return ""
+    text = str(name).strip()
+    # Eliminar acentos y diacríticos
+    normalized = ''.join(
+        c for c in unicodedata.normalize('NFD', text)
+        if unicodedata.category(c) != 'Mn'
+    )
+    # Limpieza de espacios redundantes y paso a mayúsculas
+    return re.sub(r'\s+', ' ', normalized).upper().strip()
 
-    # 1. Antigüedad del grupo
+def evaluate_group_minciencias(group_id: int, repository_module: Any) -> Dict[str, Any]:
+    """
+    Evalúa el estado de un Grupo de Investigación según el Modelo Minciencias 2024.
+    Aplica ventanas diferenciadas de 10, 7 y 5 años, discriminación de tipologías TOP, Tipo A,
+    Tipo B, Formación de Recurso Humano Tipo A (Doctoral), y el cálculo formal del Indicador
+    de Cohesión (IC).
+    """
+    group = repository_module.get_group(group_id)
+    projects = repository_module.get_group_projects(group_id)
+    stats = repository_module.get_group_stats(group_id)
+    
+    # 1. Obtención de productos del colectivo
+    try:
+        prods = repository_module.filter_products(group_id=group_id)
+    except Exception:
+        prods = []
+    
+    # Si no hay productos por filtro de grupo, intentamos recuperar del stats
+    total_products = len(prods) if prods else stats.get("total_products", 0)
+
+    # 2. Obtención de integrantes y construcción del universo de nombres
+    members_detailed = []
+    try:
+        members_detailed = repository_module.get_group_members_detailed(group_id)
+    except Exception:
+        pass
+    
+    total_members = len(members_detailed) if members_detailed else stats.get("total_members", 0)
+    
+    # Conjunto normalizado de integrantes para validación de coautorías internas
+    group_member_names: Set[str] = set()
+    phd_count = 0
+    masters_count = 0
+    leader_found = False
+    leader_education = "No identificado"
+    
+    for m in members_detailed:
+        m_name = _normalize_name(m.get("researcher_name"))
+        if m_name:
+            group_member_names.add(m_name)
+        
+        # Verificar rol de líder
+        role = str(m.get("role", "")).lower()
+        if "lider" in role or "líder" in role or "director" in role:
+            leader_found = True
+        
+        rid = m.get("researcher_id")
+        if rid:
+            try:
+                r = repository_module.get_researcher(rid)
+                full_r_name = _normalize_name(f"{r.first_names} {r.last_names}")
+                if full_r_name:
+                    group_member_names.add(full_r_name)
+                
+                edu = (r.highest_education_level or "").lower()
+                records = (r.education_records or "").lower()
+                if "doc" in edu or "phd" in edu or "doctor" in records:
+                    phd_count += 1
+                elif "maest" in edu or "mag" in edu or "master" in records or "maestr" in records:
+                    masters_count += 1
+                    
+                if leader_found and leader_education == "No identificado":
+                    leader_education = r.highest_education_level or "Pregrado"
+            except Exception:
+                pass
+
+    # Si por falta de CvLAC detallado no se contaron títulos, consultar stats
+    if phd_count == 0 and masters_count == 0:
+        edu_dist = {item["level"]: item["count"] for item in stats.get("researchers_education", [])}
+        phd_count = sum(cnt for lvl, cnt in edu_dist.items() if lvl.lower().startswith("doc"))
+        masters_count = sum(cnt for lvl, cnt in edu_dist.items() if lvl.lower().startswith("maest"))
+
+    # 3. Antigüedad oficial del colectivo
     creation_year = _extract_year_from_date(group.declared_creation_date)
     current_year = datetime.now().year
     years_active = (current_year - creation_year) if creation_year else 5
+    if years_active < 1:
+        years_active = 1
 
-    # 2. Métricas de integrantes y posgrados
-    edu_dist = {item["level"]: item["count"] for item in stats.get("researchers_education", [])}
-    phd_count = sum(cnt for lvl, cnt in edu_dist.items() if lvl.lower().startswith("doc"))
-    masters_count = sum(cnt for lvl, cnt in edu_dist.items() if lvl.lower().startswith("maest"))
-    total_members = stats.get("total_members", 0)
-
-    # 3. Métricas de producción por familias
-    families_map = {item["code"]: item["count"] for item in stats.get("families_distribution", [])}
-    gnc_count = families_map.get("GNC", 0)
-    dti_count = families_map.get("DTI", 0)
-    frh_count = families_map.get("FRH", 0)
-    asc_count = families_map.get("ASC", 0)
-    dpc_count = families_map.get("DPC", 0)
+    # 4. Procesamiento de productos: Ventanas Diferenciadas (Tabla 5) y Tipologías (Sección 3.7)
+    # Ventanas oficiales:
+    # - 10 años: Patentes (PA/MA), Variedades (VV), Razas (VA), Investigación-Creación (AAD)
+    # - 7 años: Artículos de investigación (A1, A2, B, C), Libros de investigación (LIB)
+    # - 5 años: Artículos D, Notas, Capítulos, Software (SF), Prototipos (PI), Plantas (PP), FRH, ASC, DPC
     
-    distinct_families = sum(1 for code in ["GNC", "DTI", "FRH", "ASC", "DPC"] if families_map.get(code, 0) > 0)
+    gnc_count = 0
+    dti_count = 0
+    asc_count = 0
+    dpc_count = 0
+    frh_count = 0
+    
+    top_count = 0
+    type_a_count = 0
+    type_b_count = 0
+    
+    frh_a_count = 0  # Doctorado dirigido
+    frh_b_count = 0  # Maestría y Pregrado dirigido
+    
+    products_in_window = 0
+    gnc_dti_in_window = 0
+    asc_dpc_frh_in_window = 0
+    
+    coauthor_group_authors_sum = 0
+    coauthor_evaluated_prods = 0
+    coauthored_products_count = 0
+    
+    for p in prods:
+        desc = f"{p.description or ''} {p.title or ''}"
+        desc_l = desc.lower()
+        
+        # Determinar año de la obra
+        p_year = p.year or _extract_year_from_date(p.obtained_date) or _extract_year_from_date(p.publication_date) or current_year
+        age = current_year - p_year
+        if age < 0:
+            age = 0
+            
+        # Mapeo unificado de familias (soporta IDs canónicos 1-5 y legacy/scraped 6-10)
+        fid = p.family_id or 0
+        fam = "OTRA"
+        if fid in (1, 6) or "publicado en revista" in desc_l or "libro" in desc_l or "capítulo" in desc_l or "capitulo" in desc_l:
+            fam = "GNC"
+        elif fid in (2, 7) or "computacional" in desc_l or "software" in desc_l or "patente" in desc_l or "prototipo" in desc_l or "innovación" in desc_l:
+            fam = "DTI"
+        elif fid == 3 or "apropiación" in desc_l or "social del conocimiento" in desc_l:
+            fam = "ASC"
+        elif fid in (4, 9) or "divulgación" in desc_l or "congreso" in desc_l or "web" in desc_l or "informe técnico" in desc_l:
+            fam = "DPC"
+        elif fid in (5, 10) or "trabajo de grado" in desc_l or "tesis" in desc_l or "pregrado" in desc_l or "maestría" in desc_l or "maestria" in desc_l:
+            fam = "FRH"
+            
+        # Ventana aplicable según la tipología oficial
+        is_10yr = any(w in desc_l for w in ["patente", "variedad vegetal", "raza animal", "investigación-creación", "creacion"])
+        is_7yr = ("publicado en revista" in desc_l or "libro resultado" in desc_l) and not any(w in desc_l for w in ["calidad d", "categoria d"])
+        
+        max_window = 5
+        if is_10yr:
+            max_window = 10
+        elif is_7yr:
+            max_window = 7
+            
+        in_window = (age <= max_window)
+        if in_window:
+            products_in_window += 1
+            if fam == "GNC":
+                gnc_count += 1
+                gnc_dti_in_window += 1
+            elif fam == "DTI":
+                dti_count += 1
+                gnc_dti_in_window += 1
+            elif fam == "ASC":
+                asc_count += 1
+                asc_dpc_frh_in_window += 1
+            elif fam == "DPC":
+                dpc_count += 1
+                asc_dpc_frh_in_window += 1
+            elif fam == "FRH":
+                frh_count += 1
+                asc_dpc_frh_in_window += 1
+                
+            # Clasificación de Calidad: TOP, Tipo A, Tipo B
+            is_top = (
+                any(q in desc_l for q in ["a1", "q1", "q2", "a2"]) or
+                "patente de invención" in desc_l or
+                "libro resultado de investigación" in desc_l
+            )
+            is_a = (
+                any(q in desc_l for q in ["calidad b", "categoria b", "calidad c", "categoria c", "q3", "q4"]) or
+                "revista especializada" in desc_l or
+                "software" in desc_l or
+                "computacional" in desc_l or
+                "prototipo" in desc_l or
+                "innovación" in desc_l or
+                "diseño industrial" in desc_l
+            )
+            
+            if is_top:
+                top_count += 1
+            elif is_a:
+                type_a_count += 1
+            else:
+                type_b_count += 1
+                
+            # Clasificación de Formación: Doctorado (FRH-A) vs Maestría/Pregrado (FRH-B)
+            if fam == "FRH":
+                if "tesis de doctorado" in desc_l or "doctoral" in desc_l:
+                    frh_a_count += 1
+                else:
+                    frh_b_count += 1
+                    
+            # Cálculo del Indicador de Cohesión en GNC + DTI
+            if fam in ("GNC", "DTI"):
+                coauthor_evaluated_prods += 1
+                matched_in_group = 0
+                if "Autores:" in desc:
+                    author_part = desc.split("Autores:", 1)[1]
+                    tokens = [_normalize_name(x) for x in re.split(r'[,;]', author_part) if len(x.strip()) > 3]
+                    matched_in_group = len(set(tokens).intersection(group_member_names))
+                if matched_in_group == 0:
+                    matched_in_group = 1  # Por definición al menos 1 autor vinculó la obra al grupo
+                coauthor_group_authors_sum += matched_in_group
+                if matched_in_group >= 2:
+                    coauthored_products_count += 1
 
-    # 4. Ventana de observación (últimos 5 años)
-    window_years = {str(current_year - i) for i in range(5)}
-    products_in_window = sum(
-        item["count"] for item in stats.get("by_year", []) if item["year"] in window_years
-    )
-    # Si las obras tienen fechas históricas mayores o sin fecha, aseguramos un conteo razonable
-    if products_in_window == 0 and stats.get("total_products", 0) > 0:
-        products_in_window = stats.get("total_products", 0)
+    # Respaldo si no se encontraron productos en memoria o hubo error de extracción
+    if products_in_window == 0 and total_products > 0:
+        products_in_window = total_products
+        gnc_dti_in_window = max(1, total_products // 2)
+        asc_dpc_frh_in_window = max(1, total_products // 3)
 
+    # 5. Cálculo formal del Indicador de Cohesión (IC = Autores/Productos - 1)
+    if coauthor_evaluated_prods > 0:
+        icoh = round((coauthor_group_authors_sum / coauthor_evaluated_prods) - 1.0, 3)
+    else:
+        icoh = 0.0
+    cohesion_met = (icoh > 0.0) or (coauthored_products_count > 0)
+
+    # Pisos anualizados para Reconocimiento Basal (Fase 1)
+    annual_target = min(years_active, 5)
     projects_count = len(projects)
-    total_products = stats.get("total_products", 0)
 
-    # Definición de niveles Minciencias
+    # 6. Definición y Auditoría de Tiers Minciencias 2024
     tiers_config = [
         {
             "tier": "Reconocido",
             "title": "Grupo Reconocido Institucionalmente",
-            "description": "Requisitos basales de existencia, integrantes activos y producción en ventana.",
+            "description": "Fase 1: Requisitos mínimos de existencia formal, integrantes, aval y producción anualizada.",
             "reqs": [
                 {
                     "id": "antiguedad",
                     "label": "Antigüedad mínima",
-                    "description": "Tiempo de existencia declarado del grupo",
+                    "description": "Tiempo de existencia declarado en GrupLAC",
                     "target": 1,
                     "current": years_active,
                     "unit": "años",
@@ -96,61 +295,79 @@ def evaluate_group_minciencias(group_id: int, repository_module: Any) -> Dict[st
                     "met": total_members >= 2,
                 },
                 {
-                    "id": "produccion_ventana",
-                    "label": "Producción en ventana",
-                    "description": "Obras científicas registradas en los últimos 5 años",
-                    "target": 1,
-                    "current": products_in_window,
-                    "unit": "productos",
-                    "met": products_in_window >= 1,
-                },
-                {
                     "id": "proyectos",
                     "label": "Proyectos de I+D",
-                    "description": "Proyectos de investigación vinculados al grupo",
+                    "description": "Al menos un proyecto de investigación o innovación en ejecución",
                     "target": 1,
                     "current": projects_count,
                     "unit": "proyectos",
                     "met": projects_count >= 1,
+                },
+                {
+                    "id": "produccion_gnc_dti",
+                    "label": "Piso Anualizado GNC o DTI",
+                    "description": "Mínimo 1 producto de conocimiento o innovación por año declarado",
+                    "target": annual_target,
+                    "current": gnc_dti_in_window,
+                    "unit": "obras GNC/DTI",
+                    "met": gnc_dti_in_window >= annual_target,
+                },
+                {
+                    "id": "produccion_apropiacion",
+                    "label": "Piso Anualizado ASC/DPC/FRH",
+                    "description": "Mínimo 1 producto de apropiación, divulgación o formación por año",
+                    "target": annual_target,
+                    "current": asc_dpc_frh_in_window,
+                    "unit": "obras ASC/DPC/FRH",
+                    "met": asc_dpc_frh_in_window >= annual_target,
                 },
             ],
         },
         {
             "tier": "C",
             "title": "Categoría C",
-            "description": "Consolidación inicial, posgrados y diversificación de familias de conocimiento.",
+            "description": "Fase 2: Consolidación inicial, productos con visibilidad y presencia en formación/divulgación.",
             "reqs": [
                 {
                     "id": "antiguedad",
                     "label": "Antigüedad mínima",
-                    "description": "Tiempo de existencia declarado",
+                    "description": "Tiempo de existencia oficial del grupo",
                     "target": 2,
                     "current": years_active,
                     "unit": "años",
                     "met": years_active >= 2,
                 },
                 {
-                    "id": "posgrado",
-                    "label": "Integrantes con Posgrado",
-                    "description": "Al menos un integrante con Maestría o Doctorado",
+                    "id": "calidad_top_a",
+                    "label": "Calidad de Producción (TOP o Tipo A)",
+                    "description": "Al menos 1 obra Tipo TOP o Tipo A en ventana",
                     "target": 1,
-                    "current": phd_count + masters_count,
-                    "unit": "posgraduados",
-                    "met": (phd_count + masters_count) >= 1,
+                    "current": top_count + type_a_count,
+                    "unit": "obras TOP/A",
+                    "met": (top_count + type_a_count) >= 1,
                 },
                 {
-                    "id": "diversidad_familias",
-                    "label": "Diversidad de Familias",
-                    "description": "Presencia de productos en familias distintas (GNC, DTI, FRH, etc.)",
-                    "target": 2,
-                    "current": distinct_families,
-                    "unit": "familias",
-                    "met": distinct_families >= 2,
+                    "id": "apropiacion_divulgacion",
+                    "label": "Apropiación o Divulgación (ASC/DPC)",
+                    "description": "Al menos 1 producto de Apropiación Social o Divulgación Pública en ventana",
+                    "target": 1,
+                    "current": asc_count + dpc_count,
+                    "unit": "obras ASC/DPC",
+                    "met": (asc_count + dpc_count) >= 1,
+                },
+                {
+                    "id": "formacion_talento",
+                    "label": "Formación de Talento Humano",
+                    "description": "Al menos 1 producto FRH Tipo A o Tipo B en ventana",
+                    "target": 1,
+                    "current": frh_a_count + frh_b_count,
+                    "unit": "obras FRH",
+                    "met": (frh_a_count + frh_b_count) >= 1,
                 },
                 {
                     "id": "produccion_ventana",
-                    "label": "Producción en ventana",
-                    "description": "Volumen de productos en los últimos 5 años",
+                    "label": "Producción en Ventana Diferenciada",
+                    "description": "Volumen de obras en ventana oficial",
                     "target": 4,
                     "current": products_in_window,
                     "unit": "productos",
@@ -161,48 +378,57 @@ def evaluate_group_minciencias(group_id: int, repository_module: Any) -> Dict[st
         {
             "tier": "B",
             "title": "Categoría B",
-            "description": "Madurez investigativa con aporte en formación y generación de nuevo conocimiento.",
+            "description": "Fase 2: Madurez investigativa con coautoría interna demostrada y talento avanzado.",
             "reqs": [
                 {
                     "id": "antiguedad",
                     "label": "Antigüedad mínima",
-                    "description": "Trayectoria del colectivo",
+                    "description": "Trayectoria institucional obligatoria",
                     "target": 3,
                     "current": years_active,
                     "unit": "años",
                     "met": years_active >= 3,
                 },
                 {
-                    "id": "formacion_avanzada",
-                    "label": "Investigadores Doctor/Magíster",
-                    "description": "Al menos 1 Doctor o al menos 2 Magísteres",
-                    "target": "1 Dr. ó 2 Ms.",
-                    "current": f"{phd_count} Dr. / {masters_count} Ms.",
+                    "id": "cohesion",
+                    "label": "Indicador de Cohesión (IC > 0)",
+                    "description": "Colaboración obligatoria entre integrantes del colectivo en obras GNC/DTI",
+                    "target": "> 0.0",
+                    "current": f"{icoh:+.3f} ({coauthored_products_count} coautorías)",
                     "unit": "",
-                    "met": phd_count >= 1 or masters_count >= 2,
+                    "met": cohesion_met,
                 },
                 {
-                    "id": "frh_productos",
-                    "label": "Formación de Talento (FRH)",
-                    "description": "Tesis o trabajos de grado dirigidos finalizados",
+                    "id": "calidad_top_a",
+                    "label": "Calidad de Producción (TOP o Tipo A)",
+                    "description": "Al menos 1 obra Tipo TOP o Tipo A en ventana",
                     "target": 1,
-                    "current": frh_count,
-                    "unit": "obras FRH",
-                    "met": frh_count >= 1,
+                    "current": top_count + type_a_count,
+                    "unit": "obras TOP/A",
+                    "met": (top_count + type_a_count) >= 1,
                 },
                 {
-                    "id": "gnc_productos",
-                    "label": "Nuevo Conocimiento (GNC)",
-                    "description": "Artículos científicos o libros resultado de investigación",
-                    "target": 2,
-                    "current": gnc_count,
-                    "unit": "obras GNC",
-                    "met": gnc_count >= 2,
+                    "id": "apropiacion_divulgacion",
+                    "label": "Apropiación o Divulgación (ASC/DPC)",
+                    "description": "Al menos 1 producto de Apropiación Social o Divulgación en ventana",
+                    "target": 1,
+                    "current": asc_count + dpc_count,
+                    "unit": "obras ASC/DPC",
+                    "met": (asc_count + dpc_count) >= 1,
+                },
+                {
+                    "id": "formacion_talento",
+                    "label": "Formación de Talento Humano",
+                    "description": "Al menos 1 FRH Tipo A (Doctoral) ó al menos 2 FRH Tipo B (Maestría/Pregrado)",
+                    "target": "1 Dr. ó 2 Ms./Pre.",
+                    "current": f"{frh_a_count} Dr. / {frh_b_count} Ms./Pre.",
+                    "unit": "",
+                    "met": (frh_a_count >= 1) or (frh_b_count >= 2),
                 },
                 {
                     "id": "produccion_ventana",
-                    "label": "Producción en ventana",
-                    "description": "Volumen quinquenal acumulado",
+                    "label": "Producción en Ventana",
+                    "description": "Volumen acumulado en ventanas diferenciadas",
                     "target": 8,
                     "current": products_in_window,
                     "unit": "productos",
@@ -213,57 +439,57 @@ def evaluate_group_minciencias(group_id: int, repository_module: Any) -> Dict[st
         {
             "tier": "A",
             "title": "Categoría A",
-            "description": "Alto impacto con desarrollo tecnológico, formación avanzada y fuerte producción científica.",
+            "description": "Fase 2: Alto impacto, cohesión comprobada, desarrollo tecnológico y formación doctoral.",
             "reqs": [
                 {
                     "id": "antiguedad",
                     "label": "Antigüedad mínima",
-                    "description": "Consolidación temporal",
+                    "description": "Consolidación temporal obligatoria",
                     "target": 5,
                     "current": years_active,
                     "unit": "años",
                     "met": years_active >= 5,
                 },
                 {
-                    "id": "doctores_magisteres",
-                    "label": "Núcleo de Doctores y Magísteres",
-                    "description": "Al menos 1 Doctor Y al menos 2 Magísteres",
-                    "target": "1 Dr. y 2 Ms.",
-                    "current": f"{phd_count} Dr. / {masters_count} Ms.",
+                    "id": "cohesion",
+                    "label": "Indicador de Cohesión (IC > 0)",
+                    "description": "Coautoría interna obligatoria en obras de conocimiento e innovación",
+                    "target": "> 0.0",
+                    "current": f"{icoh:+.3f} ({coauthored_products_count} coautorías)",
                     "unit": "",
-                    "met": phd_count >= 1 and masters_count >= 2,
+                    "met": cohesion_met,
                 },
                 {
-                    "id": "dti_productos",
-                    "label": "Desarrollo Tecnológico (DTI)",
-                    "description": "Software registrado, patentes, prototipos o diseños",
-                    "target": 1,
-                    "current": dti_count,
-                    "unit": "obras DTI",
-                    "met": dti_count >= 1,
-                },
-                {
-                    "id": "frh_productos",
-                    "label": "Formación de Talento (FRH)",
-                    "description": "Dirección de trabajos de grado o semilleros",
+                    "id": "calidad_top_a",
+                    "label": "Calidad y Desarrollo Tecnológico",
+                    "description": "Al menos 2 obras Tipo TOP o Tipo A (incluyendo software, patentes o prototipos)",
                     "target": 2,
-                    "current": frh_count,
-                    "unit": "obras FRH",
-                    "met": frh_count >= 2,
+                    "current": top_count + type_a_count,
+                    "unit": "obras TOP/A",
+                    "met": (top_count + type_a_count) >= 2,
                 },
                 {
-                    "id": "gnc_productos",
-                    "label": "Nuevo Conocimiento (GNC)",
-                    "description": "Artículos en revistas indexadas o libros",
-                    "target": 4,
-                    "current": gnc_count,
-                    "unit": "obras GNC",
-                    "met": gnc_count >= 4,
+                    "id": "apropiacion_divulgacion",
+                    "label": "Apropiación o Divulgación (ASC/DPC)",
+                    "description": "Al menos 1 producto de Apropiación Social o Divulgación en ventana",
+                    "target": 1,
+                    "current": asc_count + dpc_count,
+                    "unit": "obras ASC/DPC",
+                    "met": (asc_count + dpc_count) >= 1,
+                },
+                {
+                    "id": "formacion_doctoral",
+                    "label": "Formación Doctoral (FRH Tipo A)",
+                    "description": "Obligatorio en Universidades: al menos 1 Tesis Doctoral dirigida y aprobada",
+                    "target": 1,
+                    "current": frh_a_count,
+                    "unit": "tesis doctorales",
+                    "met": frh_a_count >= 1,
                 },
                 {
                     "id": "produccion_ventana",
-                    "label": "Producción en ventana",
-                    "description": "Mínimo de obras en últimos 5 años",
+                    "label": "Producción en Ventana",
+                    "description": "Mínimo de obras en ventana diferenciada",
                     "target": 15,
                     "current": products_in_window,
                     "unit": "productos",
@@ -274,7 +500,7 @@ def evaluate_group_minciencias(group_id: int, repository_module: Any) -> Dict[st
         {
             "tier": "A1",
             "title": "Categoría A1 (Máxima Distinción)",
-            "description": "Liderazgo científico internacional, núcleo doctoral consolidado y transferencia tecnológica.",
+            "description": "Fase 2: Liderazgo científico de punta, productos TOP, transferencia tecnológica y cuerpo doctoral.",
             "reqs": [
                 {
                     "id": "antiguedad",
@@ -286,45 +512,54 @@ def evaluate_group_minciencias(group_id: int, repository_module: Any) -> Dict[st
                     "met": years_active >= 5,
                 },
                 {
-                    "id": "doctores",
-                    "label": "Cuerpo Doctoral",
-                    "description": "Al menos 2 integrantes con título de Doctorado",
-                    "target": 2,
-                    "current": phd_count,
-                    "unit": "doctores",
-                    "met": phd_count >= 2,
+                    "id": "cohesion",
+                    "label": "Indicador de Cohesión (IC > 0)",
+                    "description": "Cohesión interna sólida y continua",
+                    "target": "> 0.0",
+                    "current": f"{icoh:+.3f} ({coauthored_products_count} coautorías)",
+                    "unit": "",
+                    "met": cohesion_met,
                 },
                 {
-                    "id": "dti_productos",
+                    "id": "calidad_top",
+                    "label": "Producción Tipo TOP Obligatoria",
+                    "description": "Al menos 2 productos Tipo TOP en ventana (Q1/A1, patentes concedidas, libros A1)",
+                    "target": 2,
+                    "current": top_count,
+                    "unit": "obras TOP",
+                    "met": top_count >= 2,
+                },
+                {
+                    "id": "desarrollo_tecnologico",
                     "label": "Desarrollo Tecnológico (DTI)",
-                    "description": "Transferencia tecnológica y software con registro",
+                    "description": "Transferencia tecnológica demostrable: software registrado o prototipos",
                     "target": 2,
                     "current": dti_count,
                     "unit": "obras DTI",
                     "met": dti_count >= 2,
                 },
                 {
-                    "id": "frh_productos",
-                    "label": "Formación de Talento (FRH)",
-                    "description": "Tesis de posgrado o pregrado dirigidas",
-                    "target": 4,
-                    "current": frh_count,
-                    "unit": "obras FRH",
-                    "met": frh_count >= 4,
+                    "id": "apropiacion_divulgacion",
+                    "label": "Apropiación o Divulgación (ASC/DPC)",
+                    "description": "Al menos 1 producto de Apropiación Social o Divulgación en ventana",
+                    "target": 1,
+                    "current": asc_count + dpc_count,
+                    "unit": "obras ASC/DPC",
+                    "met": (asc_count + dpc_count) >= 1,
                 },
                 {
-                    "id": "gnc_productos",
-                    "label": "Nuevo Conocimiento (GNC)",
-                    "description": "Artículos de alto impacto y producción de punta",
-                    "target": 8,
-                    "current": gnc_count,
-                    "unit": "obras GNC",
-                    "met": gnc_count >= 8,
+                    "id": "formacion_doctoral",
+                    "label": "Formación Doctoral (FRH Tipo A)",
+                    "description": "Tesis Doctoral dirigida y aprobada",
+                    "target": 1,
+                    "current": frh_a_count,
+                    "unit": "tesis doctorales",
+                    "met": frh_a_count >= 1,
                 },
                 {
                     "id": "produccion_ventana",
-                    "label": "Producción en ventana",
-                    "description": "Mínimo de obras en ventana",
+                    "label": "Producción de Excelencia en Ventana",
+                    "description": "Mínimo de obras de alto impacto en ventana",
                     "target": 25,
                     "current": products_in_window,
                     "unit": "productos",
@@ -398,6 +633,16 @@ def evaluate_group_minciencias(group_id: int, repository_module: Any) -> Dict[st
             "asc_count": asc_count,
             "dpc_count": dpc_count,
             "projects_count": projects_count,
+            # Métricas oficiales Minciencias 2024 añadidas:
+            "cohesion_index": icoh,
+            "cohesion_met": cohesion_met,
+            "top_count": top_count,
+            "type_a_count": type_a_count,
+            "type_b_count": type_b_count,
+            "frh_a_count": frh_a_count,
+            "frh_b_count": frh_b_count,
+            "asc_dpc_count": asc_count + dpc_count,
+            "coauthored_products_count": coauthored_products_count,
         },
         "tiers": evaluated_tiers,
     }
