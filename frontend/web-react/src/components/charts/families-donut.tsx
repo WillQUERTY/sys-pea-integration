@@ -1,4 +1,4 @@
-import { useMemo } from 'react'
+import { useMemo, useState } from 'react'
 import { PieChart, Pie, Cell, Tooltip, ResponsiveContainer } from 'recharts'
 import { Award } from 'lucide-react'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
@@ -22,6 +22,7 @@ export function FamiliesDonut({
   height = 180,
   className,
 }: FamiliesDonutProps) {
+  const [isHovered, setIsHovered] = useState(false)
   const totalClassified = useMemo(() => {
     return data.reduce((acc, curr) => acc + curr.count, 0)
   }, [data])
@@ -49,8 +50,23 @@ export function FamiliesDonut({
         ) : (
           <div className='space-y-4'>
             <div className='relative w-full' style={{ height: `${height}px` }}>
-              <ResponsiveContainer width='100%' height='100%'>
-                <PieChart>
+              {/* Centro del donut: capa z-0 que se desvanece suavemente al pasar el cursor para evitar superposición con el tooltip */}
+              <div
+                className={cn(
+                  'absolute inset-0 flex flex-col items-center justify-center pointer-events-none z-0 transition-opacity duration-200',
+                  isHovered ? 'opacity-0' : 'opacity-100'
+                )}
+              >
+                <span className='text-xl font-extrabold text-foreground tracking-tight'>
+                  {totalClassified.toLocaleString()}
+                </span>
+                <span className='text-[10px] text-muted-foreground uppercase font-medium'>
+                  Catalogadas
+                </span>
+              </div>
+
+              <ResponsiveContainer width='100%' height='100%' className='relative z-10'>
+                <PieChart onMouseEnter={() => setIsHovered(true)} onMouseLeave={() => setIsHovered(false)}>
                   <Pie
                     data={data}
                     dataKey='count'
@@ -69,11 +85,12 @@ export function FamiliesDonut({
                     ))}
                   </Pie>
                   <Tooltip
+                    wrapperStyle={{ zIndex: 100, pointerEvents: 'none' }}
                     content={({ active, payload }) => {
                       if (!active || !payload?.length) return null
                       const item = payload[0].payload as FamilyDistributionItem
                       return (
-                        <div className='rounded-xl border border-border/80 bg-popover/95 p-2.5 shadow-lg backdrop-blur-md text-xs space-y-1 min-w-[160px]'>
+                        <div className='rounded-xl border border-border/80 bg-popover p-2.5 shadow-xl text-xs space-y-1 min-w-[160px]'>
                           <div className='font-bold text-foreground'>{item.name}</div>
                           <div className='flex items-center justify-between text-muted-foreground'>
                             <span>Código: <strong>{item.code}</strong></span>
@@ -88,14 +105,6 @@ export function FamiliesDonut({
                   />
                 </PieChart>
               </ResponsiveContainer>
-              <div className='absolute inset-0 flex flex-col items-center justify-center pointer-events-none'>
-                <span className='text-xl font-extrabold text-foreground tracking-tight'>
-                  {totalClassified.toLocaleString()}
-                </span>
-                <span className='text-[10px] text-muted-foreground uppercase font-medium'>
-                  Catalogadas
-                </span>
-              </div>
             </div>
 
             <div className='grid grid-cols-2 gap-2 text-xs pt-1 border-t border-border/50'>

@@ -164,6 +164,7 @@ export function ProductionHistogram({
                 tick={{ fill: 'var(--muted-foreground)' }}
               />
               <Tooltip
+                wrapperStyle={{ zIndex: 100, pointerEvents: 'none' }}
                 cursor={{ fill: 'var(--muted)', opacity: 0.3 }}
                 content={({ active, payload, label }) => {
                   if (!active || !payload?.length) return null
