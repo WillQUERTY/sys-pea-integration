@@ -1,36 +1,14 @@
-import { useState, useMemo } from 'react'
+import { useState } from 'react'
 import { useParams, Link } from '@tanstack/react-router'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { toast } from 'sonner'
-import { EntityCombobox, type EntityItem } from '@/components/entity-combobox'
-import { ConfirmDialog } from '@/components/confirm-dialog'
-import { ActionTooltip } from '@/components/action-tooltip'
-import { ResearcherAvatar } from '@/components/researcher-avatar'
-import { ScrollArea } from '@/components/ui/scroll-area'
-import {
-  ArrowLeft,
-  BookOpen,
-  CheckCircle2,
-  XCircle,
-  ClipboardCheck,
-  Globe,
-  Fingerprint,
-  CalendarDays,
-  FileText,
-  Users,
-  UserPlus,
-  Trash2,
-  Pencil,
-} from 'lucide-react'
+import { ArrowLeft } from 'lucide-react'
 
 import {
   getProduct,
   validateProduct,
   enqueueValidation,
   getProductAuthors,
-  addProductAuthor,
-  removeProductAuthor,
-  listResearchers,
   getProductCatalogs,
 } from '@/lib/api'
 
@@ -41,32 +19,18 @@ import { ThemeSwitch } from '@/components/theme-switch'
 import { ConfigDrawer } from '@/components/config-drawer'
 
 import { Button } from '@/components/ui/button'
-import { Badge } from '@/components/ui/badge'
 import { Skeleton } from '@/components/ui/skeleton'
-import { Input } from '@/components/ui/input'
-import { Label } from '@/components/ui/label'
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from '@/components/ui/dialog'
+import { ActionTooltip } from '@/components/action-tooltip'
+import { ConfirmDialog } from '@/components/confirm-dialog'
 
-import { ValidationBadge } from '@/features/groups/detail'
 import { ValidateProductDialog } from '@/features/products/validate-product-dialog'
 import { ProductFormDialog } from '@/features/products/product-form-dialog'
-import { isEndorsed, EndorsedBadge } from '@/features/products/endorsed'
 
-function Field({ label, value, mono = false }: { label: string; value?: React.ReactNode; mono?: boolean }) {
-  return (
-    <div className='space-y-1'>
-      <p className='text-xs font-medium uppercase tracking-wider text-muted-foreground'>{label}</p>
-      <p className={`text-sm ${mono ? 'font-mono' : ''}`}>{value ?? '—'}</p>
-    </div>
-  )
-}
+import {
+  ProductHeader,
+  ProductInfoCards,
+  ProductAuthorsCard,
+} from './components'
 
 export function ProductDetail({ isAdmin = false }: { isAdmin?: boolean }) {
   const { id } = useParams({ strict: false }) as any
@@ -83,96 +47,21 @@ export function ProductDetail({ isAdmin = false }: { isAdmin?: boolean }) {
     queryFn: () => getProductAuthors(productId),
   })
 
-  // Estado del diálogo "Vincular Autor"
-  const [authorOpen, setAuthorOpen] = useState(false)
-  const [authorSearch, setAuthorSearch] = useState('')
-  const [selectedResearcherId, setSelectedResearcherId] = useState<number | null>(null)
-  const [authorOrder, setAuthorOrder] = useState('1')
-  const [extName, setExtName] = useState('')
-  const [extIdentifier, setExtIdentifier] = useState('')
-  // Estado del diálogo "Validar" (modelo 2024: exige tipología + categoría)
-  const [validateOpen, setValidateOpen] = useState(false)
-  // Estado del diálogo "Editar ficha" (reclasificación: tipología/categoría)
-  const [editOpen, setEditOpen] = useState(false)
-  // Estados para confirmaciones destructivas
-  const [confirmRejectOpen, setConfirmRejectOpen] = useState(false)
-  const [unlinkingAuthor, setUnlinkingAuthor] = useState<{
-    researcher_id?: number | null
-    external_author_name?: string | null
-    name: string
-  } | null>(null)
-
-  // Catálogo 2024: resolver familia/tipología/categoría por id
   const { data: catalogs } = useQuery({
     queryKey: ['product-catalogs'],
     queryFn: getProductCatalogs,
   })
 
-  const { data: pickerResults } = useQuery({
-    queryKey: ['researchers', 'picker', authorSearch],
-    queryFn: () => listResearchers({ search: authorSearch, limit: 8 }),
-    enabled: authorOpen,
-  })
+  // Diálogos modales
+  const [validateOpen, setValidateOpen] = useState(false)
+  const [editOpen, setEditOpen] = useState(false)
+  const [confirmRejectOpen, setConfirmRejectOpen] = useState(false)
 
   const invalidate = () => {
     queryClient.invalidateQueries({ queryKey: ['products'] })
     queryClient.invalidateQueries({ queryKey: ['validation-queue'] })
     queryClient.invalidateQueries({ queryKey: ['dashboard-stats'] })
   }
-
-  const invalidateAuthors = () => {
-    queryClient.invalidateQueries({ queryKey: ['products', productId, 'authors'] })
-  }
-
-  const linkableResearchers = (pickerResults?.items ?? []).filter(
-    (r) => !(authors ?? []).some((a) => a.researcher_id === r.id)
-  )
-
-  const researcherItems = useMemo<EntityItem[]>(() => {
-    return linkableResearchers.map((r) => ({
-      id: r.id!,
-      label: `${r.first_names} ${r.last_names}`,
-      subLabel: r.orcid ? `ORCID: ${r.orcid}` : r.institutional_email ?? null,
-      badge: r.highest_education_level ?? null,
-    }))
-  }, [linkableResearchers])
-
-  const selectedResearcher = (pickerResults?.items ?? []).find((r) => r.id === selectedResearcherId)
-
-  const addAuthorMutation = useMutation({
-    mutationFn: () =>
-      selectedResearcherId
-        ? addProductAuthor(productId, {
-            researcher_id: selectedResearcherId,
-            author_order: Number(authorOrder) || 1,
-          })
-        : addProductAuthor(productId, {
-            external_author_name: extName.trim(),
-            external_author_identifier: extIdentifier.trim(),
-            author_order: Number(authorOrder) || 1,
-          }),
-    onSuccess: () => {
-      toast.success('Autor vinculado al producto')
-      setAuthorOpen(false)
-      setSelectedResearcherId(null)
-      setAuthorSearch('')
-      setExtName('')
-      setExtIdentifier('')
-      setAuthorOrder('1')
-      invalidateAuthors()
-    },
-    onError: (e) => toast.error(e instanceof Error ? e.message : 'Error al vincular autor'),
-  })
-
-  const removeAuthorMutation = useMutation({
-    mutationFn: (params: { researcher_id?: number; external_author_name?: string }) =>
-      removeProductAuthor(productId, params),
-    onSuccess: () => {
-      toast.success('Autor desvinculado')
-      invalidateAuthors()
-    },
-    onError: (e) => toast.error(e instanceof Error ? e.message : 'Error al desvincular autor'),
-  })
 
   const rejectMutation = useMutation({
     mutationFn: () =>
@@ -221,26 +110,12 @@ export function ProductDetail({ isAdmin = false }: { isAdmin?: boolean }) {
         <div className='py-20 text-center'>
           <h2 className='text-2xl font-bold'>Producto no encontrado</h2>
           <Button asChild className='mt-4'>
-            <Link to={isAdmin ? "/admin/products" : "/products"}>Volver a Productos</Link>
+            <Link to={isAdmin ? '/admin/products' : '/products'}>Volver a Productos</Link>
           </Button>
         </div>
       </Main>
     )
   }
-
-  const year = product.year ?? (String(product.publication_date ?? product.obtained_date ?? '').slice(0, 4) || null)
-  const isValid = (product.validation_status ?? 'pending') === 'valid'
-
-  // Resolución de nombres del catálogo 2024 (los ids crudos no dicen nada)
-  const subtype = (catalogs?.subtypes ?? []).find((s) => s.id === product.subtype_id)
-  const family = (catalogs?.families ?? []).find(
-    (f) => f.id === (product.family_id ?? subtype?.family_id)
-  )
-  const quality = (catalogs?.quality_categories ?? []).find(
-    (c) => c.id === product.quality_category_id
-  )
-  const labeled = (code?: string | null, name?: string | null) =>
-    code && name ? `${code} — ${name}` : (name ?? '—')
 
   return (
     <>
@@ -265,316 +140,29 @@ export function ProductDetail({ isAdmin = false }: { isAdmin?: boolean }) {
       )}
 
       <Main className={!isAdmin ? 'max-w-5xl mx-auto p-0 sm:p-6 w-full' : undefined}>
-        {/* Encabezado */}
-        <div className='mb-6 rounded-2xl border border-border/50 bg-card p-6 shadow-sm'>
-          <div className='flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between'>
-            <div className='flex items-start gap-4'>
-              <div className='rounded-xl bg-emerald-500/10 p-3'>
-                <BookOpen className='h-6 w-6 text-emerald-500' />
-              </div>
-              <div>
-                <h1 className='text-xl font-bold leading-snug'>{product.title}</h1>
-                <div className='mt-2 flex flex-wrap items-center gap-2'>
-                  <ValidationBadge status={product.validation_status} />
-                  {isEndorsed(product) && <EndorsedBadge />}
-                  {product.status && <Badge variant='outline'>{product.status}</Badge>}
-                  <Badge variant='outline' className='font-mono text-xs text-muted-foreground'>
-                    {product.external_code}
-                  </Badge>
-                </div>
-              </div>
-            </div>
-            <div className='flex shrink-0 flex-wrap gap-2'>
-              {isAdmin && (
-                <>
-                  <Button size='sm' variant='outline' onClick={() => setEditOpen(true)}>
-                    <Pencil className='mr-2 h-4 w-4' /> Editar ficha
-                  </Button>
-                  {!isValid && (
-                <>
-                  <Button
-                    size='sm'
-                    onClick={() => setValidateOpen(true)}
-                  >
-                    <CheckCircle2 className='mr-2 h-4 w-4' /> Validar
-                  </Button>
-                  <Button
-                    size='sm'
-                    variant='destructive'
-                    onClick={() => setConfirmRejectOpen(true)}
-                    disabled={rejectMutation.isPending}
-                  >
-                    <XCircle className='mr-2 h-4 w-4' /> Rechazar
-                  </Button>
-                  <Button
-                    size='sm'
-                    variant='outline'
-                    onClick={() => enqueueMutation.mutate()}
-                    disabled={enqueueMutation.isPending}
-                  >
-                    <ClipboardCheck className='mr-2 h-4 w-4' /> Encolar validación
-                  </Button>
-                </>
-              )}
-                </>
-              )}
-            </div>
-          </div>
+        {/* Encabezado con estado y acciones */}
+        <ProductHeader
+          product={product}
+          isAdmin={isAdmin}
+          onEdit={() => setEditOpen(true)}
+          onValidate={() => setValidateOpen(true)}
+          onReject={() => setConfirmRejectOpen(true)}
+          onEnqueue={() => enqueueMutation.mutate()}
+          isEnqueuing={enqueueMutation.isPending}
+          isRejecting={rejectMutation.isPending}
+        />
+
+        {/* Ficha técnica y clasificación */}
+        <ProductInfoCards product={product} catalogs={catalogs} />
+
+        {/* Sección de autores */}
+        <div className='mt-6'>
+          <ProductAuthorsCard
+            productId={productId}
+            authors={authors}
+            isAdmin={isAdmin}
+          />
         </div>
-
-        <div className='grid grid-cols-1 gap-6 lg:grid-cols-2'>
-          {/* Identificación */}
-          <div className='rounded-2xl border border-border/50 bg-card p-6 shadow-sm'>
-            <div className='mb-5 flex items-center gap-2'>
-              <div className='rounded-lg bg-blue-500/10 p-2'>
-                <Fingerprint className='h-4 w-4 text-blue-500' />
-              </div>
-              <h3 className='text-lg font-semibold'>Identificación</h3>
-            </div>
-            <div className='grid grid-cols-1 sm:grid-cols-2 gap-4'>
-              <Field label='DOI' value={product.doi} mono />
-              <Field label='ISBN' value={product.isbn} mono />
-              <Field label='ISSN' value={product.issn} mono />
-              <Field label='Idioma' value={product.language} />
-              <Field label='País' value={product.country} />
-              <Field
-                label='URL'
-                value={
-                  product.url ? (
-                    <a href={product.url} target='_blank' rel='noreferrer' className='text-primary hover:underline'>
-                      Ver recurso
-                    </a>
-                  ) : null
-                }
-              />
-            </div>
-          </div>
-
-          {/* Fechas y clasificación */}
-          <div className='rounded-2xl border border-border/50 bg-card p-6 shadow-sm'>
-            <div className='mb-5 flex items-center gap-2'>
-              <div className='rounded-lg bg-violet-500/10 p-2'>
-                <CalendarDays className='h-4 w-4 text-violet-500' />
-              </div>
-              <h3 className='text-lg font-semibold'>Fechas y Clasificación</h3>
-            </div>
-            <div className='grid grid-cols-1 sm:grid-cols-2 gap-4'>
-              <Field label='Año' value={year} />
-              <Field label='Fecha de obtención' value={product.obtained_date} />
-              <Field label='Fecha de publicación' value={product.publication_date} />
-              <Field
-                label='Familia'
-                value={family ? labeled(family.code, family.name) : '—'}
-              />
-              <Field
-                label='Tipología 2024'
-                value={
-                  subtype
-                    ? labeled(subtype.code, subtype.name)
-                    : 'Sin clasificar (usa «Editar ficha» para reclasificar)'
-                }
-              />
-              <Field
-                label='Categoría de calidad'
-                value={
-                  quality
-                    ? `${labeled(quality.code, quality.name)}${
-                        quality.weight != null ? ` · peso ${quality.weight}` : ''
-                      }`
-                    : '—'
-                }
-              />
-            </div>
-          </div>
-
-          {/* Autores */}
-          <div className='rounded-2xl border border-border/50 bg-card p-6 shadow-sm lg:col-span-2'>
-            <div className='mb-5 flex items-center justify-between'>
-              <div className='flex items-center gap-2'>
-                <div className='rounded-lg bg-cyan-500/10 p-2'>
-                  <Users className='h-4 w-4 text-cyan-500' />
-                </div>
-                <h3 className='text-lg font-semibold'>Autores</h3>
-              </div>
-              {isAdmin && (
-                <Button size='sm' variant='outline' onClick={() => setAuthorOpen(true)}>
-                  <UserPlus className='mr-2 h-4 w-4' /> Vincular Autor
-                </Button>
-              )}
-            </div>
-            {!authors || authors.length === 0 ? (
-              <p className='text-sm text-muted-foreground'>Sin autores registrados.</p>
-            ) : (
-              <ScrollArea className='max-h-[360px] pr-2'>
-                <ul className='divide-y divide-border/50'>
-                  {authors.map((a) => (
-                    <li key={a.id} className='flex items-center justify-between gap-3 py-2.5'>
-                      <div className='flex min-w-0 items-center gap-3'>
-                        <Badge variant='outline' className='shrink-0 font-mono text-xs'>
-                          #{a.author_order}
-                        </Badge>
-                        <ResearcherAvatar
-                          name={a.researcher_id ? (a.researcher_name?.trim() || a.researcher_external_code) : a.external_author_name}
-                          size='sm'
-                        />
-                        <div className='min-w-0'>
-                          {a.researcher_id ? (
-                            <Link
-                              to={isAdmin ? '/admin/researchers/$id' : '/researchers/$id'}
-                              params={{ id: String(a.researcher_id) }}
-                              className='truncate text-sm font-medium text-primary hover:underline'
-                            >
-                              {a.researcher_name.trim() || a.researcher_external_code}
-                            </Link>
-                          ) : (
-                            <p className='truncate text-sm font-medium'>
-                              {a.external_author_name}
-                              <span className='ml-2 text-xs text-muted-foreground'>(externo)</span>
-                            </p>
-                          )}
-                          <p className='text-xs text-muted-foreground'>
-                            {a.researcher_id
-                              ? a.researcher_external_code
-                              : a.external_author_identifier || a.match_status}
-                          </p>
-                        </div>
-                      </div>
-                      {isAdmin && (
-                        <ActionTooltip label='Desvincular autor'>
-                          <Button
-                            size='icon'
-                            variant='ghost'
-                            className='h-8 w-8 shrink-0 text-destructive'
-                            disabled={removeAuthorMutation.isPending}
-                            onClick={() =>
-                              setUnlinkingAuthor({
-                                researcher_id: a.researcher_id,
-                                external_author_name: a.external_author_name,
-                                name: a.researcher_id
-                                  ? (a.researcher_name?.trim() || a.researcher_external_code || 'Investigador')
-                                  : (a.external_author_name || 'Autor externo'),
-                              })
-                            }
-                          >
-                            <Trash2 className='h-4 w-4' />
-                          </Button>
-                        </ActionTooltip>
-                      )}
-                    </li>
-                  ))}
-                </ul>
-              </ScrollArea>
-            )}
-          </div>
-
-          {/* Descripción */}
-          <div className='rounded-2xl border border-border/50 bg-card p-6 shadow-sm lg:col-span-2'>
-            <div className='mb-5 flex items-center gap-2'>
-              <div className='rounded-lg bg-amber-500/10 p-2'>
-                <FileText className='h-4 w-4 text-amber-500' />
-              </div>
-              <h3 className='text-lg font-semibold'>Descripción y Evidencia</h3>
-            </div>
-            <div className='space-y-4'>
-              <div>
-                <p className='mb-1 text-xs font-medium uppercase tracking-wider text-muted-foreground'>Descripción</p>
-                <p className='whitespace-pre-wrap text-sm text-muted-foreground'>
-                  {product.description || 'Sin descripción registrada.'}
-                </p>
-              </div>
-              {product.evidence && (
-                <div>
-                  <p className='mb-1 text-xs font-medium uppercase tracking-wider text-muted-foreground'>Evidencia</p>
-                  <p className='whitespace-pre-wrap text-sm text-muted-foreground'>{product.evidence}</p>
-                </div>
-              )}
-              {product.specialized_attributes && (
-                <div>
-                  <p className='mb-1 text-xs font-medium uppercase tracking-wider text-muted-foreground'>
-                    Atributos especializados
-                  </p>
-                  <pre className='overflow-x-auto rounded-lg bg-muted/40 p-3 text-xs'>{product.specialized_attributes}</pre>
-                </div>
-              )}
-            </div>
-          </div>
-        </div>
-
-        {product.url && (
-          <div className='mt-6 flex items-center gap-2 text-sm text-muted-foreground'>
-            <Globe className='h-4 w-4' />
-            <a href={product.url} target='_blank' rel='noreferrer' className='truncate text-primary hover:underline'>
-              {product.url}
-            </a>
-          </div>
-        )}
-
-        {/* Diálogo: vincular autor */}
-        <Dialog open={authorOpen} onOpenChange={setAuthorOpen}>
-          <DialogContent className='sm:max-w-lg'>
-            <DialogHeader>
-              <DialogTitle>Vincular Autor</DialogTitle>
-              <DialogDescription>
-                Busca un investigador del sistema o registra un autor externo.
-              </DialogDescription>
-            </DialogHeader>
-            <div className='grid gap-4 py-2'>
-              <div className='grid gap-2'>
-                <Label>Investigador del sistema</Label>
-                <EntityCombobox
-                  items={researcherItems}
-                  value={selectedResearcherId}
-                  onChange={(id) => setSelectedResearcherId(id)}
-                  onSearchChange={setAuthorSearch}
-                  placeholder='Buscar o seleccionar investigador...'
-                  searchPlaceholder='Nombre, apellido u ORCID...'
-                  emptyMessage='No se encontraron investigadores.'
-                  allowClear
-                />
-              </div>
-              {!selectedResearcher && (
-                <div className='grid grid-cols-1 gap-4 sm:grid-cols-2'>
-                  <div className='grid gap-2'>
-                    <Label>Autor externo (nombre)</Label>
-                    <Input
-                      value={extName}
-                      onChange={(e) => setExtName(e.target.value)}
-                      placeholder='Ej: JOHN DOE'
-                    />
-                  </div>
-                  <div className='grid gap-2'>
-                    <Label>Identificador externo</Label>
-                    <Input
-                      value={extIdentifier}
-                      onChange={(e) => setExtIdentifier(e.target.value)}
-                      placeholder='ORCID, documento...'
-                    />
-                  </div>
-                </div>
-              )}
-              <div className='grid gap-2'>
-                <Label>Orden de autoría</Label>
-                <Input
-                  type='number'
-                  min={1}
-                  value={authorOrder}
-                  onChange={(e) => setAuthorOrder(e.target.value)}
-                />
-              </div>
-            </div>
-            <DialogFooter>
-              <Button type='button' variant='outline' onClick={() => setAuthorOpen(false)}>
-                Cancelar
-              </Button>
-              <Button
-                onClick={() => addAuthorMutation.mutate()}
-                disabled={addAuthorMutation.isPending || (!selectedResearcherId && !extName.trim())}
-              >
-                {addAuthorMutation.isPending ? 'Vinculando...' : 'Vincular'}
-              </Button>
-            </DialogFooter>
-          </DialogContent>
-        </Dialog>
 
         {/* Diálogo: validar con categoría de calidad 2024 (exige tipología) */}
         <ValidateProductDialog
@@ -604,30 +192,6 @@ export function ProductDetail({ isAdmin = false }: { isAdmin?: boolean }) {
             rejectMutation.mutate(undefined, {
               onSettled: () => setConfirmRejectOpen(false),
             })
-          }}
-        />
-
-        {/* Confirmación: desvincular autor */}
-        <ConfirmDialog
-          open={unlinkingAuthor !== null}
-          onOpenChange={(open) => !open && setUnlinkingAuthor(null)}
-          title="¿Desvincular autor?"
-          desc={`¿Estás seguro de que deseas desvincular a «${unlinkingAuthor?.name ?? ''}» como autor de este producto?`}
-          confirmText="Desvincular"
-          cancelBtnText="Cancelar"
-          destructive
-          isLoading={removeAuthorMutation.isPending}
-          handleConfirm={() => {
-            if (unlinkingAuthor) {
-              removeAuthorMutation.mutate(
-                unlinkingAuthor.researcher_id
-                  ? { researcher_id: unlinkingAuthor.researcher_id }
-                  : { external_author_name: unlinkingAuthor.external_author_name ?? undefined },
-                {
-                  onSettled: () => setUnlinkingAuthor(null),
-                }
-              )
-            }
           }}
         />
       </Main>

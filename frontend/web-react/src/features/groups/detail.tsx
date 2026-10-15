@@ -1,102 +1,51 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useParams, Link } from '@tanstack/react-router'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { toast } from 'sonner'
 import {
   ArrowLeft,
-  Users as GroupIcon,
   BookOpen,
   UserCircle2,
-  Save,
   Building2,
-  Trophy,
   Info,
-  Trash2,
-  Plus,
-  UserPlus,
-  Pencil,
-  FileDown,
-  FileText,
-  FileSpreadsheet,
   ClipboardList,
   TrendingUp,
-  Sparkles,
-  GraduationCap,
-  Scale
 } from 'lucide-react'
 
 import {
-  getGroup, updateGroup, getGroupMembers, getGroupProducts, getGroupProjects, getGroupResearchLines,
-  linkProject, unlinkProject, linkResearchLine, unlinkResearchLine,
-  linkMember, unlinkMember, listResearchers,
-  linkProduct, unlinkProduct, listProducts,
-  getGroupMemberships, updateMember,
-  getGroupPlans, createPlan, updatePlan, deletePlan,
-  groupReportPdfUrl, groupDossierPdfUrl, groupExportRankingCsvUrl, groupExportProductsCsvUrl,
-  getProductCatalogs, getGroupStats, getGroupMincienciasDiagnosis,
-  getGroupCollaborationNetwork,
+  getGroup,
+  updateGroup,
+  getGroupMembers,
+  getGroupProducts,
+  getGroupProjects,
+  getGroupPlans,
+  getGroupResearchLines,
 } from '@/lib/api'
-import {
-  ProductionHistogram,
-  FamiliesDonut,
-  EducationDonut,
-  GroupTopResearchers,
-  TopSubtypesRanking,
-  MincienciasDiagnosisCard,
-  GroupCollaborationNetwork,
-  GroupsRadarComparison,
-} from '@/components/charts'
-import type { Researcher } from '@/lib/types'
-import type { Group, WorkPlan, Project, Product } from '@/lib/types'
-import { parseMincienciasClassification, cn } from '@/lib/utils'
-import { MEMBER_ROLES, GRAND_AREAS_OCDE, DEPARTMENTS, citiesOfDepartment } from '@/lib/catalogs'
-import { CatalogSelect, CatalogCombobox, toMonthInput } from '@/components/catalog-field'
-import { MonthPicker } from '@/components/month-picker'
-import { EntityCombobox, type EntityItem } from '@/components/entity-combobox'
-import { ConfirmDialog } from '@/components/confirm-dialog'
+import type { Group } from '@/lib/types'
+import { GroupsRadarComparison } from '@/components/charts'
 import { ActionTooltip } from '@/components/action-tooltip'
-import { ResearcherAvatar } from '@/components/researcher-avatar'
-
 import { Header } from '@/components/layout/header'
 import { Main } from '@/components/layout/main'
 import { ProfileDropdown } from '@/components/profile-dropdown'
 import { ThemeSwitch } from '@/components/theme-switch'
 import { ConfigDrawer } from '@/components/config-drawer'
-
 import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
-import { Label } from '@/components/ui/label'
-import { Textarea } from '@/components/ui/textarea'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog'
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Badge } from '@/components/ui/badge'
-import {
-  Card,
-  CardContent,
-  CardHeader,
-  CardTitle,
-} from '@/components/ui/card'
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select'
 
-import { DataTable } from '@/components/data-table'
-import { isEndorsed, EndorsedBadge } from '@/features/products/endorsed'
-
-function Field({ label, value, mono = false, className = '' }: { label: string; value?: React.ReactNode; mono?: boolean; className?: string }) {
-  if (!value) return null
-  return (
-    <div className={cn('flex flex-col gap-1.5 min-w-0', className)}>
-      <span className='text-xs font-semibold text-muted-foreground uppercase tracking-wider'>{label}</span>
-      <span className={`text-sm text-foreground leading-relaxed break-words ${mono ? 'font-mono' : ''}`}>{value}</span>
-    </div>
-  )
-}
+import {
+  GroupProfileHeader,
+  GroupExportDialog,
+  GroupProfileTab,
+  GroupMembersTab,
+  GroupProductsTab,
+  GroupAnalyticsTab,
+  GroupProjectsTab,
+  GroupPlansTab,
+  GroupLinesTab,
+} from './components'
 
 export function ValidationBadge({ status }: { status?: string | null }) {
   if (status === 'valid') {
@@ -123,353 +72,63 @@ export function ValidationBadge({ status }: { status?: string | null }) {
 export function GroupDetail({ isAdmin = false }: { isAdmin?: boolean }) {
   const { id } = useParams({ strict: false }) as any
   const queryClient = useQueryClient()
-
   const groupId = Number(id)
 
-  // Ventana de observación del informe PDF (Requerimiento 10): presets o rango
   const [pdfDialogOpen, setPdfDialogOpen] = useState(false)
   const [compareDialogOpen, setCompareDialogOpen] = useState(false)
-  const [reportWindow, setReportWindow] = useState('all')
-  const [reportStart, setReportStart] = useState('')
-  const [reportEnd, setReportEnd] = useState('')
-  const reportWindowParams = useMemo(
-    () =>
-      reportWindow === 'custom'
-        ? {
-            start_year: Number(reportStart) || undefined,
-            end_year: Number(reportEnd) || undefined,
-          }
-        : reportWindow !== 'all'
-          ? { window_years: Number(reportWindow) }
-          : undefined,
-    [reportWindow, reportStart, reportEnd]
-  )
 
   const { data: group, isLoading } = useQuery({
     queryKey: ['groups', groupId],
     queryFn: () => getGroup(groupId),
   })
 
-  const { data: members, isLoading: isLoadingMembers } = useQuery({
+  const { data: members } = useQuery({
     queryKey: ['groups', groupId, 'members'],
     queryFn: () => getGroupMembers(groupId),
   })
 
-  const { data: products, isLoading: isLoadingProducts } = useQuery({
+  const { data: products } = useQuery({
     queryKey: ['groups', groupId, 'products'],
     queryFn: () => getGroupProducts(groupId),
   })
 
-  // Catálogo 2024: resolver la tipología por id en la tabla de productos
-  const { data: catalogs } = useQuery({
-    queryKey: ['product-catalogs'],
-    queryFn: getProductCatalogs,
-  })
-  const subtypeById = useMemo(
-    () => new Map((catalogs?.subtypes ?? []).map((s) => [s.id, s])),
-    [catalogs]
-  )
-
-  const { data: projects, isLoading: isLoadingProjects } = useQuery({
+  const { data: projects } = useQuery({
     queryKey: ['groups', groupId, 'projects'],
     queryFn: () => getGroupProjects(groupId),
   })
 
-  const { data: researchLines, isLoading: isLoadingLines } = useQuery({
-    queryKey: ['groups', groupId, 'researchLines'],
-    queryFn: () => getGroupResearchLines(groupId),
-  })
-
-  // Planes de trabajo (T-08)
-  const { data: plans, isLoading: isLoadingPlans } = useQuery({
+  const { data: plans } = useQuery({
     queryKey: ['groups', groupId, 'plans'],
     queryFn: () => getGroupPlans(groupId),
   })
 
-  // Estadísticas e Impacto del Grupo
-  const { data: stats } = useQuery({
-    queryKey: ['groups', groupId, 'stats'],
-    queryFn: () => getGroupStats(groupId),
-  })
-
-  // Diagnóstico Minciencias 2024
-  const { data: mincienciasDiagnosis } = useQuery({
-    queryKey: ['groups', groupId, 'minciencias-diagnosis'],
-    queryFn: () => getGroupMincienciasDiagnosis(groupId),
-  })
-
-  // Grafo de Colaboración y Coautorías (Fase 3)
-  const { data: collaborationNetwork, isLoading: isLoadingNetwork } = useQuery({
-    queryKey: ['groups', groupId, 'network'],
-    queryFn: () => getGroupCollaborationNetwork(groupId),
+  const { data: researchLines } = useQuery({
+    queryKey: ['groups', groupId, 'lines'],
+    queryFn: () => getGroupResearchLines(groupId),
   })
 
   const [formData, setFormData] = useState<Partial<Group>>({})
-  const [newProject, setNewProject] = useState({ title: '', start_date: '', status: 'Activo' })
-  const [newLine, setNewLine] = useState('')
-  const [projectOpen, setProjectOpen] = useState(false)
-  const [lineOpen, setLineOpen] = useState(false)
 
-  // Planes de trabajo: diálogo de creación/edición (T-08)
-  const emptyPlanForm = { title: '', description: '', start_date: '', end_date: '', status: 'active' }
-  const [planOpen, setPlanOpen] = useState(false)
-  const [editingPlan, setEditingPlan] = useState<WorkPlan | null>(null)
-  const [planForm, setPlanForm] = useState(emptyPlanForm)
-
-  const openCreatePlan = () => {
-    setEditingPlan(null)
-    setPlanForm(emptyPlanForm)
-    setPlanOpen(true)
-  }
-  const openEditPlan = (p: WorkPlan) => {
-    setEditingPlan(p)
-    setPlanForm({
-      title: p.title,
-      description: p.description ?? '',
-      start_date: toMonthInput(p.start_date),
-      end_date: toMonthInput(p.end_date),
-      status: p.status ?? 'active',
-    })
-    setPlanOpen(true)
-  }
-
-  // Vinculación de investigadores (multilista — Req. 5)
-  const [memberOpen, setMemberOpen] = useState(false)
-  const [memberSearch, setMemberSearch] = useState('')
-  const [selectedResearcherId, setSelectedResearcherId] = useState<number | null>(null)
-  const [memberRole, setMemberRole] = useState('Investigador')
-  const [memberStartDate, setMemberStartDate] = useState('')
-
-  const { data: researcherResults, isFetching: isSearchingResearchers } = useQuery({
-    queryKey: ['researchers', 'picker', memberSearch],
-    queryFn: () => listResearchers({ search: memberSearch, limit: 8 }),
-    enabled: memberOpen,
-  })
-  const linkableResearchers = (researcherResults?.items ?? []).filter(
-    (r) => !(members ?? []).some((m) => m.id === r.id)
-  )
-
-  // Vinculación de productos (multilista — Req. 6-7)
-  const [productOpen, setProductOpen] = useState(false)
-  const [productSearch, setProductSearch] = useState('')
-  const [selectedProductId, setSelectedProductId] = useState<number | null>(null)
-
-  const { data: productResults, isFetching: isSearchingProducts } = useQuery({
-    queryKey: ['products', 'picker', productSearch],
-    queryFn: () => listProducts({ search: productSearch, limit: 8 }),
-    enabled: productOpen,
-  })
-  const linkableProducts = (productResults?.items ?? []).filter(
-    (p) => !(products ?? []).some((gp) => gp.id === p.id)
-  )
-
-  // Estados para diálogos de confirmación destructiva
-  const [unlinkingMember, setUnlinkingMember] = useState<Researcher | null>(null)
-  const [unlinkingProduct, setUnlinkingProduct] = useState<Product | null>(null)
-  const [unlinkingProject, setUnlinkingProject] = useState<Project | null>(null)
-  const [deactivatingPlan, setDeactivatingPlan] = useState<WorkPlan | null>(null)
-  const [unlinkingLine, setUnlinkingLine] = useState<string | null>(null)
-
-  const researcherItems = useMemo<EntityItem[]>(() => {
-    return linkableResearchers.map((r) => ({
-      id: r.id!,
-      label: `${r.first_names} ${r.last_names}`,
-      subLabel: r.orcid ? `ORCID: ${r.orcid}` : r.institutional_email ?? null,
-      badge: r.highest_education_level ?? null,
-    }))
-  }, [linkableResearchers])
-
-  const productItems = useMemo<EntityItem[]>(() => {
-    return linkableProducts.map((p) => ({
-      id: p.id!,
-      label: p.title,
-      subLabel: p.year ? `Año ${p.year}` : (String(p.publication_date ?? '').slice(0, 4) || 's/f'),
-      badge: p.validation_status ?? null,
-    }))
-  }, [linkableProducts])
-
-  // Sync state when group loads
   useEffect(() => {
     if (group) {
-      setFormData({
-        name: group.name,
-        external_code: group.external_code,
-        acronym: group.acronym ?? '',
-        institution: group.institution ?? '',
-        classification: group.classification ?? '',
-        description: group.description ?? '',
-        mission: group.mission ?? '',
-        vision: group.vision ?? '',
-        knowledge_area: group.knowledge_area ?? '',
-        city: group.city ?? '',
-        department: group.department ?? '',
-        email: group.email ?? '',
-        website: group.website ?? '',
-        declared_creation_date: toMonthInput(group.declared_creation_date),
-      })
+      setFormData(group)
     }
   }, [group])
 
   const mutation = useMutation({
     mutationFn: (data: Partial<Group>) => updateGroup(groupId, data),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['groups', groupId] })
+    onSuccess: (updatedGroup) => {
+      queryClient.setQueryData(['groups', groupId], updatedGroup)
       queryClient.invalidateQueries({ queryKey: ['groups'] })
-      toast.success('Información del grupo actualizada correctamente')
+      toast.success('Grupo actualizado correctamente')
     },
-    onError: (e) => {
-      toast.error(e instanceof Error ? e.message : 'Error al guardar el grupo')
+    onError: (err: any) => {
+      toast.error('Error al actualizar el grupo: ' + (err.message || 'Error desconocido'))
     },
   })
 
-  const linkProjMutation = useMutation({
-    mutationFn: () => linkProject(groupId, newProject),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['groups', groupId, 'projects'] })
-      toast.success('Proyecto añadido correctamente')
-      setProjectOpen(false)
-      setNewProject({ title: '', start_date: '', status: 'Activo' })
-    },
-    onError: (e) => toast.error(e instanceof Error ? e.message : 'Error al añadir')
-  })
-
-  const unlinkProjMutation = useMutation({
-    mutationFn: (pid: number) => unlinkProject(groupId, pid),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['groups', groupId, 'projects'] })
-      toast.success('Proyecto desvinculado')
-    }
-  })
-
-  const linkLineMutation = useMutation({
-    mutationFn: () => linkResearchLine(groupId, newLine),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['groups', groupId, 'researchLines'] })
-      toast.success('Línea añadida correctamente')
-      setLineOpen(false)
-      setNewLine('')
-    },
-    onError: (e) => toast.error(e instanceof Error ? e.message : 'Error al añadir')
-  })
-
-  const unlinkLineMutation = useMutation({
-    mutationFn: (name: string) => unlinkResearchLine(groupId, name),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['groups', groupId, 'researchLines'] })
-      toast.success('Línea desvinculada')
-    }
-  })
-
-  const savePlanMutation = useMutation({
-    mutationFn: () =>
-      editingPlan
-        ? updatePlan(editingPlan.id!, { ...planForm, group_id: groupId })
-        : createPlan(groupId, planForm),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['groups', groupId, 'plans'] })
-      toast.success(editingPlan ? 'Plan actualizado' : 'Plan creado correctamente')
-      setPlanOpen(false)
-      setEditingPlan(null)
-      setPlanForm(emptyPlanForm)
-    },
-    onError: (e) => toast.error(e instanceof Error ? e.message : 'Error al guardar el plan')
-  })
-
-  const deletePlanMutation = useMutation({
-    mutationFn: (pid: number) => deletePlan(pid),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['groups', groupId, 'plans'] })
-      toast.success('Plan desactivado')
-    },
-    onError: (e) => toast.error(e instanceof Error ? e.message : 'Error al desactivar el plan')
-  })
-
-  const linkMemberMutation = useMutation({
-    mutationFn: () =>
-      linkMember(groupId, selectedResearcherId!, {
-        role: memberRole,
-        start_date: memberStartDate,
-      }),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['groups', groupId, 'members'] })
-      queryClient.invalidateQueries({ queryKey: ['researcher-groups'] })
-      toast.success('Investigador vinculado al grupo')
-      setMemberOpen(false)
-      setSelectedResearcherId(null)
-      setMemberSearch('')
-      setMemberRole('Investigador')
-      setMemberStartDate('')
-    },
-    onError: (e) => toast.error(e instanceof Error ? e.message : 'Error al vincular')
-  })
-
-  const unlinkMemberMutation = useMutation({
-    mutationFn: (rid: number) => unlinkMember(groupId, rid),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['groups', groupId, 'members'] })
-      queryClient.invalidateQueries({ queryKey: ['researcher-groups'] })
-      queryClient.invalidateQueries({ queryKey: ['groups', groupId, 'memberships'] })
-      toast.success('Investigador desvinculado del grupo')
-    },
-    onError: (e) => toast.error(e instanceof Error ? e.message : 'Error al desvincular')
-  })
-
-  // Edición de membresía (rol y fechas sin desvincular)
-  const { data: memberships } = useQuery({
-    queryKey: ['groups', groupId, 'memberships'],
-    queryFn: () => getGroupMemberships(groupId),
-  })
-  const [editingMember, setEditingMember] = useState<Researcher | null>(null)
-  const [editRole, setEditRole] = useState('Investigador')
-  const [editStartDate, setEditStartDate] = useState('')
-  const [editEndDate, setEditEndDate] = useState('')
-
-  const openEditMember = (r: Researcher) => {
-    const ms = (memberships ?? []).find((m) => m.researcher_id === r.id)
-    setEditingMember(r)
-    setEditRole(ms?.role || 'Investigador')
-    setEditStartDate(toMonthInput(ms?.start_date))
-    setEditEndDate(toMonthInput(ms?.end_date))
-  }
-
-  const updateMemberMutation = useMutation({
-    mutationFn: () =>
-      updateMember(groupId, editingMember!.id!, {
-        role: editRole,
-        start_date: editStartDate,
-        end_date: editEndDate,
-      }),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['groups', groupId, 'memberships'] })
-      toast.success('Membresía actualizada')
-      setEditingMember(null)
-    },
-    onError: (e) => toast.error(e instanceof Error ? e.message : 'Error al actualizar membresía')
-  })
-
-  const linkProductMutation = useMutation({
-    mutationFn: () => linkProduct(groupId, selectedProductId!),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['groups', groupId, 'products'] })
-      toast.success('Producto vinculado al grupo')
-      setProductOpen(false)
-      setSelectedProductId(null)
-      setProductSearch('')
-    },
-    onError: (e) => toast.error(e instanceof Error ? e.message : 'Error al vincular')
-  })
-
-  const unlinkProductMutation = useMutation({
-    mutationFn: (pid: number) => unlinkProduct(groupId, pid),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['groups', groupId, 'products'] })
-      toast.success('Producto desvinculado del grupo')
-    },
-    onError: (e) => toast.error(e instanceof Error ? e.message : 'Error al desvincular')
-  })
-
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault()
+  const handleSubmit = (e?: React.FormEvent) => {
+    e?.preventDefault()
     mutation.mutate(formData)
   }
 
@@ -508,9 +167,6 @@ export function GroupDetail({ isAdmin = false }: { isAdmin?: boolean }) {
     )
   }
 
-  const hue = (group.name?.charCodeAt(0) ?? 0) * 45 % 360
-  const initial = group.name?.[0]?.toUpperCase() ?? 'G'
-
   return (
     <>
       {isAdmin && (
@@ -535,303 +191,22 @@ export function GroupDetail({ isAdmin = false }: { isAdmin?: boolean }) {
 
       <Main className={`p-0 sm:p-6 ${!isAdmin ? 'max-w-5xl mx-auto w-full' : ''}`}>
         {/* Cover & Profile Header */}
-        <div className='relative mb-8 rounded-b-none sm:rounded-2xl overflow-hidden border border-border/50 bg-card shadow-sm'>
-          <div className='h-32 bg-gradient-to-r from-primary/15 via-background to-secondary/15 relative'>
-            <div className='absolute inset-0 bg-radial from-transparent to-card/50' />
-          </div>
-          
-          <div className='px-6 pb-6 pt-0 relative'>
-            <div className='flex flex-col sm:flex-row gap-6 items-start sm:items-end -mt-12'>
-              <div 
-                className='h-24 w-24 rounded-2xl border-4 border-card flex items-center justify-center text-4xl font-bold text-white shadow-lg shrink-0'
-                style={{ background: `hsl(${hue} 60% 50%)` }}
-              >
-                {initial}
-              </div>
-              
-              <div className='flex-1 pb-1'>
-                <h1 className='text-2xl font-bold line-clamp-1'>{group.name}</h1>
-                <div className='flex flex-wrap items-center gap-2 mt-2'>
-                  {group.classification && (() => {
-                    const classInfo = parseMincienciasClassification(group.classification)
-                    return (
-                      <ActionTooltip label={group.classification}>
-                        <Badge
-                          variant='outline'
-                          className={`text-xs font-bold px-2.5 py-0.5 cursor-default ${classInfo.badgeVariant}`}
-                        >
-                          {classInfo.badgeText} · {classInfo.tier}
-                        </Badge>
-                      </ActionTooltip>
-                    )
-                  })()}
-                  {group.institution && (
-                    <span className='text-sm text-muted-foreground font-medium flex items-center gap-1'>
-                      <Building2 className="h-3 w-3" />
-                      {group.institution}
-                    </span>
-                  )}
-                  <Badge variant='outline' className='text-xs font-mono text-muted-foreground ml-auto sm:ml-2'>
-                    {group.external_code}
-                  </Badge>
-                </div>
-              </div>
-              
-              <div className='pb-1 w-full sm:w-auto flex flex-col sm:flex-row items-stretch sm:items-center gap-2 sm:gap-2.5'>
-                <ActionTooltip label='Descargar Dossier Ejecutivo PDF, Informe GrupLAC o matrices CSV/Excel'>
-                  <Button
-                    variant='outline'
-                    onClick={() => setPdfDialogOpen(true)}
-                    className='w-full sm:w-auto rounded-xl shadow-sm border-primary/20 hover:border-primary/40 bg-card/60 backdrop-blur-sm'
-                  >
-                    <FileDown className='mr-2 h-4 w-4 text-primary' />
-                    Exportar Informes y Datos
-                  </Button>
-                </ActionTooltip>
-                {isAdmin && (
-                  <Button
-                    onClick={handleSubmit}
-                    disabled={mutation.isPending}
-                    className='w-full sm:w-auto rounded-xl shadow-md'
-                  >
-                    <Save className='mr-2 h-4 w-4' />
-                    {mutation.isPending ? 'Guardando...' : 'Guardar Cambios'}
-                  </Button>
-                )}
-              </div>
-            </div>
-          </div>
-        </div>
+        <GroupProfileHeader
+          group={group}
+          isAdmin={isAdmin}
+          onOpenExport={() => setPdfDialogOpen(true)}
+          onSave={() => handleSubmit()}
+          isSaving={mutation.isPending}
+        />
 
-        {/* Dialog para Centro de Exportación y Dossier de Gestión (Fase 4) */}
-        <Dialog open={pdfDialogOpen} onOpenChange={setPdfDialogOpen}>
-          <DialogContent className='sm:max-w-[620px] rounded-2xl'>
-            <DialogHeader>
-              <div className='flex items-center gap-2.5 mb-1'>
-                <div className='p-2.5 rounded-xl bg-primary/10 text-primary'>
-                  <FileDown className='h-5 w-5' />
-                </div>
-                <div>
-                  <DialogTitle className='text-lg font-bold'>Centro de Exportación & Dossier de Gestión</DialogTitle>
-                  <p className='text-xs text-muted-foreground'>Universidad Popular del Cesar · Sistema Institucional Khemia</p>
-                </div>
-              </div>
-              <DialogDescription className='text-xs text-muted-foreground pt-1'>
-                Descarga informes oficiales para Decanatura y Vicerrectoría, o exporta los datos analíticos para <span className='font-semibold text-foreground'>{group.name}</span> ({group.external_code}).
-              </DialogDescription>
-            </DialogHeader>
-
-            <Tabs defaultValue='dossier' className='space-y-4 py-1'>
-              <TabsList className='grid grid-cols-3 w-full rounded-xl bg-muted/60 p-1'>
-                <TabsTrigger value='dossier' className='rounded-lg text-xs font-semibold gap-1.5'>
-                  <FileText className='h-3.5 w-3.5 text-primary' />
-                  Dossier Ejecutivo
-                </TabsTrigger>
-                <TabsTrigger value='gruplac' className='rounded-lg text-xs font-semibold gap-1.5'>
-                  <FileDown className='h-3.5 w-3.5 text-blue-600' />
-                  Informe GrupLAC
-                </TabsTrigger>
-                <TabsTrigger value='csv' className='rounded-lg text-xs font-semibold gap-1.5'>
-                  <FileSpreadsheet className='h-3.5 w-3.5 text-emerald-600' />
-                  Excel / CSV
-                </TabsTrigger>
-              </TabsList>
-
-              {/* TAB 1: DOSSIER EJECUTIVO */}
-              <TabsContent value='dossier' className='space-y-4 pt-1'>
-                <div className='p-3.5 rounded-xl bg-primary/5 border border-primary/20 space-y-1.5 text-xs'>
-                  <div className='flex items-center justify-between font-semibold text-foreground'>
-                    <span>Dossier Ejecutivo Oficial (3 Páginas)</span>
-                    <Badge variant='outline' className='border-primary/40 text-primary text-[10px] font-bold'>
-                      DECANATURA & VICERRECTORÍA
-                    </Badge>
-                  </div>
-                  <p className='text-muted-foreground text-[11px] leading-relaxed'>
-                    Resumen condensado de alto impacto con: Portada institucional, 4 KPIs clave, Diagnóstico Minciencias 2024 (criterios y brechas), Dinámica de familias de conocimiento, Ranking de investigadores, Red de colaboración y Bloque de formalización de firmas.
-                  </p>
-                </div>
-
-                <div className='space-y-2'>
-                  <Label className='text-xs font-semibold uppercase tracking-wider text-muted-foreground'>
-                    Ventana de observación de la producción
-                  </Label>
-                  <Select value={reportWindow} onValueChange={setReportWindow}>
-                    <SelectTrigger className='w-full rounded-xl'>
-                      <SelectValue placeholder='Seleccione una ventana...' />
-                    </SelectTrigger>
-                    <SelectContent className='rounded-xl'>
-                      <SelectItem value='all'>
-                        <div className='py-0.5 text-left'>
-                          <span className='font-medium block'>Toda la producción</span>
-                          <span className='text-[11px] text-muted-foreground block'>Histórico completo sin restricciones de año</span>
-                        </div>
-                      </SelectItem>
-                      <SelectItem value='5'>
-                        <div className='py-0.5 text-left'>
-                          <span className='font-medium block'>Últimos 5 años (Recomendado Minciencias)</span>
-                          <span className='text-[11px] text-muted-foreground block'>Ventana estándar de convocatorias institucionales</span>
-                        </div>
-                      </SelectItem>
-                      <SelectItem value='2'>
-                        <div className='py-0.5 text-left'>
-                          <span className='font-medium block'>Últimos 2 años</span>
-                          <span className='text-[11px] text-muted-foreground block'>Monitoreo de producción reciente</span>
-                        </div>
-                      </SelectItem>
-                      <SelectItem value='custom'>
-                        <div className='py-0.5 text-left'>
-                          <span className='font-medium block'>Rango de años personalizado…</span>
-                          <span className='text-[11px] text-muted-foreground block'>Definir año inicial y final manualmente</span>
-                        </div>
-                      </SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-
-                {reportWindow === 'custom' && (
-                  <div className='p-3 rounded-xl border border-border/60 bg-muted/30 space-y-2.5 animate-in fade-in-50 duration-200'>
-                    <div className='grid grid-cols-2 gap-3'>
-                      <div className='space-y-1'>
-                        <Label htmlFor='dossier-start' className='text-xs text-muted-foreground'>Año inicial</Label>
-                        <Input
-                          id='dossier-start'
-                          type='number'
-                          value={reportStart}
-                          onChange={(e) => setReportStart(e.target.value)}
-                          placeholder='Ej. 2019'
-                          className='rounded-lg h-8 text-xs'
-                        />
-                      </div>
-                      <div className='space-y-1'>
-                        <Label htmlFor='dossier-end' className='text-xs text-muted-foreground'>Año final</Label>
-                        <Input
-                          id='dossier-end'
-                          type='number'
-                          value={reportEnd}
-                          onChange={(e) => setReportEnd(e.target.value)}
-                          placeholder='Ej. 2024'
-                          className='rounded-lg h-8 text-xs'
-                        />
-                      </div>
-                    </div>
-                  </div>
-                )}
-
-                <DialogFooter className='pt-2'>
-                  <Button
-                    onClick={() => {
-                      window.open(groupDossierPdfUrl(groupId, reportWindowParams), '_blank')
-                      setPdfDialogOpen(false)
-                    }}
-                    className='w-full rounded-xl shadow-md'
-                  >
-                    <FileDown className='mr-2 h-4 w-4' />
-                    Descargar Dossier Ejecutivo (PDF)
-                  </Button>
-                </DialogFooter>
-              </TabsContent>
-
-              {/* TAB 2: INFORME GRUPLAC COMPLETO */}
-              <TabsContent value='gruplac' className='space-y-4 pt-1'>
-                <div className='p-3.5 rounded-xl bg-blue-500/5 border border-blue-500/20 space-y-1.5 text-xs'>
-                  <div className='flex items-center justify-between font-semibold text-foreground'>
-                    <span>Informe Exhaustivo GrupLAC</span>
-                    <Badge variant='outline' className='border-blue-500/40 text-blue-600 text-[10px] font-bold'>
-                      FORMATO SCIENTI MINCIENCIAS
-                    </Badge>
-                  </div>
-                  <p className='text-muted-foreground text-[11px] leading-relaxed'>
-                    Reporte técnico extendido con el inventario detallado de cada producto bibliográfico, subtipos Minciencias, integrantes y proyectos registrados en la plataforma.
-                  </p>
-                </div>
-
-                <div className='space-y-2'>
-                  <Label className='text-xs font-semibold uppercase tracking-wider text-muted-foreground'>
-                    Ventana de observación de la producción
-                  </Label>
-                  <Select value={reportWindow} onValueChange={setReportWindow}>
-                    <SelectTrigger className='w-full rounded-xl'>
-                      <SelectValue placeholder='Seleccione una ventana...' />
-                    </SelectTrigger>
-                    <SelectContent className='rounded-xl'>
-                      <SelectItem value='all'>Toda la producción (Histórico completo)</SelectItem>
-                      <SelectItem value='5'>Últimos 5 años (Ventana Minciencias)</SelectItem>
-                      <SelectItem value='2'>Últimos 2 años</SelectItem>
-                      <SelectItem value='10'>Últimos 10 años</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-
-                <DialogFooter className='pt-2'>
-                  <Button
-                    variant='default'
-                    onClick={() => {
-                      window.open(groupReportPdfUrl(groupId, reportWindowParams), '_blank')
-                      setPdfDialogOpen(false)
-                    }}
-                    className='w-full rounded-xl shadow-md'
-                  >
-                    <FileDown className='mr-2 h-4 w-4' />
-                    Descargar Informe GrupLAC (PDF)
-                  </Button>
-                </DialogFooter>
-              </TabsContent>
-
-              {/* TAB 3: EXCEL / CSV EXPORTS */}
-              <TabsContent value='csv' className='space-y-3 pt-1'>
-                <div className='p-3 rounded-xl bg-muted/40 border border-border/60 text-xs text-muted-foreground leading-relaxed'>
-                  Archivos CSV delimitados por punto y coma (;) con codificación UTF-8 BOM, optimizados para abrirse directamente en Microsoft Excel sin problemas de formato ni caracteres especiales.
-                </div>
-
-                <div className='grid grid-cols-1 sm:grid-cols-2 gap-3'>
-                  {/* Tarjeta Ranking */}
-                  <div className='p-3.5 rounded-xl border border-emerald-500/20 bg-emerald-500/5 flex flex-col justify-between space-y-3'>
-                    <div className='space-y-1'>
-                      <div className='flex items-center gap-1.5 font-bold text-xs text-emerald-800 dark:text-emerald-300'>
-                        <FileSpreadsheet className='h-4 w-4 text-emerald-600' />
-                        Ranking de Investigadores
-                      </div>
-                      <p className='text-[11px] text-muted-foreground leading-normal'>
-                        Matriz de integrantes con sus niveles académicos, obras en grupo, % de contribución y obras totales.
-                      </p>
-                    </div>
-                    <Button
-                      size='sm'
-                      variant='outline'
-                      onClick={() => window.open(groupExportRankingCsvUrl(groupId), '_blank')}
-                      className='w-full rounded-xl border-emerald-500/30 text-emerald-700 dark:text-emerald-300 hover:bg-emerald-500/10 text-xs font-semibold'
-                    >
-                      <FileSpreadsheet className='mr-1.5 h-3.5 w-3.5' />
-                      Descargar Ranking (.CSV)
-                    </Button>
-                  </div>
-
-                  {/* Tarjeta Productos */}
-                  <div className='p-3.5 rounded-xl border border-blue-500/20 bg-blue-500/5 flex flex-col justify-between space-y-3'>
-                    <div className='space-y-1'>
-                      <div className='flex items-center gap-1.5 font-bold text-xs text-blue-800 dark:text-blue-300'>
-                        <FileSpreadsheet className='h-4 w-4 text-blue-600' />
-                        Catálogo de Productos
-                      </div>
-                      <p className='text-[11px] text-muted-foreground leading-normal'>
-                        Inventario completo de obras con familia Minciencias, subtipo, año, DOI, aval y coautores.
-                      </p>
-                    </div>
-                    <Button
-                      size='sm'
-                      variant='outline'
-                      onClick={() => window.open(groupExportProductsCsvUrl(groupId, reportWindowParams), '_blank')}
-                      className='w-full rounded-xl border-blue-500/30 text-blue-700 dark:text-blue-300 hover:bg-blue-500/10 text-xs font-semibold'
-                    >
-                      <FileSpreadsheet className='mr-1.5 h-3.5 w-3.5' />
-                      Descargar Productos (.CSV)
-                    </Button>
-                  </div>
-                </div>
-              </TabsContent>
-            </Tabs>
-          </DialogContent>
-        </Dialog>
+        {/* Centro de Exportación y Dossier de Gestión */}
+        <GroupExportDialog
+          open={pdfDialogOpen}
+          onOpenChange={setPdfDialogOpen}
+          groupId={groupId}
+          groupName={group.name}
+          groupExternalCode={group.external_code}
+        />
 
         {/* Tabs */}
         <Tabs defaultValue="perfil" className="space-y-6">
@@ -881,1016 +256,64 @@ export function GroupDetail({ isAdmin = false }: { isAdmin?: boolean }) {
           </TabsList>
 
           <TabsContent value="perfil" className="focus-visible:outline-none">
-            {isAdmin ? (
-              <form onSubmit={handleSubmit} className="grid min-w-0 grid-cols-1 xl:grid-cols-2 gap-6">
-              
-              {/* Información Básica */}
-              <div className="min-w-0 space-y-6">
-                <div className="min-w-0 bg-card border border-border/50 rounded-2xl p-6 shadow-sm">
-                  <div className='flex items-center gap-2 mb-6'>
-                    <div className='p-2 bg-blue-500/10 rounded-lg'>
-                      <GroupIcon className='h-4 w-4 text-blue-500' />
-                    </div>
-                    <h3 className="font-semibold text-lg">Información Básica</h3>
-                  </div>
-                  
-                  <div className="space-y-4">
-                    <div className="space-y-2">
-                      <Label htmlFor="name">Nombre del Grupo</Label>
-                      <Input
-                        id="name"
-                        value={formData.name}
-                        onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                        required
-                        className='bg-muted/30 focus-visible:bg-transparent rounded-xl'
-                      />
-                    </div>
-                    <div className="grid min-w-0 grid-cols-1 sm:grid-cols-2 gap-4">
-                      <div className="space-y-2">
-                        <Label htmlFor="acronym">Sigla</Label>
-                        <Input
-                          id="acronym"
-                          value={formData.acronym ?? ''}
-                          onChange={(e) => setFormData({ ...formData, acronym: e.target.value })}
-                          className='bg-muted/30 focus-visible:bg-transparent rounded-xl'
-                        />
-                      </div>
-                      <div className="space-y-2">
-                        <Label htmlFor="external_code">Código GrupLAC</Label>
-                        <Input
-                          id="external_code"
-                          value={formData.external_code}
-                          onChange={(e) => setFormData({ ...formData, external_code: e.target.value })}
-                          required
-                          className='bg-muted/30 focus-visible:bg-transparent rounded-xl font-mono text-sm'
-                        />
-                      </div>
-                    </div>
-                    {/* Institución & Año/Mes de Formación */}
-                    <div className="grid min-w-0 grid-cols-1 sm:grid-cols-2 gap-4">
-                      <div className="space-y-2 min-w-0">
-                        <Label htmlFor="institution">Institución</Label>
-                        <Input
-                          id="institution"
-                          value={formData.institution ?? ''}
-                          onChange={(e) => setFormData({ ...formData, institution: e.target.value })}
-                          className='bg-muted/30 focus-visible:bg-transparent rounded-xl'
-                        />
-                      </div>
-                      <div className="space-y-2 min-w-0">
-                        <Label htmlFor="declared_creation_date">Año / Mes de Formación</Label>
-                        <MonthPicker
-                          id="declared_creation_date"
-                          value={formData.declared_creation_date ?? ''}
-                          onChange={(v) => setFormData({ ...formData, declared_creation_date: v })}
-                          placeholder='Mes y año...'
-                        />
-                      </div>
-                    </div>
-
-                    {/* Departamento & Ciudad (cada uno con su columna individual) */}
-                    <div className="grid min-w-0 grid-cols-1 sm:grid-cols-2 gap-4">
-                      <div className="space-y-2 min-w-0">
-                        <CatalogCombobox
-                          label="Departamento"
-                          options={DEPARTMENTS}
-                          value={formData.department ?? ''}
-                          onChange={(v) => setFormData({ ...formData, department: v })}
-                          placeholder='Seleccionar departamento...'
-                        />
-                      </div>
-                      <div className="space-y-2 min-w-0">
-                        <CatalogCombobox
-                          label="Ciudad / Municipio"
-                          options={citiesOfDepartment(formData.department ?? '')}
-                          value={formData.city ?? ''}
-                          onChange={(v) => setFormData({ ...formData, city: v })}
-                          placeholder={formData.department ? 'Seleccionar ciudad...' : 'Ciudad (elige depto primero)'}
-                          emptyMessage='Elige un departamento para ver sus municipios, o escribe la ciudad libre.'
-                        />
-                      </div>
-                    </div>
-
-                    {/* Email & Página Web */}
-                    <div className="grid min-w-0 grid-cols-1 sm:grid-cols-2 gap-4">
-                      <div className="space-y-2 min-w-0">
-                        <Label htmlFor="email">Email</Label>
-                        <Input
-                          id="email"
-                          value={formData.email ?? ''}
-                          onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                          className='bg-muted/30 focus-visible:bg-transparent rounded-xl'
-                        />
-                      </div>
-                      <div className="space-y-2 min-w-0">
-                        <Label htmlFor="website">Página Web</Label>
-                        <Input
-                          id="website"
-                          value={formData.website ?? ''}
-                          onChange={(e) => setFormData({ ...formData, website: e.target.value })}
-                          className='bg-muted/30 focus-visible:bg-transparent rounded-xl'
-                        />
-                      </div>
-                    </div>
-
-                    {/* Área de Conocimiento (OCDE) ocupando el ancho completo de la tarjeta */}
-                    <div className="space-y-2 min-w-0">
-                      <CatalogCombobox
-                        label="Área de Conocimiento (OCDE)"
-                        options={GRAND_AREAS_OCDE}
-                        value={formData.knowledge_area ?? ''}
-                        onChange={(v) => setFormData({ ...formData, knowledge_area: v })}
-                        placeholder='Ej: Ingeniería y Tecnología'
-                      />
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              {/* Misión y Visión */}
-              <div className="min-w-0 bg-card border border-border/50 rounded-2xl p-6 shadow-sm">
-                <div className='flex items-center gap-2 mb-6'>
-                  <div className='p-2 bg-purple-500/10 rounded-lg'>
-                    <Trophy className='h-4 w-4 text-purple-500' />
-                  </div>
-                  <h3 className="font-semibold text-lg">Misión y Visión</h3>
-                </div>
-                
-                <div className="space-y-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="mission">Misión</Label>
-                    <Textarea
-                      id="mission"
-                      value={formData.mission ?? ''}
-                      onChange={(e) => setFormData({ ...formData, mission: e.target.value })}
-                      rows={4}
-                      className='bg-muted/30 focus-visible:bg-transparent rounded-xl resize-none'
-                      placeholder="Misión del grupo..."
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="vision">Visión</Label>
-                    <Textarea
-                      id="vision"
-                      value={formData.vision ?? ''}
-                      onChange={(e) => setFormData({ ...formData, vision: e.target.value })}
-                      rows={4}
-                      className='bg-muted/30 focus-visible:bg-transparent rounded-xl resize-none'
-                      placeholder="Visión del grupo..."
-                    />
-                  </div>
-                  {/* Nota: el Área de Conocimiento se edita en "Información Básica"
-                      (antes estaba duplicada aquí y en esa tarjeta). */}
-                </div>
-              </div>
-              
-            </form>
-            ) : (
-              <div className="grid min-w-0 grid-cols-1 xl:grid-cols-2 gap-6">
-                <div className="min-w-0 space-y-6">
-                  <div className="min-w-0 bg-card border border-border/50 rounded-2xl p-6 shadow-sm space-y-6">
-                    <div className='flex items-center gap-2 mb-2'>
-                      <div className='p-2 bg-blue-500/10 rounded-lg'>
-                        <GroupIcon className='h-4 w-4 text-blue-500' />
-                      </div>
-                      <h3 className="font-semibold text-lg">Información Básica</h3>
-                    </div>
-                    <div className="grid min-w-0 grid-cols-1 sm:grid-cols-2 gap-6">
-                      <Field label="Nombre del Grupo" value={group.name} className="col-span-1 sm:col-span-2" />
-                      <Field label="Sigla" value={group.acronym} />
-                      <Field label="Código GrupLAC" value={group.external_code} mono />
-                      <Field label="Institución" value={group.institution} />
-                      <Field label="Ciudad / Depto" value={[group.city, group.department].filter(Boolean).join(' / ')} />
-                      <Field label="Email" value={group.email} />
-                      <Field label="Página Web" value={group.website} />
-                      <Field label="Año / Mes de Formación" value={group.declared_creation_date} />
-                      <Field label="Área de Conocimiento" value={group.knowledge_area} className="col-span-1 sm:col-span-2" />
-                    </div>
-                  </div>
-                </div>
-
-                <div className="min-w-0 bg-card border border-border/50 rounded-2xl p-6 shadow-sm space-y-6">
-                  <div className='flex items-center gap-2 mb-2'>
-                    <div className='p-2 bg-purple-500/10 rounded-lg'>
-                      <Trophy className='h-4 w-4 text-purple-500' />
-                    </div>
-                    <h3 className="font-semibold text-lg">Misión y Visión</h3>
-                  </div>
-                  <div className="space-y-6">
-                    <Field label="Misión" value={group.mission} />
-                    <Field label="Visión" value={group.vision} />
-                  </div>
-                </div>
-              </div>
-            )}
+            <GroupProfileTab
+              group={group}
+              formData={formData}
+              setFormData={setFormData}
+              isAdmin={isAdmin}
+              onSubmit={handleSubmit}
+            />
           </TabsContent>
 
           <TabsContent value="integrantes" className="focus-visible:outline-none bg-card border border-border/50 rounded-2xl p-6 shadow-sm">
-            <div className="flex justify-between items-center mb-4">
-              <h3 className="font-semibold text-lg">Investigadores vinculados</h3>
-              {isAdmin && (
-              <Dialog open={memberOpen} onOpenChange={setMemberOpen}>
-                <DialogTrigger asChild>
-                  <Button size="sm"><UserPlus className="w-4 h-4 mr-2"/> Vincular Investigador</Button>
-                </DialogTrigger>
-                <DialogContent className='sm:max-w-md'>
-                  <DialogHeader>
-                    <DialogTitle>Vincular Investigador al Grupo</DialogTitle>
-                  </DialogHeader>
-                  <div className="space-y-4 py-4">
-                    <EntityCombobox
-                      label="Investigador a vincular"
-                      items={researcherItems}
-                      value={selectedResearcherId}
-                      onChange={(id) => setSelectedResearcherId(id)}
-                      onSearchChange={setMemberSearch}
-                      isLoading={isSearchingResearchers}
-                      placeholder="Seleccionar o buscar investigador..."
-                      searchPlaceholder="Nombre, apellido u ORCID..."
-                      emptyMessage="No se encontraron investigadores disponibles."
-                    />
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                      <CatalogSelect
-                        label="Rol en el grupo"
-                        options={MEMBER_ROLES}
-                        value={memberRole}
-                        onChange={setMemberRole}
-                        allowClear={false}
-                      />
-                      <div className="space-y-2">
-                        <Label>Fecha de vinculación</Label>
-                        <MonthPicker
-                          value={memberStartDate}
-                          onChange={setMemberStartDate}
-                          placeholder="Mes y año..."
-                        />
-                      </div>
-                    </div>
-                    <Button
-                      className="w-full"
-                      onClick={() => linkMemberMutation.mutate()}
-                      disabled={!selectedResearcherId || linkMemberMutation.isPending}
-                    >
-                      Vincular
-                    </Button>
-                  </div>
-                </DialogContent>
-              </Dialog>
-              )}
-            </div>
-            <DataTable
-              columns={[
-                {
-                  key: 'name',
-                  header: 'Nombre',
-                  searchable: (r: Researcher) => `${r.first_names} ${r.last_names}`,
-                  cell: (r: Researcher) => (
-                    <div className='flex items-center gap-2.5'>
-                      <ResearcherAvatar
-                        firstName={r.first_names}
-                        lastName={r.last_names}
-                        size='sm'
-                      />
-                      <Link to={isAdmin ? '/admin/researchers/$id' : '/researchers/$id'} params={{ id: String(r.id) }} className="font-medium text-primary hover:underline">
-                        {r.first_names} {r.last_names}
-                      </Link>
-                    </div>
-                  )
-                },
-                {
-                  key: 'orcid',
-                  header: 'ORCID',
-                  cell: (r: Researcher) => <span className='text-muted-foreground font-mono text-xs'>{r.orcid || '-'}</span>
-                },
-                {
-                  key: 'role',
-                  header: 'Rol y Periodo',
-                  cell: (r: Researcher) => {
-                    const ms = (memberships ?? []).find((m) => m.researcher_id === r.id)
-                    if (!ms) return '-'
-                    const period = ms.start_date
-                      ? `${ms.start_date} – ${ms.is_current ? 'Actual' : (ms.end_date || '')}`
-                      : ''
-                    return (
-                      <div className="flex flex-col gap-1">
-                        <span className="font-medium">{ms.role}</span>
-                        {period && <span className="text-xs text-muted-foreground">{period}</span>}
-                      </div>
-                    )
-                  }
-                },
-                {
-                  key: 'education',
-                  header: 'Formación',
-                  cell: (r: Researcher) => r.highest_education_level ? <Badge variant="outline">{r.highest_education_level}</Badge> : '-'
-                },
-                isAdmin ? {
-                  key: 'actions',
-                  header: '',
-                  cell: (r: Researcher) => (
-                    <div className="flex items-center gap-1">
-                      <ActionTooltip label="Editar membresía">
-                        <Button variant="ghost" size="icon" onClick={() => openEditMember(r)}>
-                          <Pencil className="w-4 h-4" />
-                        </Button>
-                      </ActionTooltip>
-                      <ActionTooltip label="Desvincular integrante">
-                        <Button variant="ghost" size="icon" onClick={() => setUnlinkingMember(r)}>
-                          <Trash2 className="w-4 h-4 text-red-500" />
-                        </Button>
-                      </ActionTooltip>
-                    </div>
-                  )
-                } : null
-              ].filter(Boolean) as any}
-              data={members ?? []}
-              loading={isLoadingMembers}
-              rowKey={(r) => r.id!}
-              emptyMessage="No hay integrantes vinculados a este grupo."
-              searchPlaceholder="Buscar por nombre..."
+            <GroupMembersTab
+              groupId={groupId}
+              isAdmin={isAdmin}
+              members={members}
             />
-
-            {/* Diálogo: editar membresía */}
-            <Dialog open={!!editingMember} onOpenChange={(open) => !open && setEditingMember(null)}>
-              <DialogContent className="sm:max-w-md">
-                <DialogHeader>
-                  <DialogTitle>Editar Membresía</DialogTitle>
-                </DialogHeader>
-                <div className="space-y-4 py-2">
-                  <p className="text-sm text-muted-foreground">
-                    {editingMember ? `${editingMember.first_names} ${editingMember.last_names}` : ''}
-                  </p>
-                  <CatalogSelect
-                    label="Rol en el grupo"
-                    options={MEMBER_ROLES}
-                    value={editRole}
-                    onChange={setEditRole}
-                    allowClear={false}
-                  />
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    <div className="space-y-2">
-                      <Label>Fecha de vinculación</Label>
-                      <MonthPicker
-                        value={editStartDate}
-                        onChange={setEditStartDate}
-                        placeholder="Mes y año..."
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <Label>Fecha de retiro</Label>
-                      <MonthPicker
-                        value={editEndDate}
-                        onChange={setEditEndDate}
-                        placeholder="Vigente (sin retiro)"
-                        allowClear
-                      />
-                    </div>
-                  </div>
-                  <Button
-                    className="w-full"
-                    onClick={() => updateMemberMutation.mutate()}
-                    disabled={updateMemberMutation.isPending}
-                  >
-                    {updateMemberMutation.isPending ? 'Guardando...' : 'Guardar cambios'}
-                  </Button>
-                </div>
-              </DialogContent>
-            </Dialog>
           </TabsContent>
 
           <TabsContent value="productos" className="focus-visible:outline-none bg-card border border-border/50 rounded-2xl p-6 shadow-sm">
-            <div className="flex justify-between items-center mb-4">
-              <h3 className="font-semibold text-lg">Productos del Grupo</h3>
-              {isAdmin && (
-              <Dialog open={productOpen} onOpenChange={setProductOpen}>
-                <DialogTrigger asChild>
-                  <Button size="sm"><Plus className="w-4 h-4 mr-2"/> Vincular Producto</Button>
-                </DialogTrigger>
-                <DialogContent className='sm:max-w-md'>
-                  <DialogHeader>
-                    <DialogTitle>Vincular Producto al Grupo</DialogTitle>
-                  </DialogHeader>
-                  <div className="space-y-4 py-4">
-                    <EntityCombobox
-                      label="Producto a vincular"
-                      items={productItems}
-                      value={selectedProductId}
-                      onChange={(id) => setSelectedProductId(id)}
-                      onSearchChange={setProductSearch}
-                      isLoading={isSearchingProducts}
-                      placeholder="Seleccionar o buscar producto..."
-                      searchPlaceholder="Título del producto..."
-                      emptyMessage="No se encontraron productos disponibles."
-                    />
-                    <Button
-                      className="w-full"
-                      onClick={() => linkProductMutation.mutate()}
-                      disabled={!selectedProductId || linkProductMutation.isPending}
-                    >
-                      Vincular
-                    </Button>
-                  </div>
-                </DialogContent>
-              </Dialog>
-              )}
-            </div>
-            <DataTable
-              columns={[
-                {
-                  key: 'title',
-                  header: 'Título del Producto',
-                  searchable: (p: Product) => p.title,
-                  className: 'max-w-[400px]',
-                  cell: (p: Product) => (
-                    <div className='flex items-center gap-2'>
-                      <Link
-                        to={isAdmin ? '/admin/products/$id' : '/products/$id'}
-                        params={{ id: String(p.id) }}
-                        className='block truncate font-medium text-sm text-primary hover:underline'
-                      >
-                        {p.title}
-                      </Link>
-                      {isEndorsed(p) && <EndorsedBadge />}
-                    </div>
-                  )
-                },
-                {
-                  key: 'year',
-                  header: 'Año',
-                  cell: (p: Product) => <span className='text-muted-foreground'>{p.year ?? (String(p.publication_date ?? '').slice(0, 4) || '-')}</span>
-                },
-                {
-                  key: 'subtype',
-                  header: 'Tipología 2024',
-                  cell: (p: Product) => {
-                    const s = p.subtype_id ? subtypeById.get(p.subtype_id) : undefined
-                    return s ? (
-                      <Badge variant='outline' className='font-mono text-xs' title={s.name}>
-                        {s.code ?? s.name}
-                      </Badge>
-                    ) : (
-                      <span className='text-xs text-muted-foreground'>sin clasificar</span>
-                    )
-                  }
-                },
-                {
-                  key: 'status',
-                  header: 'Estado',
-                  cell: (p: Product) => <ValidationBadge status={p.validation_status} />
-                },
-                isAdmin ? {
-                  key: 'actions',
-                  header: '',
-                  cell: (p: Product) => (
-                    <ActionTooltip label="Desvincular producto del grupo">
-                      <Button variant="ghost" size="icon" onClick={() => setUnlinkingProduct(p)}>
-                        <Trash2 className="w-4 h-4 text-red-500" />
-                      </Button>
-                    </ActionTooltip>
-                  )
-                } : null
-              ].filter(Boolean) as any}
-              data={products ?? []}
-              loading={isLoadingProducts}
-              rowKey={(p) => p.id!}
-              emptyMessage="Este grupo no tiene productos asociados."
-              searchPlaceholder="Buscar por título del producto..."
+            <GroupProductsTab
+              groupId={groupId}
+              isAdmin={isAdmin}
+              products={products}
             />
           </TabsContent>
 
-          {/* Estadísticas e Impacto del Grupo */}
           <TabsContent value="estadisticas" className="focus-visible:outline-none space-y-6">
-            {/* Banner de Acciones Ejecutivas: Dossier Oficial & Exportaciones (Fase 4) */}
-            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 p-4 rounded-2xl bg-gradient-to-r from-primary/10 via-primary/5 to-transparent border border-primary/20 shadow-xs">
-              <div className="space-y-0.5">
-                <div className="flex items-center gap-2">
-                  <Badge className="bg-primary/20 text-primary border-primary/30 text-[10px] uppercase font-bold tracking-wider">
-                    Dossier Ejecutivo
-                  </Badge>
-                  <h3 className="text-sm font-bold tracking-tight text-foreground">
-                    Reportes Oficiales de Gestión & Exportación
-                  </h3>
-                </div>
-                <p className="text-xs text-muted-foreground">
-                  Descarga el dossier ejecutivo para Decanatura/Vicerrectoría o exporta las matrices analíticas en formato Excel/CSV.
-                </p>
-              </div>
-              <div className="grid grid-cols-2 sm:flex sm:flex-wrap items-center gap-2 w-full sm:w-auto">
-                <Button
-                  size="sm"
-                  variant="default"
-                  onClick={() => window.open(groupDossierPdfUrl(groupId, reportWindowParams), '_blank')}
-                  className="rounded-xl shadow-xs text-xs font-semibold w-full sm:w-auto"
-                >
-                  <FileDown className="mr-1.5 h-3.5 w-3.5" />
-                  Dossier Ejecutivo (PDF)
-                </Button>
-                <Button
-                  size="sm"
-                  variant="outline"
-                  onClick={() => setCompareDialogOpen(true)}
-                  className="rounded-xl border-primary/30 text-primary hover:bg-primary/5 text-xs font-semibold w-full sm:w-auto"
-                >
-                  <Scale className="mr-1.5 h-3.5 w-3.5 text-primary" />
-                  Benchmarking (Radar)
-                </Button>
-                <Button
-                  size="sm"
-                  variant="outline"
-                  onClick={() => window.open(groupExportRankingCsvUrl(groupId), '_blank')}
-                  className="rounded-xl border-border/80 text-xs font-medium bg-background/80 hover:bg-background w-full sm:w-auto"
-                >
-                  <FileSpreadsheet className="mr-1.5 h-3.5 w-3.5 text-emerald-600" />
-                  Ranking (CSV)
-                </Button>
-                <Button
-                  size="sm"
-                  variant="outline"
-                  onClick={() => window.open(groupExportProductsCsvUrl(groupId, reportWindowParams), '_blank')}
-                  className="rounded-xl border-border/80 text-xs font-medium bg-background/80 hover:bg-background w-full sm:w-auto"
-                >
-                  <FileSpreadsheet className="mr-1.5 h-3.5 w-3.5 text-blue-600" />
-                  Productos (CSV)
-                </Button>
-                <Button
-                  size="sm"
-                  variant="ghost"
-                  onClick={() => setPdfDialogOpen(true)}
-                  className="col-span-2 sm:col-span-1 rounded-xl text-xs text-muted-foreground hover:text-foreground w-full sm:w-auto"
-                >
-                  Más opciones…
-                </Button>
-              </div>
-            </div>
-
-            {/* Top KPI Cards del Grupo */}
-            <div className="grid grid-cols-2 gap-3 sm:gap-4 md:grid-cols-4">
-              <Card className="border-border/60 shadow-xs">
-                <CardHeader className="pb-2">
-                  <div className="flex items-center justify-between">
-                    <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
-                      Total Producción
-                    </span>
-                    <BookOpen className="h-4 w-4 text-primary" />
-                  </div>
-                  <CardTitle className="text-2xl sm:text-3xl font-extrabold tracking-tight">
-                    {stats?.total_products?.toLocaleString('es-CO') ?? 0}
-                  </CardTitle>
-                </CardHeader>
-                <CardContent className="pt-0 text-xs text-muted-foreground">
-                  Obras científicas registradas en este grupo
-                </CardContent>
-              </Card>
-
-              <Card className="border-border/60 shadow-xs">
-                <CardHeader className="pb-2">
-                  <div className="flex items-center justify-between">
-                    <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
-                      Pilar Científico
-                    </span>
-                    <Trophy className="h-4 w-4 text-amber-500" />
-                  </div>
-                  <CardTitle className="text-sm sm:text-base font-bold tracking-tight truncate" title={stats?.top_researchers?.[0]?.name}>
-                    {stats?.top_researchers?.[0]?.name ?? 'N/A'}
-                  </CardTitle>
-                </CardHeader>
-                <CardContent className="pt-0 text-xs text-muted-foreground">
-                  {stats?.top_researchers?.[0]
-                    ? `${stats.top_researchers[0].products_count} obras (${stats.top_researchers[0].percentage_of_group}% del grupo)`
-                    : 'Sin registros de autoría'}
-                </CardContent>
-              </Card>
-
-              <Card className="border-border/60 shadow-xs">
-                <CardHeader className="pb-2">
-                  <div className="flex items-center justify-between">
-                    <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
-                      Productividad Media
-                    </span>
-                    <Sparkles className="h-4 w-4 text-violet-500" />
-                  </div>
-                  <CardTitle className="text-2xl sm:text-3xl font-extrabold tracking-tight">
-                    {stats?.strategic_ratios?.avg_products_per_member ?? 0}
-                  </CardTitle>
-                </CardHeader>
-                <CardContent className="pt-0 text-xs text-muted-foreground">
-                  Promedio de obras por integrante activo
-                </CardContent>
-              </Card>
-
-              <Card className="border-border/60 shadow-xs">
-                <CardHeader className="pb-2">
-                  <div className="flex items-center justify-between">
-                    <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
-                      Masa Posgrado
-                    </span>
-                    <GraduationCap className="h-4 w-4 text-emerald-600" />
-                  </div>
-                  <CardTitle className="text-2xl sm:text-3xl font-extrabold tracking-tight">
-                    {stats?.strategic_ratios?.postgraduate_rate ?? 0}%
-                  </CardTitle>
-                </CardHeader>
-                <CardContent className="pt-0 text-xs text-muted-foreground">
-                  {stats?.strategic_ratios?.postgraduate_count ?? 0} investigadores con posgrado
-                </CardContent>
-              </Card>
-            </div>
-
-            {/* Diagnóstico y Semáforo de Categorización Minciencias 2024 */}
-            {mincienciasDiagnosis && (
-              <MincienciasDiagnosisCard data={mincienciasDiagnosis} />
-            )}
-
-            {/* Red de Colaboración y Grafo de Coautorías Interactivas (Fase 3) */}
-            <GroupCollaborationNetwork
-              data={collaborationNetwork}
-              groupName={group?.name}
-              isLoading={isLoadingNetwork}
+            <GroupAnalyticsTab
+              groupId={groupId}
+              groupName={group.name}
+              onOpenExport={() => setPdfDialogOpen(true)}
+              onOpenCompare={() => setCompareDialogOpen(true)}
             />
-
-            {/* Benchmarking Inter-grupal & Tablero Multidimensional (Fase 5) */}
-            <GroupsRadarComparison
-              initialGroupIds={[groupId, ...(groupId === 10 ? [35] : [10])]}
-              showGroupSelector={true}
-            />
-
-
-            {/* Fila 2: Dinámica Temporal + Familias */}
-            <div className="grid grid-cols-1 gap-6 lg:grid-cols-7">
-              <ProductionHistogram
-                data={stats?.by_year ?? []}
-                totalProducts={stats?.total_products}
-                height={270}
-                className="col-span-1 lg:col-span-4"
-                title="Dinámica Temporal del Grupo"
-                description="Evolución anual de obtención de productos científicos en este colectivo."
-              />
-              <FamiliesDonut
-                data={stats?.families_distribution}
-                className="col-span-1 lg:col-span-3"
-                title="Familias Minciencias del Grupo"
-                description="Balance tipológico entre GNC, DTI, ASC y FRH en el grupo."
-              />
-            </div>
-
-            {/* Fila 3: Ranking de Autores de Mayor Impacto + Nivel Académico y Subtipos */}
-            <div className="grid grid-cols-1 gap-6 lg:grid-cols-7">
-              <GroupTopResearchers
-                data={stats?.top_researchers}
-                totalGroupProducts={stats?.total_products}
-                className="col-span-1 lg:col-span-4"
-              />
-              <div className="col-span-1 lg:col-span-3 space-y-6">
-                <EducationDonut
-                  data={stats?.researchers_education}
-                  totalResearchers={stats?.total_members}
-                  title="Formación del Talento Humano"
-                  description="Composición del equipo según su máximo título académico."
-                />
-                {stats?.top_subtypes && stats.top_subtypes.length > 0 && (
-                  <TopSubtypesRanking
-                    data={stats.top_subtypes}
-                    title="Top Tipologías en el Grupo"
-                    description="Formatos y subtipos con mayor volumen en este grupo."
-                  />
-                )}
-              </div>
-            </div>
           </TabsContent>
 
           <TabsContent value="proyectos" className="focus-visible:outline-none bg-card border border-border/50 rounded-2xl p-6 shadow-sm">
-            <div className="flex justify-between items-center mb-4">
-              <h3 className="font-semibold text-lg">Proyectos del Grupo</h3>
-              {isAdmin && (
-              <Dialog open={projectOpen} onOpenChange={setProjectOpen}>
-                <DialogTrigger asChild>
-                  <Button size="sm"><Plus className="w-4 h-4 mr-2"/> Añadir Proyecto</Button>
-                </DialogTrigger>
-                <DialogContent>
-                  <DialogHeader>
-                    <DialogTitle>Añadir Nuevo Proyecto</DialogTitle>
-                  </DialogHeader>
-                  <div className="space-y-4 py-4">
-                    <div className="space-y-2">
-                      <Label>Título del Proyecto</Label>
-                      <Input value={newProject.title} onChange={e => setNewProject({...newProject, title: e.target.value})} />
-                    </div>
-                    <div className="space-y-2">
-                      <Label>Año de Inicio</Label>
-                      <Input type="number" min={1900} max={2100} value={newProject.start_date} onChange={e => setNewProject({...newProject, start_date: e.target.value})} placeholder="Ej: 2024" />
-                    </div>
-                    <Button className="w-full" onClick={() => linkProjMutation.mutate()} disabled={!newProject.title || linkProjMutation.isPending}>
-                      Guardar Proyecto
-                    </Button>
-                  </div>
-                </DialogContent>
-              </Dialog>
-              )}
-            </div>
-            <DataTable
-              columns={[
-                {
-                  key: 'title',
-                  header: 'Título del Proyecto',
-                  searchable: (p: Project) => p.title,
-                  className: 'max-w-[400px]',
-                  cell: (p: Project) => (
-                    <Link
-                      to={isAdmin ? '/admin/projects/$id' : '/projects/$id'}
-                      params={{ id: String(p.id) }}
-                      className='block truncate font-medium text-sm text-primary hover:underline'
-                    >
-                      {p.title}
-                    </Link>
-                  )
-                },
-                {
-                  key: 'start_date',
-                  header: 'Fecha de Inicio',
-                  cell: (p: Project) => <span className='text-muted-foreground'>{p.start_date || '-'}</span>
-                },
-                {
-                  key: 'status',
-                  header: 'Estado',
-                  cell: (p: Project) => <Badge variant='secondary'>{p.status || 'Activo'}</Badge>
-                },
-                isAdmin ? {
-                  key: 'actions',
-                  header: '',
-                  cell: (p: Project) => (
-                    <ActionTooltip label="Desvincular proyecto del grupo">
-                      <Button variant="ghost" size="icon" onClick={() => setUnlinkingProject(p)}>
-                        <Trash2 className="w-4 h-4 text-red-500" />
-                      </Button>
-                    </ActionTooltip>
-                  )
-                } : null
-              ].filter(Boolean) as any}
-              data={projects ?? []}
-              loading={isLoadingProjects}
-              rowKey={(p) => p.id!}
-              emptyMessage="Este grupo no tiene proyectos asociados."
-              searchPlaceholder="Buscar por título de proyecto..."
+            <GroupProjectsTab
+              groupId={groupId}
+              isAdmin={isAdmin}
+              projects={projects}
             />
           </TabsContent>
 
           <TabsContent value="planes" className="focus-visible:outline-none bg-card border border-border/50 rounded-2xl p-6 shadow-sm">
-            <div className="flex justify-between items-center mb-4">
-              <h3 className="font-semibold text-lg">Planes de Trabajo del Grupo</h3>
-              {isAdmin && (
-              <Dialog open={planOpen} onOpenChange={setPlanOpen}>
-                <DialogTrigger asChild>
-                  <Button size="sm" onClick={openCreatePlan}><Plus className="w-4 h-4 mr-2"/> Añadir Plan</Button>
-                </DialogTrigger>
-                <DialogContent>
-                  <DialogHeader>
-                    <DialogTitle>{editingPlan ? 'Editar Plan de Trabajo' : 'Añadir Plan de Trabajo'}</DialogTitle>
-                  </DialogHeader>
-                  <div className="space-y-4 py-4">
-                    <div className="space-y-2">
-                      <Label>Título del Plan</Label>
-                      <Input value={planForm.title} onChange={e => setPlanForm({...planForm, title: e.target.value})} />
-                    </div>
-                    <div className="space-y-2">
-                      <Label>Descripción</Label>
-                      <Textarea
-                        value={planForm.description}
-                        onChange={e => setPlanForm({...planForm, description: e.target.value})}
-                        rows={3}
-                        className='bg-muted/30 focus-visible:bg-transparent rounded-xl resize-none'
-                        placeholder="Objetivos y actividades del plan..."
-                      />
-                    </div>
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                      <div className="space-y-2">
-                        <Label>Fecha de Inicio</Label>
-                        <MonthPicker
-                          value={planForm.start_date}
-                          onChange={(v) => setPlanForm({ ...planForm, start_date: v })}
-                          placeholder="Mes de inicio..."
-                        />
-                      </div>
-                      <div className="space-y-2">
-                        <Label>Fecha de Fin</Label>
-                        <MonthPicker
-                          value={planForm.end_date}
-                          onChange={(v) => setPlanForm({ ...planForm, end_date: v })}
-                          placeholder="Mes de fin..."
-                          allowClear
-                        />
-                      </div>
-                    </div>
-                    <Button className="w-full" onClick={() => savePlanMutation.mutate()} disabled={!planForm.title || savePlanMutation.isPending}>
-                      {savePlanMutation.isPending ? 'Guardando...' : editingPlan ? 'Guardar Cambios' : 'Guardar Plan'}
-                    </Button>
-                  </div>
-                </DialogContent>
-              </Dialog>
-              )}
-            </div>
-            <DataTable
-              columns={[
-                {
-                  key: 'title',
-                  header: 'Título del Plan',
-                  searchable: (p: WorkPlan) => p.title,
-                  className: 'max-w-[300px]',
-                  cell: (p: WorkPlan) => <span className='block truncate font-medium text-sm'>{p.title}</span>
-                },
-                {
-                  key: 'period',
-                  header: 'Periodo',
-                  cell: (p: WorkPlan) => (
-                    <span className='text-muted-foreground'>
-                      {p.start_date || '—'} → {p.end_date || '—'}
-                    </span>
-                  )
-                },
-                {
-                  key: 'status',
-                  header: 'Estado',
-                  cell: (p: WorkPlan) => p.status === 'active'
-                    ? <Badge className='bg-green-600 text-white hover:bg-green-700'>Activo</Badge>
-                    : <Badge variant='secondary'>{p.status || 'Inactivo'}</Badge>
-                },
-                isAdmin ? {
-                  key: 'actions',
-                  header: '',
-                  cell: (p: WorkPlan) => (
-                    <div className="flex items-center gap-1">
-                      <ActionTooltip label="Editar plan">
-                        <Button variant="ghost" size="icon" onClick={() => openEditPlan(p)}>
-                          <Pencil className="w-4 h-4" />
-                        </Button>
-                      </ActionTooltip>
-                      {p.status === 'active' && (
-                        <ActionTooltip label="Desactivar plan">
-                          <Button variant="ghost" size="icon" onClick={() => setDeactivatingPlan(p)}>
-                            <Trash2 className="w-4 h-4 text-red-500" />
-                          </Button>
-                        </ActionTooltip>
-                      )}
-                    </div>
-                  )
-                } : null
-              ].filter(Boolean) as any}
-              data={plans ?? []}
-              loading={isLoadingPlans}
-              rowKey={(p) => p.id!}
-              emptyMessage="Este grupo no tiene planes de trabajo registrados."
-              searchPlaceholder="Buscar por título del plan..."
+            <GroupPlansTab
+              groupId={groupId}
+              isAdmin={isAdmin}
+              plans={plans}
             />
           </TabsContent>
 
           <TabsContent value="lineas" className="focus-visible:outline-none bg-card border border-border/50 rounded-2xl p-6 shadow-sm">
-            <div className="flex justify-between items-center mb-4">
-              <h3 className="font-semibold text-lg">Líneas de Investigación Declaradas</h3>
-              {isAdmin && (
-              <Dialog open={lineOpen} onOpenChange={setLineOpen}>
-                <DialogTrigger asChild>
-                  <Button size="sm"><Plus className="w-4 h-4 mr-2"/> Añadir Línea</Button>
-                </DialogTrigger>
-                <DialogContent>
-                  <DialogHeader>
-                    <DialogTitle>Añadir Línea de Investigación</DialogTitle>
-                  </DialogHeader>
-                  <div className="space-y-4 py-4">
-                    <div className="space-y-2">
-                      <Label>Nombre de la Línea</Label>
-                      <Input value={newLine} onChange={e => setNewLine(e.target.value)} />
-                    </div>
-                    <Button className="w-full" onClick={() => linkLineMutation.mutate()} disabled={!newLine || linkLineMutation.isPending}>
-                      Guardar Línea
-                    </Button>
-                  </div>
-                </DialogContent>
-              </Dialog>
-              )}
-            </div>
-            {isLoadingLines ? (
-              <div className="space-y-2">
-                <Skeleton className="h-10 w-full" />
-                <Skeleton className="h-10 w-full" />
-                <Skeleton className="h-10 w-full" />
-              </div>
-            ) : researchLines?.length ? (
-              <ul className="space-y-2">
-                {researchLines.map((line, idx) => (
-                  <li key={idx} className="bg-muted/30 p-3 rounded-lg border border-border/50 flex items-center justify-between text-sm font-medium">
-                    <div className="flex items-center">
-                      <div className="h-2 w-2 rounded-full bg-primary mr-3" />
-                      {line}
-                    </div>
-                    {isAdmin && (
-                      <ActionTooltip label="Eliminar línea de investigación">
-                        <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => setUnlinkingLine(line)}>
-                          <Trash2 className="w-4 h-4 text-red-500" />
-                        </Button>
-                      </ActionTooltip>
-                    )}
-                  </li>
-                ))}
-              </ul>
-            ) : (
-              <p className="text-muted-foreground text-sm">No se encontraron líneas de investigación.</p>
-            )}
+            <GroupLinesTab
+              groupId={groupId}
+              isAdmin={isAdmin}
+              researchLines={researchLines}
+            />
           </TabsContent>
         </Tabs>
-
-        {/* Confirmación: desvincular integrante */}
-        <ConfirmDialog
-          open={unlinkingMember !== null}
-          onOpenChange={(open) => !open && setUnlinkingMember(null)}
-          title="¿Desvincular integrante?"
-          desc={`¿Estás seguro de que deseas desvincular a «${unlinkingMember?.first_names ?? ''} ${unlinkingMember?.last_names ?? ''}» de este grupo? Esta acción se puede revertir volviendo a vincular al investigador.`}
-          confirmText="Desvincular"
-          cancelBtnText="Cancelar"
-          destructive
-          isLoading={unlinkMemberMutation.isPending}
-          handleConfirm={() => {
-            if (unlinkingMember?.id != null) {
-              unlinkMemberMutation.mutate(unlinkingMember.id, {
-                onSettled: () => setUnlinkingMember(null),
-              })
-            }
-          }}
-        />
-
-        {/* Confirmación: desvincular producto */}
-        <ConfirmDialog
-          open={unlinkingProduct !== null}
-          onOpenChange={(open) => !open && setUnlinkingProduct(null)}
-          title="¿Desvincular producto?"
-          desc={`¿Estás seguro de que deseas desvincular el producto «${unlinkingProduct?.title ?? ''}» de este grupo?`}
-          confirmText="Desvincular"
-          cancelBtnText="Cancelar"
-          destructive
-          isLoading={unlinkProductMutation.isPending}
-          handleConfirm={() => {
-            if (unlinkingProduct?.id != null) {
-              unlinkProductMutation.mutate(unlinkingProduct.id, {
-                onSettled: () => setUnlinkingProduct(null),
-              })
-            }
-          }}
-        />
-
-        {/* Confirmación: desvincular proyecto */}
-        <ConfirmDialog
-          open={unlinkingProject !== null}
-          onOpenChange={(open) => !open && setUnlinkingProject(null)}
-          title="¿Desvincular proyecto?"
-          desc={`¿Estás seguro de que deseas desvincular el proyecto «${unlinkingProject?.title ?? ''}» de este grupo?`}
-          confirmText="Desvincular"
-          cancelBtnText="Cancelar"
-          destructive
-          isLoading={unlinkProjMutation.isPending}
-          handleConfirm={() => {
-            if (unlinkingProject?.id != null) {
-              unlinkProjMutation.mutate(unlinkingProject.id, {
-                onSettled: () => setUnlinkingProject(null),
-              })
-            }
-          }}
-        />
-
-        {/* Confirmación: desactivar plan de trabajo */}
-        <ConfirmDialog
-          open={deactivatingPlan !== null}
-          onOpenChange={(open) => !open && setDeactivatingPlan(null)}
-          title="¿Desactivar plan de trabajo?"
-          desc={`¿Estás seguro de que deseas desactivar el plan «${deactivatingPlan?.title ?? ''}»? Su estado pasará a inactivo.`}
-          confirmText="Desactivar"
-          cancelBtnText="Cancelar"
-          destructive
-          isLoading={deletePlanMutation.isPending}
-          handleConfirm={() => {
-            if (deactivatingPlan?.id != null) {
-              deletePlanMutation.mutate(deactivatingPlan.id, {
-                onSettled: () => setDeactivatingPlan(null),
-              })
-            }
-          }}
-        />
-
-        {/* Confirmación: eliminar línea de investigación */}
-        <ConfirmDialog
-          open={unlinkingLine !== null}
-          onOpenChange={(open) => !open && setUnlinkingLine(null)}
-          title="¿Eliminar línea de investigación?"
-          desc={`¿Estás seguro de que deseas eliminar la línea de investigación «${unlinkingLine ?? ''}» de este grupo?`}
-          confirmText="Eliminar"
-          cancelBtnText="Cancelar"
-          destructive
-          isLoading={unlinkLineMutation.isPending}
-          handleConfirm={() => {
-            if (unlinkingLine) {
-              unlinkLineMutation.mutate(unlinkingLine, {
-                onSettled: () => setUnlinkingLine(null),
-              })
-            }
-          }}
-        />
 
         {/* Modal dedicado de Benchmarking Inter-grupal */}
         <Dialog open={compareDialogOpen} onOpenChange={setCompareDialogOpen}>
