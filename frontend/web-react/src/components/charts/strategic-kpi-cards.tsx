@@ -17,7 +17,7 @@ export function StrategicKpiCards({
   totalResearchers = 166,
 }: StrategicKpiCardsProps) {
   return (
-    <div className='grid gap-3.5 sm:grid-cols-2 lg:grid-cols-4'>
+    <div className='grid gap-3 sm:gap-3.5 grid-cols-1 min-[480px]:grid-cols-2 lg:grid-cols-4'>
       <Card className='border-border/60 shadow-xs relative overflow-hidden'>
         <div className='absolute top-0 inset-x-0 h-1 bg-emerald-500' />
         <CardHeader className='flex flex-row items-center justify-between pb-1.5 pt-4'>

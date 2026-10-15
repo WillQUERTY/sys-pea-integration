@@ -577,12 +577,12 @@ export function GroupDetail({ isAdmin = false }: { isAdmin?: boolean }) {
                 </div>
               </div>
               
-              <div className='pb-1 w-full sm:w-auto flex items-center gap-2.5'>
+              <div className='pb-1 w-full sm:w-auto flex flex-col sm:flex-row items-stretch sm:items-center gap-2 sm:gap-2.5'>
                 <ActionTooltip label='Descargar Dossier Ejecutivo PDF, Informe GrupLAC o matrices CSV/Excel'>
                   <Button
                     variant='outline'
                     onClick={() => setPdfDialogOpen(true)}
-                    className='rounded-xl shadow-sm border-primary/20 hover:border-primary/40 bg-card/60 backdrop-blur-sm'
+                    className='w-full sm:w-auto rounded-xl shadow-sm border-primary/20 hover:border-primary/40 bg-card/60 backdrop-blur-sm'
                   >
                     <FileDown className='mr-2 h-4 w-4 text-primary' />
                     Exportar Informes y Datos
@@ -835,48 +835,48 @@ export function GroupDetail({ isAdmin = false }: { isAdmin?: boolean }) {
 
         {/* Tabs */}
         <Tabs defaultValue="perfil" className="space-y-6">
-          <TabsList className="bg-transparent h-12 p-0 border-b border-border/50 w-full justify-start rounded-none overflow-x-auto">
+          <TabsList className="bg-transparent h-11 sm:h-12 p-0 border-b border-border/50 w-full justify-start rounded-none overflow-x-auto">
             <TabsTrigger 
               value="perfil" 
-              className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:shadow-none px-6 h-full"
+              className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:shadow-none px-3 sm:px-5 h-full text-xs sm:text-sm whitespace-nowrap"
             >
-              <Info className='mr-2 h-4 w-4' /> Información General
+              <Info className='mr-1.5 sm:mr-2 h-4 w-4 shrink-0' /> Información General
             </TabsTrigger>
             <TabsTrigger 
               value="integrantes" 
-              className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:shadow-none px-6 h-full"
+              className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:shadow-none px-3 sm:px-5 h-full text-xs sm:text-sm whitespace-nowrap"
             >
-              <UserCircle2 className='mr-2 h-4 w-4' /> Integrantes ({members?.length ?? 0})
+              <UserCircle2 className='mr-1.5 sm:mr-2 h-4 w-4 shrink-0' /> Integrantes ({members?.length ?? 0})
             </TabsTrigger>
             <TabsTrigger 
               value="productos" 
-              className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:shadow-none px-6 h-full"
+              className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:shadow-none px-3 sm:px-5 h-full text-xs sm:text-sm whitespace-nowrap"
             >
-              <BookOpen className='mr-2 h-4 w-4' /> Productos ({products?.length ?? 0})
+              <BookOpen className='mr-1.5 sm:mr-2 h-4 w-4 shrink-0' /> Productos ({products?.length ?? 0})
             </TabsTrigger>
             <TabsTrigger 
               value="estadisticas" 
-              className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:shadow-none px-6 h-full"
+              className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:shadow-none px-3 sm:px-5 h-full text-xs sm:text-sm whitespace-nowrap"
             >
-              <TrendingUp className='mr-2 h-4 w-4' /> Estadísticas e Impacto
+              <TrendingUp className='mr-1.5 sm:mr-2 h-4 w-4 shrink-0' /> Estadísticas e Impacto
             </TabsTrigger>
             <TabsTrigger 
               value="proyectos" 
-              className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:shadow-none px-6 h-full"
+              className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:shadow-none px-3 sm:px-5 h-full text-xs sm:text-sm whitespace-nowrap"
             >
-              <Building2 className='mr-2 h-4 w-4' /> Proyectos ({projects?.length ?? 0})
+              <Building2 className='mr-1.5 sm:mr-2 h-4 w-4 shrink-0' /> Proyectos ({projects?.length ?? 0})
             </TabsTrigger>
             <TabsTrigger
               value="planes"
-              className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:shadow-none px-6 h-full"
+              className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:shadow-none px-3 sm:px-5 h-full text-xs sm:text-sm whitespace-nowrap"
             >
-              <ClipboardList className='mr-2 h-4 w-4' /> Planes ({plans?.length ?? 0})
+              <ClipboardList className='mr-1.5 sm:mr-2 h-4 w-4 shrink-0' /> Planes ({plans?.length ?? 0})
             </TabsTrigger>
             <TabsTrigger
               value="lineas"
-              className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:shadow-none px-6 h-full"
+              className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:shadow-none px-3 sm:px-5 h-full text-xs sm:text-sm whitespace-nowrap"
             >
-              <Info className='mr-2 h-4 w-4' /> Líneas de Inv. ({researchLines?.length ?? 0})
+              <Info className='mr-1.5 sm:mr-2 h-4 w-4 shrink-0' /> Líneas ({researchLines?.length ?? 0})
             </TabsTrigger>
           </TabsList>
 
@@ -1369,12 +1369,12 @@ export function GroupDetail({ isAdmin = false }: { isAdmin?: boolean }) {
                   Descarga el dossier ejecutivo para Decanatura/Vicerrectoría o exporta las matrices analíticas en formato Excel/CSV.
                 </p>
               </div>
-              <div className="flex flex-wrap items-center gap-2 w-full sm:w-auto">
+              <div className="grid grid-cols-2 sm:flex sm:flex-wrap items-center gap-2 w-full sm:w-auto">
                 <Button
                   size="sm"
                   variant="default"
                   onClick={() => window.open(groupDossierPdfUrl(groupId, reportWindowParams), '_blank')}
-                  className="rounded-xl shadow-xs text-xs font-semibold"
+                  className="rounded-xl shadow-xs text-xs font-semibold w-full sm:w-auto"
                 >
                   <FileDown className="mr-1.5 h-3.5 w-3.5" />
                   Dossier Ejecutivo (PDF)
@@ -1383,7 +1383,7 @@ export function GroupDetail({ isAdmin = false }: { isAdmin?: boolean }) {
                   size="sm"
                   variant="outline"
                   onClick={() => setCompareDialogOpen(true)}
-                  className="rounded-xl border-primary/30 text-primary hover:bg-primary/5 text-xs font-semibold"
+                  className="rounded-xl border-primary/30 text-primary hover:bg-primary/5 text-xs font-semibold w-full sm:w-auto"
                 >
                   <Scale className="mr-1.5 h-3.5 w-3.5 text-primary" />
                   Benchmarking (Radar)
@@ -1392,7 +1392,7 @@ export function GroupDetail({ isAdmin = false }: { isAdmin?: boolean }) {
                   size="sm"
                   variant="outline"
                   onClick={() => window.open(groupExportRankingCsvUrl(groupId), '_blank')}
-                  className="rounded-xl border-border/80 text-xs font-medium bg-background/80 hover:bg-background"
+                  className="rounded-xl border-border/80 text-xs font-medium bg-background/80 hover:bg-background w-full sm:w-auto"
                 >
                   <FileSpreadsheet className="mr-1.5 h-3.5 w-3.5 text-emerald-600" />
                   Ranking (CSV)
@@ -1401,7 +1401,7 @@ export function GroupDetail({ isAdmin = false }: { isAdmin?: boolean }) {
                   size="sm"
                   variant="outline"
                   onClick={() => window.open(groupExportProductsCsvUrl(groupId, reportWindowParams), '_blank')}
-                  className="rounded-xl border-border/80 text-xs font-medium bg-background/80 hover:bg-background"
+                  className="rounded-xl border-border/80 text-xs font-medium bg-background/80 hover:bg-background w-full sm:w-auto"
                 >
                   <FileSpreadsheet className="mr-1.5 h-3.5 w-3.5 text-blue-600" />
                   Productos (CSV)
@@ -1410,7 +1410,7 @@ export function GroupDetail({ isAdmin = false }: { isAdmin?: boolean }) {
                   size="sm"
                   variant="ghost"
                   onClick={() => setPdfDialogOpen(true)}
-                  className="rounded-xl text-xs text-muted-foreground hover:text-foreground"
+                  className="col-span-2 sm:col-span-1 rounded-xl text-xs text-muted-foreground hover:text-foreground w-full sm:w-auto"
                 >
                   Más opciones…
                 </Button>

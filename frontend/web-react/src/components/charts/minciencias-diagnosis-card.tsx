@@ -64,7 +64,7 @@ export function MincienciasDiagnosisCard({ data, className }: MincienciasDiagnos
           </div>
 
           <div className='flex items-center gap-2 self-start sm:self-auto shrink-0'>
-            <div className='text-right'>
+            <div className='text-left sm:text-right'>
               <div className='text-[10px] text-muted-foreground uppercase font-medium'>Clasificación Oficial</div>
               <div className='text-xs font-bold font-mono text-foreground'>
                 Categoría {data.current_classification}
@@ -205,7 +205,7 @@ export function MincienciasDiagnosisCard({ data, className }: MincienciasDiagnos
 
         {/* Selector de Nivel a Inspeccionar */}
         <div className='space-y-3'>
-          <div className='flex items-center justify-between'>
+          <div className='flex flex-col sm:flex-row sm:items-center justify-between gap-1'>
             <span className='text-xs font-semibold text-muted-foreground uppercase tracking-wider'>
               Checklist de Requisitos por Nivel:
             </span>
@@ -214,7 +214,7 @@ export function MincienciasDiagnosisCard({ data, className }: MincienciasDiagnos
             </span>
           </div>
 
-          <div className='grid grid-cols-2 sm:grid-cols-5 gap-2'>
+          <div className='grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-2'>
             {data.tiers.map((tier) => {
               const isSelected = tier.tier === activeTier?.tier
 
@@ -226,7 +226,7 @@ export function MincienciasDiagnosisCard({ data, className }: MincienciasDiagnos
                   size='sm'
                   onClick={() => setSelectedTier(tier.tier)}
                   className={cn(
-                    'h-10 justify-between px-3 text-xs font-semibold rounded-lg',
+                    'h-10 justify-between px-3 text-xs font-semibold rounded-lg last:col-span-2 sm:last:col-span-1 lg:last:col-span-1',
                     isSelected
                       ? 'shadow-xs'
                       : tier.qualifies
@@ -249,9 +249,9 @@ export function MincienciasDiagnosisCard({ data, className }: MincienciasDiagnos
         {/* Detalle del Nivel Activo */}
         {activeTier && (
           <div className='rounded-xl border border-border/60 bg-card p-4 space-y-4'>
-            <div className='flex items-center justify-between gap-2 border-b border-border/40 pb-3'>
+            <div className='flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-border/40 pb-3'>
               <div>
-                <div className='flex items-center gap-2'>
+                <div className='flex items-center gap-2 flex-wrap'>
                   <span className='font-bold text-sm text-foreground'>{activeTier.title}</span>
                   {activeTier.qualifies ? (
                     <Badge variant='outline' className='text-[10px] border-emerald-500/40 bg-emerald-500/10 text-emerald-700 dark:text-emerald-300'>
@@ -267,7 +267,7 @@ export function MincienciasDiagnosisCard({ data, className }: MincienciasDiagnos
               </div>
 
               {isCurrentMax && (
-                <Badge variant='secondary' className='text-[10px] shrink-0 font-medium'>
+                <Badge variant='secondary' className='text-[10px] self-start sm:self-auto shrink-0 font-medium'>
                   Nivel Alcanzado
                 </Badge>
               )}
@@ -276,20 +276,25 @@ export function MincienciasDiagnosisCard({ data, className }: MincienciasDiagnos
             {/* Lista de Requisitos */}
             <div className='divide-y divide-border/40'>
               {activeTier.requirements.map((req) => (
-                <div key={req.id} className='flex items-center justify-between gap-3 py-2.5 text-xs'>
-                  <div className='flex items-center gap-2.5 min-w-0'>
+                <div
+                  key={req.id}
+                  className='flex flex-col sm:flex-row sm:items-center justify-between gap-2 sm:gap-3 py-3 text-xs'
+                >
+                  <div className='flex items-start sm:items-center gap-2.5 min-w-0'>
                     {req.met ? (
-                      <CheckCircle2 className='h-4 w-4 text-emerald-500 shrink-0' />
+                      <CheckCircle2 className='h-4 w-4 text-emerald-500 shrink-0 mt-0.5 sm:mt-0' />
                     ) : (
-                      <AlertCircle className='h-4 w-4 text-amber-500 shrink-0' />
+                      <AlertCircle className='h-4 w-4 text-amber-500 shrink-0 mt-0.5 sm:mt-0' />
                     )}
                     <div className='min-w-0'>
-                      <div className='font-semibold text-foreground truncate'>{req.label}</div>
-                      <div className='text-[11px] text-muted-foreground truncate'>{req.description}</div>
+                      <div className='font-semibold text-foreground leading-tight'>{req.label}</div>
+                      <div className='text-[11px] text-muted-foreground line-clamp-2 sm:truncate mt-0.5 sm:mt-0'>
+                        {req.description}
+                      </div>
                     </div>
                   </div>
 
-                  <div className='text-right shrink-0 flex items-center gap-3'>
+                  <div className='flex items-center justify-between sm:justify-end gap-2.5 pl-6 sm:pl-0 shrink-0'>
                     <div className='text-[11px]'>
                       <span className='text-muted-foreground'>Requerido: </span>
                       <span className='font-mono font-medium'>{req.target} {req.unit}</span>
@@ -297,7 +302,7 @@ export function MincienciasDiagnosisCard({ data, className }: MincienciasDiagnos
                     <Badge
                       variant='outline'
                       className={cn(
-                        'text-[10px] font-mono font-bold px-2 py-0.5',
+                        'text-[10px] font-mono font-bold px-2 py-0.5 shrink-0',
                         req.met
                           ? 'border-emerald-500/30 bg-emerald-500/10 text-emerald-700 dark:text-emerald-300'
                           : 'border-amber-500/30 bg-amber-500/10 text-amber-700 dark:text-amber-300'
