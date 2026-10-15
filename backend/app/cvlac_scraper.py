@@ -147,6 +147,60 @@ class CvData:
     projects: List[CvProject] = field(default_factory=list)
 
 
+def normalize_researcher_category(raw: Optional[str]) -> Optional[str]:
+    """
+    Normaliza la cadena de categoría de CvLAC / Minciencias.
+    Elimina la coletilla de vigencia administrativa
+    (ej. 'con vigencia hasta la publicación de los resultados de la siguiente convocatoria')
+    y retorna la categoría canónica reconocida por Minciencias:
+    - 'Investigador Emérito'
+    - 'Investigador Senior (IS)'
+    - 'Investigador Asociado (I)'
+    - 'Investigador Junior (IJ)'
+    Si el campo solo contiene texto de vigencia sin categoría activa,
+    o está vacío / no reconocido, retorna None.
+    """
+    if not raw:
+        return None
+    text = str(raw).strip()
+    if not text:
+        return None
+
+    # Manejo si viene como payload JSON de datos abiertos
+    if text.startswith("{") and "clasificacion" in text:
+        try:
+            data = json.loads(text)
+            return normalize_researcher_category(data.get("clasificacion"))
+        except Exception:
+            pass
+
+    t_lower = text.lower()
+
+    # 1. Investigador Emérito
+    if "emerito" in t_lower or "emérito" in t_lower:
+        return "Investigador Emérito"
+
+    # 2. Investigador Senior
+    if "senior" in t_lower or "(is)" in t_lower:
+        return "Investigador Senior (IS)"
+
+    # 3. Investigador Asociado
+    if "asociado" in t_lower:
+        return "Investigador Asociado (I)"
+    if re.search(r"\b(i)\b", t_lower) and not re.search(r"\b(is|ij)\b", t_lower):
+        return "Investigador Asociado (I)"
+
+    # 4. Investigador Junior
+    if "junior" in t_lower or "(ij)" in t_lower:
+        return "Investigador Junior (IJ)"
+
+    # 5. Si solo contiene frases de vigencia, convocatoria o resultados sin categoría activa
+    if any(k in t_lower for k in ["vigencia", "publicacion", "publicación", "convocatoria", "resultado", "gencia"]):
+        return None
+
+    return text
+
+
 class CvParser:
     @classmethod
     def parse_html(cls, html: str) -> CvData:
@@ -169,7 +223,8 @@ class CvParser:
         cit_name = get_field("Nombre en citaciones")
         nationality = get_field("Nacionalidad") or "Colombiana"
         gender = get_field("Sexo") or "Desconocido"
-        category = get_field("Categoría") or get_field("Categoria")
+        raw_category = get_field("Categoría") or get_field("Categoria")
+        category = normalize_researcher_category(raw_category) or ""
         is_par = bool(soup.find(string=re.compile(r"Par evaluador reconocido por Minciencias", re.I)))
 
         # El ORCID viene como hipervínculo (<a href="https://orcid.org/0000-0002-...">):
@@ -654,6 +709,8 @@ class CvCommitService:
                 first_names = cv.name
                 last_names = ""
 
+            clean_cat = normalize_researcher_category(cv.category)
+
             cur.execute("""
                 IF NOT EXISTS (SELECT 1 FROM Researcher WHERE external_code = ?)
                 BEGIN
@@ -667,8 +724,8 @@ class CvCommitService:
                     WHERE external_code = ?;
                 END
             """, cv.external_code,
-                 cv.external_code, first_names, last_names, cv.nationality, cv.orcid, cv.highest_education_level, cv.education_records, cv.category or None,
-                 first_names, last_names, cv.nationality, cv.orcid, cv.orcid, cv.highest_education_level, cv.education_records, cv.category or None, cv.external_code)
+                 cv.external_code, first_names, last_names, cv.nationality, cv.orcid, cv.highest_education_level, cv.education_records, clean_cat,
+                 first_names, last_names, cv.nationality, cv.orcid, cv.orcid, cv.highest_education_level, cv.education_records, clean_cat, cv.external_code)
 
             cur.execute("SELECT id FROM Researcher WHERE external_code = ?", cv.external_code)
             researcher_id = cur.fetchone()[0]

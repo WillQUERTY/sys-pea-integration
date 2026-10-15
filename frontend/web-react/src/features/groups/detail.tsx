@@ -48,7 +48,7 @@ import {
 } from '@/components/charts'
 import type { Researcher } from '@/lib/types'
 import type { Group, WorkPlan, Project, Product } from '@/lib/types'
-import { parseMincienciasClassification } from '@/lib/utils'
+import { parseMincienciasClassification, cn } from '@/lib/utils'
 import { MEMBER_ROLES, GRAND_AREAS_OCDE, DEPARTMENTS, citiesOfDepartment } from '@/lib/catalogs'
 import { CatalogSelect, CatalogCombobox, toMonthInput } from '@/components/catalog-field'
 import { MonthPicker } from '@/components/month-picker'
@@ -88,12 +88,12 @@ import {
 import { DataTable } from '@/components/data-table'
 import { isEndorsed, EndorsedBadge } from '@/features/products/endorsed'
 
-function Field({ label, value, mono = false }: { label: string; value?: React.ReactNode; mono?: boolean }) {
+function Field({ label, value, mono = false, className = '' }: { label: string; value?: React.ReactNode; mono?: boolean; className?: string }) {
   if (!value) return null
   return (
-    <div className='flex flex-col gap-1.5'>
+    <div className={cn('flex flex-col gap-1.5 min-w-0', className)}>
       <span className='text-xs font-semibold text-muted-foreground uppercase tracking-wider'>{label}</span>
-      <span className={`text-sm text-foreground leading-relaxed ${mono ? 'font-mono' : ''}`}>{value}</span>
+      <span className={`text-sm text-foreground leading-relaxed break-words ${mono ? 'font-mono' : ''}`}>{value}</span>
     </div>
   )
 }
@@ -577,12 +577,12 @@ export function GroupDetail({ isAdmin = false }: { isAdmin?: boolean }) {
                 </div>
               </div>
               
-              <div className='pb-1 w-full sm:w-auto flex items-center gap-2.5'>
+              <div className='pb-1 w-full sm:w-auto flex flex-col sm:flex-row items-stretch sm:items-center gap-2 sm:gap-2.5'>
                 <ActionTooltip label='Descargar Dossier Ejecutivo PDF, Informe GrupLAC o matrices CSV/Excel'>
                   <Button
                     variant='outline'
                     onClick={() => setPdfDialogOpen(true)}
-                    className='rounded-xl shadow-sm border-primary/20 hover:border-primary/40 bg-card/60 backdrop-blur-sm'
+                    className='w-full sm:w-auto rounded-xl shadow-sm border-primary/20 hover:border-primary/40 bg-card/60 backdrop-blur-sm'
                   >
                     <FileDown className='mr-2 h-4 w-4 text-primary' />
                     Exportar Informes y Datos
@@ -835,48 +835,48 @@ export function GroupDetail({ isAdmin = false }: { isAdmin?: boolean }) {
 
         {/* Tabs */}
         <Tabs defaultValue="perfil" className="space-y-6">
-          <TabsList className="bg-transparent h-12 p-0 border-b border-border/50 w-full justify-start rounded-none overflow-x-auto">
+          <TabsList className="bg-transparent h-11 sm:h-12 p-0 border-b border-border/50 w-full justify-start rounded-none overflow-x-auto">
             <TabsTrigger 
               value="perfil" 
-              className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:shadow-none px-6 h-full"
+              className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:shadow-none px-3 sm:px-5 h-full text-xs sm:text-sm whitespace-nowrap"
             >
-              <Info className='mr-2 h-4 w-4' /> Información General
+              <Info className='mr-1.5 sm:mr-2 h-4 w-4 shrink-0' /> Información General
             </TabsTrigger>
             <TabsTrigger 
               value="integrantes" 
-              className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:shadow-none px-6 h-full"
+              className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:shadow-none px-3 sm:px-5 h-full text-xs sm:text-sm whitespace-nowrap"
             >
-              <UserCircle2 className='mr-2 h-4 w-4' /> Integrantes ({members?.length ?? 0})
+              <UserCircle2 className='mr-1.5 sm:mr-2 h-4 w-4 shrink-0' /> Integrantes ({members?.length ?? 0})
             </TabsTrigger>
             <TabsTrigger 
               value="productos" 
-              className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:shadow-none px-6 h-full"
+              className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:shadow-none px-3 sm:px-5 h-full text-xs sm:text-sm whitespace-nowrap"
             >
-              <BookOpen className='mr-2 h-4 w-4' /> Productos ({products?.length ?? 0})
+              <BookOpen className='mr-1.5 sm:mr-2 h-4 w-4 shrink-0' /> Productos ({products?.length ?? 0})
             </TabsTrigger>
             <TabsTrigger 
               value="estadisticas" 
-              className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:shadow-none px-6 h-full"
+              className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:shadow-none px-3 sm:px-5 h-full text-xs sm:text-sm whitespace-nowrap"
             >
-              <TrendingUp className='mr-2 h-4 w-4' /> Estadísticas e Impacto
+              <TrendingUp className='mr-1.5 sm:mr-2 h-4 w-4 shrink-0' /> Estadísticas e Impacto
             </TabsTrigger>
             <TabsTrigger 
               value="proyectos" 
-              className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:shadow-none px-6 h-full"
+              className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:shadow-none px-3 sm:px-5 h-full text-xs sm:text-sm whitespace-nowrap"
             >
-              <Building2 className='mr-2 h-4 w-4' /> Proyectos ({projects?.length ?? 0})
+              <Building2 className='mr-1.5 sm:mr-2 h-4 w-4 shrink-0' /> Proyectos ({projects?.length ?? 0})
             </TabsTrigger>
             <TabsTrigger
               value="planes"
-              className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:shadow-none px-6 h-full"
+              className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:shadow-none px-3 sm:px-5 h-full text-xs sm:text-sm whitespace-nowrap"
             >
-              <ClipboardList className='mr-2 h-4 w-4' /> Planes ({plans?.length ?? 0})
+              <ClipboardList className='mr-1.5 sm:mr-2 h-4 w-4 shrink-0' /> Planes ({plans?.length ?? 0})
             </TabsTrigger>
             <TabsTrigger
               value="lineas"
-              className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:shadow-none px-6 h-full"
+              className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:shadow-none px-3 sm:px-5 h-full text-xs sm:text-sm whitespace-nowrap"
             >
-              <Info className='mr-2 h-4 w-4' /> Líneas de Inv. ({researchLines?.length ?? 0})
+              <Info className='mr-1.5 sm:mr-2 h-4 w-4 shrink-0' /> Líneas ({researchLines?.length ?? 0})
             </TabsTrigger>
           </TabsList>
 
@@ -926,8 +926,9 @@ export function GroupDetail({ isAdmin = false }: { isAdmin?: boolean }) {
                         />
                       </div>
                     </div>
+                    {/* Institución & Año/Mes de Formación */}
                     <div className="grid min-w-0 grid-cols-1 sm:grid-cols-2 gap-4">
-                      <div className="space-y-2">
+                      <div className="space-y-2 min-w-0">
                         <Label htmlFor="institution">Institución</Label>
                         <Input
                           id="institution"
@@ -936,32 +937,43 @@ export function GroupDetail({ isAdmin = false }: { isAdmin?: boolean }) {
                           className='bg-muted/30 focus-visible:bg-transparent rounded-xl'
                         />
                       </div>
-                      <div className="space-y-2">
-                        <Label htmlFor="city">Ciudad / Depto</Label>
-                        <div className="flex flex-col sm:flex-row gap-2">
-                          {/* Departamento primero: la ciudad se filtra por sus municipios. */}
-                          <div className='flex-1 min-w-0'>
-                            <CatalogCombobox
-                              options={DEPARTMENTS}
-                              value={formData.department ?? ''}
-                              onChange={(v) => setFormData({ ...formData, department: v })}
-                              placeholder='Departamento'
-                            />
-                          </div>
-                          <div className='flex-1 min-w-0'>
-                            <CatalogCombobox
-                              options={citiesOfDepartment(formData.department ?? '')}
-                              value={formData.city ?? ''}
-                              onChange={(v) => setFormData({ ...formData, city: v })}
-                              placeholder={formData.department ? 'Ciudad' : 'Ciudad (elige depto)'}
-                              emptyMessage='Elige un departamento para ver sus municipios, o escribe la ciudad libre.'
-                            />
-                          </div>
-                        </div>
+                      <div className="space-y-2 min-w-0">
+                        <Label htmlFor="declared_creation_date">Año / Mes de Formación</Label>
+                        <MonthPicker
+                          id="declared_creation_date"
+                          value={formData.declared_creation_date ?? ''}
+                          onChange={(v) => setFormData({ ...formData, declared_creation_date: v })}
+                          placeholder='Mes y año...'
+                        />
                       </div>
                     </div>
+
+                    {/* Departamento & Ciudad (cada uno con su columna individual) */}
                     <div className="grid min-w-0 grid-cols-1 sm:grid-cols-2 gap-4">
-                      <div className="space-y-2">
+                      <div className="space-y-2 min-w-0">
+                        <CatalogCombobox
+                          label="Departamento"
+                          options={DEPARTMENTS}
+                          value={formData.department ?? ''}
+                          onChange={(v) => setFormData({ ...formData, department: v })}
+                          placeholder='Seleccionar departamento...'
+                        />
+                      </div>
+                      <div className="space-y-2 min-w-0">
+                        <CatalogCombobox
+                          label="Ciudad / Municipio"
+                          options={citiesOfDepartment(formData.department ?? '')}
+                          value={formData.city ?? ''}
+                          onChange={(v) => setFormData({ ...formData, city: v })}
+                          placeholder={formData.department ? 'Seleccionar ciudad...' : 'Ciudad (elige depto primero)'}
+                          emptyMessage='Elige un departamento para ver sus municipios, o escribe la ciudad libre.'
+                        />
+                      </div>
+                    </div>
+
+                    {/* Email & Página Web */}
+                    <div className="grid min-w-0 grid-cols-1 sm:grid-cols-2 gap-4">
+                      <div className="space-y-2 min-w-0">
                         <Label htmlFor="email">Email</Label>
                         <Input
                           id="email"
@@ -970,7 +982,7 @@ export function GroupDetail({ isAdmin = false }: { isAdmin?: boolean }) {
                           className='bg-muted/30 focus-visible:bg-transparent rounded-xl'
                         />
                       </div>
-                      <div className="space-y-2">
+                      <div className="space-y-2 min-w-0">
                         <Label htmlFor="website">Página Web</Label>
                         <Input
                           id="website"
@@ -980,7 +992,9 @@ export function GroupDetail({ isAdmin = false }: { isAdmin?: boolean }) {
                         />
                       </div>
                     </div>
-                    <div className="grid min-w-0 grid-cols-1 sm:grid-cols-2 gap-4">
+
+                    {/* Área de Conocimiento (OCDE) ocupando el ancho completo de la tarjeta */}
+                    <div className="space-y-2 min-w-0">
                       <CatalogCombobox
                         label="Área de Conocimiento (OCDE)"
                         options={GRAND_AREAS_OCDE}
@@ -988,15 +1002,6 @@ export function GroupDetail({ isAdmin = false }: { isAdmin?: boolean }) {
                         onChange={(v) => setFormData({ ...formData, knowledge_area: v })}
                         placeholder='Ej: Ingeniería y Tecnología'
                       />
-                      <div className="space-y-2">
-                        <Label htmlFor="declared_creation_date">Año / Mes de Formación</Label>
-                        <MonthPicker
-                          id="declared_creation_date"
-                          value={formData.declared_creation_date ?? ''}
-                          onChange={(v) => setFormData({ ...formData, declared_creation_date: v })}
-                          placeholder='Mes y año...'
-                        />
-                      </div>
                     </div>
                   </div>
                 </div>
@@ -1051,14 +1056,15 @@ export function GroupDetail({ isAdmin = false }: { isAdmin?: boolean }) {
                       <h3 className="font-semibold text-lg">Información Básica</h3>
                     </div>
                     <div className="grid min-w-0 grid-cols-1 sm:grid-cols-2 gap-6">
-                      <Field label="Nombre del Grupo" value={group.name} />
+                      <Field label="Nombre del Grupo" value={group.name} className="col-span-1 sm:col-span-2" />
                       <Field label="Sigla" value={group.acronym} />
                       <Field label="Código GrupLAC" value={group.external_code} mono />
                       <Field label="Institución" value={group.institution} />
                       <Field label="Ciudad / Depto" value={[group.city, group.department].filter(Boolean).join(' / ')} />
+                      <Field label="Email" value={group.email} />
                       <Field label="Página Web" value={group.website} />
                       <Field label="Año / Mes de Formación" value={group.declared_creation_date} />
-                      <Field label="Área de Conocimiento" value={group.knowledge_area} />
+                      <Field label="Área de Conocimiento" value={group.knowledge_area} className="col-span-1 sm:col-span-2" />
                     </div>
                   </div>
                 </div>
@@ -1369,12 +1375,12 @@ export function GroupDetail({ isAdmin = false }: { isAdmin?: boolean }) {
                   Descarga el dossier ejecutivo para Decanatura/Vicerrectoría o exporta las matrices analíticas en formato Excel/CSV.
                 </p>
               </div>
-              <div className="flex flex-wrap items-center gap-2 w-full sm:w-auto">
+              <div className="grid grid-cols-2 sm:flex sm:flex-wrap items-center gap-2 w-full sm:w-auto">
                 <Button
                   size="sm"
                   variant="default"
                   onClick={() => window.open(groupDossierPdfUrl(groupId, reportWindowParams), '_blank')}
-                  className="rounded-xl shadow-xs text-xs font-semibold"
+                  className="rounded-xl shadow-xs text-xs font-semibold w-full sm:w-auto"
                 >
                   <FileDown className="mr-1.5 h-3.5 w-3.5" />
                   Dossier Ejecutivo (PDF)
@@ -1383,7 +1389,7 @@ export function GroupDetail({ isAdmin = false }: { isAdmin?: boolean }) {
                   size="sm"
                   variant="outline"
                   onClick={() => setCompareDialogOpen(true)}
-                  className="rounded-xl border-primary/30 text-primary hover:bg-primary/5 text-xs font-semibold"
+                  className="rounded-xl border-primary/30 text-primary hover:bg-primary/5 text-xs font-semibold w-full sm:w-auto"
                 >
                   <Scale className="mr-1.5 h-3.5 w-3.5 text-primary" />
                   Benchmarking (Radar)
@@ -1392,7 +1398,7 @@ export function GroupDetail({ isAdmin = false }: { isAdmin?: boolean }) {
                   size="sm"
                   variant="outline"
                   onClick={() => window.open(groupExportRankingCsvUrl(groupId), '_blank')}
-                  className="rounded-xl border-border/80 text-xs font-medium bg-background/80 hover:bg-background"
+                  className="rounded-xl border-border/80 text-xs font-medium bg-background/80 hover:bg-background w-full sm:w-auto"
                 >
                   <FileSpreadsheet className="mr-1.5 h-3.5 w-3.5 text-emerald-600" />
                   Ranking (CSV)
@@ -1401,7 +1407,7 @@ export function GroupDetail({ isAdmin = false }: { isAdmin?: boolean }) {
                   size="sm"
                   variant="outline"
                   onClick={() => window.open(groupExportProductsCsvUrl(groupId, reportWindowParams), '_blank')}
-                  className="rounded-xl border-border/80 text-xs font-medium bg-background/80 hover:bg-background"
+                  className="rounded-xl border-border/80 text-xs font-medium bg-background/80 hover:bg-background w-full sm:w-auto"
                 >
                   <FileSpreadsheet className="mr-1.5 h-3.5 w-3.5 text-blue-600" />
                   Productos (CSV)
@@ -1410,7 +1416,7 @@ export function GroupDetail({ isAdmin = false }: { isAdmin?: boolean }) {
                   size="sm"
                   variant="ghost"
                   onClick={() => setPdfDialogOpen(true)}
-                  className="rounded-xl text-xs text-muted-foreground hover:text-foreground"
+                  className="col-span-2 sm:col-span-1 rounded-xl text-xs text-muted-foreground hover:text-foreground w-full sm:w-auto"
                 >
                   Más opciones…
                 </Button>

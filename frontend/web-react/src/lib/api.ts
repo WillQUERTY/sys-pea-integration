@@ -787,6 +787,15 @@ export interface MincienciasGroupDiagnosis {
     asc_count: number
     dpc_count: number
     projects_count: number
+    cohesion_index?: number
+    cohesion_met?: boolean
+    top_count?: number
+    type_a_count?: number
+    type_b_count?: number
+    frh_a_count?: number
+    frh_b_count?: number
+    asc_dpc_count?: number
+    coauthored_products_count?: number
   }
   tiers: MincienciasTierDiagnosis[]
 }

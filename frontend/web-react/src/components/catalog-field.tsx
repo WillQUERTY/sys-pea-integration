@@ -93,6 +93,7 @@ export function CatalogCombobox({
   onChange,
   placeholder = 'Seleccionar...',
   emptyMessage = 'Sin coincidencias — se guardará como texto libre.',
+  className,
 }: {
   label?: string
   options: string[]
@@ -100,12 +101,13 @@ export function CatalogCombobox({
   onChange: (v: string) => void
   placeholder?: string
   emptyMessage?: string
+  className?: string
 }) {
   const [open, setOpen] = useState(false)
 
   return (
-    <div className='grid gap-2 min-w-0'>
-      {label && <Label>{label}</Label>}
+    <div className={cn('grid gap-2 min-w-0 w-full', className)}>
+      {label && <Label className='truncate'>{label}</Label>}
       <Popover open={open} onOpenChange={setOpen}>
         <PopoverTrigger asChild>
           <Button
@@ -113,18 +115,18 @@ export function CatalogCombobox({
             role='combobox'
             aria-expanded={open}
             className={cn(
-              'w-full justify-between font-normal',
+              'w-full min-w-0 max-w-full justify-between font-normal shrink text-left overflow-hidden',
               !value && 'text-muted-foreground'
             )}
+            title={value || placeholder}
           >
-            <span className='truncate'>{value || placeholder}</span>
+            <span className='truncate min-w-0 flex-1'>{value || placeholder}</span>
             <ChevronsUpDown className='ms-2 size-4 shrink-0 opacity-50' />
           </Button>
         </PopoverTrigger>
         <PopoverContent
-          className='p-0'
+          className='p-0 w-[var(--radix-popover-trigger-width)] min-w-[14rem] max-w-[90vw]'
           align='start'
-          style={{ width: 'max(var(--radix-popover-trigger-width), 12rem)' }}
         >
           <Command>
             {/* Input controlado por el valor del form: lo que se escribe ES

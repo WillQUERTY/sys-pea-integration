@@ -6,11 +6,15 @@ import {
   AlertCircle,
   TrendingUp,
   Sparkles,
-  Clock,
   GraduationCap,
   Layers,
   FileCode,
   FolderGit2,
+  Network,
+  Flame,
+  Users,
+  BookOpen,
+  Info,
 } from 'lucide-react'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
@@ -40,6 +44,13 @@ export function MincienciasDiagnosisCard({ data, className }: MincienciasDiagnos
     data.current_classification !== 'Sin clasificar' &&
     data.max_qualified_tier !== data.current_classification
 
+  const cohesionValue =
+    data.summary.cohesion_index !== undefined
+      ? data.summary.cohesion_index >= 0
+        ? `+${data.summary.cohesion_index.toFixed(3)}`
+        : data.summary.cohesion_index.toFixed(3)
+      : '0.000'
+
   return (
     <Card className={cn('border-border/60 shadow-xs overflow-hidden', className)}>
       <CardHeader className='pb-4 border-b border-border/40 bg-muted/20'>
@@ -54,17 +65,17 @@ export function MincienciasDiagnosisCard({ data, className }: MincienciasDiagnos
                   Diagnóstico y Semáforo de Categorización Minciencias
                 </CardTitle>
                 <Badge variant='outline' className='text-[10px] uppercase font-semibold border-primary/30 text-primary'>
-                  Modelo 2024
+                  Modelo Convocatoria 2024
                 </Badge>
               </div>
               <CardDescription className='text-xs mt-0.5'>
-                Evaluación de requisitos de tipología, integrantes con posgrado y cálculo de brechas para ascenso.
+                Auditoría algorítmica de requisitos de tipología (TOP/A/B), formación doctoral, ventanas diferenciadas (5/7/10 años) y cohesión.
               </CardDescription>
             </div>
           </div>
 
           <div className='flex items-center gap-2 self-start sm:self-auto shrink-0'>
-            <div className='text-right'>
+            <div className='text-left sm:text-right'>
               <div className='text-[10px] text-muted-foreground uppercase font-medium'>Clasificación Oficial</div>
               <div className='text-xs font-bold font-mono text-foreground'>
                 Categoría {data.current_classification}
@@ -73,11 +84,15 @@ export function MincienciasDiagnosisCard({ data, className }: MincienciasDiagnos
             <Badge
               variant='outline'
               className={cn(
-                'text-xs px-2.5 py-1 font-bold',
+                'text-xs px-2.5 py-1 font-bold shadow-xs',
                 data.max_qualified_tier === 'A1'
-                  ? 'border-amber-500/40 bg-amber-500/10 text-amber-700 dark:text-amber-300'
+                  ? 'border-amber-500/50 bg-amber-500/15 text-amber-700 dark:text-amber-300'
                   : data.max_qualified_tier === 'A'
-                  ? 'border-emerald-500/40 bg-emerald-500/10 text-emerald-700 dark:text-emerald-300'
+                  ? 'border-emerald-500/50 bg-emerald-500/15 text-emerald-700 dark:text-emerald-300'
+                  : data.max_qualified_tier === 'B'
+                  ? 'border-blue-500/50 bg-blue-500/15 text-blue-700 dark:text-blue-300'
+                  : data.max_qualified_tier === 'C'
+                  ? 'border-indigo-500/50 bg-indigo-500/15 text-indigo-700 dark:text-indigo-300'
                   : 'border-primary/40 bg-primary/10 text-primary'
               )}
             >
@@ -148,64 +163,200 @@ export function MincienciasDiagnosisCard({ data, className }: MincienciasDiagnos
           </div>
         ) : null}
 
-        {/* Resumen de Métricas Quinquenales Base */}
-        <div className='grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3'>
-          <div className='rounded-lg border border-border/50 bg-muted/20 p-2.5 text-center'>
-            <div className='flex items-center justify-center gap-1 text-[11px] text-muted-foreground'>
-              <Clock className='h-3 w-3' /> Antigüedad
-            </div>
-            <div className='text-base font-bold font-mono mt-1'>{data.summary.years_active} años</div>
-            <div className='text-[10px] text-muted-foreground mt-0.5'>Fundado {data.summary.creation_year || '—'}</div>
+        {/* Pilares Normativos Clave - Modelo 2024 */}
+        <div className='space-y-2'>
+          <div className='flex items-center justify-between text-xs font-semibold text-muted-foreground uppercase tracking-wider'>
+            <span>Requisitos Críticos de Categorización</span>
+            <span className='text-[11px] font-normal text-muted-foreground lowercase'>
+              criterios eliminatorios de corte
+            </span>
           </div>
 
-          <div className='rounded-lg border border-border/50 bg-muted/20 p-2.5 text-center'>
-            <div className='flex items-center justify-center gap-1 text-[11px] text-muted-foreground'>
-              <GraduationCap className='h-3 w-3' /> Doctores
+          <div className='grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3'>
+            {/* 1. Cohesión Interna */}
+            <div className='rounded-xl border border-border/60 bg-muted/20 p-3.5 space-y-2 relative overflow-hidden'>
+              <div className='flex items-center justify-between'>
+                <div className='flex items-center gap-1.5 text-xs font-semibold text-foreground'>
+                  <Network className='h-4 w-4 text-primary' />
+                  <span>Índice de Cohesión (I<sub>C</sub>)</span>
+                </div>
+                {data.summary.cohesion_met ? (
+                  <Badge variant='outline' className='text-[10px] font-mono border-emerald-500/40 bg-emerald-500/10 text-emerald-700 dark:text-emerald-300'>
+                    I<sub>C</sub> &gt; 0 ✓
+                  </Badge>
+                ) : (
+                  <Badge variant='outline' className='text-[10px] font-mono border-amber-500/40 bg-amber-500/10 text-amber-700 dark:text-amber-300'>
+                    I<sub>C</sub> ≤ 0 ✗
+                  </Badge>
+                )}
+              </div>
+              <div className='flex items-baseline gap-2'>
+                <div className='text-2xl font-bold font-mono tracking-tight text-foreground'>
+                  {cohesionValue}
+                </div>
+                <span className='text-[11px] text-muted-foreground'>
+                  {data.summary.coauthored_products_count ?? 0} prods. coautoría
+                </span>
+              </div>
+              <p className='text-[11px] text-muted-foreground leading-snug'>
+                Colaboración interna verificada entre integrantes del grupo. Requisito obligatorio &gt; 0.
+              </p>
             </div>
-            <div className='text-base font-bold font-mono mt-1 text-emerald-600 dark:text-emerald-400'>
-              {data.summary.phd_count}
+
+            {/* 2. Productos TOP */}
+            <div className='rounded-xl border border-border/60 bg-muted/20 p-3.5 space-y-2 relative overflow-hidden'>
+              <div className='flex items-center justify-between'>
+                <div className='flex items-center gap-1.5 text-xs font-semibold text-foreground'>
+                  <Flame className='h-4 w-4 text-amber-500' />
+                  <span>Productos TOP</span>
+                </div>
+                {(data.summary.top_count ?? 0) > 0 ? (
+                  <Badge variant='outline' className='text-[10px] font-mono border-amber-500/40 bg-amber-500/10 text-amber-700 dark:text-amber-300'>
+                    Cumple A1 (≥1)
+                  </Badge>
+                ) : (
+                  <Badge variant='outline' className='text-[10px] font-mono border-muted-foreground/30 text-muted-foreground'>
+                    0 para A1
+                  </Badge>
+                )}
+              </div>
+              <div className='flex items-baseline gap-2'>
+                <div className='text-2xl font-bold font-mono tracking-tight text-amber-600 dark:text-amber-400'>
+                  {data.summary.top_count ?? 0}
+                </div>
+                <span className='text-[11px] text-muted-foreground'>
+                  en ventana 7-10 años
+                </span>
+              </div>
+              <p className='text-[11px] text-muted-foreground leading-snug'>
+                Patentes, variedades o artículos A1. Indispensable para alcanzar la Categoría A1.
+              </p>
             </div>
-            <div className='text-[10px] text-muted-foreground mt-0.5'>{data.summary.masters_count} con Maestría</div>
+
+            {/* 3. Formación Doctoral (FRH Tipo A) */}
+            <div className='rounded-xl border border-border/60 bg-muted/20 p-3.5 space-y-2 relative overflow-hidden'>
+              <div className='flex items-center justify-between'>
+                <div className='flex items-center gap-1.5 text-xs font-semibold text-foreground'>
+                  <GraduationCap className='h-4 w-4 text-emerald-600 dark:text-emerald-400' />
+                  <span>FRH Tipo A (Doctoral)</span>
+                </div>
+                {(data.summary.frh_a_count ?? 0) > 0 ? (
+                  <Badge variant='outline' className='text-[10px] font-mono border-emerald-500/40 bg-emerald-500/10 text-emerald-700 dark:text-emerald-300'>
+                    A1 / A Apto
+                  </Badge>
+                ) : (
+                  <Badge variant='outline' className='text-[10px] font-mono border-amber-500/40 bg-amber-500/10 text-amber-700 dark:text-amber-300'>
+                    Bloquea A1 y A
+                  </Badge>
+                )}
+              </div>
+              <div className='flex items-baseline gap-2'>
+                <div className='text-2xl font-bold font-mono tracking-tight text-emerald-600 dark:text-emerald-400'>
+                  {data.summary.frh_a_count ?? 0}
+                </div>
+                <span className='text-[11px] text-muted-foreground'>
+                  tesis doctorales
+                </span>
+              </div>
+              <p className='text-[11px] text-muted-foreground leading-snug'>
+                Tesis de doctorado concluidas. Requisito estricto para categorías A y A1.
+              </p>
+            </div>
+
+            {/* 4. Capital Humano y Trayectoria */}
+            <div className='rounded-xl border border-border/60 bg-muted/20 p-3.5 space-y-2 relative overflow-hidden'>
+              <div className='flex items-center justify-between'>
+                <div className='flex items-center gap-1.5 text-xs font-semibold text-foreground'>
+                  <Users className='h-4 w-4 text-primary' />
+                  <span>Talento y Trayectoria</span>
+                </div>
+                <Badge variant='outline' className='text-[10px] font-mono border-primary/30 text-primary'>
+                  {data.summary.years_active} años
+                </Badge>
+              </div>
+              <div className='flex items-baseline gap-2'>
+                <div className='text-2xl font-bold font-mono tracking-tight text-foreground'>
+                  {data.summary.phd_count} <span className='text-sm font-normal text-muted-foreground'>Dr.</span> / {data.summary.masters_count} <span className='text-sm font-normal text-muted-foreground'>Ms.</span>
+                </div>
+              </div>
+              <p className='text-[11px] text-muted-foreground leading-snug'>
+                {data.summary.total_members} integrantes totales. Fundado en {data.summary.creation_year || '—'}.
+              </p>
+            </div>
+          </div>
+        </div>
+
+        {/* Producción por Ventana Normativa Diferenciada */}
+        <div className='space-y-2'>
+          <div className='flex items-center justify-between text-xs font-semibold text-muted-foreground uppercase tracking-wider'>
+            <span>Producción en Ventanas Diferenciadas (5, 7 y 10 años)</span>
+            <span className='text-[11px] font-normal text-muted-foreground lowercase'>
+              {data.summary.products_in_window} de {data.summary.total_products} históricas
+            </span>
           </div>
 
-          <div className='rounded-lg border border-border/50 bg-muted/20 p-2.5 text-center'>
-            <div className='flex items-center justify-center gap-1 text-[11px] text-muted-foreground'>
-              <Layers className='h-3 w-3' /> Obras Ventana
+          <div className='grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3'>
+            <div className='rounded-lg border border-border/50 bg-muted/20 p-2.5 text-center'>
+              <div className='flex items-center justify-center gap-1 text-[11px] text-muted-foreground'>
+                <Layers className='h-3 w-3' /> Total Ventana
+              </div>
+              <div className='text-base font-bold font-mono mt-1'>{data.summary.products_in_window}</div>
+              <div className='text-[10px] text-muted-foreground mt-0.5'>5, 7 y 10 años</div>
             </div>
-            <div className='text-base font-bold font-mono mt-1'>{data.summary.products_in_window}</div>
-            <div className='text-[10px] text-muted-foreground mt-0.5'>Últimos 5 años</div>
-          </div>
 
-          <div className='rounded-lg border border-border/50 bg-muted/20 p-2.5 text-center'>
-            <div className='flex items-center justify-center gap-1 text-[11px] text-muted-foreground'>
-              <FileCode className='h-3 w-3' /> DTI (Tecnología)
+            <div className='rounded-lg border border-border/50 bg-muted/20 p-2.5 text-center'>
+              <div className='flex items-center justify-center gap-1 text-[11px] text-muted-foreground'>
+                <BookOpen className='h-3 w-3' /> Tipo A (Calidad)
+              </div>
+              <div className='text-base font-bold font-mono mt-1 text-primary'>
+                {data.summary.type_a_count ?? 0}
+              </div>
+              <div className='text-[10px] text-muted-foreground mt-0.5'>Art. A1-B / Libros</div>
             </div>
-            <div className='text-base font-bold font-mono mt-1 text-primary'>{data.summary.dti_count}</div>
-            <div className='text-[10px] text-muted-foreground mt-0.5'>Software / Patentes</div>
-          </div>
 
-          <div className='rounded-lg border border-border/50 bg-muted/20 p-2.5 text-center'>
-            <div className='flex items-center justify-center gap-1 text-[11px] text-muted-foreground'>
-              <Award className='h-3 w-3' /> FRH (Formación)
+            <div className='rounded-lg border border-border/50 bg-muted/20 p-2.5 text-center'>
+              <div className='flex items-center justify-center gap-1 text-[11px] text-muted-foreground'>
+                <Layers className='h-3 w-3' /> Tipo B
+              </div>
+              <div className='text-base font-bold font-mono mt-1'>
+                {data.summary.type_b_count ?? 0}
+              </div>
+              <div className='text-[10px] text-muted-foreground mt-0.5'>Art. C-D / Capítulos</div>
             </div>
-            <div className='text-base font-bold font-mono mt-1 text-violet-600 dark:text-violet-400'>
-              {data.summary.frh_count}
-            </div>
-            <div className='text-[10px] text-muted-foreground mt-0.5'>Tesis dirigidas</div>
-          </div>
 
-          <div className='rounded-lg border border-border/50 bg-muted/20 p-2.5 text-center'>
-            <div className='flex items-center justify-center gap-1 text-[11px] text-muted-foreground'>
-              <FolderGit2 className='h-3 w-3' /> Proyectos
+            <div className='rounded-lg border border-border/50 bg-muted/20 p-2.5 text-center'>
+              <div className='flex items-center justify-center gap-1 text-[11px] text-muted-foreground'>
+                <FileCode className='h-3 w-3' /> DTI (Tecnología)
+              </div>
+              <div className='text-base font-bold font-mono mt-1 text-primary'>{data.summary.dti_count}</div>
+              <div className='text-[10px] text-muted-foreground mt-0.5'>Software / Patentes</div>
             </div>
-            <div className='text-base font-bold font-mono mt-1'>{data.summary.projects_count}</div>
-            <div className='text-[10px] text-muted-foreground mt-0.5'>I+D en curso</div>
+
+            <div className='rounded-lg border border-border/50 bg-muted/20 p-2.5 text-center'>
+              <div className='flex items-center justify-center gap-1 text-[11px] text-muted-foreground'>
+                <Award className='h-3 w-3' /> FRH (Formación)
+              </div>
+              <div className='text-base font-bold font-mono mt-1 text-violet-600 dark:text-violet-400'>
+                {data.summary.frh_count}
+              </div>
+              <div className='text-[10px] text-muted-foreground mt-0.5'>
+                {data.summary.frh_a_count ?? 0} Dr. + {data.summary.frh_b_count ?? 0} Ms.
+              </div>
+            </div>
+
+            <div className='rounded-lg border border-border/50 bg-muted/20 p-2.5 text-center'>
+              <div className='flex items-center justify-center gap-1 text-[11px] text-muted-foreground'>
+                <FolderGit2 className='h-3 w-3' /> Proyectos
+              </div>
+              <div className='text-base font-bold font-mono mt-1'>{data.summary.projects_count}</div>
+              <div className='text-[10px] text-muted-foreground mt-0.5'>I+D en curso</div>
+            </div>
           </div>
         </div>
 
         {/* Selector de Nivel a Inspeccionar */}
         <div className='space-y-3'>
-          <div className='flex items-center justify-between'>
+          <div className='flex flex-col sm:flex-row sm:items-center justify-between gap-1'>
             <span className='text-xs font-semibold text-muted-foreground uppercase tracking-wider'>
               Checklist de Requisitos por Nivel:
             </span>
@@ -214,7 +365,7 @@ export function MincienciasDiagnosisCard({ data, className }: MincienciasDiagnos
             </span>
           </div>
 
-          <div className='grid grid-cols-2 sm:grid-cols-5 gap-2'>
+          <div className='grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-2'>
             {data.tiers.map((tier) => {
               const isSelected = tier.tier === activeTier?.tier
 
@@ -226,7 +377,7 @@ export function MincienciasDiagnosisCard({ data, className }: MincienciasDiagnos
                   size='sm'
                   onClick={() => setSelectedTier(tier.tier)}
                   className={cn(
-                    'h-10 justify-between px-3 text-xs font-semibold rounded-lg',
+                    'h-10 justify-between px-3 text-xs font-semibold rounded-lg last:col-span-2 sm:last:col-span-1 lg:last:col-span-1',
                     isSelected
                       ? 'shadow-xs'
                       : tier.qualifies
@@ -249,9 +400,9 @@ export function MincienciasDiagnosisCard({ data, className }: MincienciasDiagnos
         {/* Detalle del Nivel Activo */}
         {activeTier && (
           <div className='rounded-xl border border-border/60 bg-card p-4 space-y-4'>
-            <div className='flex items-center justify-between gap-2 border-b border-border/40 pb-3'>
+            <div className='flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-border/40 pb-3'>
               <div>
-                <div className='flex items-center gap-2'>
+                <div className='flex items-center gap-2 flex-wrap'>
                   <span className='font-bold text-sm text-foreground'>{activeTier.title}</span>
                   {activeTier.qualifies ? (
                     <Badge variant='outline' className='text-[10px] border-emerald-500/40 bg-emerald-500/10 text-emerald-700 dark:text-emerald-300'>
@@ -267,7 +418,7 @@ export function MincienciasDiagnosisCard({ data, className }: MincienciasDiagnos
               </div>
 
               {isCurrentMax && (
-                <Badge variant='secondary' className='text-[10px] shrink-0 font-medium'>
+                <Badge variant='secondary' className='text-[10px] self-start sm:self-auto shrink-0 font-medium'>
                   Nivel Alcanzado
                 </Badge>
               )}
@@ -276,20 +427,25 @@ export function MincienciasDiagnosisCard({ data, className }: MincienciasDiagnos
             {/* Lista de Requisitos */}
             <div className='divide-y divide-border/40'>
               {activeTier.requirements.map((req) => (
-                <div key={req.id} className='flex items-center justify-between gap-3 py-2.5 text-xs'>
-                  <div className='flex items-center gap-2.5 min-w-0'>
+                <div
+                  key={req.id}
+                  className='flex flex-col sm:flex-row sm:items-center justify-between gap-2 sm:gap-3 py-3 text-xs'
+                >
+                  <div className='flex items-start sm:items-center gap-2.5 min-w-0'>
                     {req.met ? (
-                      <CheckCircle2 className='h-4 w-4 text-emerald-500 shrink-0' />
+                      <CheckCircle2 className='h-4 w-4 text-emerald-500 shrink-0 mt-0.5 sm:mt-0' />
                     ) : (
-                      <AlertCircle className='h-4 w-4 text-amber-500 shrink-0' />
+                      <AlertCircle className='h-4 w-4 text-amber-500 shrink-0 mt-0.5 sm:mt-0' />
                     )}
                     <div className='min-w-0'>
-                      <div className='font-semibold text-foreground truncate'>{req.label}</div>
-                      <div className='text-[11px] text-muted-foreground truncate'>{req.description}</div>
+                      <div className='font-semibold text-foreground leading-tight'>{req.label}</div>
+                      <div className='text-[11px] text-muted-foreground line-clamp-2 sm:truncate mt-0.5 sm:mt-0'>
+                        {req.description}
+                      </div>
                     </div>
                   </div>
 
-                  <div className='text-right shrink-0 flex items-center gap-3'>
+                  <div className='flex items-center justify-between sm:justify-end gap-2.5 pl-6 sm:pl-0 shrink-0'>
                     <div className='text-[11px]'>
                       <span className='text-muted-foreground'>Requerido: </span>
                       <span className='font-mono font-medium'>{req.target} {req.unit}</span>
@@ -297,7 +453,7 @@ export function MincienciasDiagnosisCard({ data, className }: MincienciasDiagnos
                     <Badge
                       variant='outline'
                       className={cn(
-                        'text-[10px] font-mono font-bold px-2 py-0.5',
+                        'text-[10px] font-mono font-bold px-2 py-0.5 shrink-0',
                         req.met
                           ? 'border-emerald-500/30 bg-emerald-500/10 text-emerald-700 dark:text-emerald-300'
                           : 'border-amber-500/30 bg-amber-500/10 text-amber-700 dark:text-amber-300'
@@ -311,6 +467,22 @@ export function MincienciasDiagnosisCard({ data, className }: MincienciasDiagnos
             </div>
           </div>
         )}
+
+        {/* Nota Metodológica Minciencias 2024 */}
+        <div className='rounded-lg border border-border/40 bg-muted/10 p-3 text-xs text-muted-foreground space-y-1.5'>
+          <div className='flex items-center gap-1.5 font-semibold text-foreground text-[11px]'>
+            <Info className='h-3.5 w-3.5 text-primary' />
+            <span>Reglas del Modelo de Medición Minciencias 2024 (Anexo 1):</span>
+          </div>
+          <div className='grid grid-cols-1 md:grid-cols-2 gap-2 text-[11px] leading-relaxed'>
+            <div>
+              <strong>• Ventanas diferenciadas:</strong> 10 años para patentes, variedades vegetales y creación; 7 años para artículos en revistas indexadas (A1-C) y libros de investigación; 5 años para software, prototipos, FRH, ASC y DPC.
+            </div>
+            <div>
+              <strong>• Cohesión y Tipologías:</strong> El Índice de Cohesión (I<sub>C</sub> = Autores/Productos - 1) exige colaboración interna efectiva (I<sub>C</sub> &gt; 0). Las categorías A y A1 exigen obligatoriamente dirección de tesis doctoral (FRH Tipo A), y A1 requiere al menos 1 producto TOP.
+            </div>
+          </div>
+        </div>
       </CardContent>
     </Card>
   )

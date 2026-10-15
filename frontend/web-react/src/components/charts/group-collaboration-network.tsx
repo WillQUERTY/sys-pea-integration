@@ -268,6 +268,7 @@ export function GroupCollaborationNetwork({
 }: GroupCollaborationNetworkProps) {
   const [minWeightFilter, setMinWeightFilter] = useState<number>(1)
   const [isoOpen, setIsoOpen] = useState<boolean>(false)
+  const [showLegendMobile, setShowLegendMobile] = useState<boolean>(false)
   const [searchQuery, setSearchQuery] = useState<string>('')
   const [selectedNodeId, setSelectedNodeId] = useState<number | null>(null)
   const [hoveredNodeId, setHoveredNodeId] = useState<number | null>(null)
@@ -520,23 +521,23 @@ export function GroupCollaborationNetwork({
             </div>
           </div>
 
-          <div className='flex flex-wrap items-center gap-1.5 sm:gap-2 text-xs'>
-            <div className={kpi}>
+          <div className='grid grid-cols-2 sm:flex sm:flex-wrap items-center gap-1.5 sm:gap-2 text-xs w-full sm:w-auto'>
+            <div className={cn(kpi, 'justify-center sm:justify-start')}>
               <Users className='h-3.5 w-3.5 text-blue-500' />
               <span className='text-muted-foreground'>Nodos:</span>
               <span className='font-bold tabular-nums'>{data.metrics.total_nodes}</span>
             </div>
-            <div className={kpi}>
+            <div className={cn(kpi, 'justify-center sm:justify-start')}>
               <GitFork className='h-3.5 w-3.5 text-emerald-500' />
               <span className='text-muted-foreground'>Lazos:</span>
               <span className='font-bold tabular-nums'>{data.metrics.total_edges}</span>
             </div>
-            <div className={kpi}>
+            <div className={cn(kpi, 'justify-center sm:justify-start')}>
               <Activity className='h-3.5 w-3.5 text-indigo-500' />
               <span className='text-muted-foreground'>Cohesión:</span>
               <span className='font-bold tabular-nums'>{data.metrics.cohesion_index}%</span>
             </div>
-            <div className={kpi}>
+            <div className={cn(kpi, 'justify-center sm:justify-start')}>
               <Award className='h-3.5 w-3.5 text-amber-500' />
               <span className='text-muted-foreground'>Máx. Coautoría:</span>
               <span className='font-bold tabular-nums'>{data.metrics.max_weight} docs</span>
@@ -595,7 +596,7 @@ export function GroupCollaborationNetwork({
         <div className='flex-1 min-w-0 flex flex-col'>
           {/* Lienzo */}
           <div
-            className='relative min-h-[440px] sm:min-h-[540px] flex items-center justify-center overflow-hidden'
+            className='relative min-h-[360px] sm:min-h-[520px] flex items-center justify-center overflow-hidden'
             style={{
               background:
                 'radial-gradient(ellipse at 50% 45%, color-mix(in srgb, var(--primary) 9%, transparent) 0%, transparent 68%), color-mix(in srgb, var(--muted) 35%, transparent)',
@@ -877,9 +878,40 @@ export function GroupCollaborationNetwork({
               </div>
             )}
 
-            <div className='absolute bottom-3 right-3 bg-background/90 backdrop-blur-xs border border-border/60 rounded-md p-2 shadow-sm text-[10px] space-y-1 z-10'>
-              <div className='font-semibold text-muted-foreground mb-1 flex items-center gap-1'>
-                <Info className='h-3 w-3' /> Nivel Formación
+            {/* Botón flotante móvil para Leyenda */}
+            <div className='sm:hidden absolute bottom-3 right-3 z-10'>
+              <Button
+                type='button'
+                variant='secondary'
+                size='sm'
+                className='h-7 px-2 text-[10px] gap-1 shadow-sm bg-background/90 backdrop-blur-xs border border-border/60'
+                onClick={() => setShowLegendMobile((v) => !v)}
+              >
+                <Info className='h-3 w-3 text-primary' />
+                <span>Leyenda</span>
+              </Button>
+            </div>
+
+            {/* Tarjeta de Leyenda (desktop siempre visible, móvil condicional) */}
+            <div
+              className={cn(
+                'absolute right-3 bg-background/95 backdrop-blur-xs border border-border/60 rounded-md p-2 shadow-sm text-[10px] space-y-1 z-10 transition-all',
+                showLegendMobile ? 'block bottom-11' : 'hidden sm:block sm:bottom-3'
+              )}
+            >
+              <div className='flex items-center justify-between gap-2 font-semibold text-muted-foreground mb-1'>
+                <div className='flex items-center gap-1'>
+                  <Info className='h-3 w-3' /> Nivel Formación
+                </div>
+                {showLegendMobile && (
+                  <button
+                    type='button'
+                    onClick={() => setShowLegendMobile(false)}
+                    className='sm:hidden text-muted-foreground hover:text-foreground text-xs font-bold px-1'
+                  >
+                    ×
+                  </button>
+                )}
               </div>
               {Object.entries(EDUCATION_COLORS).map(([lvl, col]) => (
                 <div key={lvl} className='flex items-center gap-1.5'>

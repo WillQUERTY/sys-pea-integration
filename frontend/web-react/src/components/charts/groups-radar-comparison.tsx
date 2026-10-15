@@ -605,27 +605,27 @@ export function GroupsRadarComparison({
         {/* Sistema de Pestañas: Radar, Matriz Detallada, Autores Clave */}
         <Tabs defaultValue='radar' className='w-full space-y-4'>
           <div className='flex flex-wrap items-center justify-between gap-3 border-b border-border/50 pb-3'>
-            <TabsList className='bg-muted/60 p-1 rounded-xl h-9'>
+            <TabsList className='bg-muted/60 p-1 rounded-xl h-9 w-full sm:w-auto grid grid-cols-3 sm:flex'>
               <TabsTrigger
                 value='radar'
-                className='text-xs font-semibold px-3 py-1.5 gap-1.5 data-[state=active]:bg-background data-[state=active]:shadow-xs'
+                className='text-xs font-semibold px-2 sm:px-3 py-1.5 gap-1.5 data-[state=active]:bg-background data-[state=active]:shadow-xs'
               >
-                <RadarIcon className='h-3.5 w-3.5 text-primary' />
-                <span>Radar y Diagnóstico</span>
+                <RadarIcon className='h-3.5 w-3.5 text-primary shrink-0' />
+                <span>Radar<span className='hidden sm:inline'> y Diagnóstico</span></span>
               </TabsTrigger>
               <TabsTrigger
                 value='matrix'
-                className='text-xs font-semibold px-3 py-1.5 gap-1.5 data-[state=active]:bg-background data-[state=active]:shadow-xs'
+                className='text-xs font-semibold px-2 sm:px-3 py-1.5 gap-1.5 data-[state=active]:bg-background data-[state=active]:shadow-xs'
               >
-                <Scale className='h-3.5 w-3.5 text-amber-500' />
-                <span>Matriz de Indicadores</span>
+                <Scale className='h-3.5 w-3.5 text-amber-500 shrink-0' />
+                <span>Matriz<span className='hidden sm:inline'> de Indicadores</span></span>
               </TabsTrigger>
               <TabsTrigger
                 value='talent'
-                className='text-xs font-semibold px-3 py-1.5 gap-1.5 data-[state=active]:bg-background data-[state=active]:shadow-xs'
+                className='text-xs font-semibold px-2 sm:px-3 py-1.5 gap-1.5 data-[state=active]:bg-background data-[state=active]:shadow-xs'
               >
-                <Users className='h-3.5 w-3.5 text-blue-500' />
-                <span>Autores Clave ({groups.filter((g) => g.id > 0).length})</span>
+                <Users className='h-3.5 w-3.5 text-blue-500 shrink-0' />
+                <span>Autores<span className='hidden sm:inline'> Clave</span> ({groups.filter((g) => g.id > 0).length})</span>
               </TabsTrigger>
             </TabsList>
 
@@ -690,16 +690,16 @@ export function GroupsRadarComparison({
                   </div>
                 </div>
 
-                <div className='h-[350px] sm:h-[390px] w-full'>
+                <div className='h-[330px] sm:h-[390px] w-full'>
                   <ResponsiveContainer width='100%' height='100%'>
                     {viewMode === 'radar' ? (
-                      <RadarChart data={radarChartData} outerRadius='75%'>
+                      <RadarChart data={radarChartData} outerRadius='70%'>
                         <PolarGrid stroke='hsl(var(--border))' strokeDasharray='3 3' />
                         <PolarAngleAxis
                           dataKey='short_label'
                           tick={{
                             fill: 'hsl(var(--foreground))',
-                            fontSize: 12,
+                            fontSize: 11,
                             fontWeight: 600,
                           }}
                         />

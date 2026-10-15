@@ -1,8 +1,8 @@
 {
   "schemaVersion": "1.2",
   "groups": [
-    {"id": 10, "external_code": "COL0043834", "name": "AITICE", "acronym": "", "description": "", "classification": "Bcon vigencia hasta la publicación de los resultados de la siguiente convocatoria", "status": "active"},
-    {"id": 35, "external_code": "COL0002099", "name": "GRUPO DE INVESTIGACION EN SISTEMAS Y COMPUTACIÓN -GISICO-", "acronym": "", "description": "", "classification": "Ccon vigencia hasta la publicación de los resultados de la siguiente convocatoria", "status": "active"}
+    {"id": 10, "external_code": "COL0043834", "name": "AITICE", "acronym": "", "description": "", "classification": "B", "status": "active"},
+    {"id": 35, "external_code": "COL0002099", "name": "GRUPO DE INVESTIGACION EN SISTEMAS Y COMPUTACIÓN -GISICO-", "acronym": "", "description": "", "classification": "C", "status": "active"}
   ],
   "researchers": [
     {"id": 101, "external_code": "0000579882", "first_names": "Armando Javier", "last_names": "Lopez Sierra", "institutional_email": "", "status": "active"},
