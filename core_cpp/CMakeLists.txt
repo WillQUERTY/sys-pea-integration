@@ -16,10 +16,27 @@ add_library(abpoxx STATIC
     src/services/work_plan_service.cpp
     src/services/project_service.cpp
     src/persistence/json_persistence.cpp
+    src/persistence/json/json_common.cpp
+    src/persistence/json/json_exporter.cpp
+    src/persistence/json/json_loader.cpp
     src/persistence/db_persistence.cpp
+    src/persistence/db/db_common.cpp
+    src/persistence/db/db_loader.cpp
+    src/persistence/db/db_saver.cpp
+    src/persistence/db/db_entity_sync.cpp
+    src/persistence/db/db_operations.cpp
+    src/persistence/db/db_analytics.cpp
+    src/persistence/db/db_dashboard_analytics.cpp
+    src/persistence/db/db_group_analytics.cpp
+    src/persistence/db/db_researcher_analytics.cpp
+    src/persistence/db/db_network_analytics.cpp
+    src/persistence/db/db_catalogs_analytics.cpp
 )
 target_include_directories(abpoxx PUBLIC
     $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
+)
+target_include_directories(abpoxx PRIVATE
+    ${CMAKE_CURRENT_SOURCE_DIR}/src
 )
 
 # Link ODBC (native on Windows, requires unixODBC on Linux)
@@ -29,8 +46,19 @@ else()
     target_link_libraries(abpoxx PUBLIC odbc)
 endif()
 
-# ---- CLI executable ----
-add_executable(pea_cli src/pea_cli.cpp)
+# ---- CLI executable (modular sources) ----
+add_executable(pea_cli
+    src/pea_cli.cpp
+    src/cli/cli_helpers.cpp
+    src/cli/group_commands.cpp
+    src/cli/researcher_commands.cpp
+    src/cli/product_commands.cpp
+    src/cli/plan_project_commands.cpp
+    src/cli/queue_history_commands.cpp
+    src/cli/structure_commands.cpp
+    src/cli/interactive_repl.cpp
+)
+target_include_directories(pea_cli PRIVATE src)
 target_link_libraries(pea_cli PRIVATE abpoxx)
 
 # ---- Structure tests (sección 41.1) ----

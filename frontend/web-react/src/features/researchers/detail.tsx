@@ -1,4 +1,4 @@
-import { useEffect, useState, useMemo } from 'react'
+import { useEffect, useState } from 'react'
 import { useParams, Link } from '@tanstack/react-router'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { toast } from 'sonner'
@@ -7,16 +7,7 @@ import {
   User as UserIcon,
   BookOpen,
   Users,
-  Save,
-  GraduationCap,
-  Mail,
-  Fingerprint,
-  UserPlus,
-  Trash2,
-  ExternalLink,
   BarChart2,
-  CheckCircle2,
-  Award,
 } from 'lucide-react'
 
 import {
@@ -24,58 +15,30 @@ import {
   updateResearcher,
   getResearcherProducts,
   getResearcherGroups,
-  getResearcherStats,
-  listGroups,
-  linkMember,
-  unlinkMember,
-  getProductCatalogs,
 } from '@/lib/api'
-import {
-  ProductionHistogram,
-  FamiliesDonut,
-  TopSubtypesRanking,
-  ResearcherGroupsContribution,
-  ResearcherTopCoauthors,
-} from '@/components/charts'
-import type { Researcher, Group, Product } from '@/lib/types'
-import { MEMBER_ROLES, EDUCATION_LEVELS } from '@/lib/catalogs'
-import { CatalogSelect, CatalogCombobox } from '@/components/catalog-field'
-import { MonthPicker } from '@/components/month-picker'
-import { EntityCombobox, type EntityItem } from '@/components/entity-combobox'
-import { ConfirmDialog } from '@/components/confirm-dialog'
+import type { Researcher } from '@/lib/types'
 import { ActionTooltip } from '@/components/action-tooltip'
-import { ResearcherAvatar } from '@/components/researcher-avatar'
-import { ValidationBadge } from '@/features/groups/detail'
-import { isEndorsed, EndorsedBadge } from '@/features/products/endorsed'
-import { DataTable, type DataFilter } from '@/components/data-table'
-
 import { Header } from '@/components/layout/header'
 import { Main } from '@/components/layout/main'
 import { ProfileDropdown } from '@/components/profile-dropdown'
 import { ThemeSwitch } from '@/components/theme-switch'
 import { ConfigDrawer } from '@/components/config-drawer'
-
 import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
-import { Label } from '@/components/ui/label'
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog'
-import { Skeleton } from '@/components/ui/skeleton'
 import { Badge } from '@/components/ui/badge'
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
+import { Skeleton } from '@/components/ui/skeleton'
 
-function Field({ label, value, mono = false }: { label: string; value?: React.ReactNode; mono?: boolean }) {
-  return (
-    <div className='space-y-1'>
-      <p className='text-xs font-medium uppercase tracking-wider text-muted-foreground'>{label}</p>
-      <p className={`text-sm ${mono ? 'font-mono' : ''}`}>{value ?? '—'}</p>
-    </div>
-  )
-}
+import {
+  ResearcherProfileHeader,
+  ResearcherProfileTab,
+  ResearcherProductsTab,
+  ResearcherGroupsTab,
+  ResearcherAnalyticsTab,
+} from './components'
 
 export function ResearcherDetail({ isAdmin = false }: { isAdmin?: boolean }) {
   const { id } = useParams({ strict: false }) as { id: string }
   const queryClient = useQueryClient()
-  
   const researcherId = Number(id)
 
   const { data: researcher, isLoading } = useQuery({
@@ -93,93 +56,8 @@ export function ResearcherDetail({ isAdmin = false }: { isAdmin?: boolean }) {
     queryFn: () => getResearcherGroups(researcherId),
   })
 
-  const { data: stats, isLoading: isLoadingStats } = useQuery({
-    queryKey: ['researcher-stats', researcherId],
-    queryFn: () => getResearcherStats(researcherId),
-  })
-
-  const { data: catalogs } = useQuery({
-    queryKey: ['product-catalogs'],
-    queryFn: getProductCatalogs,
-  })
-
-  const subtypeById = useMemo(
-    () => new Map((catalogs?.subtypes ?? []).map((s) => [s.id, s])),
-    [catalogs]
-  )
-
-  const productStatusFilters: DataFilter[] = [
-    {
-      key: 'status',
-      label: 'Estado de validación',
-      defaultValue: 'all',
-      options: [
-        { value: 'all', label: 'Todos los estados' },
-        { value: 'valid', label: 'Validados' },
-        { value: 'pending', label: 'Pendientes' },
-        { value: 'rejected', label: 'Rechazados' },
-      ],
-    },
-  ]
-
   const [formData, setFormData] = useState<Partial<Researcher>>({})
-  const [unlinkingGroup, setUnlinkingGroup] = useState<Group | null>(null)
 
-  // Vinculación a grupos (lado investigador de la multilista — Req. 5)
-  const [groupOpen, setGroupOpen] = useState(false)
-  const [groupSearch, setGroupSearch] = useState('')
-  const [selectedGroupId, setSelectedGroupId] = useState<number | null>(null)
-  const [memberRole, setMemberRole] = useState('Investigador')
-  const [memberStartDate, setMemberStartDate] = useState('')
-
-  const { data: groupResults, isFetching: isSearchingGroups } = useQuery({
-    queryKey: ['groups', 'picker', groupSearch],
-    queryFn: () => listGroups({ search: groupSearch, limit: 8 }),
-    enabled: groupOpen,
-  })
-  const linkableGroups = (groupResults?.items ?? []).filter(
-    (g) => !(groups ?? []).some((gg) => gg.id === g.id)
-  )
-
-  const groupItems = useMemo<EntityItem[]>(() => {
-    return linkableGroups.map((g) => ({
-      id: g.id!,
-      label: g.name,
-      subLabel: g.acronym || g.external_code || null,
-      badge: g.classification ?? null,
-    }))
-  }, [linkableGroups])
-
-  const linkGroupMutation = useMutation({
-    mutationFn: () =>
-      linkMember(selectedGroupId!, researcherId, {
-        role: memberRole,
-        start_date: memberStartDate,
-      }),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['researcher-groups', researcherId] })
-      queryClient.invalidateQueries({ queryKey: ['groups'] })
-      toast.success('Investigador vinculado al grupo')
-      setGroupOpen(false)
-      setSelectedGroupId(null)
-      setGroupSearch('')
-      setMemberRole('Investigador')
-      setMemberStartDate('')
-    },
-    onError: (e) => toast.error(e instanceof Error ? e.message : 'Error al vincular')
-  })
-
-  const unlinkGroupMutation = useMutation({
-    mutationFn: (gid: number) => unlinkMember(gid, researcherId),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['researcher-groups', researcherId] })
-      queryClient.invalidateQueries({ queryKey: ['groups'] })
-      toast.success('Vinculación eliminada')
-    },
-    onError: (e) => toast.error(e instanceof Error ? e.message : 'Error al desvincular')
-  })
-
-  // Sync state when researcher loads
   useEffect(() => {
     if (researcher) {
       setFormData({
@@ -205,8 +83,8 @@ export function ResearcherDetail({ isAdmin = false }: { isAdmin?: boolean }) {
     },
   })
 
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault()
+  const handleSubmit = (e?: React.FormEvent) => {
+    e?.preventDefault()
     mutation.mutate(formData)
   }
 
@@ -245,11 +123,6 @@ export function ResearcherDetail({ isAdmin = false }: { isAdmin?: boolean }) {
     )
   }
 
-  const educationList = (researcher.education_records ?? '')
-    .split(';')
-    .map((s) => s.trim())
-    .filter(Boolean)
-
   return (
     <>
       {isAdmin && (
@@ -279,55 +152,12 @@ export function ResearcherDetail({ isAdmin = false }: { isAdmin?: boolean }) {
 
       <Main className={`p-0 sm:p-6 ${!isAdmin ? 'max-w-5xl mx-auto w-full' : ''}`}>
         {/* Cover & Profile Header */}
-        <div className='relative mb-8 rounded-b-none sm:rounded-2xl overflow-hidden border border-border/50 bg-card shadow-sm'>
-          <div className='h-32 bg-gradient-to-r from-primary/15 via-background to-secondary/15 relative'>
-            <div className='absolute inset-0 bg-radial from-transparent to-card/50' />
-          </div>
-          
-          <div className='px-6 pb-6 pt-0 relative'>
-            <div className='flex flex-col sm:flex-row gap-6 items-start sm:items-end -mt-12'>
-              <ResearcherAvatar
-                firstName={researcher.first_names}
-                lastName={researcher.last_names}
-                size='xl'
-                shape='rounded'
-                className='border-4 border-card shadow-lg shrink-0'
-              />
-              
-              <div className='flex-1 pb-1'>
-                <h1 className='text-2xl font-bold'>{researcher.first_names} {researcher.last_names}</h1>
-                <div className='flex flex-wrap gap-2 mt-2'>
-                  {researcher.classification_records && (
-                    <Badge variant='outline' className='text-xs font-semibold border-violet-500/30 bg-violet-500/10 text-violet-700 dark:text-violet-300 max-w-64 truncate'>
-                      {researcher.classification_records}
-                    </Badge>
-                  )}
-                  {researcher.highest_education_level && (
-                    <Badge variant='outline' className='text-xs font-normal border-primary/30 bg-primary/5 text-primary'>
-                      {researcher.highest_education_level}
-                    </Badge>
-                  )}
-                  <Badge variant='outline' className='text-xs font-normal text-muted-foreground'>
-                    {researcher.external_code}
-                  </Badge>
-                </div>
-              </div>
-              
-              {isAdmin && (
-                <div className='pb-1 w-full sm:w-auto'>
-                  <Button
-                    onClick={handleSubmit}
-                    disabled={mutation.isPending}
-                    className='w-full sm:w-auto rounded-xl shadow-md'
-                  >
-                    <Save className='mr-2 h-4 w-4' />
-                    {mutation.isPending ? 'Guardando...' : 'Guardar Cambios'}
-                  </Button>
-                </div>
-              )}
-            </div>
-          </div>
-        </div>
+        <ResearcherProfileHeader
+          researcher={researcher}
+          isAdmin={isAdmin}
+          onSave={() => handleSubmit()}
+          isSaving={mutation.isPending}
+        />
 
         {/* Tabs */}
         <Tabs defaultValue="perfil" className="space-y-6">
@@ -359,485 +189,40 @@ export function ResearcherDetail({ isAdmin = false }: { isAdmin?: boolean }) {
           </TabsList>
 
           <TabsContent value="perfil" className="focus-visible:outline-none">
-            {isAdmin ? (
-            <form onSubmit={handleSubmit} className="grid grid-cols-1 md:grid-cols-2 gap-6">
-
-              {/* Información Personal */}
-              <div className="bg-card border border-border/50 rounded-2xl p-6 shadow-sm">
-                <div className='flex items-center gap-2 mb-6'>
-                  <div className='p-2 bg-primary/10 rounded-lg'>
-                    <UserIcon className='h-4 w-4 text-primary' />
-                  </div>
-                  <h3 className="font-semibold text-lg">Información Personal</h3>
-                </div>
-                
-                <div className="space-y-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="first_names">Nombres</Label>
-                    <Input
-                      id="first_names"
-                      value={formData.first_names}
-                      onChange={(e) => setFormData({ ...formData, first_names: e.target.value })}
-                      required
-                      className='bg-muted/30 focus-visible:bg-transparent rounded-xl'
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="last_names">Apellidos</Label>
-                    <Input
-                      id="last_names"
-                      value={formData.last_names}
-                      onChange={(e) => setFormData({ ...formData, last_names: e.target.value })}
-                      required
-                      className='bg-muted/30 focus-visible:bg-transparent rounded-xl'
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="external_code">Código CvLAC / Identificación</Label>
-                    <div className='relative'>
-                      <Fingerprint className='absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground' />
-                      <Input
-                        id="external_code"
-                        value={formData.external_code}
-                        onChange={(e) => setFormData({ ...formData, external_code: e.target.value })}
-                        required
-                        className='pl-9 bg-muted/30 focus-visible:bg-transparent rounded-xl'
-                      />
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              {/* Información Académica y Contacto */}
-              <div className="space-y-6">
-                <div className="bg-card border border-border/50 rounded-2xl p-6 shadow-sm">
-                  <div className='flex items-center gap-2 mb-6'>
-                    <div className='p-2 bg-secondary/10 rounded-lg'>
-                      <GraduationCap className='h-4 w-4 text-secondary' />
-                    </div>
-                    <h3 className="font-semibold text-lg">Académico & Contacto</h3>
-                  </div>
-                  
-                  <div className="space-y-4">
-                    <CatalogCombobox
-                      label="Formación Máxima"
-                      options={EDUCATION_LEVELS}
-                      value={formData.highest_education_level ?? ''}
-                      onChange={(v) => setFormData({ ...formData, highest_education_level: v })}
-                      placeholder="Ej: Doctorado"
-                    />
-                    <div className="space-y-2">
-                      <Label htmlFor="institutional_email">Correo Institucional</Label>
-                      <div className='relative'>
-                        <Mail className='absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground' />
-                        <Input
-                          id="institutional_email"
-                          type="email"
-                          value={formData.institutional_email ?? ''}
-                          onChange={(e) => setFormData({ ...formData, institutional_email: e.target.value })}
-                          className='pl-9 bg-muted/30 focus-visible:bg-transparent rounded-xl'
-                        />
-                      </div>
-                    </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="orcid">ORCID</Label>
-                      <Input
-                        id="orcid"
-                        value={formData.orcid ?? ''}
-                        onChange={(e) => setFormData({ ...formData, orcid: e.target.value })}
-                        placeholder="Ej: 0000-0002-1825-0097"
-                        className='bg-muted/30 focus-visible:bg-transparent rounded-xl font-mono text-sm'
-                      />
-                    </div>
-                  </div>
-                </div>
-              </div>
-              
-            </form>
-            ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              {/* Información Personal (solo lectura) */}
-              <div className="bg-card border border-border/50 rounded-2xl p-6 shadow-sm">
-                <div className='flex items-center gap-2 mb-6'>
-                  <div className='p-2 bg-primary/10 rounded-lg'>
-                    <UserIcon className='h-4 w-4 text-primary' />
-                  </div>
-                  <h3 className="font-semibold text-lg">Información Personal</h3>
-                </div>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  <Field label='Nombres' value={researcher.first_names} />
-                  <Field label='Apellidos' value={researcher.last_names} />
-                  <Field label='Código CvLAC' value={researcher.external_code} mono />
-                  <Field label='Nacionalidad' value={researcher.nationality} />
-                  <Field label='País de residencia' value={researcher.country_of_residence} />
-                </div>
-              </div>
-
-              <div className="space-y-6">
-                {/* Académico (solo lectura; el correo institucional no se expone) */}
-                <div className="bg-card border border-border/50 rounded-2xl p-6 shadow-sm">
-                  <div className='flex items-center gap-2 mb-6'>
-                    <div className='p-2 bg-secondary/10 rounded-lg'>
-                      <GraduationCap className='h-4 w-4 text-secondary' />
-                    </div>
-                    <h3 className="font-semibold text-lg">Académico</h3>
-                  </div>
-                  <div className="space-y-4">
-                    <Field label='Formación Máxima' value={researcher.highest_education_level} />
-                    {researcher.orcid && (
-                      <div className='space-y-1'>
-                        <p className='text-xs font-medium uppercase tracking-wider text-muted-foreground'>ORCID</p>
-                        <a
-                          href={`https://orcid.org/${researcher.orcid}`}
-                          target='_blank'
-                          rel='noreferrer'
-                          className='text-sm font-mono text-primary hover:underline'
-                        >
-                          {researcher.orcid}
-                        </a>
-                      </div>
-                    )}
-                  </div>
-                </div>
-
-                {/* Formación detallada (registros CvLAC separados por ";") */}
-                {educationList.length > 0 && (
-                  <div className="bg-card border border-border/50 rounded-2xl p-6 shadow-sm">
-                    <div className='flex items-center gap-2 mb-4'>
-                      <div className='p-2 bg-violet-500/10 rounded-lg'>
-                        <BookOpen className='h-4 w-4 text-violet-500' />
-                      </div>
-                      <h3 className="font-semibold text-lg">Formación Académica</h3>
-                    </div>
-                    <ul className='list-disc pl-5 space-y-1 text-sm text-muted-foreground'>
-                      {educationList.map((entry, i) => <li key={i}>{entry}</li>)}
-                    </ul>
-                  </div>
-                )}
-              </div>
-            </div>
-            )}
-          </TabsContent>
-
-          <TabsContent value="productos" className="focus-visible:outline-none bg-card border border-border/50 rounded-2xl p-6 shadow-sm">
-            <h3 className="font-semibold text-lg mb-4">Productos del Investigador</h3>
-            <DataTable
-              columns={[
-                {
-                  key: 'title',
-                  header: 'Título del Producto',
-                  searchable: (p: Product) => p.title,
-                  className: 'max-w-[420px]',
-                  cell: (p: Product) => (
-                    <div className='flex items-center gap-2'>
-                      <Link
-                        to={isAdmin ? '/admin/products/$id' : '/products/$id'}
-                        params={{ id: String(p.id) }}
-                        className='block truncate font-medium text-sm text-primary hover:underline'
-                      >
-                        {p.title}
-                      </Link>
-                      {isEndorsed(p) && <EndorsedBadge />}
-                    </div>
-                  )
-                },
-                {
-                  key: 'year',
-                  header: 'Año',
-                  cell: (p: Product) => (
-                    <span className='text-sm text-muted-foreground'>
-                      {p.year ?? (String(p.publication_date ?? '').slice(0, 4) || '—')}
-                    </span>
-                  )
-                },
-                {
-                  key: 'subtype',
-                  header: 'Tipología 2024',
-                  searchable: (p: Product) => {
-                    const s = p.subtype_id ? subtypeById.get(p.subtype_id) : undefined
-                    return s ? `${s.code ?? ''} ${s.name}` : ''
-                  },
-                  cell: (p: Product) => {
-                    const s = p.subtype_id ? subtypeById.get(p.subtype_id) : undefined
-                    return s ? (
-                      <Badge variant='outline' className='font-mono text-xs' title={s.name}>
-                        {s.code ?? s.name}
-                      </Badge>
-                    ) : (
-                      <span className='text-xs text-muted-foreground'>sin clasificar</span>
-                    )
-                  }
-                },
-                {
-                  key: 'status',
-                  header: 'Estado',
-                  cell: (p: Product) => <ValidationBadge status={p.validation_status} />
-                },
-                {
-                  key: 'actions',
-                  header: '',
-                  cell: (p: Product) => (
-                    <div className='flex items-center justify-end'>
-                      <ActionTooltip label="Ver detalle del producto">
-                        <Button variant="ghost" size="icon" asChild className="h-8 w-8 rounded-full">
-                          <Link
-                            to={isAdmin ? '/admin/products/$id' : '/products/$id'}
-                            params={{ id: String(p.id) }}
-                          >
-                            <ExternalLink className="h-4 w-4 text-muted-foreground hover:text-foreground" />
-                          </Link>
-                        </Button>
-                      </ActionTooltip>
-                    </div>
-                  )
-                }
-              ]}
-              data={products ?? []}
-              loading={isLoadingProducts}
-              rowKey={(p) => p.id!}
-              emptyMessage="Este investigador no tiene productos asociados."
-              searchPlaceholder="Buscar productos por título..."
-              filters={productStatusFilters}
-              filterFn={(p: Product, filterValues) => {
-                if (filterValues.status && filterValues.status !== 'all') {
-                  if (p.validation_status !== filterValues.status) return false
-                }
-                return true
-              }}
+            <ResearcherProfileTab
+              researcher={researcher}
+              formData={formData}
+              setFormData={setFormData}
+              isAdmin={isAdmin}
+              onSubmit={handleSubmit}
             />
           </TabsContent>
 
-          <TabsContent value="grupos" className="focus-visible:outline-none bg-card border border-border/50 rounded-2xl p-6 shadow-sm">
-            <div className="flex justify-between items-center mb-4">
-              <h3 className="font-semibold text-lg">Grupos de Investigación</h3>
-              {isAdmin && (
-              <Dialog open={groupOpen} onOpenChange={setGroupOpen}>
-                <DialogTrigger asChild>
-                  <Button size="sm"><UserPlus className="w-4 h-4 mr-2"/> Vincular a Grupo</Button>
-                </DialogTrigger>
-                <DialogContent className='sm:max-w-md'>
-                  <DialogHeader>
-                    <DialogTitle>Vincular a un Grupo</DialogTitle>
-                  </DialogHeader>
-                  <div className="space-y-4 py-4">
-                    <EntityCombobox
-                      label="Grupo de investigación"
-                      items={groupItems}
-                      value={selectedGroupId}
-                      onChange={(id) => setSelectedGroupId(id)}
-                      onSearchChange={setGroupSearch}
-                      isLoading={isSearchingGroups}
-                      placeholder="Seleccionar o buscar grupo..."
-                      searchPlaceholder="Nombre, sigla o código..."
-                      emptyMessage="No se encontraron grupos disponibles."
-                    />
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                      <CatalogSelect
-                        label="Rol en el grupo"
-                        options={MEMBER_ROLES}
-                        value={memberRole}
-                        onChange={setMemberRole}
-                        allowClear={false}
-                      />
-                      <div className="space-y-2">
-                        <Label>Fecha de vinculación</Label>
-                        <MonthPicker
-                          value={memberStartDate}
-                          onChange={setMemberStartDate}
-                          placeholder="Mes y año..."
-                        />
-                      </div>
-                    </div>
-                    <Button
-                      className="w-full"
-                      onClick={() => linkGroupMutation.mutate()}
-                      disabled={!selectedGroupId || linkGroupMutation.isPending}
-                    >
-                      Vincular
-                    </Button>
-                  </div>
-                </DialogContent>
-              </Dialog>
-              )}
-            </div>
-            <DataTable
-              columns={[
-                {
-                  key: 'name',
-                  header: 'Nombre del Grupo',
-                  searchable: (g: Group) => `${g.name} ${g.acronym ?? ''}`,
-                  cell: (g: Group) => (
-                    <Link
-                      to={isAdmin ? '/admin/groups/$id' : '/groups/$id'}
-                      params={{ id: String(g.id) }}
-                      className='font-medium text-sm text-primary hover:underline'
-                    >
-                      {g.name}
-                    </Link>
-                  )
-                },
-                {
-                  key: 'acronym',
-                  header: 'Sigla',
-                  cell: (g: Group) => <span className='text-muted-foreground'>{g.acronym || '-'}</span>
-                },
-                {
-                  key: 'classification',
-                  header: 'Clasificación',
-                  cell: (g: Group) => g.classification
-                    ? <Badge variant='secondary'>{g.classification}</Badge>
-                    : <span className='text-muted-foreground'>Sin clasificar</span>
-                },
-                isAdmin ? {
-                  key: 'actions',
-                  header: '',
-                  cell: (g: Group) => (
-                    <ActionTooltip label="Desvincular del grupo">
-                      <Button variant="ghost" size="icon" onClick={() => setUnlinkingGroup(g)}>
-                        <Trash2 className="w-4 h-4 text-red-500" />
-                      </Button>
-                    </ActionTooltip>
-                  )
-                } : null
-              ].filter(Boolean) as any}
-              data={groups ?? []}
-              loading={isLoadingGroups}
-              rowKey={(g) => g.id!}
-              emptyMessage="Este investigador no está vinculado a ningún grupo."
-              searchPlaceholder="Buscar grupos..."
+          <TabsContent value="productos" className="focus-visible:outline-none">
+            <ResearcherProductsTab
+              researcherId={researcherId}
+              isAdmin={isAdmin}
+              products={products}
+              isLoadingProducts={isLoadingProducts}
+            />
+          </TabsContent>
+
+          <TabsContent value="grupos" className="focus-visible:outline-none">
+            <ResearcherGroupsTab
+              researcherId={researcherId}
+              isAdmin={isAdmin}
+              groups={groups}
+              isLoadingGroups={isLoadingGroups}
             />
           </TabsContent>
 
           <TabsContent value="estadisticas" className="focus-visible:outline-none space-y-6">
-            {isLoadingStats ? (
-              <div className="space-y-6">
-                <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-                  {[...Array(4)].map((_, i) => (
-                    <Skeleton key={i} className="h-24 w-full rounded-xl" />
-                  ))}
-                </div>
-                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                  <Skeleton className="h-[360px] w-full rounded-2xl" />
-                  <Skeleton className="h-[360px] w-full rounded-2xl" />
-                </div>
-              </div>
-            ) : (
-              <div className="space-y-6">
-                {/* Métricas y KPIs Estratégicos del Docente */}
-                <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-                  <div className="rounded-xl border border-border/50 bg-card p-4 shadow-xs">
-                    <div className="flex items-center justify-between text-muted-foreground">
-                      <span className="text-xs font-medium uppercase tracking-wider">Producción Total</span>
-                      <BookOpen className="h-4 w-4 text-primary" />
-                    </div>
-                    <div className="mt-2 flex items-baseline gap-2">
-                      <span className="text-2xl font-bold font-mono tracking-tight text-foreground">
-                        {stats?.total_products ?? 0}
-                      </span>
-                      <span className="text-xs text-muted-foreground">obras registradas</span>
-                    </div>
-                  </div>
-
-                  <div className="rounded-xl border border-border/50 bg-card p-4 shadow-xs">
-                    <div className="flex items-center justify-between text-muted-foreground">
-                      <span className="text-xs font-medium uppercase tracking-wider">Tasa de Aval</span>
-                      <CheckCircle2 className="h-4 w-4 text-emerald-500" />
-                    </div>
-                    <div className="mt-2 flex items-baseline gap-2">
-                      <span className="text-2xl font-bold font-mono tracking-tight text-emerald-600 dark:text-emerald-400">
-                        {stats?.strategic_ratios?.endorsement_rate ?? 0}%
-                      </span>
-                      <span className="text-xs text-muted-foreground">
-                        ({stats?.strategic_ratios?.endorsed_count ?? 0} avalados)
-                      </span>
-                    </div>
-                  </div>
-
-                  <div className="rounded-xl border border-border/50 bg-card p-4 shadow-xs">
-                    <div className="flex items-center justify-between text-muted-foreground">
-                      <span className="text-xs font-medium uppercase tracking-wider">Red de Coautoría</span>
-                      <Users className="h-4 w-4 text-violet-500" />
-                    </div>
-                    <div className="mt-2 flex items-baseline gap-2">
-                      <span className="text-2xl font-bold font-mono tracking-tight text-violet-600 dark:text-violet-400">
-                        {stats?.strategic_ratios?.total_coauthors ?? 0}
-                      </span>
-                      <span className="text-xs text-muted-foreground">pares coautores</span>
-                    </div>
-                  </div>
-
-                  <div className="rounded-xl border border-border/50 bg-card p-4 shadow-xs">
-                    <div className="flex items-center justify-between text-muted-foreground">
-                      <span className="text-xs font-medium uppercase tracking-wider">Grupos Vinculados</span>
-                      <Award className="h-4 w-4 text-amber-500" />
-                    </div>
-                    <div className="mt-2 flex items-baseline gap-2">
-                      <span className="text-2xl font-bold font-mono tracking-tight text-amber-600 dark:text-amber-400">
-                        {stats?.groups_contribution?.length ?? 0}
-                      </span>
-                      <span className="text-xs text-muted-foreground">colectivos UPC</span>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Grid 1: Histograma Temporal y Familias Minciencias */}
-                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                  <ProductionHistogram
-                    data={stats?.by_year ?? []}
-                    totalProducts={stats?.total_products ?? 0}
-                    title="Evolución de Producción Científica"
-                    description="Trayectoria temporal de publicaciones y productos del investigador."
-                  />
-                  <FamiliesDonut
-                    data={stats?.families_distribution ?? []}
-                    title="Balance por Familias Minciencias"
-                    description="Distribución de su producción en GNC, DTI, ASC y FRH."
-                  />
-                </div>
-
-                {/* Grid 2: Aporte por Grupos y Red de Coautoría Frecuente */}
-                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                  <ResearcherGroupsContribution
-                    data={stats?.groups_contribution ?? []}
-                    isAdmin={isAdmin}
-                  />
-                  <ResearcherTopCoauthors
-                    data={stats?.top_coauthors ?? []}
-                    isAdmin={isAdmin}
-                  />
-                </div>
-
-                {/* Grid 3: Top Tipologías Minciencias */}
-                {stats?.top_subtypes && stats.top_subtypes.length > 0 && (
-                  <TopSubtypesRanking
-                    data={stats.top_subtypes}
-                    title="Top Tipologías Minciencias del Investigador"
-                    description="Subtipos con mayor número de productos registrados (artículos, libros, software, etc.)."
-                  />
-                )}
-              </div>
-            )}
+            <ResearcherAnalyticsTab
+              researcherId={researcherId}
+              isAdmin={isAdmin}
+            />
           </TabsContent>
         </Tabs>
-
-        {/* Confirmación: desvincular de grupo */}
-        <ConfirmDialog
-          open={unlinkingGroup !== null}
-          onOpenChange={(open) => !open && setUnlinkingGroup(null)}
-          title="¿Desvincular del grupo?"
-          desc={`¿Estás seguro de que deseas desvincular a este investigador del grupo «${unlinkingGroup?.name ?? ''}»?`}
-          confirmText="Desvincular"
-          cancelBtnText="Cancelar"
-          destructive
-          isLoading={unlinkGroupMutation.isPending}
-          handleConfirm={() => {
-            if (unlinkingGroup?.id != null) {
-              unlinkGroupMutation.mutate(unlinkingGroup.id, {
-                onSettled: () => setUnlinkingGroup(null),
-              })
-            }
-          }}
-        />
       </Main>
     </>
   )

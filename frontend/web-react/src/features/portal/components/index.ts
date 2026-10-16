@@ -1,0 +1,5 @@
+export { HeroSection } from './hero-section'
+export { DiscoveryCardsSection } from './discovery-cards'
+export { MincienciasClassificationCard } from './minciencias-classification-card'
+export { FeaturedGroupsShowcase } from './featured-groups-showcase'
+export { PortalManagementCta } from './portal-management-cta'
