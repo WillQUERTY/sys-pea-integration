@@ -1,82 +1,34 @@
 import { useState, useMemo, useEffect } from 'react'
-import { Link } from '@tanstack/react-router'
 import { useQuery, useMutation, useQueryClient, keepPreviousData } from '@tanstack/react-query'
 import { toast } from 'sonner'
-import { Plus, MoreHorizontal, Pencil, Trash2, ClipboardCheck, RotateCcw } from 'lucide-react'
-import { listProducts, deleteProduct, enqueueValidation, restoreProduct, getProductCatalogs, listGroups } from '@/lib/api'
+import { FlaskConical } from 'lucide-react'
+import {
+  listProducts,
+  deleteProduct,
+  enqueueValidation,
+  restoreProduct,
+  getProductCatalogs,
+  listGroups,
+} from '@/lib/api'
 import type { Product } from '@/lib/types'
 import { useDebouncedValue } from '@/hooks/use-debounced-value'
-import { Badge } from '@/components/ui/badge'
-import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu'
-import { DataTable, type DataColumn, type DataFilter } from '@/components/data-table'
+import { DataTable } from '@/components/data-table'
 import { ConfigDrawer } from '@/components/config-drawer'
 import { Header } from '@/components/layout/header'
 import { Main } from '@/components/layout/main'
 import { ProfileDropdown } from '@/components/profile-dropdown'
 import { Search } from '@/components/search'
 import { ThemeSwitch } from '@/components/theme-switch'
-import { ValidationBadge } from '@/features/groups/detail'
-import { ProductFormDialog } from './product-form-dialog'
-import { isEndorsed, EndorsedBadge } from './endorsed'
-import { ConfirmDialog } from '@/components/confirm-dialog'
-
-const productFilters: DataFilter[] = [
-  {
-    key: 'status',
-    label: 'Estado de validación',
-    defaultValue: 'all',
-    options: [
-      { value: 'all', label: 'Todos los estados' },
-      { value: 'pending', label: 'Pendientes' },
-      { value: 'valid', label: 'Validados' },
-      { value: 'rejected', label: 'Rechazados' },
-    ],
-  },
-  {
-    key: 'record_status',
-    label: 'Estado del registro',
-    defaultValue: 'active',
-    options: [
-      { value: 'all', label: 'Todos' },
-      { value: 'active', label: 'Activos' },
-      { value: 'inactive', label: 'Inactivos' },
-    ],
-  },
-  {
-    key: 'window',
-    label: 'Ventana de observación',
-    defaultValue: 'all',
-    options: [
-      { value: 'all', label: 'Todos los años' },
-      { value: '2', label: 'Últimos 2 años' },
-      { value: '3', label: 'Últimos 3 años' },
-      { value: '5', label: 'Últimos 5 años' },
-      { value: '10', label: 'Últimos 10 años' },
-      { value: 'custom', label: 'Rango personalizado…' },
-    ],
-  },
-  {
-    key: 'classification',
-    label: 'Clasificación 2024',
-    defaultValue: 'all',
-    options: [
-      { value: 'all', label: 'Todas' },
-      { value: 'unclassified', label: 'Sin clasificar' },
-    ],
-  },
-]
-
 import { PublicHero } from '@/components/layout/public-hero'
 import { PublicFilterSheet } from '@/components/layout/public-filter-sheet'
-import { FlaskConical, AlertTriangle } from 'lucide-react'
+import { ConfirmDialog } from '@/components/confirm-dialog'
+import { ProductFormDialog } from './product-form-dialog'
+import {
+  buildProductFilters,
+  ProductCustomWindowFilter,
+  useProductColumns,
+  ProductAdminHeader,
+} from './components'
 
 export function Products({ isAdmin = false }: { isAdmin?: boolean }) {
   const queryClient = useQueryClient()
@@ -112,6 +64,7 @@ export function Products({ isAdmin = false }: { isAdmin?: boolean }) {
     queryKey: ['groups-for-products-filter'],
     queryFn: () => listGroups({ limit: 200 }),
   })
+
   const subtypeById = useMemo(
     () => new Map((catalogs?.subtypes ?? []).map((s) => [s.id, s])),
     [catalogs]
@@ -120,48 +73,14 @@ export function Products({ isAdmin = false }: { isAdmin?: boolean }) {
     () => new Map((catalogs?.quality_categories ?? []).map((c) => [c.id, c])),
     [catalogs]
   )
-  const productFilters2024 = useMemo<DataFilter[]>(
-    () => [
-      ...productFilters,
-      {
-        key: 'group',
-        label: 'Grupo de investigación',
-        defaultValue: 'all',
-        options: [
-          { value: 'all', label: 'Todos los grupos' },
-          ...(groups?.items ?? []).map((g) => ({
-            value: String(g.id),
-            label: g.acronym ? `${g.acronym} — ${g.name}` : g.name,
-          })),
-        ],
-      },
-      {
-        key: 'family',
-        label: 'Familia 2024',
-        defaultValue: 'all',
-        options: [
-          { value: 'all', label: 'Todas las familias' },
-          ...(catalogs?.families ?? []).map((f) => ({
-            value: String(f.id),
-            label: f.code ? `${f.code} — ${f.name}` : f.name,
-          })),
-        ],
-      },
-      {
-        key: 'subtype',
-        label: 'Tipología / Subtipo 2024',
-        defaultValue: 'all',
-        options: [
-          { value: 'all', label: 'Todos los subtipos' },
-          ...(catalogs?.subtypes ?? [])
-            .filter((s) => filterValues.family === 'all' || String(s.family_id) === filterValues.family)
-            .map((s) => ({
-              value: String(s.id),
-              label: s.code ? `${s.code} — ${s.name}` : s.name,
-            })),
-        ],
-      },
-    ],
+
+  const productFilters2024 = useMemo(
+    () =>
+      buildProductFilters({
+        catalogs,
+        groups,
+        selectedFamily: filterValues.family,
+      }),
     [catalogs, groups, filterValues.family]
   )
 
@@ -233,193 +152,32 @@ export function Products({ isAdmin = false }: { isAdmin?: boolean }) {
     setFormOpen(true)
   }
 
+  const columns = useProductColumns({
+    isAdmin,
+    subtypeById,
+    qualityCategoryById,
+    onEdit: handleEdit,
+    onDelete: setDeletingProduct,
+    onRestore: (id) => restoreMutation.mutate(id),
+    onEnqueue: (id) => enqueueMutation.mutate(id),
+    isEnqueuePending: enqueueMutation.isPending,
+  })
 
-
-  const columns = useMemo<DataColumn<Product>[]>(() => [
-    {
-      key: 'title',
-      header: 'Título',
-      className: 'max-w-[520px]',
-      searchable: (p) => p.title,
-      cell: (p) => (
-        <div className='flex min-w-0 items-center gap-2'>
-          <Link
-            to={isAdmin ? '/admin/products/$id' : '/products/$id'}
-            params={{ id: String(p.id) }}
-            className='block min-w-0 truncate font-medium text-primary hover:underline'
-            title={p.title}
-          >
-            {p.title}
-          </Link>
-          {isEndorsed(p) && (
-            <span className='shrink-0'>
-              <EndorsedBadge />
-            </span>
-          )}
-        </div>
-      ),
-    },
-    {
-      key: 'year',
-      header: 'Año',
-      cell: (p) => (
-        <span className='text-sm'>
-          {p.year ?? (String(p.publication_date ?? '').slice(0, 4) || '—')}
-        </span>
-      ),
-    },
-    {
-      key: 'subtype',
-      header: 'Tipología',
-      searchable: (p) => {
-        const s = p.subtype_id ? subtypeById.get(p.subtype_id) : undefined
-        return s ? `${s.code ?? ''} ${s.name}` : ''
-      },
-      cell: (p) => {
-        const s = p.subtype_id ? subtypeById.get(p.subtype_id) : undefined
-        return s ? (
-          <Badge variant='outline' className='font-mono text-xs' title={s.name}>
-            {s.code ?? s.name}
-          </Badge>
-        ) : (
-          <span className='text-xs text-muted-foreground'>sin clasificar</span>
-        )
-      },
-    },
-    {
-      key: 'quality',
-      header: 'Calidad',
-      searchable: (p) => {
-        const c = p.quality_category_id ? qualityCategoryById.get(p.quality_category_id) : undefined
-        return c ? `${c.code ?? ''} ${c.name}` : ''
-      },
-      cell: (p) => {
-        const c = p.quality_category_id ? qualityCategoryById.get(p.quality_category_id) : undefined
-        return c ? (
-          <Badge variant='secondary' className='font-mono text-xs' title={c.name}>
-            {c.code ?? c.name}
-          </Badge>
-        ) : (
-          <span className='text-xs text-muted-foreground'>—</span>
-        )
-      },
-    },
-    {
-      key: 'doi',
-      header: 'DOI',
-      className: 'whitespace-nowrap pe-6',
-      searchable: (p) => p.doi ?? '',
-      cell: (p) =>
-        p.doi ? (
-          <a
-            href={`https://doi.org/${p.doi}`}
-            target='_blank'
-            rel='noreferrer'
-            className='font-mono text-xs hover:underline'
-          >
-            {p.doi}
-          </a>
-        ) : (
-          <span className='text-muted-foreground'>—</span>
-        ),
-    },
-    {
-      key: 'validation',
-      header: 'Validación',
-      cell: (p) => <ValidationBadge status={p.validation_status} />,
-    },
-    {
-      key: 'actions',
-      header: 'Acciones',
-      className: 'w-[1%] whitespace-nowrap text-right',
-      cell: (p) => (
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button variant='ghost' className='h-8 w-8 p-0'>
-              <span className='sr-only'>Abrir menú</span>
-              <MoreHorizontal className='h-4 w-4' />
-            </Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align='end'>
-            <DropdownMenuItem onClick={() => handleEdit(p)}>
-              <Pencil className='mr-2 h-4 w-4' />
-              Editar
-            </DropdownMenuItem>
-            {(p.validation_status ?? 'pending') !== 'valid' && (
-              <DropdownMenuItem
-                onClick={() => enqueueMutation.mutate(p.id!)}
-                disabled={enqueueMutation.isPending}
-              >
-                <ClipboardCheck className='mr-2 h-4 w-4' />
-                Encolar validación
-              </DropdownMenuItem>
-            )}
-            <DropdownMenuSeparator />
-            {p.status === 'inactive' ? (
-              <DropdownMenuItem onClick={() => restoreMutation.mutate(p.id!)}>
-                <RotateCcw className='mr-2 h-4 w-4' />
-                Restaurar
-              </DropdownMenuItem>
-            ) : (
-              <DropdownMenuItem
-                className='text-destructive focus:text-destructive'
-                onClick={() => setDeletingProduct(p)}
-              >
-                <Trash2 className='mr-2 h-4 w-4' />
-                Eliminar
-              </DropdownMenuItem>
-            )}
-          </DropdownMenuContent>
-        </DropdownMenu>
-      ),
-    },
-  ], [delMutation, restoreMutation, enqueueMutation, subtypeById, qualityCategoryById])
-
-  const visibleColumns = useMemo(
-    () => (isAdmin ? columns : columns.filter((c) => c.key !== 'actions')),
-    [columns, isAdmin]
-  )
-
-  const filterExtraContent = filterValues.window === 'custom' ? (
-    <div className='space-y-2.5'>
-      <h4 className='text-sm font-bold text-foreground'>
-        Ventana personalizada (año desde – hasta)
-      </h4>
-      <div className='grid grid-cols-2 gap-3'>
-        <Input
-          type='number'
-          inputMode='numeric'
-          placeholder='Desde (ej. 2019)'
-          className='h-11 rounded-xl border-border/60 bg-background shadow-2xs'
-          value={customStart}
-          onChange={(e) => {
-            setCustomStart(e.target.value)
-            setPage(0)
-          }}
-        />
-        <Input
-          type='number'
-          inputMode='numeric'
-          placeholder='Hasta (ej. 2023)'
-          className='h-11 rounded-xl border-border/60 bg-background shadow-2xs'
-          value={customEnd}
-          onChange={(e) => {
-            setCustomEnd(e.target.value)
-            setPage(0)
-          }}
-        />
-      </div>
-      {customStart && customEnd && Number(customStart) > Number(customEnd) && (
-        <p className='flex items-center gap-1.5 text-xs font-medium text-destructive'>
-          <AlertTriangle className='h-3.5 w-3.5 shrink-0' />
-          El año inicial ({customStart}) no puede ser mayor que el año final ({customEnd}).
-        </p>
-      )}
-      <p className='text-xs text-muted-foreground'>
-        Filtra por año de obtención del producto.
-      </p>
-    </div>
-  ) : undefined
+  const filterExtraContent =
+    filterValues.window === 'custom' ? (
+      <ProductCustomWindowFilter
+        customStart={customStart}
+        customEnd={customEnd}
+        onStartChange={(val) => {
+          setCustomStart(val)
+          setPage(0)
+        }}
+        onEndChange={(val) => {
+          setCustomEnd(val)
+          setPage(0)
+        }}
+      />
+    ) : undefined
 
   return (
     <>
@@ -458,21 +216,16 @@ export function Products({ isAdmin = false }: { isAdmin?: boolean }) {
 
       <Main publicWidth={!isAdmin}>
         {isAdmin && (
-          <div className='mb-4 flex flex-wrap items-center justify-between gap-3'>
-            <div>
-              <h1 className='text-2xl font-bold tracking-tight'>Productos científicos</h1>
-              <p className='text-muted-foreground'>
-                Catálogo de productos con ventana de observación dinámica.
-              </p>
-            </div>
-            <Button onClick={() => { setEditingProduct(null); setFormOpen(true) }}>
-              <Plus className='mr-2 h-4 w-4' /> Agregar Producto
-            </Button>
-          </div>
+          <ProductAdminHeader
+            onAddProduct={() => {
+              setEditingProduct(null)
+              setFormOpen(true)
+            }}
+          />
         )}
 
         <DataTable
-          columns={visibleColumns}
+          columns={columns}
           hideSearch={!isAdmin}
           hideFilters={!isAdmin}
           data={products.data?.items ?? []}
@@ -510,10 +263,10 @@ export function Products({ isAdmin = false }: { isAdmin?: boolean }) {
         />
       </Main>
 
-      <ProductFormDialog 
-        open={formOpen} 
-        onOpenChange={setFormOpen} 
-        product={editingProduct} 
+      <ProductFormDialog
+        open={formOpen}
+        onOpenChange={setFormOpen}
+        product={editingProduct}
       />
 
       <ConfirmDialog

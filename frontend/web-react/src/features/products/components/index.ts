@@ -1,3 +1,6 @@
 export * from './product-header'
 export * from './product-info-cards'
 export * from './product-authors-card'
+export * from './product-filters'
+export * from './product-columns'
+export * from './product-admin-header'
