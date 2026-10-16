@@ -16,6 +16,9 @@ add_library(abpoxx STATIC
     src/services/work_plan_service.cpp
     src/services/project_service.cpp
     src/persistence/json_persistence.cpp
+    src/persistence/json/json_common.cpp
+    src/persistence/json/json_exporter.cpp
+    src/persistence/json/json_loader.cpp
     src/persistence/db_persistence.cpp
     src/persistence/db/db_common.cpp
     src/persistence/db/db_loader.cpp
