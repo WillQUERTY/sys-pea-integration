@@ -23,6 +23,11 @@ add_library(abpoxx STATIC
     src/persistence/db/db_entity_sync.cpp
     src/persistence/db/db_operations.cpp
     src/persistence/db/db_analytics.cpp
+    src/persistence/db/db_dashboard_analytics.cpp
+    src/persistence/db/db_group_analytics.cpp
+    src/persistence/db/db_researcher_analytics.cpp
+    src/persistence/db/db_network_analytics.cpp
+    src/persistence/db/db_catalogs_analytics.cpp
 )
 target_include_directories(abpoxx PUBLIC
     $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
