@@ -17,9 +17,18 @@ add_library(abpoxx STATIC
     src/services/project_service.cpp
     src/persistence/json_persistence.cpp
     src/persistence/db_persistence.cpp
+    src/persistence/db/db_common.cpp
+    src/persistence/db/db_loader.cpp
+    src/persistence/db/db_saver.cpp
+    src/persistence/db/db_entity_sync.cpp
+    src/persistence/db/db_operations.cpp
+    src/persistence/db/db_analytics.cpp
 )
 target_include_directories(abpoxx PUBLIC
     $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
+)
+target_include_directories(abpoxx PRIVATE
+    ${CMAKE_CURRENT_SOURCE_DIR}/src
 )
 
 # Link ODBC (native on Windows, requires unixODBC on Linux)
