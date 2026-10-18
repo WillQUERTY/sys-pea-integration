@@ -1,3 +1,4 @@
+from pathlib import Path
 """
 clean_existing_dois.py
 Migración y saneamiento transaccional de DOIs y códigos externos para productos en SQL Server (Khemia).
@@ -15,7 +16,9 @@ import urllib.parse
 import pyodbc
 
 # Ensure backend can be imported
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), "backend"))
+REPO_ROOT = Path(__file__).resolve().parent.parent
+sys.path.insert(0, str(REPO_ROOT / "backend"))
+sys.path.insert(0, str(REPO_ROOT))
 
 from app import repository
 from app.scraper import GruplacNormalizer

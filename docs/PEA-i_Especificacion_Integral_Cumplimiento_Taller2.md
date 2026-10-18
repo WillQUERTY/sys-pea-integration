@@ -233,7 +233,7 @@ El núcleo C++ modela las operaciones de creación, lectura, actualización y el
 +-------------------------------------------------------------------------+
 |                            PERSISTENCIA FÍSICA                          |
 |                                                                         |
-|       SQL Server (16 tablas)           pea_data.json (12 colecciones)   |
+|       SQL Server (22 tablas)           pea_data.json (12 colecciones)   |
 +-------------------------------------------------------------------------+
 ```
 
@@ -302,7 +302,7 @@ Conforme a la decisión de alcance **D-01**, el proyecto entrega las dos solucio
 - **Tecnología:** Python 3.12, framework FastAPI, Uvicorn, Pydantic v2.
 - **Componentes:**
   - Módulo `app/repository.py`: Orquestador de la solución. No implementa estructuras en memoria duplicadas; interactúa directamente con el núcleo C++ a través de los bindings compilados.
-  - Módulo `app/api/v1.py`: Expone 71 rutas REST organizadas por recursos (`Groups`, `Researchers`, `Products`, `Projects`, `Plans`, `System`, `Reports`).
+  - Módulo `app/api/v1.py`: Expone 86 rutas REST organizadas en routers por recurso (`groups`, `researchers`, `products`, `projects`, `plans`, `imports`, `analytics`, `system`).
   - Módulos de scraping y deduplicación (`scraper.py`, `cvlac_scraper.py`): Ingesta directa desde Scienti con conciliación automática de autores y productos.
 
 ### 7.3 Puente de Interoperabilidad Nativa (`pybind11`)
@@ -316,7 +316,7 @@ Conforme a la decisión de alcance **D-01**, el proyecto entrega las dos solucio
 El sistema provee dos mecanismos de persistencia complementarios que aseguran la máxima resiliencia:
 
 ### 8.1 Motor Relacional SQL Server
-- **Esquema de 16 tablas:** Define llaves primarias autoincrementales, restricciones de unicidad sobre códigos externos (`UQ_ResearchGroup_ExternalCode`, `UQ_Product_ExternalCode`), llaves foráneas con integridad referencial e índices especializados.
+- **Esquema de 22 tablas físicas:** Define llaves primarias autoincrementales, restricciones de unicidad sobre códigos externos (`UQ_ResearchGroup_ExternalCode`, `UQ_Product_ExternalCode`), llaves foráneas con integridad referencial e índices especializados. El diagrama ER de la sección 38.2 detalla las 17 tablas del núcleo; las cinco restantes (`ResearchLine`, `GroupResearchLine`, `ResearcherProject`, `ProjectProduct`, `ImportRecord`) corresponden a enlaces de líneas y proyectos y al soporte de importaciones.
 - **Operaciones Write-Through:** Toda mutación aprobada en memoria RAM dispara inmediatamente una instrucción SQL mediante ODBC nativo (`SQLExecDirect` con sentencias `MERGE`), garantizando que la base de datos física permanezca en exacta sincronía con la memoria.
 - **Transaccionalidad en Validaciones:** La validación de un producto actualiza atómicamente la tabla `Product`, el enlace `GroupProductLink`, el registro en `ValidationQueueItem` e inserta una traza inmutable en `AuditLog`.
 
@@ -374,7 +374,7 @@ Calculado puramente recorriendo los nodos enlazados en memoria:
 
 El proyecto satisface la totalidad de entregables estipulados para el Taller 2:
 1. **Código Fuente Completo:** Estructurado en repositorio Git con historial limpio y trazable (`core_cpp/`, `backend/`, `frontend/web-react/`, `database/`).
-2. **Documento Técnico en Word (`ABPOXX.docx`):** Documento formal generado a partir de esta especificación integral maestra, que incluye arquitectura, diagramas, casos de uso, historias de usuario y matriz de trazabilidad.
+2. **Documento Técnico en Word (`docs/word/Taller2_WP-DN-EO.docx`):** Documento formal generado a partir de esta especificación integral maestra, que incluye arquitectura, diagramas, casos de uso, historias de usuario y matriz de trazabilidad.
 3. **Archivo de Persistencia (`pea_data.json`):** Archivo JSON generado con la producción completa, integrantes, productos enriquecidos y autores listo para prueba de carga independiente.
 4. **Archivo de Identificación (`INTEGRANTES.txt`):** Ficha institucional con datos del grupo de estudiantes, código y programa.
 5. **Video Demostrativo de 10 minutos:** Grabación en alta definición sustentando los requisitos del taller, el funcionamiento independiente de `pea_cli`, la API FastAPI, la interfaz React y la reversión de operaciones con la pila.
@@ -386,7 +386,7 @@ El proyecto satisface la totalidad de entregables estipulados para el Taller 2:
 
 La documentación del sistema incorpora los siguientes modelos formales:
 - **Diagrama de Casos de Uso:** Interacciones entre actores (Administrador, Gestor, Validador, Investigador, Público) y casos centrales del sistema.
-- **Diagrama Entidad-Relación (ER):** Modelo físico de 16 tablas con llaves primarias, foráneas, tipos y restricciones.
+- **Diagrama Entidad-Relación (ER):** Modelo físico de 22 tablas (17 detalladas en el diagrama) con llaves primarias, foráneas, tipos y restricciones.
 - **Diagrama de Clases C++:** Relación estructural entre nodos dinámicos (`GroupNode`, `MembershipNode`, etc.), clases de entidad y servicios coordinadores.
 - **Diagramas de Secuencia UML:** Flujos detallados para creación write-through, importación de GrupLAC con deduplicación, validación FIFO y deshacer LIFO.
 - **Diagrama de Despliegue:** Topología física de ejecución de los procesos en local o en servidor.
@@ -397,12 +397,16 @@ La documentación del sistema incorpora los siguientes modelos formales:
 
 El aseguramiento de calidad del sistema se sustenta en tres capas de pruebas automatizadas:
 1. **Pruebas de Estructuras en C++ (`pea_tests.exe`):** 159 aserciones unitarias que verifican la correcta gestión de memoria, inserción en cabeza/cola, actualización de punteros ortogonales, aislamiento de cascadas de borrado, LIFO de la pila, FIFO de la cola y serialización round-trip en JSON.
-2. **Pruebas Automatizadas de Backend en Python (`pytest`):** 11 suites de pruebas con 84 tests ejecutados en verde que cubren:
+2. **Pruebas Automatizadas de Backend en Python (`pytest`):** 18 suites de pruebas con 160 tests automatizados (141 aprobados y 19 saltados por el gate de base de datos en la verificación más reciente) que cubren, entre otras:
    - Reglas de vinculación temporal RV-001 y RV-002 (`test_membership_rules.py`).
    - Lógica simétrica y no recursión de la pila de deshacer (`test_undo_logic.py`).
    - Paginación, búsqueda y filtros de la cola de validación (`test_validation_queue_pagination.py`).
    - Contratos y catálogos de la API 2024 (`test_catalog_2024.py`).
    - Idempotencia de scrapers GrupLAC y CvLAC con resolución de identificadores externos.
+   - Diagnóstico y semáforo Minciencias 2024 (`test_minciencias_evaluator.py`).
+   - Red de colaboración y analítica comparada (`test_collaboration_network.py`, `test_analytics_comparator.py`).
+   - Dossier ejecutivo, informe PDF de grupo y exportadores CSV (`test_dossier_and_exports.py`).
+   - Importadores de CSV y PDF con sus endpoints de vista previa y confirmación idempotente (`test_import_*.py`).
 3. **Pruebas de Integración y End-to-End en Navegador:** Verificación interactiva de flujos completos en la SPA de React.
 
 ---
@@ -431,47 +435,71 @@ El aseguramiento de calidad del sistema se sustenta en tres capas de pruebas aut
 
 ```text
 sys_pea_integration/
-├── backend/                  # Solución Python (FastAPI)
+├── backend/                  # Solución Python (FastAPI) — D-01
 │   ├── app/
-│   │   ├── api/              # Enrutadores REST (v1.py - 71 rutas)
-│   │   ├── config.py         # Configuración y conexión ODBC
-│   │   ├── cvlac_scraper.py  # Ingesta y parseo de CvLAC
 │   │   ├── main.py           # Ciclo de vida y arranque FastAPI
-│   │   ├── pdf_report.py     # Generación de informes PDF institucionales
-│   │   ├── repository.py     # Fachada que delega en abpoxx_pybind
-│   │   ├── scraper.py        # Ingesta y deduplicación de GrupLAC
+│   │   ├── config.py         # Configuración y conexión ODBC
+│   │   ├── models.py         # Modelos Pydantic de la API
+│   │   ├── api/              # v1.py + routers/ (86 rutas: groups, researchers, products,
+│   │   │                     #   projects, plans, imports, analytics, system)
+│   │   ├── repository.py     # Fachada que delega en abpoxx_pybind (sin SQL directo)
+│   │   ├── scraping/         # Pipeline GrupLAC modular (client, parser, normalizer,
+│   │   │                     #   commit_service, cvlac/); scraper.py y cvlac_scraper.py son
+│   │   │                     #   fachadas (excepción pyodbc documentada)
+│   │   ├── pdf_import/       # Importador PDF modular (T-13): extractor, basic_data,
+│   │   │                     #   members_projects, products; import_pdf.py es fachada
+│   │   ├── import_csv.py     # Importador CSV del dataset oficial datos.gov.co (T-12)
+│   │   ├── evaluator/        # Diagnóstico Minciencias 2024: tier_rules, product_classifier,
+│   │   │                     #   metrics_collector, helpers; minciencias_evaluator.py es fachada
+│   │   ├── repositories/     # Acceso a datos por dominio (groups, researchers, products,
+│   │   │                     #   projects, work_plans, validation_queue, undo, audit, analytics)
+│   │   ├── reporting/        # Informes institucionales: gruppac_pdf, executive_dossier_pdf,
+│   │   │                     #   csv_exporters, canvas, theme; reports.py es fachada
+│   │   ├── datos_abiertos.py / datos_abiertos_grupos.py  # Enriquecimiento datos.gov.co
+│   │   ├── analytics_comparator.py                       # Comparador analítico entre vistas
 │   │   └── abpoxx_pybind.pyd # Módulo binario compilado C++
-│   ├── tests/                # Suites de pruebas pytest (84 tests)
+│   ├── tests/                # 18 suites pytest (160 pruebas; 141 en verde, 19 por gate de BD)
 │   └── requirements.txt
-├── core_cpp/                 # Solución C++ (Estructuras de datos manuales)
+├── core_cpp/                 # Solución C(C++) — estructuras de datos manuales (D-01)
 │   ├── include/
-│   │   ├── entities/         # Definición de structs de datos
-│   │   ├── persistence/      # Cabeceras ODBC y JSON
-│   │   └── services/         # Cabeceras de servicios de estructuras
+│   │   ├── core.h            # Cabecera raíz de agregación
+│   │   ├── entities/         # Structs de nodos (group, researcher, membership, product, project)
+│   │   ├── services/         # group/researcher/product/project/work_plan service,
+│   │   │                     #   undo_stack (pila LIFO), validation_queue (cola FIFO)
+│   │   └── persistence/      # Cabeceras ODBC (db_persistence.h) y JSON (json_persistence.h)
 │   ├── src/
-│   │   ├── persistence/      # db_persistence.cpp y json_persistence.cpp
-│   │   ├── services/         # Listas, multilistas, pila y cola en C++
-│   │   └── pea_cli.cpp       # CLI ejecutable independiente
+│   │   ├── pea_cli.cpp       # CLI ejecutable autónomo (solución C independiente)
+│   │   ├── cli/              # Comandos CLI modulares y REPL interactivo
+│   │   ├── services/         # Implementación de listas, multilistas, pila y cola
+│   │   └── persistence/      # db_persistence.cpp + db/ (loader, saver, operations,
+│   │                         #   entity_sync, analytics, catalogs); json_persistence.cpp +
+│   │                         #   json/ (loader, exporter, common)
 │   ├── pybind/
-│   │   └── bindings.cpp      # Envolturas nativas pybind11
+│   │   └── bindings.cpp      # Envolturas nativas pybind11 -> abpoxx_pybind.pyd
 │   ├── tests/
-│   │   └── test_structures.cpp # 159 pruebas unitarias de memoria
+│   │   └── test_structures.cpp # 159 aserciones unitarias de memoria
 │   └── CMakeLists.txt
 ├── database/                 # Scripts SQL y catálogos
 │   ├── catalog_2024.json     # Catálogo canónico 5 familias y 70 subtipos
-│   ├── init_schema.sql       # DDL de tablas y restricciones
+│   ├── init_schema.sql       # DDL de 22 tablas y restricciones
 │   ├── recreate_database.sql # Recreación limpia de BD peai
 │   └── seed_catalog_2024.py  # Script de siembra e idempotencia
-├── docs/                     # Especificaciones y documentos de entrega
-│   └── PEA-i_Especificacion_Integral_Cumplimiento_Taller2.md
 ├── frontend/web-react/       # Aplicación Web SPA (React + TypeScript)
 │   ├── src/
-│   │   ├── features/         # Módulos: admin, portal, groups, undo, etc.
-│   │   └── components/       # Componentes Shadcn / Tailwind
+│   │   ├── features/         # Módulos: dashboard, groups, researchers, products, projects,
+│   │   │                     #   import, portal, undo, validation-queue, system, settings, errors
+│   │   └── components/       # Componentes shadcn/Tailwind (+ config, context, hooks, lib,
+│   │                         #   routes, stores, styles, test-utils)
 │   └── package.json
+├── docs/                     # Especificaciones y documentos de entrega
+│   ├── word/                 # Taller2_WP-DN-EO.docx (generado desde esta SPEC)
+│   ├── guion_de_sustentacion_en_video_taller_2_edd.md/.pdf  # Guion del video (10-12 min)
+│   ├── diagrams/             # 11 diagramas Mermaid + PNG + SVG + galería web
+│   ├── modelo-medicion-2024.md y catálogo oficial de pesos  # Referencia normativa
+│   └── PEA-i_Especificacion_Integral_Cumplimiento_Taller2.md  # Documento maestro (esta SPEC)
 ├── pea_data.json             # Archivo JSON de entrega (12 colecciones completas)
 ├── build_cpp.bat             # Script de compilación automática MSVC
-└── README.md                 # Guía de despliegue y puesta en marcha
+└── README.md                 # Guía de instalación, despliegue y solución de problemas
 ```
 
 ---
@@ -482,11 +510,11 @@ sys_pea_integration/
 - [x] Ejecutable `pea_cli.exe` corre de forma autónoma con todos los comandos de gestión, multilistas y resumen.
 - [x] Módulo `abpoxx_pybind.pyd` comunica el core C++ con FastAPI en tiempo real.
 - [x] Backend FastAPI arranca sin errores y expone la documentación interactiva en `/docs`.
-- [x] 84 pruebas unitarias de backend (`pytest`) pasan con 0 fallas.
+- [x] 18 suites de backend (`pytest`) en verde: 141 pruebas aprobadas, 19 saltadas por el gate de BD (`PEAI_TEST_DB=1`) y 160 recolectadas en total.
 - [x] Reglas RV-001 y RV-002 implementadas en código, con pruebas automáticas y validación en API (HTTP 400).
 - [x] Exportador JSON escribe todos los 20 campos de productos y la colección completa de autores.
 - [x] Archivo `pea_data.json` generado con datos íntegros de persistencia.
-- [x] Base de datos SQL Server configurada con 16 tablas y 70 subtipos canónicos del catálogo 2024.
+- [x] Base de datos SQL Server configurada con 22 tablas físicas y 70 subtipos canónicos del catálogo 2024.
 - [x] Frontend React compila y renderiza portal público con gráficos Recharts y dashboard administrativo.
 - [x] Documento maestro actualizado para compilación del informe Word de entrega.
 
@@ -1235,14 +1263,16 @@ Guion recomendado:
 09:40 Decisiones de alcance (26.1) y conclusiones
 ```
 
+El guion definitivo de grabación está disponible en `docs/guion_de_sustentaci_n_en_video_taller_2_edd.md`: escenas cronometradas de 10 a 12 minutos, checklist técnico previo a la grabación, distribución de presentadores por escena y requisitos de la rúbrica (identidad institucional e integrantes visibles en cámara); también se encuentra exportado en PDF (`docs/guion_de_sustentaci_n_en_video_taller_2_edd.pdf`).
+
 ### 37.6 Correo de entrega
 
 ```text
 Destinatario: adithperez@unicesar.edu.co
-Asunto: Estructura de datos Taller 2 Grupo XX 2026
+Asunto: Estructura de datos Taller 2 Grupo 5 2026
 ```
 
-Antes del envío debe comprobarse la fecha límite indicada en el documento original del taller.
+Según el enunciado original del taller, la entrega debe enviarse antes del lunes 19 de octubre de 2026, 11:59 a. m.
 
 ## 38. Diagramas de arquitectura, estructuras y flujos del sistema
 
@@ -1341,9 +1371,9 @@ graph TD
 
 ---
 
-### 38.2 Diagrama entidad-relación (Modelo relacional de 16 tablas)
+### 38.2 Diagrama entidad-relación (Modelo relacional físico)
 
-El siguiente diagrama detalla las 16 tablas del esquema relacional físico en SQL Server, reflejando sus llaves primarias, llaves foráneas, cardinalidades y restricciones:
+El siguiente diagrama detalla las 17 tablas principales del esquema relacional físico en SQL Server (las cinco restantes —`ResearchLine`, `GroupResearchLine`, `ResearcherProject`, `ProjectProduct` e `ImportRecord`— son tablas de enlace y soporte de importaciones generadas por el DDL), reflejando sus llaves primarias, llaves foráneas, cardinalidades y restricciones:
 
 ```mermaid
 erDiagram
@@ -2080,7 +2110,7 @@ graph TB
 
     subgraph Servidor ["Servidor de Aplicación (Host Local / VPS)"]
         subgraph PythonRuntime ["Proceso Python 3.12 (Uvicorn ASGI)"]
-            FastAPI["Framework FastAPI\n(71 Rutas REST / OpenAPI)"]:::serverStyle
+            FastAPI["Framework FastAPI\n(86 Rutas REST / OpenAPI)"]:::serverStyle
             RepoModule["app/repository.py\n(Orquestador de Dominio)"]:::serverStyle
             ScraperEngine["Módulo de Scraping\n(GrupLAC, CvLAC, Dedupe)"]:::serverStyle
             PDFEngine["Motor de Reportes PDF\n(ReportLab Engine)"]:::serverStyle
@@ -2103,7 +2133,7 @@ graph TB
     end
 
     subgraph Persistencia ["Capa de Persistencia y Almacenamiento"]
-        SQLServer[("Motor Relacional SQL Server\n(peai — 16 Tablas Normalizadas)")]:::dataStyle
+        SQLServer[("Motor Relacional SQL Server\n(peai — 22 Tablas Físicas)")]:::dataStyle
         JSONFile[("Archivo JSON Portátil\n(pea_data.json — 12 Colecciones)")]:::dataStyle
         PDFStorage[("Informes Generados\n(Archivos PDF Descargables)")]:::dataStyle
     end
@@ -2453,44 +2483,49 @@ OLAP empresarial real
 ## 43. Estructura final del repositorio
 
 ```text
-pea-i/
-├── README.md
-├── INTEGRANTES.txt                  (pendiente de entrega)
+sys_pea_integration/
+├── README.md                        (manual de instalación, ejecución y verificación)
+├── INTEGRANTES.txt                  (ficha de identificación del grupo WP-DN-EO — completar datos personales)
 ├── pea_data.json                    (archivo de persistencia, entregable)
 ├── core_cpp/                        (solución C/C++ — D-01)
-│   ├── include/
-│   │   ├── entities/
-│   │   ├── services/
-│   │   └── persistence/
+│   ├── include/                     (nodos de multilista, servicios e interfaces)
 │   ├── src/
-│   │   ├── services/
-│   │   ├── persistence/
-│   │   └── pea_cli.cpp              (CLI ejecutable: pea_cli.exe)
+│   │   ├── cli/                     (consola autónoma: pea_cli.exe)
+│   │   ├── services/                (servicios del dominio: grupos, productos, cola, pila)
+│   │   └── persistence/
+│   │       ├── db/                  (escritura dual a SQL Server vía ODBC)
+│   │       └── json/                (carga y exportación de pea_data.json)
 │   ├── pybind/
-│   │   └── bindings.cpp             (puente de interoperabilidad)
+│   │   └── bindings.cpp             (puente C++/Python: abpoxx_pybind.pyd)
 │   └── CMakeLists.txt
 ├── backend/                         (solución Python — D-01)
 │   ├── app/
-│   │   ├── api/                     (router v1)
-│   │   ├── scraper.py               (GrupLAC + buscador Scienti)
-│   │   ├── cvlac_scraper.py         (CvLAC)
-│   │   ├── datos_abiertos.py        (enriquecimiento datos.gov.co)
-│   │   ├── repository.py            (orquestación RAM + núcleo C++)
-│   │   └── main.py
-│   ├── tests/
+│   │   ├── api/                     (86 rutas REST en routers por recurso)
+│   │   ├── repositories/           (capa de repositorio y persistencia)
+│   │   ├── scraping/               (GrupLAC, CvLAC y buscador Scienti)
+│   │   ├── pdf_import/             (importador de PDF estilo GrupLAC)
+│   │   ├── evaluator/               (motor de auditoría MinCiencias 2024)
+│   │   ├── reporting/              (informes PDF, CSV y dossier ejecutivo)
+│   │   ├── import_csv.py           (dataset oficial hrhc-c4wu de datos.gov.co)
+│   │   ├── models.py               (DTOs de entrada y salida)
+│   │   └── main.py                  (aplicación FastAPI)
+│   ├── tests/                       (18 suites pytest con 160 pruebas automatizadas)
 │   └── requirements.txt
 ├── frontend/
-│   └── web-react/                   (dashboard y vistas — D-02)
+│   └── web-react/                   (SPA React + TypeScript — D-02)
 ├── database/
-│   └── init_schema.sql
+│   └── init_schema.sql              (DDL de 22 tablas físicas)
 └── docs/
-    ├── PEA-i_Especificacion_Integral_Cumplimiento_Taller2.md
-    ├── Taller 2 EdD (2026-09-24) - G 5.md
-    └── diagrams/                    (11 diagramas Mermaid, PNG alta resolución, SVG y visor web)
-
-Pendientes de crear para la entrega:
-├── docs/word/                       (especificación técnica .docx)
-└── docs/video-script/               (guion del video de 10 minutos)
+    ├── PEA-i_Especificacion_Integral_Cumplimiento_Taller2.md   (este documento)
+    ├── Taller 2 EdD (2026-09-24) - G 5.md                      (enunciado original)
+    ├── ANALISIS_COMPARATIVO_PEA_I.md                           (análisis técnico frente a alternativa)
+    ├── modelo-medicion-2024.md                                 (marco normativo MinCiencias — Punto 5)
+    ├── guion_de_sustentaci_n_en_video_taller_2_edd.md          (guion del video — 37.5; también en .pdf)
+    ├── word/
+    │   ├── build_word_doc.py                    (generador del Word desde esta especificación)
+    │   ├── doc_formatter.py                     (módulo de formateo y estilos enriquecidos)
+    │   └── Taller2_WP-DN-EO.docx               (especificación técnica oficial — entregable)
+    └── diagrams/                                (11 diagramas Mermaid, PNG alta resolución, SVG y visor web)
 ```
 
 ## 44. Lista de comprobación final
@@ -2539,9 +2574,9 @@ Pendientes de crear para la entrega:
 
 ### Documentación
 
-- [ ] Word final.
+- [x] Word final (`docs/word/Taller2_WP-DN-EO.docx`, regenerado desde esta especificación con `build_word_doc.py`).
 - [x] Arquitectura (diagrama y descripción detallada en §38.5).
-- [x] Modelo relacional (diagrama ER de 16 tablas en §38.2).
+- [x] Modelo relacional (modelo físico de 22 tablas en §8.1; diagrama ER de las 17 tablas principales en §38.2).
 - [x] Hipercubo (diagrama y operaciones OLAP en §4, §29 y §38.6).
 - [x] Entradas y salidas (catálogo de variables en §5 y §31).
 - [x] Casos de uso (diagrama de 5 actores y 6 subsistemas en §38.1).
@@ -2551,20 +2586,20 @@ Pendientes de crear para la entrega:
 - [x] Diagramas de secuencia (5 diagramas UML en §38.4).
 - [x] Diccionario de datos (especificación de entidades y atributos en §17 y §38.2).
 - [x] Matriz de trazabilidad (requisitos T-01 a T-43 en §3 y §28).
-- [ ] Manual de instalación.
-- [ ] Manual de usuario.
+- [x] Manual de instalación (README.md: prerrequisitos, instalación desde cero, verificación rápida y solución de problemas).
+- [x] Manual de usuario (video demostrativo con guion cronometrado — sección 37.5 —, recorrido de verificación del README.md y la propia interfaz web de la aplicación).
 
 ### Entrega
 
-- [ ] `INTEGRANTES.txt`.
-- [ ] Archivos con iniciales correctas — sustituido por entrega modular (D-01).
-- [ ] Video aproximado de 10 minutos.
-- [ ] Identidad institucional en video.
-- [ ] Integrantes visibles en video.
-- [ ] Repositorio o paquete final.
-- [ ] Asunto de correo correcto.
-- [ ] Destinatario correcto.
-- [ ] Fecha límite verificada.
+- [ ] `INTEGRANTES.txt` con los datos personales completos de los tres integrantes (nombre, código, correo y programa).
+- [ ] Archivos con iniciales correctas — sustituido por entrega modular (D-01): Word `Taller2_WP-DN-EO.docx` y núcleo compilado `abpoxx_pybind.pyd`.
+- [ ] Video aproximado de 10 minutos, grabado siguiendo el guion cronometrado de `docs/guion_de_sustentaci_n_en_video_taller_2_edd.md`.
+- [ ] Identidad institucional de la UPC en el video.
+- [ ] Integrantes visibles en cámara durante toda la grabación.
+- [ ] Repositorio Git/GitHub publicado con la versión final.
+- [ ] Asunto del correo correcto: «Estructura de datos Taller 2 Grupo 5 2026».
+- [ ] Destinatario correcto: `adithperez@unicesar.edu.co`.
+- [ ] Envío antes de la fecha límite: lunes 19 de octubre de 2026, 11:59 a. m.
 
 ## 45. Veredicto de cobertura
 
@@ -2585,6 +2620,8 @@ Con las ampliaciones de esta versión, el diseño documental cubre explícitamen
 Alcance ajustado por las decisiones del equipo (sección 26.1): D-01 entrega ambas soluciones integradas en una sola aplicación, D-02 traslada el dashboard estadístico a la aplicación integrada y D-03 concentró originalmente la ingesta en la ruta URL oficial de SCIENTI — decisión posteriormente sustituida al implementarse los importadores de CSV (dataset oficial hrhc-c4wu de datos.gov.co) y de PDF (estilo GrupLAC), ambos con el mismo flujo de vista previa y confirmación. Ninguna de estas decisiones elimina un requisito obligatorio: reinterpretan su forma de entrega, y el equipo las expondrá y defenderá en el video.
 
 La afirmación de cumplimiento total dependerá de completar la implementación y reunir las evidencias enumeradas en la matriz de trazabilidad y en la lista de comprobación.
+
+> **Estado de documentación (2026-10-18, corte de entrega):** Esta especificación quedó sincronizada con el estado real del repositorio tras la modularización de finales de la fase de desarrollo: el backend se organiza en los paquetes `api/` (86 rutas REST en routers por recurso), `repositories/`, `scraping/`, `pdf_import/`, `evaluator/` y `reporting/` con fachadas de compatibilidad; la consola C++ se estructura en `core_cpp/src/cli/` y su persistencia en `persistence/db/` y `persistence/json/`; y `database/init_schema.sql` define 22 tablas físicas (17 detalladas en el diagrama ER de la sección 38.2 y cinco de enlace/soporte). La verificación de esta fecha deja 18 suites de `pytest` con 160 pruebas recolectadas — 141 aprobadas y 19 saltadas por el gate de base de datos (`PEAI_TEST_DB`), con salida exitosa — y el ejecutable de estructuras C++ se mantiene en 159/159 aserciones. El guion del video (37.5) y el análisis comparativo técnico quedaron integrados en `docs/`, y el documento Word `docs/word/Taller2_WP-DN-EO.docx` se regenera desde esta especificación con `docs/word/build_word_doc.py`.
 
 > **Estado de implementación y verificación integral (2026-10-09, T-12/T-13):** Los importadores por archivo quedaron implementados de punta a punta. **CSV (T-12):** `backend/app/import_csv.py` parsea el dataset oficial de MinCiencias en datos.gov.co (Socrata `hrhc-c4wu`; tolera BOM, fechas ISO con milisegundos, "No registra" y numéricos "16.0"), deduplica por código COL conservando la convocatoria más reciente, aplica un tope de 200 grupos distintos por importación (HTTP 400 con orientación de filtrado) y permite enriquecer cada grupo con su GrupLAC completo resolviendo COL→nro únicamente por el buscador oficial (con fallback a los datos del archivo si la resolución o el scrapeo fallan); cada fila es una transacción independiente y la RAM se recarga una sola vez al final. **PDF (T-13):** `backend/app/import_pdf.py` extrae el texto con PyMuPDF y ataca la estructura de secciones/etiquetas compartida por el reporte que genera el propio sistema y una impresión del visor de Scienti; exige código COL válido (un nro pelado se rechaza con HTTP 400, trampa de identidad) y resuelve el subtipo de producto por nombre contra el catálogo 2024 sin requerir BD. Ambos exponen `/groups/import/csv(/preview)` y `/groups/import/pdf(/preview)` con flujo de vista previa→confirmación, registran `ImportJob.source_type` de `csv`/`pdf`, son idempotentes ante doble importación y tienen UI en React (pestañas "CSV (datos.gov.co)" y "PDF (GrupLAC)" en `/admin/import`). La suite backend cuenta con 13 archivos de prueba: 147 pruebas en verde con SQL Server local activado (`PEAI_TEST_DB=1`; 128 aprobadas y 19 saltadas por el gate sin BD). El build de React (`tsc -b && vite build`) pasa en limpio.
 

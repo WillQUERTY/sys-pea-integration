@@ -9,6 +9,10 @@ import os
 import sys
 import re
 import pyodbc
+from pathlib import Path
+REPO_ROOT = Path(__file__).resolve().parent.parent
+sys.path.insert(0, str(REPO_ROOT))
+sys.path.insert(0, str(REPO_ROOT / "backend"))
 from backend.app.config import settings
 from backend.app import repository, datos_abiertos
 from backend.app.scraper import scrape_gruplac
@@ -35,7 +39,7 @@ TARGET_GROUPS = [
         "name": "AITICE",
         "url": "https://scienti.minciencias.gov.co/gruplac/jsp/visualiza/visualizagr.jsp?nro=00000000002668",
         "code": "COL0043834",
-        "local_html": os.path.join(os.path.dirname(__file__), "docs", "AITICE-PAGE.html"),
+        "local_html": str(REPO_ROOT / "docs" / "AITICE-PAGE.html"),
     },
     {
         "name": "Grupo de óptica e informática",

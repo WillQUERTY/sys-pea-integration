@@ -21,11 +21,11 @@ METADATA = [
     },
     {
         "id": "02_modelo_entidad_relacion",
-        "title": "02. Modelo Entidad-Relación Relacional (16 Tablas)",
+        "title": "02. Modelo Entidad-Relación Relacional (22 Tablas Físicas)",
         "subtitle": "Complemento b: Base de Datos SQL Server (peai)",
         "category": "Modelado Estructural",
         "spec_sec": "§38.2",
-        "desc": "Modelo relacional físico completo con 16 tablas normalizadas en SQL Server, reflejando el catálogo Minciencias 2024 (ProductFamily, ProductSubtype con las 70 tipologías canónicas, QualityCategory con pesos), vínculos ortogonales, cola de validación técnica, historial de operaciones de deshacer y tabla de auditoría inmutable."
+        "desc": "Modelo relacional físico de 22 tablas en SQL Server (17 detalladas en el diagrama; las restantes son tablas de enlace y soporte de importaciones), reflejando el catálogo Minciencias 2024 (ProductFamily, ProductSubtype con las 70 tipologías canónicas, QualityCategory con pesos), vínculos ortogonales, cola de validación técnica, historial de operaciones de deshacer y tabla de auditoría inmutable."
     },
     {
         "id": "03_multilista_memoria_ram",
