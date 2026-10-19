@@ -101,17 +101,22 @@ def create_cover_page(doc):
     run_doc.font.bold = True
     run_doc.font.color.rgb = RGBColor(0x1A, 0x20, 0x2C)
 
-    run_int_lbl = p_meta.add_run("GRUPO DE TRABAJO (INICIALES):\n")
+    run_int_lbl = p_meta.add_run("INTEGRANTES DEL GRUPO (INICIALES: WP - DN - EO):\n")
     run_int_lbl.font.size = Pt(10)
     run_int_lbl.font.bold = True
     run_int_lbl.font.color.rgb = RGBColor(0x71, 0x80, 0x96)
 
-    run_int = p_meta.add_run(f"{INITIALS}\n(Grupo Oficial Taller 2 — 2026)\n")
-    run_int.font.size = Pt(13)
+    run_int = p_meta.add_run(
+        "WILLIAM ANDRÉS PEÑARANDA OÑATE (WP)\n"
+        "DONALDO DAVID NORIEGA PALOMINO (DN)\n"
+        "EDINSON JOSÉ OLIVERO ROJAS (EO)\n\n"
+        "(Grupo Oficial Taller 2 — 2026)\n"
+    )
+    run_int.font.size = Pt(11)
     run_int.font.bold = True
     run_int.font.color.rgb = RGBColor(0x0D, 0x94, 0x88)
 
-    for _ in range(3):
+    for _ in range(2):
         doc.add_paragraph()
 
     # Ciudad y Fecha

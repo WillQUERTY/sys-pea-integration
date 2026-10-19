@@ -1,10 +1,10 @@
 # PEA-i: Especificación integral, arquitectura, dominio y cumplimiento del Taller 2
 
-> **Programa Estadístico de Análisis de Investigación**  
-> Universidad Popular del Cesar  
-> Asignatura: Estructura de Datos  
-> Documento maestro de análisis, diseño y trazabilidad  
-> Versión 2.1 - 25 de septiembre de 2026
+> **Programa Estadístico de Análisis de Investigación (PEA-i / Khemia)**  
+> Universidad Popular del Cesar — Facultad de Ingenierías y Tecnológicas  
+> Asignatura: Estructura de Datos | Docente: Ing. Adith Pérez  
+> Grupo de Trabajo (WP - DN - EO): William Andrés Peñaranda Oñate · Donaldo David Noriega Palomino · Edinson José Olivero Rojas  
+> Octubre de 2026 — Entrega Final Oficial Taller 2
 
 ---
 
@@ -373,12 +373,14 @@ Calculado puramente recorriendo los nodos enlazados en memoria:
 ## 10. Entregables obligatorios
 
 El proyecto satisface la totalidad de entregables estipulados para el Taller 2:
-1. **Código Fuente Completo:** Estructurado en repositorio Git con historial limpio y trazable (`core_cpp/`, `backend/`, `frontend/web-react/`, `database/`).
+1. **Código Fuente Completo:** Estructurado en repositorio Git con historial limpio y trazable: [GitHub - WillQUERTY/sys-pea-integration](https://github.com/WillQUERTY/sys-pea-integration).
 2. **Documento Técnico en Word (`docs/word/Taller2_WP-DN-EO.docx`):** Documento formal generado a partir de esta especificación integral maestra, que incluye arquitectura, diagramas, casos de uso, historias de usuario y matriz de trazabilidad.
 3. **Archivo de Persistencia (`pea_data.json`):** Archivo JSON generado con la producción completa, integrantes, productos enriquecidos y autores listo para prueba de carga independiente.
-4. **Archivo de Identificación (`INTEGRANTES.txt`):** Ficha institucional con datos del grupo de estudiantes, código y programa.
-5. **Video Demostrativo de 10 minutos:** Grabación en alta definición sustentando los requisitos del taller, el funcionamiento independiente de `pea_cli`, la API FastAPI, la interfaz React y la reversión de operaciones con la pila.
-6. **Correo de entrega institucional:** Remisión formal a la coordinación docente (`adithperez@unicesar.edu.co`).
+4. **Archivo de Identificación (`INTEGRANTES.txt`):** Ficha institucional con datos del grupo de estudiantes (William Andrés Peñaranda Oñate, Donaldo David Noriega Palomino, Edinson José Olivero Rojas).
+5. **Video Demostrativo de 10 minutos (Sustentación):** Grabación en alta definición sustentando los requisitos del taller, el funcionamiento independiente de `pea_cli`, la API FastAPI, la interfaz React y la reversión de operaciones con la pila: [PRESENTACIÓN KHEMIA (YouTube)](https://www.youtube.com/watch?v=eezB3oZ3n2w&t=12s).
+6. **Versión en Vivo en Internet (Despliegue Web):** Acceso público web operativo en [http://155.133.22.12/](http://155.133.22.12/).
+7. **Copia de Seguridad de la Base de Datos (`docs/peai.bak`):** Archivo de respaldo físico de Microsoft SQL Server para restauración directa.
+8. **Correo de entrega institucional:** Remisión formal a la coordinación docente (`adithperez@unicesar.edu.co`).
 
 ---
 
@@ -2525,6 +2527,7 @@ sys_pea_integration/
     │   ├── build_word_doc.py                    (generador del Word desde esta especificación)
     │   ├── doc_formatter.py                     (módulo de formateo y estilos enriquecidos)
     │   └── Taller2_WP-DN-EO.docx               (especificación técnica oficial — entregable)
+    ├── peai.bak                                 (copia de respaldo física de SQL Server)
     └── diagrams/                                (11 diagramas Mermaid, PNG alta resolución, SVG y visor web)
 ```
 
