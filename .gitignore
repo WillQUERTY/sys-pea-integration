@@ -45,6 +45,7 @@ docs/_uvicorn*.log
 *.old
 ~$*
 .pytest_cache/
+*.zip
 
 # Agent & IDE local state
 .agents/
