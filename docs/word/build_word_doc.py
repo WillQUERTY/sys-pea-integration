@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Generador del Documento Oficial Word (.docx) para la entrega del Taller 2 de Estructura de Datos.
+Generador del Documento Oficial Word (.docx) para la entrega del Parcial 2 de Estructura de Datos.
 Universidad Popular del Cesar - Grupo Oficial: WP-DN-EO
 Procesa la especificación técnica maestra completa (2.600+ líneas), incrusta imágenes retina
 de los diagramas, aplica el formateador institucional de tablas de alta fidelidad,
@@ -32,13 +32,13 @@ from doc_formatter import (
 )
 
 REPO_ROOT = DOCS_WORD_DIR.parent.parent
-SPEC_MD_PATH = REPO_ROOT / "docs" / "PEA-i_Especificacion_Integral_Cumplimiento_Taller2.md"
+SPEC_MD_PATH = REPO_ROOT / "docs" / "Parcial 2 EdD (2026-10-19).md"
 DIAGRAMS_DIR = REPO_ROOT / "docs" / "diagrams"
 WORD_OUTPUT_DIR = DOCS_WORD_DIR
 
 # Iniciales oficiales
 INITIALS = "WP-DN-EO"
-DOCX_NAME = f"Taller2_{INITIALS}.docx"
+DOCX_NAME = f"Parcial2_{INITIALS}.docx"
 
 def create_cover_page(doc):
     """Genera la portada institucional de la Universidad Popular del Cesar."""
@@ -78,7 +78,7 @@ def create_cover_page(doc):
     run_title.font.bold = True
     run_title.font.color.rgb = RGBColor(0x1A, 0x36, 0x5D)
 
-    run_taller = p_title.add_run("DOCUMENTO MAESTRO DE ESPECIFICACIÓN TÉCNICA, ARQUITECTURA,\nMODELO DE DATOS Y CUMPLIMIENTO DEL TALLER 2\n")
+    run_taller = p_title.add_run("DOCUMENTO MAESTRO DE ESPECIFICACIÓN TÉCNICA, ARQUITECTURA,\nMODELO DE DATOS Y CUMPLIMIENTO DEL PARCIAL 2\n")
     run_taller.font.name = "Arial"
     run_taller.font.size = Pt(12)
     run_taller.font.bold = True
@@ -110,7 +110,7 @@ def create_cover_page(doc):
         "WILLIAM ANDRÉS PEÑARANDA OÑATE (WP)\n"
         "DONALDO DAVID NORIEGA PALOMINO (DN)\n"
         "EDINSON JOSÉ OLIVERO ROJAS (EO)\n\n"
-        "(Grupo Oficial Taller 2 — 2026)\n"
+        "(Grupo Oficial Parcial 2 — 2026)\n"
     )
     run_int.font.size = Pt(11)
     run_int.font.bold = True
@@ -144,7 +144,7 @@ def setup_page_formatting(doc):
         header = section.header
         hp = header.paragraphs[0]
         hp.alignment = WD_ALIGN_PARAGRAPH.RIGHT
-        hrun = hp.add_run("Universidad Popular del Cesar | PEA-i — Taller 2 (Estructura de Datos)")
+        hrun = hp.add_run("Universidad Popular del Cesar | PEA-i — Parcial 2 (Estructura de Datos)")
         hrun.font.name = "Calibri"
         hrun.font.size = Pt(8.5)
         hrun.font.color.rgb = RGBColor(0x71, 0x80, 0x96)
@@ -200,6 +200,43 @@ def parse_markdown_and_build_doc():
     """Parsea el documento maestro de especificación completo y ensambla el .docx oficial."""
     print("Iniciando lectura de especificación completa...")
     content = SPEC_MD_PATH.read_text(encoding="utf-8")
+
+    # Documentación de indicadores Minciencias 2024 (I_Grupo / I_Investigador)
+    indicadores_md = """
+
+## Indicadores Científicos Minciencias 2024
+
+### I_Grupo — Indicador de Producción Científica del Grupo
+
+El Indicador de Grupo (I_Grupo) se calcula según el Modelo de Medición Minciencias 2024, Sección 10.6:
+
+```
+I ≡ 3.7·Top + 2.3·A + 0.4·B + 1.5·AP + 0.5·DPC + 1.0·Fr.A + 0.2·Fr.B + 0.1·Cohe + 0.3·Coop
+```
+
+Donde:
+- **Top**: Productos en tipología TOP
+- **A**: Productos Tipo A
+- **B**: Productos Tipo B
+- **AP**: Apropiación Social (asc_count)
+- **DPC**: Divulgación Pública (dpc_count)
+- **Fr.A**: Formación de Recurso Humano Tipo A (Doctoral)
+- **Fr.B**: Formación de Recurso Humano Tipo B (Maestría)
+- **Cohe**: Índice de Cohesión interna del grupo
+- **Coop**: Productos coautorizados con otros investigadores
+
+**Pesos oficiales:** 3.7, 2.3, 0.4, 1.5, 0.5, 1.0, 0.2, 0.1, 0.3
+
+### I_Investigador — Indicador de Producción Científica del Investigador
+
+El Indicador del Investigador (I_Investigador) aplica la misma fórmula a nivel individual, con Cohe = 0 (no aplica a investigador individual):
+
+```
+I ≡ 3.7·Top + 2.3·A + 0.4·B + 1.5·AP + 0.5·DPC + 1.0·Fr.A + 0.2·Fr.B + 0.3·Coop
+```
+
+"""
+    content += indicadores_md
 
     doc = docx.Document()
     setup_page_formatting(doc)

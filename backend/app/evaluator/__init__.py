@@ -6,7 +6,7 @@ Referencia: Minciencias - Modelo de Medición 2024 (Convocatoria 957 / Anexo 1 -
 
 from typing import Any, Dict
 from .helpers import clean_classification
-from .metrics_collector import collect_group_metrics
+from .metrics_collector import collect_group_metrics, collect_researcher_metrics
 from .tier_rules import build_tiers_config, audit_tiers
 
 def evaluate_group_minciencias(group_id: int, repository_module: Any) -> Dict[str, Any]:
@@ -28,6 +28,7 @@ def evaluate_group_minciencias(group_id: int, repository_module: Any) -> Dict[st
         "current_classification": clean_classification(group.classification),
         "raw_classification": group.classification or "",
         "max_qualified_tier": max_qualified_tier,
+        "i_grupo": metrics["i_grupo"],
         "next_tier": next_tier,
         "next_tier_progress": next_tier_progress,
         "next_tier_gap": next_tier_gap,
@@ -58,4 +59,42 @@ def evaluate_group_minciencias(group_id: int, repository_module: Any) -> Dict[st
         "tiers": evaluated_tiers,
     }
 
-__all__ = ["evaluate_group_minciencias"]
+
+def evaluate_researcher_minciencias(researcher_id: int, repository_module: Any) -> Dict[str, Any]:
+    """Evalúa la producción científica individual de un investigador según el
+    Modelo Minciencias 2024, aplicando la fórmula ponderada I_Investigador
+    (adaptación de I_Grupo a nivel individual).
+
+    Retorna el valor del indicador y el desglose por clase de producto.
+    """
+    metrics = collect_researcher_metrics(researcher_id, repository_module)
+    researcher = metrics["researcher"]
+
+    return {
+        "researcher_id": researcher_id,
+        "researcher_name": f"{researcher.first_names} {researcher.last_names}".strip(),
+        "external_code": researcher.external_code or "",
+        "classification_records": researcher.classification_records or "",
+        "highest_education_level": researcher.highest_education_level or "",
+        "i_investigador": metrics["i_investigador"],
+        "summary": {
+            "total_products": metrics["total_products"],
+            "products_in_window": metrics["products_in_window"],
+            "gnc_count": metrics["gnc_count"],
+            "dti_count": metrics["dti_count"],
+            "frh_count": metrics["frh_count"],
+            "asc_count": metrics["asc_count"],
+            "dpc_count": metrics["dpc_count"],
+            "top_count": metrics["top_count"],
+            "type_a_count": metrics["type_a_count"],
+            "type_b_count": metrics["type_b_count"],
+            "frh_a_count": metrics["frh_a_count"],
+            "frh_b_count": metrics["frh_b_count"],
+            "asc_dpc_count": metrics["asc_dpc_count"],
+            "coauthored_products_count": metrics["coauthored_products_count"],
+            "gnc_dti_in_window": metrics["gnc_dti_in_window"],
+            "asc_dpc_frh_in_window": metrics["asc_dpc_frh_in_window"],
+        },
+    }
+
+__all__ = ["evaluate_group_minciencias", "evaluate_researcher_minciencias"]

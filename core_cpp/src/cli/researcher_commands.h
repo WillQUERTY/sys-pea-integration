@@ -5,6 +5,7 @@
 namespace peai::cli {
 
 int handle_researchers(int argc, char* argv[]);
+int handle_indicator(int argc, char* argv[]);
 
 } // namespace peai::cli
 

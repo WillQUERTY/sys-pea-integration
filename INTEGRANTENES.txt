@@ -1,0 +1,42 @@
+﻿UNIVERSIDAD POPULAR DEL CESAR
+FACULTAD DE INGENIERÍAS Y TECNOLÓGICAS
+INGENIERÍA DE SISTEMAS
+ASIGNATURA: ESTRUCTURA DE DATOS
+PARCIAL 2 — PROGRAMA ESTADÍSTICO DE ANÁLISIS DE INVESTIGACIÓN (PEA-i / Khemia)
+DOCENTE: ING. ADITH PÉREZ
+
+======================================================================
+IDENTIFICACIÓN DE LOS ESTUDIANTES DEL GRUPO (INICIALES: WP - DN - EO)
+======================================================================
+
+INTEGRANTE 1 (WP):
+- Iniciales: WP
+- Nombres y Apellidos: William Andrés Peñaranda Oñate
+- Programa: Ingeniería de Sistemas
+- Universidad: Universidad Popular del Cesar (UPC)
+
+INTEGRANTE 2 (DN):
+- Iniciales: DN
+- Nombres y Apellidos: Donaldo David Noriega Palomino
+- Programa: Ingeniería de Sistemas
+- Universidad: Universidad Popular del Cesar (UPC)
+
+INTEGRANTE 3 (EO):
+- Iniciales: EO
+- Nombres y Apellidos: Edinson José Olivero Rojas
+- Programa: Ingeniería de Sistemas
+- Universidad: Universidad Popular del Cesar (UPC)
+
+======================================================================
+INFORMACIÓN DE ENTREGA Y ENLACES OFICIALES
+======================================================================
+- Asunto del Correo: Estructura de datos Parcial 2 Grupo # 2026
+- Destinatario: adithperez@unicesar.edu.co
+- Repositorio GitHub: https://github.com/WillQUERTY/sys-pea-integration
+- Versión en Vivo (Despliegue Web HTTP): http://155.133.22.12/
+- Video Demostrativo (YouTube): https://www.youtube.com/watch?v=eezB3oZ3n2w&t=12s
+- Documento de Especificación Oficial: docs/word/Parcial2_WP-DN-EO.docx
+- Copia de Base de Datos SQL Server: docs/peai.bak (Backup físico oficial)
+- Archivo de Persistencia JSON: pea_data.json (12 colecciones completas)
+- Guion de Sustentación Técnica en Video: pendiente (crear guion del Parcial 2)
+- Análisis Comparativo Arquitectural: docs/ANALISIS_COMPARATIVO_PEA_I.md

@@ -2,6 +2,7 @@ from typing import List, Optional
 from fastapi import APIRouter, HTTPException, Query
 
 from ... import repository
+from ...evaluator import evaluate_researcher_minciencias
 from ...models import Group, Researcher, Product, PagedResponse
 from ..common import _normalize_text
 
@@ -129,6 +130,19 @@ async def get_researcher_stats_endpoint(res_id: int):
     """Retrieve statistical indicators, production dynamics, and group contributions for a researcher."""
     try:
         return repository.get_researcher_stats(res_id)
+    except KeyError:
+        raise HTTPException(status_code=404, detail="Investigador no encontrado")
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.get("/researchers/{res_id}/indicator", tags=["Researchers"])
+async def get_researcher_indicator_endpoint(res_id: int):
+    """Retorna el indicador de produccion científica individual (I_Investigador)
+    según el Modelo Minciencias 2024, aplicando la fórmula ponderada adaptada
+    a nivel de investigador."""
+    try:
+        return evaluate_researcher_minciencias(res_id, repository)
     except KeyError:
         raise HTTPException(status_code=404, detail="Investigador no encontrado")
     except Exception as e:

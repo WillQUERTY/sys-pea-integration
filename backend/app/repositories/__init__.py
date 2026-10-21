@@ -11,7 +11,7 @@ from .context import (
     export_to_file,
     print_summary,
 )
-from .catalogs import _get_product_catalogs_from_file, _get_product_catalogs_pyodbc, get_product_catalogs
+from .catalogs import _get_product_catalogs_from_file, get_product_catalogs
 from .validation_queue import (
     vq_clear,
     vq_dequeue,
@@ -124,7 +124,6 @@ __all__ = [
     "export_to_file",
     "print_summary",
     "_get_product_catalogs_from_file",
-    "_get_product_catalogs_pyodbc",
     "_is_endorsed",
     "_normalize_text",
     "_product_year",

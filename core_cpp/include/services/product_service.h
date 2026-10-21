@@ -22,6 +22,7 @@ int total_products();
 
 // ---- Multilista: Product <-> Researcher / External Authors (RAM) ----
 ProductAuthorNode*         add_product_author(const ProductAuthor& pa);
+bool                       update_product_author(int product_id, int researcher_id, const ProductAuthor& updates);
 std::vector<ProductAuthor> authors_of_product(int product_id);
 std::vector<int>           products_of_researcher_ram(int researcher_id);
 bool                       remove_product_author_ram(int product_id, int researcher_id, const std::string& ext_name = "");

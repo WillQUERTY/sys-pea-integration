@@ -262,27 +262,9 @@ bool remove_member_from_group(int group_id, int researcher_id) {
     MembershipNode* cur  = gn->firstMember;
     while (cur) {
         if (cur->data.researcherId == researcher_id) {
-            // Unlink from group list
-            if (prev) prev->nextInGroup = cur->nextInGroup;
-            else      gn->firstMember   = cur->nextInGroup;
-
-            // Multilista: desenlazar de la cadena del investigador
-            ResearcherNode* rn = find_researcher_node(researcher_id);
-            if (rn) {
-                MembershipNode* prevR = nullptr;
-                MembershipNode* rcur  = rn->firstMembership;
-                while (rcur) {
-                    if (rcur == cur) break;
-                    prevR = rcur;
-                    rcur  = rcur->nextForResearcher;
-                }
-                if (rcur) {
-                    if (prevR) prevR->nextForResearcher = cur->nextForResearcher;
-                    else       rn->firstMembership     = cur->nextForResearcher;
-                }
-            }
-
-            delete cur;
+            // Desactivar membresía en lugar de eliminar físicamente:
+            // se conserva el registro (rastro de auditoría) pero se marca inactiva.
+            cur->data.status = "inactive";
             return true;
         }
         prev = cur;
