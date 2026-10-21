@@ -52,6 +52,10 @@ int handle_researchers(int argc, char* argv[]) {
         Researcher updates = *prev;
         updates.first_names = argv[4];
         updates.last_names = argv[5];
+        if (argc >= 7) updates.external_code = argv[6];
+        if (argc >= 8) updates.institutional_email = argv[7];
+        if (argc >= 9) updates.highest_education_level = argv[8];
+        if (argc >= 10) updates.status = argv[9];
         push_undo("UPDATE", "Researcher", id, undo_snapshot_researcher(*prev));
         if (update_researcher(id, updates))
             std::cout << "Researcher " << id << " updated (operación apilada)\n";
