@@ -119,6 +119,8 @@ export interface MincienciasTierDiagnosis {
 export interface MincienciasGroupDiagnosis {
   group_id: number
   group_name: string
+  /** Indicador de produccion scientifica del grupo (I_Grupo, Modelo Minciencias 2024 seccion 10.6) */
+  i_grupo?: number
   current_classification: string
   raw_classification: string
   max_qualified_tier: string
@@ -196,6 +198,19 @@ export interface ResearcherStats {
 export async function getResearcherStats(researcherId: number) {
   const { data } = await api.get<ResearcherStats>(
     `/researchers/${researcherId}/stats`
+  )
+  return data
+}
+
+export interface ResearcherIndicator {
+  researcher_id: number
+  researcher_name: string
+  i_investigador: number
+}
+
+export async function getResearcherIndicator(researcherId: number) {
+  const { data } = await api.get<ResearcherIndicator>(
+    `/researchers/${researcherId}/indicator`
   )
   return data
 }

@@ -80,6 +80,14 @@ export function MincienciasDiagnosisCard({ data, className }: MincienciasDiagnos
               <div className='text-xs font-bold font-mono text-foreground'>
                 Categoría {data.current_classification}
               </div>
+              {data.i_grupo !== undefined && (
+                <div className='mt-1'>
+                  <div className='text-[10px] text-muted-foreground uppercase font-medium'>I_Grupo (Minciencias 2024)</div>
+                  <div className='text-xs font-bold font-mono text-foreground'>
+                    {data.i_grupo.toLocaleString('es-CO', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                  </div>
+                </div>
+              )}
             </div>
             <Badge
               variant='outline'

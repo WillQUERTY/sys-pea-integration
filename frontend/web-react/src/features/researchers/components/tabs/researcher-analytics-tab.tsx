@@ -4,6 +4,7 @@ import {
   Users,
   CheckCircle2,
   Award,
+  TrendingUp,
 } from 'lucide-react'
 import { Skeleton } from '@/components/ui/skeleton'
 import {
@@ -13,7 +14,7 @@ import {
   ResearcherGroupsContribution,
   ResearcherTopCoauthors,
 } from '@/components/charts'
-import { getResearcherStats, type ResearcherStats } from '@/lib/api'
+import { getResearcherStats, getResearcherIndicator, type ResearcherStats, type ResearcherIndicator } from '@/lib/api'
 
 interface ResearcherAnalyticsTabProps {
   researcherId: number
@@ -34,10 +35,18 @@ export function ResearcherAnalyticsTab({
     enabled: !propsStats,
   })
 
-  const stats = propsStats ?? fetchedStats
-  const isLoadingStats = propsIsLoadingStats ?? isFetchingStats
+  const { data: fetchedIndicator, isLoading: isFetchingIndicator } = useQuery({
+    queryKey: ['researcher-indicator', researcherId],
+    queryFn: () => getResearcherIndicator(researcherId),
+    enabled: researcherId > 0,
+  })
 
-  if (isLoadingStats) {
+  const stats = propsStats ?? fetchedStats
+  const indicator = fetchedIndicator
+  const isLoadingStats = propsIsLoadingStats ?? isFetchingStats
+  const isLoadingIndicator = isFetchingIndicator
+
+  if (isLoadingStats || isLoadingIndicator) {
     return (
       <div className="space-y-6">
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
@@ -108,6 +117,19 @@ export function ResearcherAnalyticsTab({
               {stats?.groups_contribution?.length ?? 0}
             </span>
             <span className="text-xs text-muted-foreground">colectivos UPC</span>
+          </div>
+        </div>
+
+        <div className="rounded-xl border border-border/50 bg-card p-4 shadow-xs">
+          <div className="flex items-center justify-between text-muted-foreground">
+            <span className="text-xs font-medium uppercase tracking-wider">Indicador de Producción Científica</span>
+            <TrendingUp className="h-4 w-4 text-blue-600" />
+          </div>
+          <div className="mt-2 flex items-baseline gap-2">
+            <span className="text-2xl font-bold font-mono tracking-tight text-foreground">
+              {indicator?.i_investigador?.toFixed(2) ?? 0}
+            </span>
+            <span className="text-xs text-muted-foreground">I_Investigador &#8212; Minciencias 2024, secci&oacute;n 10.6</span>
           </div>
         </div>
       </div>
