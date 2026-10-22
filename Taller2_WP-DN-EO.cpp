@@ -1,5 +1,5 @@
 // =============================================================================
-// Taller2_WP-DN-EO.cpp — Respuestas a los ejercicios del Parcial 2 EdD
+// Taller2.cpp — Respuestas a los ejercicios del Parcial 2 EdD
 // Estructura de Datos — Grupo WP-DN-EO — Universidad Popular del Cesar
 //
 // Ejercicio 1: Indicador de produccion cientifica del GRUPO (I_Grupo)
@@ -227,7 +227,7 @@ ResultadoGrupo calcular_i_grupo(
     }
 
     // Formula I_Grupo (Minciencias 2024, seccion 10.6)
-    double ap = r.asc_count + r.dpc_count;
+    double ap = r.asc_count;  // AP = ASC, DPC es termino separado
     r.i_grupo = 3.7 * r.top_count + 2.3 * r.type_a_count + 0.4 * r.type_b_count
               + 1.5 * ap + 0.5 * r.dpc_count
               + 1.0 * r.frh_a_count + 0.2 * r.frh_b_count
@@ -305,7 +305,7 @@ ResultadoInvestigador calcular_i_investigador(
     }
 
     // Formula I_Investigador (misma que I_Grupo, nivel individual)
-    double ap = r.asc_count + r.dpc_count;
+    double ap = r.asc_count;  // AP = ASC, DPC es termino separado
     double cohe = 0.0; // Cohesion interna no aplica a investigador individual
     r.i_investigador = 3.7 * r.top_count + 2.3 * r.type_a_count + 0.4 * r.type_b_count
                      + 1.5 * ap + 0.5 * r.dpc_count
