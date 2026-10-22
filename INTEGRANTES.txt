@@ -2,7 +2,7 @@ UNIVERSIDAD POPULAR DEL CESAR
 FACULTAD DE INGENIERÍAS Y TECNOLÓGICAS
 INGENIERÍA DE SISTEMAS
 ASIGNATURA: ESTRUCTURA DE DATOS
-TALLER 2 — PROGRAMA ESTADÍSTICO DE ANÁLISIS DE INVESTIGACIÓN (PEA-i / Khemia)
+PARCIAL 2 — PROGRAMA ESTADÍSTICO DE ANÁLISIS DE INVESTIGACIÓN (PEA-i / Khemia)
 DOCENTE: ING. ADITH PÉREZ
 
 ======================================================================
@@ -30,12 +30,12 @@ INTEGRANTE 3 (EO):
 ======================================================================
 INFORMACIÓN DE ENTREGA Y ENLACES OFICIALES
 ======================================================================
-- Asunto del Correo: Estructura de datos Taller 2 Grupo WP-DN-EO 2026
+- Asunto del Correo: Estructura de datos Parcial 2 Grupo # 2026
 - Destinatario: adithperez@unicesar.edu.co
 - Repositorio GitHub: https://github.com/WillQUERTY/sys-pea-integration
 - Versión en Vivo (Despliegue Web HTTP): http://155.133.22.12/
 - Video Demostrativo (YouTube): https://www.youtube.com/watch?v=eezB3oZ3n2w&t=12s
-- Documento de Especificación Oficial: docs/word/Taller2_WP-DN-EO.docx
+- Documento de Especificación Oficial: docs/word/Parcial2_WP-DN-EO.docx
 - Copia de Base de Datos SQL Server: docs/peai.bak (Backup físico oficial)
 - Archivo de Persistencia JSON: pea_data.json (12 colecciones completas)
 - Guion de Sustentación Técnica en Video: docs/guion_de_sustentaci_n_en_video_taller_2_edd.pdf
