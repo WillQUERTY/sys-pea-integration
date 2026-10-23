@@ -318,7 +318,15 @@ def get_group_minciencias_diagnosis(group_id: int) -> dict:
     from .. import repository
     from ..minciencias_evaluator import evaluate_group_minciencias
     repository.get_group(group_id)
-    return evaluate_group_minciencias(group_id, repository)
+    diagnostico = evaluate_group_minciencias(group_id, repository)
+    # Lectura ADITIVA del modelo oficial 2024 (§2.2.9 → §3.10): no cambia
+    # ninguna clave que consume el frontend (i_grupo, tiers, semáforo).
+    try:
+        from ..evaluator.official_population import evaluar_modelo_oficial
+        diagnostico["modelo_oficial_2024"] = evaluar_modelo_oficial(repository, group_id)
+    except Exception as e:
+        logger.warning(f"No se pudo evaluar el modelo oficial 2024 para el grupo {group_id}: {e}")
+    return diagnostico
 
 
 def _ram_researcher_stats(researcher_id: int) -> dict:

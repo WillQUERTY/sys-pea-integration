@@ -116,11 +116,50 @@ export interface MincienciasTierDiagnosis {
   missing_summary: string[]
 }
 
+/** Lectura oficial del modelo de medición Minciencias 2024 (§2.2.9 → §3.10).
+ *  Viene como clave aditiva del diagnóstico: no reemplaza el semáforo legacy. */
+export interface MincienciasOfficialModel2024 {
+  modelo: string
+  anio_cierre: number
+  grupo: { id: number; identificacion: string; edad_anos: number }
+  /** Ind.Grupo final (§3.10): suma de coeficiente × índice normalizado (§3.9). */
+  ind_grupo: number
+  rango_teorico: number
+  posicion_poblacion: { puesto: number; de: number; percentil: number }
+  poblacion: { grupo: string; ind_grupo: number }[]
+  indices: Record<string, number>
+  terminos_ponderados: Record<string, number>
+  ind_clase: Record<string, number>
+  maximos_poblacion: Record<string, number>
+  maximo_cohe_poblacion: number
+  maximo_coop_poblacion: number
+  subtipos: {
+    codigo: string
+    clase: string
+    familia: string
+    n: number
+    periodo: number
+    lambda: number
+    ancla_subtipo: number | null
+    peso_relativo: number
+    peso_global: number
+    termino: number
+  }[]
+  cohe: { suma_autores: number; productos: number; valor: number }
+  coop: { suma_grupos: number; productos: number; valor: number }
+  excluidos: Record<string, number>
+  sin_ano: Record<string, number>
+  fuera_de_periodo: Record<string, number>
+  supuestos: string[]
+}
+
 export interface MincienciasGroupDiagnosis {
   group_id: number
   group_name: string
   /** Indicador de produccion scientifica del grupo (I_Grupo, Modelo Minciencias 2024 seccion 10.6) */
   i_grupo?: number
+  /** Lectura aditiva del modelo oficial 2024 (misma forma que devuelve la API). */
+  modelo_oficial_2024?: MincienciasOfficialModel2024
   current_classification: string
   raw_classification: string
   max_qualified_tier: string
