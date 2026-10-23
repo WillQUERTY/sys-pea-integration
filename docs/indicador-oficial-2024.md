@@ -19,7 +19,11 @@ de grupos de investigación.
 | Modelo puro | `backend/app/evaluator/official_indicator.py` | Aplica §2.2.9, §3.6, §3.7, §3.8.1, §2.2.10, §3.9 y §3.10 sobre estructuras `GrupoOficial`/`ProductoOficial`. Sin BD, sin FastAPI: se golden-testea con una población sintética. |
 | Adaptador RAM | `backend/app/evaluator/official_population.py` | Traduce el repositorio en RAM (grupos, productos, membresías, autores) a esas estructuras y construye la **población completa** (§3.9). |
 | Reporte | `scripts/pea_indicador_oficial.py` | Corre el modelo sobre `pea_data.json` e imprime el desglose de las tres etapas. |
-| Tests | `backend/tests/test_official_indicator.py` (27, golden a mano) y `backend/tests/test_official_population.py` (9, sobre los grupos reales). | |
+| **Núcleo C++** | `core_cpp/src/services/official_indicator.cpp` (+ `core_cpp/include/services/official_indicator.h`) | **El mismo modelo en C++**: λ §2.2.9, pesos §3.6, clases §3.7, Ind_Clase §3.8.1, Cohe/Coop §2.2.10, normalización §3.9 y fórmula §3.10, sobre la RAM de grupos/productos. |
+| Catálogo para C++ | `scripts/gen_catalogo_cpp.py` → `core_cpp/include/services/catalog_2024_generated.h` | Genera la tabla del catálogo (ancla §3.6, peso relativo, ventana §2.2.5) **con el mismo código Python del backend**, para que C++ no pueda divergir. `--check` detecta drift. |
+| CLI | `pea_cli indicator group <id> --data <repo.json> [--year <año>] [--json]` | Imprime el modelo oficial (encabezado) y, debajo, el `I_Grupo` legacy rotulado como referencia. `--json` emite el mismo contrato que la API. |
+| Verificador de paridad | `scripts/pea_paridad_indicador.py` | Compara **campo por campo** el JSON del CLI contra el del evaluador Python sobre el mismo repositorio. |
+| Tests | `backend/tests/test_official_indicator.py` (27, golden a mano), `backend/tests/test_official_population.py` (9, sobre los grupos reales) y `backend/tests/test_catalogo_cpp.py` (drift del catálogo C++). | |
 | API | `backend/app/repositories/analytics.py` → `get_group_minciencias_diagnosis` | Agrega la clave **aditiva** `modelo_oficial_2024` al diagnóstico. |
 | Frontend | `frontend/web-react/src/lib/api/analytics.ts` | Tipo `MincienciasOfficialModel2024` (opcional). La UI no cambia. |
 
@@ -32,7 +36,40 @@ python -X utf8 scripts/pea_indicador_oficial.py --edad 11  # forzar edad del gru
 
 # API (el diagnostico legacy llega igual, con la clave extra)
 GET /api/v1/groups/{id}/minciencias-diagnosis
+
+# CLI C++ (cada invocación es un proceso nuevo: el dato se carga con --data)
+core_cpp/build2/Release/pea_cli.exe indicator group 10 --data pea_data.json --year 2026
+core_cpp/build2/Release/pea_cli.exe indicator group 10 --data pea_data.json --json
+
+# Paridad C++ <-> Python (debe decir PARIDAD CONFIRMADA)
+python -X utf8 scripts/pea_paridad_indicador.py
 ```
+
+## Paridad C++ ↔ Python
+
+El CLI C++ y el backend calculan el **mismo** indicador sobre el **mismo**
+repositorio: `scripts/pea_paridad_indicador.py` compara `ind_grupo`, los nueve
+índices y términos ponderados, `ind_clase`, los máximos de la población,
+Cohe/Coop, el desglose por subtipo, los histogramas de exclusión y el ranking.
+Con `pea_data.json` y cierre 2026 da **exactamente** los mismos números en los
+dos lados:
+
+| Grupo | Python | C++ (CLI) |
+|---|---|---|
+| AITICE (#10) | 0,8541030927835052 | 0,8541030927835052 |
+| GISICO (#35) | 0,5479201551398108 | 0,5479201551398108 |
+
+Lo que hace posible esa paridad:
+
+- El catálogo no se reimplementa en C++: se **genera** desde
+  `database/catalog_2024.json` con el código del backend
+  (`scripts/gen_catalogo_cpp.py`), y `backend/tests/test_catalogo_cpp.py`
+  falla si el header generado queda viejo.
+- La normalización de texto (mojibake de doble codificación, acentos,
+  minúsculas) replica la del backend: `lower()` → corrección de mojibake →
+  NFD sin marcas combinantes.
+- La cascada de años replica `extraer_anio`: `year` → `obtained_date` →
+  `publication_date` → primer año plausible de la descripción.
 
 ## Qué implementa (y dónde está la evidencia)
 

@@ -15,6 +15,7 @@ add_library(abpoxx STATIC
     src/services/validation_queue.cpp
     src/services/work_plan_service.cpp
     src/services/project_service.cpp
+    src/services/official_indicator.cpp
     src/persistence/json_persistence.cpp
     src/persistence/json/json_common.cpp
     src/persistence/json/json_exporter.cpp

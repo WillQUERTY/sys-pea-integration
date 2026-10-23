@@ -3,10 +3,108 @@
 #include "cli_helpers.h"
 #include "services/group_service.h"
 #include "services/product_service.h"
+#include "services/official_indicator.h"
+#include <cmath>
+#include <iomanip>
 #include <iostream>
 #include <string>
 
 namespace peai::cli {
+
+namespace {
+
+// Opciones de la línea de comandos del indicador.
+// Cada invocación de pea_cli es un proceso nuevo con la RAM vacía, así que el
+// dato de entrada se carga explícitamente con --data.
+struct OpcionesIndicador {
+    std::string archivo_datos;   // --data <archivo.json>
+    bool json = false;           // --json (salida legible por máquina para la paridad)
+    int anio = 0;                // --year <anio> (cierre de la ventana §2.2.9)
+};
+
+// Parsea las opciones después del subcomando. El primer posicional es el id.
+bool parsear_opciones(int argc, char* argv[], int desde, int& id, OpcionesIndicador& op) {
+    for (int i = desde; i < argc; ++i) {
+        std::string arg = argv[i];
+        if (arg == "--data") {
+            if (i + 1 >= argc) { std::cerr << "--data requires a file path\n"; return false; }
+            op.archivo_datos = argv[++i];
+        } else if (arg == "--json") {
+            op.json = true;
+        } else if (arg == "--year") {
+            if (i + 1 >= argc) { std::cerr << "--year requires a year\n"; return false; }
+            op.anio = std::stoi(argv[++i]);
+        } else if (!arg.empty() && arg[0] == '-') {
+            std::cerr << "Unknown option: " << arg << "\n";
+            return false;
+        } else if (id == 0) {
+            id = std::stoi(arg);
+        } else {
+            std::cerr << "Unexpected argument: " << arg << "\n";
+            return false;
+        }
+    }
+    return true;
+}
+
+// Carga el repositorio en la RAM si el usuario pasó --data.
+bool cargar_datos(const OpcionesIndicador& op) {
+    if (op.archivo_datos.empty()) return true;
+    if (!load_from_file(op.archivo_datos)) {
+        std::cerr << "Could not load data from " << op.archivo_datos << "\n";
+        return false;
+    }
+    return true;
+}
+
+// Impresión legible del modelo oficial (§2.2.9 → §3.10).
+void imprimir_modelo_oficial(const official::ResultadoOficial& r) {
+    std::cout << "=== Indicador oficial de grupo Minciencias 2024 ===\n";
+    std::cout << "Grupo: " << r.grupo << "  (edad: " << r.edad_grupo << " anios, cierre: "
+              << r.anio_cierre << ")\n";
+    std::cout << std::fixed << std::setprecision(6);
+    std::cout << "Ind.Grupo = " << r.ind_grupo() << "  (rango teorico " << official::rango_teorico()
+              << ")\n";
+    std::cout << "Posicion en la poblacion: " << r.puesto << " de " << r.de
+              << "  (percentil " << r.percentil << ")\n";
+    std::cout << "--- Terminos §3.10 (indice §3.9 x coeficiente) ---\n";
+    for (size_t i = 0; i < r.indices.size(); ++i) {
+        std::cout << "  " << std::setw(8) << std::left << r.indices[i]
+                  << " indice " << std::setw(10) << std::right << r.valores_indice[i]
+                  << "  coef " << std::setw(4) << official::COEFICIENTES[i]
+                  << "  ->  " << r.terminos[i] << "\n";
+    }
+    std::cout << "--- Ind_Clase por clase (§3.7 / §3.8.1) ---\n";
+    for (size_t i = 0; i < r.clases.size(); ++i) {
+        std::cout << "  " << std::setw(8) << std::left << r.clases[i]
+                  << " valor " << std::setw(12) << std::right << r.valores_clase[i]
+                  << "  maximo poblacion " << r.maximos_clase[i] << "\n";
+    }
+    std::cout << "--- Cohe (§2.2.10.1) / Coop (§2.2.10.2) ---\n";
+    std::cout << "  Cohe = " << r.cohe.valor << "  (" << r.cohe.suma_autores << " autores del grupo / "
+              << r.cohe.productos << " productos)\n";
+    std::cout << "  Coop = " << r.coop.valor << "  (" << r.coop.suma_grupos << " grupos relacionados / "
+              << r.coop.productos << " productos)\n";
+    if (!r.subtipos.empty()) {
+        std::cout << "--- Desglose por subtipo ---\n";
+        for (const official::DetalleSubtipo& d : r.subtipos) {
+            std::cout << "  " << std::setw(12) << std::left << d.codigo
+                      << " n=" << d.n << " periodo=" << d.periodo
+                      << " lambda=" << d.lambda
+                      << " peso_global=" << d.peso_global
+                      << " termino=" << d.termino << "\n";
+        }
+    }
+    if (!r.excluidos.empty()) {
+        std::cout << "--- Exclusiones (lo que la fuente no permite verificar) ---\n";
+        for (const auto& par : r.excluidos) {
+            std::cout << "  [" << par.second << "] " << par.first << "\n";
+        }
+    }
+    std::cout << "Supuestos documentados en docs/indicador-oficial-2024.md\n";
+}
+
+} // namespace
 
 int handle_researchers(int argc, char* argv[]) {
     if (argc < 3) { usage(); return 1; }
@@ -88,8 +186,11 @@ int handle_indicator(int argc, char* argv[]) {
     std::string sub = argv[2];
 
     if (sub == "researcher") {
-        if (argc < 4) { std::cerr << "Provide researcher id\n"; return 1; }
-        int id = std::stoi(argv[3]);
+        int id = 0;
+        OpcionesIndicador op;
+        if (!parsear_opciones(argc, argv, 3, id, op)) return 1;
+        if (id == 0) { std::cerr << "Provide researcher id\n"; return 1; }
+        if (!cargar_datos(op)) return 1;
         auto opt = get_researcher(id);
         if (!opt) { std::cerr << "Researcher " << id << " not found\n"; return 1; }
         const auto& r = *opt;
@@ -168,18 +269,44 @@ int handle_indicator(int argc, char* argv[]) {
     }
 
     if (sub == "group") {
-        if (argc < 4) { std::cerr << "Provide group id\n"; return 1; }
-        int id = std::stoi(argv[3]);
+        int id = 0;
+        OpcionesIndicador op;
+        if (!parsear_opciones(argc, argv, 3, id, op)) return 1;
+        if (id == 0) { std::cerr << "Provide group id\n"; return 1; }
+        if (!cargar_datos(op)) return 1;
+
         auto opt = get_group(id);
         if (!opt) { std::cerr << "Group " << id << " not found\n"; return 1; }
         const auto& g = *opt;
 
+        if (list_groups().empty()) {
+            std::cerr << "The repository is empty: load data with --data <archivo.json>\n";
+            return 1;
+        }
+
+        // --- Modelo oficial Minciencias 2024 (§2.2.9 → §3.10) -----------------
+        // Es el MISMO cálculo que hace la API (`modelo_oficial_2024`) y que
+        // verifica scripts/pea_paridad_indicador.py contra Python.
+        int anio = op.anio > 0 ? op.anio : current_year();
+        std::string error;
+        official::ResultadoOficial oficial = official::evaluar_modelo_oficial(id, anio, &error);
+        if (!error.empty()) { std::cerr << error << "\n"; return 1; }
+
+        if (op.json) {
+            std::vector<official::ResultadoOficial> poblacion =
+                official::evaluar_poblacion(official::construir_poblacion(anio), anio);
+            std::cout << official::resultado_a_json(oficial, poblacion);
+            return 0;
+        }
+
+        imprimir_modelo_oficial(oficial);
+
+        // --- Referencia legacy (conteos crudos; NO es el indicador oficial) ----
         std::vector<int> pids = products_of_group(id);
 
         int total = 0, top = 0, type_a = 0, type_b = 0;
         int asc = 0, dpc = 0, frh_a = 0, frh_b = 0, coop = 0;
         int in_window = 0;
-        int current = current_year();
 
         for (int pid : pids) {
             auto popt = get_product(pid);
@@ -188,8 +315,8 @@ int handle_indicator(int argc, char* argv[]) {
             if (p.status != "active") continue;
 
             int py = product_year(p);
-            if (py <= 0) py = current;
-            int age = current - py;
+            if (py <= 0) py = anio;
+            int age = anio - py;
             if (age < 0) age = 0;
 
             // Ventana simplificada: 5 años por defecto, 10 para patentes (DTI)
@@ -218,30 +345,29 @@ int handle_indicator(int argc, char* argv[]) {
             if (authors.size() > 1) coop++;
         }
 
-        double cohe = 0.0;  // cohesion interna del colectivo (pendiente de analisis de autores del grupo)
+        double cohe = 0.0;  // cohesion interna del colectivo (la oficial la calcula §2.2.10)
 
-        // Formula I_Grupo (Minciencias 2024, seccion 10.6).
+        // Formula I_Grupo legacy (Minciencias 2024, seccion 10.6).
         // AP (apropiacion social) y DPC (divulgacion publica) son terminos separados.
         double i_grupo = 3.7 * top + 2.3 * type_a + 0.4 * type_b
                        + 1.5 * asc + 0.5 * dpc
                        + 1.0 * frh_a + 0.2 * frh_b
                        + 0.1 * cohe + 0.3 * coop;
 
-        std::cout << "=== I_Grupo — Grupo " << id << " ===\n";
+        std::cout << "\n=== Referencia legacy — I_Grupo (conteos crudos, NO oficial) ===\n";
         std::cout << "Nombre: " << g.name << " (ID " << g.id << ", clasificacion: " << g.classification << ")\n";
         std::cout << "Miembros: " << total_members() << "\n";
         std::cout << "Productos en ventana: " << in_window << " (de " << total << " vinculados)\n";
         std::cout << "  TOP: " << top << " | Tipo A: " << type_a << " | Tipo B: " << type_b << "\n";
         std::cout << "  ASC: " << asc << " | DPC: " << dpc << " | FRH-B: " << frh_b << "\n";
         std::cout << "  Productos coautorizados: " << coop << "\n";
-        std::cout << "-------------------------------\n";
-        std::cout << "I_Grupo = " << i_grupo << "\n";
+        std::cout << "  I_Grupo (legacy) = " << i_grupo << "\n";
         return 0;
     }
 
     std::cerr << "Unknown subcommand: " << sub << "\n";
-    std::cerr << "Usage: pea_cli indicator researcher <id>\n";
-    std::cerr << "       pea_cli indicator group <id>\n";
+    std::cerr << "Usage: pea_cli indicator researcher <id> [--data <archivo.json>] [--year <anio>]\n";
+    std::cerr << "       pea_cli indicator group <id> [--data <archivo.json>] [--year <anio>] [--json]\n";
     return 1;
 }
 
