@@ -28,6 +28,7 @@ bool                 update_membership(int group_id, int researcher_id, const st
 std::vector<int>     members_of_group(int group_id);
 std::vector<int>     groups_of_researcher(int researcher_id);
 bool                 remove_member_from_group(int group_id, int researcher_id);
+bool                 purge_member_from_group(int group_id, int researcher_id);
 
 // ---- Multilista: product links (Group <-> Product) ----
 GroupProductNode*    link_product_to_group(int group_id, int product_id);

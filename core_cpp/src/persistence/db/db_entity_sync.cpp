@@ -89,7 +89,7 @@ bool sync_membership_details_to_db(const std::string& connection_string, int gro
 
     std::string sql = 
         "IF EXISTS (SELECT 1 FROM GroupMembership m, ResearchGroup g, Researcher r WHERE m.group_id = g.id AND m.researcher_id = r.id AND " + g_clause + " AND " + r_clause + ") "
-        "  UPDATE m SET role = '" + escape_sql(utf8_to_cp1252(role)) + "', start_date = '" + escape_sql(utf8_to_cp1252(start_date)) + "', end_date = '" + escape_sql(utf8_to_cp1252(end_date)) + "' "
+        "  UPDATE m SET role = '" + escape_sql(utf8_to_cp1252(role)) + "', start_date = '" + escape_sql(utf8_to_cp1252(start_date)) + "', end_date = '" + escape_sql(utf8_to_cp1252(end_date)) + "', status = 'active' "
         "  FROM GroupMembership m, ResearchGroup g, Researcher r "
         "  WHERE m.group_id = g.id AND m.researcher_id = r.id AND " + g_clause + " AND " + r_clause + " "
         "ELSE "

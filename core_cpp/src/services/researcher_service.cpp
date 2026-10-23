@@ -95,11 +95,14 @@ bool delete_researcher(int id) {
     ResearcherNode* cur  = _researcherHead;
     while (cur) {
         if (cur->data.id == id) {
-            // Multilista: limpiar todas las membresias asociadas en grupos
-            // (se ejecuta mientras cur sigue en _researcherHead para que find_researcher_node funcione)
+            // Multilista: limpiar todas las membresias asociadas en grupos.
+            // El investigador se elimina, así que sus membresías se purgan del
+            // grafo (no se conservan como registros inactivos). Se ejecuta
+            // mientras cur sigue en _researcherHead para que find_researcher_node funcione.
             while (cur->firstMembership) {
                 int gid = cur->firstMembership->data.groupId;
-                if (!remove_member_from_group(gid, id)) {
+                if (!purge_member_from_group(gid, id)) {
+                    // El grupo ya no existe: el nodo solo queda en la cadena del investigador.
                     auto* tmp = cur->firstMembership;
                     cur->firstMembership = cur->firstMembership->nextForResearcher;
                     delete tmp;
