@@ -60,12 +60,11 @@ export function MincienciasDiagnosisCard({ data, className }: MincienciasDiagnos
       : '0.000'
 
   // Lectura OFICIAL del modelo de medición Minciencias 2024 (§2.2.9 → §3.10):
-  // es la única cifra que esta tarjeta muestra. `i_grupo_legacy` (suma
-  // ponderada de conteos crudos, sin λ, sin pesos globales y sin normalización
-  // §3.9) **no se muestra en la interfaz**: desde el 2026-10-24 vive solo en el
-  // payload de la API, para trazabilidad. La interfaz muestra exclusivamente la
-  // lectura oficial y la distingue de los conteos crudos en el panel de
-  // desglose ("Entradas" vs "Salidas").
+  // es la única cifra que esta tarjeta muestra. El indicador legacy (suma
+  // ponderada de conteos crudos) se eliminó del payload de la API el
+  // 2026-10-24: solo queda el cálculo oficial del modelo 2024. La interfaz
+  // muestra exclusivamente la lectura oficial y la distingue de los conteos
+  // crudos en el panel de desglose ("Entradas" vs "Salidas").
   // Ver docs/plan-integracion-modelo-oficial.md (brechas B1 y B5).
   const oficial = data.modelo_oficial_2024
   const tamanoPoblacion = oficial?.posicion_poblacion.de ?? oficial?.poblacion.length ?? 0

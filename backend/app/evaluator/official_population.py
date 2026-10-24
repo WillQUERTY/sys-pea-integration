@@ -15,12 +15,11 @@ suma conteos crudos; este adaptador hace la medición oficial completa
 (λ §2.2.9, pesos §3.6, clases §3.7, Ind_Clase §3.8.1, Cohe/Coop §2.2.10,
 normalización §3.9 y fórmula §3.10) sobre el catálogo 2024.
 
-Relación con el evaluador legacy: conviven. El legacy se conserva porque el
-frontend y los tests dependen de su forma (`i_grupo_legacy`, tiers, semáforo);
-este módulo agrega la lectura oficial como dato ADITIVO (`modelo_oficial_2024`).
-Desde la Fase 6 el legacy se llama `i_grupo_legacy` en toda la API: es una
+Relación con el evaluador legacy: el legacy se eliminó del payload de la API
+(frontend y tests ya no dependen de su forma). Este módulo agrega la lectura
+oficial como dato ADITIVO (`modelo_oficial_2024`). El legacy era una
 APROXIMACIÓN (conteos crudos, sin λ, sin pesos §3.6 y sin normalización §3.9)
-que solo alimenta el semáforo, nunca un indicador.
+que solo alimentaba el semáforo, nunca un indicador.
 
 Clasificación del producto (§3.6): la categoría de calidad VALIDADA por el
 validador humano (`Product.quality_category_id` -> `QualityCategory.code`) es

@@ -110,9 +110,6 @@ def imprimir_indicador_investigador(researcher_id: int) -> None:
     print(f"  ASC: {s.get('asc_count', '-')} | DPC: {s.get('dpc_count', '-')}")
     print(f"  FRH-A: {s.get('frh_a_count', '-')} | FRH-B: {s.get('frh_b_count', '-')}")
     print(f"  Productos coautorizados: {s.get('coauthored_products_count', '-')}")
-    # Referencia legacy (conteos crudos): NO es un indicador del modelo 2024
-    # (ese modelo no define produccion por persona).
-    print(f"  I_Investigador (referencia legacy, no oficial) = {resultado.get('i_investigador_legacy', '-')}")
 
     # Adaptación individual declarada del modelo 2024 (con la escala del
     # modelo): llega como clave aditiva del endpoint /investigator/indicator.

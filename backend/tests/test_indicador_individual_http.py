@@ -76,14 +76,13 @@ def test_el_endpoint_responde_con_la_adaptacion_individual(cliente_http):
     assert payload["adaptacion_individual_2024"]["investigador"]["id"] == 101
 
 
-def test_el_legacy_via_por_http_como_aproximacion_rotulada(cliente_http):
-    """El legacy se expone como `i_investigador_legacy` y ya no como
-    `i_investigador`: ese nombre queda para la adaptación declarada."""
+def test_no_hay_indicador_legacy_en_payload_individual(cliente_http):
+    """No hay indicador legacy en el payload individual: solo la
+    adaptación declarada del modelo 2024."""
     payload = _indicador(cliente_http, 101)
 
-    assert "i_investigador_legacy" in payload
+    assert "i_investigador_legacy" not in payload
     assert "i_investigador" not in payload
-    # El desglose descriptivo del legacy sigue intacto.
     assert payload["summary"]["total_products"] >= 0
 
 

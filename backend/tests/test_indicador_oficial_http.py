@@ -117,13 +117,12 @@ def test_el_payload_http_iguala_al_golden_del_contrato(cliente_http):
         assert diferencias == [], f"grupo {group_id}: {diferencias[:5]}"
 
 
-def test_el_legacy_via_por_http_como_aproximacion_rotulada(cliente_http):
-    """El legacy se expone como `i_grupo_legacy` y ya no como `i_grupo`."""
+def test_no_hay_indicador_legacy_en_payload_grupal(cliente_http):
+    """No hay indicador legacy en el payload grupal: solo el modelo oficial
+    2024 como dato aditivo."""
     payload = _diagnostico(cliente_http, 10)
 
-    assert "i_grupo_legacy" in payload
+    assert "i_grupo_legacy" not in payload
     assert "i_grupo" not in payload
-    # El semáforo (insumo del legacy) sigue intacto: la deprecación es del
-    # NOMBRE y del rótulo, no un borrado que rompa la categorización.
     assert payload["max_qualified_tier"]
     assert payload["tiers"]

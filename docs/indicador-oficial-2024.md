@@ -11,8 +11,8 @@ de grupos de investigación.
 > normaliza cada indicador contra el máximo de la población (§3.9) y aplica λ
 > (§2.2.9) y pesos globales (§3.6) por subtipo. Con los datos reales, el legacy
 > da **491,7** (sin escala) y el oficial da **0,85** sobre un rango teórico de
-> 10. Ambos conviven en el mismo endpoint, pero **desde el 2026-10-24 la
-> interfaz ya no muestra el legacy**: queda en el payload de la API solo para
+> 10. **Desde el 2026-10-24 el legacy se eliminó del payload de la API**; solo
+> queda el indicador oficial en el endpoint.
 > trazabilidad y sigue siendo insumo del semáforo (§8).
 >
 > Desde la **Fase 5** existe además una lectura **a nivel de investigador**:
@@ -30,7 +30,7 @@ de grupos de investigación.
 | Reporte | `scripts/pea_indicador_oficial.py` | Corre el modelo sobre `pea_data.json` e imprime el desglose de las tres etapas. |
 | **Núcleo C++** | `core_cpp/src/services/official_indicator.cpp` (+ `core_cpp/include/services/official_indicator.h`) | **El mismo modelo en C++**: λ §2.2.9, pesos §3.6, clases §3.7, Ind_Clase §3.8.1, Cohe/Coop §2.2.10, normalización §3.9 y fórmula §3.10, sobre la RAM de grupos/productos. |
 | Catálogo para C++ | `scripts/gen_catalogo_cpp.py` → `core_cpp/include/services/catalog_2024_generated.h` | Genera la tabla del catálogo (ancla §3.6, peso relativo, ventana §2.2.5) **con el mismo código Python del backend**, para que C++ no pueda divergir. `--check` detecta drift. |
-| CLI | `pea_cli indicator group <id> --data <repo.json> [--year <año>] [--json]` | Imprime el modelo oficial con su desglose. Desde la **Fase 6** el CLI ya **no** calcula un segundo indicador legacy (la API lo expone como `i_grupo_legacy`, aproximación rotulada): el legacy tiene una sola implementación. `--json` emite el mismo contrato que la API. |
+| CLI | `pea_cli indicator group <id> --data <repo.json> [--year <año>] [--json]` | Imprime el modelo oficial con su desglose. Desde la **Fase 6** el CLI ya **no** calcula un segundo indicador legacy; el legacy se eliminó del payload de la API el 2026-10-24. `--json` emite el mismo contrato que la API. |
 | **Contrato único** | `backend/app/evaluator/contrato_oficial.py` | Declara la forma del bloque oficial **una sola vez** (`CONTRATO`: 20 claves raíz con sus tipos) y de ahí se derivan el golden, el tipo TS y el fixture del frontend. Trae además el comparador (`comparar_indicadores`), el validador (`validar_contra_contrato`) y el adaptador que replica el mapeo del cargador JSON de C++. |
 | Golden | `backend/tests/fixtures/indicador_oficial_golden.json` (+ `indicador_oficial_caso.json`) | El caso sintético de entrada y el resultado esperado, versionados. `scripts/gen_contrato_oficial.py --regenerar` los escribe y `--check` falla si hay drift. |
 | Verificador de paridad | `scripts/pea_paridad_indicador.py` | Compara **campo por campo** el JSON del CLI contra el del evaluador Python sobre el mismo repositorio. Con `--golden` compara **los tres** (CLI C++, backend Python y contrato versionado) contra el golden. |
@@ -115,7 +115,7 @@ Si no se pasan, los conteos crudos se muestran como `—` (nunca `0`).
 python -X utf8 scripts/pea_indicador_oficial.py            # cierre 2026
 python -X utf8 scripts/pea_indicador_oficial.py --edad 11  # forzar edad del grupo
 
-# API (el diagnostico legacy llega igual, con la clave extra)
+# API (el diagnóstico devuelve solo el oficial; el legacy se eliminó del payload el 2026-10-24)
 GET /api/v1/groups/{id}/minciencias-diagnosis
 
 # CLI C++ (cada invocación es un proceso nuevo: el dato se carga con --data)
@@ -287,7 +287,7 @@ Todo lo demás — λ (§2.2.9), pesos globales (§3.6), clases (§3.7), Ind_Cla
 | CLI | `pea_cli indicator researcher <id> --data <repo.json> [--year <año>] [--json]` | Imprime la adaptación con su desglose y el rótulo "NO OFICIAL", y recuerda que el legacy ya no se calcula en el CLI (brecha B5, Fase 6). |
 | Tests del modelo en C++ | `core_cpp/tests/test_official_indicator.cpp` | 4 casos de la Fase 5: población, equivalencia con el pipeline del grupo, fórmula y normalización, y contrato JSON. |
 | Tests | `backend/tests/test_indicador_individual.py`, `test_indicador_individual_contrato.py`, `test_indicador_individual_http.py` | El número, su contrato versionado y la respuesta HTTP. |
-| API | `backend/app/api/routers/researchers.py` → `GET /researchers/{res_id}/indicator` | Agrega la clave **aditiva** `adaptacion_individual_2024` y deja `i_investigador_legacy` como referencia explícita (aproximación, no oficial). |
+| API | `backend/app/api/routers/researchers.py` → `GET /researchers/{res_id}/indicator` | Agrega la clave **aditiva** `adaptacion_individual_2024`. El legacy `i_investigador_legacy` se eliminó del payload el 2026-10-24. |
 | Frontend | `frontend/web-react/src/lib/api/contrato-individual-2024.generated.ts` (**generado**) | Tipo `MincienciasIndividualAdaptation2024` **generado desde el contrato**. |
 | UI | `frontend/web-react/src/components/charts/researcher-official-adaptation-panel.tsx` | Panel con el rótulo "NO oficial" siempre visible y el desglose de los nueve términos de §3.10. |
 
@@ -313,7 +313,7 @@ depende de la población (aquí, tres investigadores).
   convocatoria.
 - **La población es la cargada**: la normalización §3.9 depende de qué
   investigadores estén en el repositorio, igual que en el grupo.
-- **El legacy convive**: `i_investigador_legacy` sigue siendo una suma de
+- **El legacy se eliminó**: `i_investigador_legacy` ya no está en el payload; solo queda la adaptación declarada (rotulada "NO oficial").
   conteos crudos (sin λ, sin pesos por clase, sin normalización); no es
   comparable con la adaptación ni con otras convocatorias.
 - **El CLI no calcula el legacy**: desde la Fase 6 el legacy tiene una sola
@@ -355,8 +355,7 @@ miden el CLI y el reporte). Con la base de datos conectada, los productos que el
 validador ya clasificó entran por su categoría validada (§3.6) y sí activan
 TOP/A/B — ver [La categoría de calidad validada](#la-categoría-de-calidad-validada-§36).
 
-Corolario: el `i_grupo_legacy` legacy **no es comparable con el oficial** ni con
-otras convocatorias; el oficial sí tiene escala (0–10) y es el que §3.9 define.
+Corolario: el indicador legacy **no es comparable con el oficial** ni con otras convocatorias; el oficial sí tiene escala (0–10) y es el que §3.9 define.
 
 ## Supuestos documentados (lo que NO se inventa)
 
@@ -400,7 +399,7 @@ inventada.
   Fase 5 la API expone `adaptacion_individual_2024`, una **adaptación
   declarada** (NO oficial) del mismo pipeline §2.2.9 → §3.10. El modelo
   oficial sigue sin definir un indicador de producción por persona, así que
-  el legacy queda como `i_investigador_legacy` (aproximación, no oficial) y el
+  el legacy `i_investigador_legacy` se eliminó del payload el 2026-10-24 y el
   CLI ya no lo calcula.
 - La normalización depende de qué grupos estén cargados: con un subconjunto de
   la población, los índices §3.9 cambian.

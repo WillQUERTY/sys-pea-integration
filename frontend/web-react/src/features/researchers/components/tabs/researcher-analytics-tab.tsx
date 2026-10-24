@@ -53,10 +53,10 @@ export function ResearcherAnalyticsTab({
    * producción por persona — su único indicador (§3.10) es de GRUPO. Por eso
    * lo que se muestra como titular es la ADAPTACIÓN INDIVIDUAL declarada
    * (`adaptacion_individual_2024`), siempre rotulada como NO oficial. El
-   * conteo ponderado legacy (`i_investigador_legacy`) ya NO se muestra en la
-   * interfaz: desde el 2026-10-24 vive solo en el payload de la API, para
-   * trazabilidad; los conteos crudos que sí interesan aparecen como ENTRADAS
-   * del modelo dentro del panel de desglose.
+   * conteo ponderado legacy ya NO se muestra en la interfaz: desde el
+   * 2026-10-24 se eliminó del payload de la API; los conteos crudos que
+   * sí interesan aparecen como ENTRADAS del modelo dentro del panel de
+   * desglose.
    */
   const adaptacion = indicator?.adaptacion_individual_2024
   const valorTitular = adaptacion?.ind_investigador
