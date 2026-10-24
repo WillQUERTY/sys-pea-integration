@@ -46,6 +46,21 @@ std::string nullable_date(const std::string& s);
 std::vector<std::pair<std::string, int>> query_group_counts(SQLHDBC dbc, const std::string& sql);
 void query_catalog(SQLHDBC dbc, const char* sql, bool with_extra, std::string& out);
 
+// Columna del catálogo 2024: nombre SQL, clave JSON y tipo de dato
+// (0 = entero, 1 = texto, 2 = decimal).
+struct CatalogColumn {
+    const char* sql_name;
+    const char* json_key;
+    int         kind;
+};
+
+// Serializa un SELECT del catálogo a objetos JSON (un objeto por fila).
+// Devuelve false si el statement no se pudo ejecutar —p.ej. la tabla está en
+// el esquema legacy sin la extensión 2024—: el llamador decide el respaldo.
+bool query_catalog_rows(SQLHDBC dbc, const char* select_sql,
+                        const std::vector<CatalogColumn>& cols,
+                        std::string& out);
+
 } // namespace peai
 
 #endif // PEAI_PERSISTENCE_DB_COMMON_H

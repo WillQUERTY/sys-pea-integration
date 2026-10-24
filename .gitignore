@@ -45,6 +45,14 @@ docs/_uvicorn*.log
 *.old
 ~$*
 .pytest_cache/
+*.zip
+
+# Directorios de trabajo temporales (agente / parity / builds parciales)
+.tmp_*/
+
+# Copias de entrega generadas desde Taller2_WP-DN-EO.* (adjuntos del correo)
+Taller2.cpp
+Taller2.py
 
 # Agent & IDE local state
 .agents/

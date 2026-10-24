@@ -177,10 +177,20 @@ MembershipNode* add_member_to_group(int group_id, int researcher_id, const std::
     GroupNode* gn = find_group_node(group_id);
     if (!gn) return nullptr;
 
-    // Duplicate check
+    // Duplicate check: el par ya existe. Si la membresía estaba desactivada
+    // (soft delete), volver a vincular la reactiva: se reutiliza el mismo nodo,
+    // así el rastro de auditoría (membershipId) se conserva.
     MembershipNode* check = gn->firstMember;
     while (check) {
-        if (check->data.researcherId == researcher_id) return check;
+        if (check->data.researcherId == researcher_id) {
+            if (check->data.status != "active") {
+                check->data.status     = "active";
+                check->data.role       = role.empty() ? "Investigador" : role;
+                check->data.start_date = start_date;
+                check->data.end_date   = end_date;
+            }
+            return check;
+        }
         check = check->nextInGroup;
     }
 
@@ -238,7 +248,12 @@ std::vector<int> members_of_group(int group_id) {
     GroupNode* gn = find_group_node(group_id);
     if (!gn) return ids;
     MembershipNode* m = gn->firstMember;
-    while (m) { ids.push_back(m->data.researcherId); m = m->nextInGroup; }
+    while (m) {
+        // Una membresía desactivada (soft delete) ya no es integrante del grupo:
+        // el nodo se conserva para auditoría, pero no se lista.
+        if (m->data.status != "inactive") ids.push_back(m->data.researcherId);
+        m = m->nextInGroup;
+    }
     return ids;
 }
 
@@ -248,7 +263,8 @@ std::vector<int> groups_of_researcher(int researcher_id) {
     if (!rn) return ids;
     MembershipNode* m = rn->firstMembership;
     while (m) {
-        ids.push_back(m->data.groupId);
+        // Simétrico a members_of_group: la membresía desactivada no cuenta.
+        if (m->data.status != "inactive") ids.push_back(m->data.groupId);
         m = m->nextForResearcher;
     }
     return ids;
@@ -262,7 +278,33 @@ bool remove_member_from_group(int group_id, int researcher_id) {
     MembershipNode* cur  = gn->firstMember;
     while (cur) {
         if (cur->data.researcherId == researcher_id) {
-            // Unlink from group list
+            // Si ya estaba desactivada, no hay nada que hacer (y no se apila
+            // una operación de undo sobre un enlace inexistente).
+            if (cur->data.status == "inactive") return false;
+            // Desactivar membresía en lugar de eliminar físicamente:
+            // se conserva el registro (rastro de auditoría) pero se marca inactiva.
+            cur->data.status = "inactive";
+            return true;
+        }
+        prev = cur;
+        cur  = cur->nextInGroup;
+    }
+    return false;
+}
+
+// Elimina físicamente el nodo de membresía de la multilista (grupo ↔
+// investigador). Se usa en los borrados en cascada: cuando el investigador o
+// el grupo se elimina, la membresía deja de tener sentido y no se conserva
+// como registro inactivo (el nodo se desenlaza de ambas cadenas).
+bool purge_member_from_group(int group_id, int researcher_id) {
+    GroupNode* gn = find_group_node(group_id);
+    if (!gn) return false;
+
+    MembershipNode* prev = nullptr;
+    MembershipNode* cur  = gn->firstMember;
+    while (cur) {
+        if (cur->data.researcherId == researcher_id) {
+            // Desenlazar de la cadena del grupo
             if (prev) prev->nextInGroup = cur->nextInGroup;
             else      gn->firstMember   = cur->nextInGroup;
 

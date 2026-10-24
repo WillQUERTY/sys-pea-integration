@@ -1,48 +1,11 @@
 import json
 import logging
 import pathlib
-from typing import Optional
+from typing import Dict, Optional
 
 logger = logging.getLogger("peai.repository")
 
 _cached_file_catalogs: Optional[dict] = None
-
-
-def _get_product_catalogs_pyodbc(conn_str: str) -> dict:
-    """Catalogos con las columnas del modelo 2024 (lectura read-only)."""
-    import pyodbc
-
-    cn = pyodbc.connect(conn_str, autocommit=True)
-    try:
-        cur = cn.cursor()
-        families = [
-            {"id": r.id, "code": r.code, "name": r.name, "sort_order": r.sort_order}
-            for r in cur.execute(
-                "SELECT id, code, name, sort_order FROM ProductFamily "
-                "ORDER BY ISNULL(sort_order, 9999), name").fetchall()
-        ]
-        subtypes = [
-            {"id": r.id, "family_id": r.family_id, "code": r.code, "name": r.name,
-             "model_ref": r.model_ref, "sort_order": r.sort_order}
-            for r in cur.execute(
-                "SELECT id, family_id, code, name, model_ref, sort_order "
-                "FROM ProductSubtype ORDER BY ISNULL(sort_order, 9999), name").fetchall()
-        ]
-        quality_categories = [
-            {"id": r.id, "code": r.code, "name": r.name, "subtype_id": r.subtype_id,
-             "measurement_class": r.measurement_class,
-             "weight": float(r.weight) if r.weight is not None else None,
-             "global_weight": float(r.global_weight) if r.global_weight is not None else None,
-             "sort_order": r.sort_order}
-            for r in cur.execute(
-                "SELECT id, code, name, subtype_id, measurement_class, weight, "
-                "global_weight, sort_order FROM QualityCategory "
-                "ORDER BY ISNULL(subtype_id, 0), ISNULL(sort_order, 9999), name").fetchall()
-        ]
-        return {"families": families, "subtypes": subtypes,
-                "quality_categories": quality_categories}
-    finally:
-        cn.close()
 
 
 def _get_product_catalogs_from_file() -> dict:
@@ -112,19 +75,55 @@ def _get_product_catalogs_from_file() -> dict:
 
 
 def get_product_catalogs(conn_str: str = "") -> dict:
-    """Catalogs (families/subtypes/quality categories)."""
+    """Catalogs (families/subtypes/quality categories).
+
+    Reads through the C++ core via pybind11 (abpoxx_pybind.get_product_catalogs_json),
+    so all SQL stays inside the C++ core. Falls back to the canonical JSON file
+    for offline/dev mode. No pyodbc in this module.
+    """
     if not conn_str:
         from .. import repository
         conn_str = repository._active_connection_string
 
-    if not conn_str:
-        return _get_product_catalogs_from_file()
-    try:
-        return _get_product_catalogs_pyodbc(conn_str)
-    except Exception:
-        logger.warning("Enriquecimiento pyodbc de catalogos fallo; fallback a catalogo JSON canonico.")
+    if conn_str:
         try:
-            return _get_product_catalogs_from_file()
-        except Exception:
             import abpoxx_pybind
             return json.loads(abpoxx_pybind.get_product_catalogs_json(conn_str))
+        except Exception as e:
+            logger.warning(f"C++ core catalog read failed: {e}; fallback a catalogo JSON canonico.")
+
+    return _get_product_catalogs_from_file()
+
+
+def quality_category_codes(conn_str: str = "") -> Dict[int, str]:
+    """Mapa `id` de QualityCategory -> código del catálogo 2024 (una sola lectura).
+
+    Es el puente que deja llegar la categoría de calidad VALIDADA por el
+    validador humano (par. 3.6) hasta el modelo oficial: `Product.
+    quality_category_id` es la FK en SQL Server y el evaluador trabaja con el
+    código del catálogo (ART_A1, TP_B, ...).
+
+    Solo se usa la lectura de SQL Server: el catálogo del archivo JSON asigna
+    ids propios (1..N) al leer el archivo, y ese espacio NO es el de la FK de
+    la base de datos (que arranca en 8 tras la siembra 2024). Con la base de
+    datos inaccesible se devuelve un mapa vacío y el modelo oficial sigue con
+    la inferencia conservadora del texto GrupLAC.
+    """
+    if not conn_str:
+        from .. import repository
+        conn_str = repository._active_connection_string
+    if not conn_str:
+        return {}
+
+    try:
+        import abpoxx_pybind
+        doc = json.loads(abpoxx_pybind.get_product_catalogs_json(conn_str))
+    except Exception as e:
+        logger.warning(f"No se pudo leer el catalogo de calidad desde SQL Server: {e}")
+        return {}
+
+    return {
+        int(c["id"]): c["code"]
+        for c in doc.get("quality_categories", [])
+        if c.get("id") and c.get("code")
+    }

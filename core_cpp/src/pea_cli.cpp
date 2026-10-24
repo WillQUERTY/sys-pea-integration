@@ -25,6 +25,7 @@ static int dispatch(int argc, char* argv[]) {
     if (cmd == "groups")      return cli::handle_groups(argc, argv);
     if (cmd == "members")     return cli::handle_members(argc, argv);
     if (cmd == "researchers") return cli::handle_researchers(argc, argv);
+    if (cmd == "indicator")   return cli::handle_indicator(argc, argv);
     if (cmd == "products")    return cli::handle_products(argc, argv);
     if (cmd == "plans")       return cli::handle_plans(argc, argv);
     if (cmd == "projects")    return cli::handle_projects(argc, argv);

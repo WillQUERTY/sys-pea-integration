@@ -45,6 +45,11 @@ int handle_products(int argc, char* argv[]) {
         Product updates = *prev;
         updates.title = argv[4];
         if (argc >= 6) updates.year = std::stoi(argv[5]);
+        if (argc >= 7) updates.family_id = std::stoi(argv[6]);
+        if (argc >= 8) updates.subtype_id = std::stoi(argv[7]);
+        if (argc >= 9) updates.quality_category_id = std::stoi(argv[8]);
+        if (argc >= 10) updates.validation_status = argv[9];
+        if (argc >= 11) updates.status = argv[10];
         push_undo("UPDATE", "Product", id, undo_snapshot_product(*prev));
         if (update_product(id, updates))
             std::cout << "Product " << id << " updated (operación apilada)\n";
@@ -135,34 +140,20 @@ int handle_products(int argc, char* argv[]) {
         }
         if (start > end) std::swap(start, end);
 
-        // Conteos por año dentro de la ventana.
-        std::vector<std::pair<int,int>> per_year;  // (year, count)
+        std::cout << "Ventana de observación: " << start << "-" << end
+                  << " (año de obtención, Req. 10)\n";
+        std::cout << "Productos en ventana:\n";
         int in_window = 0, no_date = 0;
         for (const auto& p : list_products()) {
             int y = product_year(p);
             if (y == 0) { no_date++; continue; }
             if (y < start || y > end) continue;
+            print_product(p);
             in_window++;
-            auto it = std::find_if(per_year.begin(), per_year.end(),
-                                   [y](const auto& kv) { return kv.first == y; });
-            if (it != per_year.end()) it->second++;
-            else per_year.push_back({y, 1});
         }
-        std::sort(per_year.begin(), per_year.end());
-
-        std::cout << "Ventana de observación: " << start << "-" << end
-                  << " (año de obtención, Req. 10)\n";
-        std::cout << "+------+-------+\n";
-        std::cout << "| Año  | Total |\n";
-        std::cout << "+------+-------+\n";
-        for (const auto& [y, c] : per_year) {
-            std::cout << "| " << std::setw(4) << y << " | " << std::setw(5) << c << " |\n";
-        }
-        std::cout << "+------+-------+\n";
-        std::cout << "| Total productos en ventana: " << std::setw(6) << in_window << " |\n";
+        std::cout << "Total productos en ventana: " << in_window << "\n";
         if (no_date > 0)
-            std::cout << "| Productos sin fecha válida: " << std::setw(7) << no_date << " |\n";
-        std::cout << "+--------------------------------+\n";
+            std::cout << "Productos sin fecha válida: " << no_date << "\n";
         return 0;
     }
 

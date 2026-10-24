@@ -50,6 +50,10 @@ int handle_groups(int argc, char* argv[]) {
         if (!prev) { std::cerr << "Group " << id << " not found\n"; return 1; }
         Group updates = *prev;
         updates.name = argv[4];
+        if (argc >= 6) updates.external_code = argv[5];
+        if (argc >= 7) updates.acronym = argv[6];
+        if (argc >= 8) updates.classification = argv[7];
+        if (argc >= 9) updates.status = argv[8];
         push_undo("UPDATE", "Group", id, undo_snapshot_group(*prev));
         if (update_group(id, updates))
             std::cout << "Group " << id << " updated (operación apilada)\n";

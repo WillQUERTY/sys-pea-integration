@@ -1,13 +1,13 @@
 # PEA-i: Directorio Oficial de Diagramas del Sistema
 
-Este directorio contiene los diagramas técnicos y de modelado formal requeridos para el Taller 2 de Estructura de Datos (Universidad Popular del Cesar) y el documento de entrega `ABPOXX.docx`.
+Este directorio contiene los diagramas técnicos y de modelado formal requeridos para el Taller 2 de Estructura de Datos (Universidad Popular del Cesar) y el documento de entrega `Parcial2_WP-DN-EO.docx`.
 
 ## Contenido del directorio
 
 | Archivo | Formato | Tipo de Diagrama | Sección en Especificación |
 |---|---|---|---|
 | `01_casos_de_uso.mmd` | Mermaid | Diagrama de Casos de Uso del Sistema | §38.1 |
-| `02_modelo_entidad_relacion.mmd` | Mermaid | Modelo Entidad-Relación (16 Tablas SQL Server) | §38.2 |
+| `02_modelo_entidad_relacion.mmd` | Mermaid | Modelo Entidad-Relación (22 Tablas Físicas SQL Server; 17 en Diagrama) | §38.2 |
 | `03_multilista_memoria_ram.mmd` | Mermaid | Estructura de Multilista Ortogonal y Nodos RAM | §38.3 (Memoria) |
 | `04_clases_cpp.mmd` | Mermaid | Diagrama de Clases y Servicios C++ | §38.3 (POO) |
 | `05_hipercubo_informacion.mmd` | Mermaid | Hipercubo Multidimensional y Operaciones OLAP | §4 y §29 |

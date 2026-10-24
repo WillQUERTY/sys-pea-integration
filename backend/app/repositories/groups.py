@@ -207,7 +207,10 @@ def add_member_to_group(group_id: int, researcher_id: int, role: str = "Investig
     validate_membership_period(s, e)
 
     prev = abpoxx_pybind.membership_details(group_id, researcher_id)
-    if prev:
+    # Una membresía desactivada (soft delete) se reactiva al volver a vincular:
+    # su periodo es histórico, así que no aplica RV-002 (que protege la
+    # vinculación vigente) y el enlace se rehace sobre el mismo nodo.
+    if prev and (prev.status or "active") != "inactive":
         ps = (prev.start_date or "").strip()
         pe = (prev.end_date or "").strip()
         if ps or pe:
@@ -272,15 +275,17 @@ def update_member(group_id: int, researcher_id: int, role: str, start_date: str 
 
 def remove_member_from_group(group_id: int, researcher_id: int, skip_undo: bool = False):
     prev = abpoxx_pybind.membership_details(group_id, researcher_id)
-    if not skip_undo:
-        if prev:
-            undo_push("UNLINK_MEMBER", "GroupMembership", group_id, f"{group_id}:{researcher_id}\x1F{prev.role}\x1F{prev.start_date}\x1F{prev.end_date}")
-        else:
-            undo_push("UNLINK_MEMBER", "GroupMembership", group_id, f"{group_id}:{researcher_id}")
-    abpoxx_pybind.remove_member_from_group(group_id, researcher_id)
+    if not prev:
+        return False
+    # La desvinculación es lógica (soft delete): la membresía queda inactiva y
+    # deja de contar como integrante, pero el nodo se conserva para auditoría.
+    removed = abpoxx_pybind.remove_member_from_group(group_id, researcher_id)
+    if removed and not skip_undo:
+        undo_push("UNLINK_MEMBER", "GroupMembership", group_id, f"{group_id}:{researcher_id}\x1F{prev.role}\x1F{prev.start_date}\x1F{prev.end_date}")
     if context._active_connection_string:
         if not abpoxx_pybind.delete_membership_from_db(context._active_connection_string, group_id, researcher_id):
             raise RuntimeError(f"Error eliminando membresia {group_id}:{researcher_id} en BD")
+    return removed
 
 def members_of_group(group_id: int) -> List[int]:
     return abpoxx_pybind.members_of_group(group_id)

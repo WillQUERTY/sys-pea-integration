@@ -75,7 +75,11 @@ std::vector<Product> list_products() {
 bool update_product(int id, const Product& updates) {
     auto* node = find_product_node(id);
     if (!node) return false;
-    
+
+    // Validar validation_status: valores permitidos: pending, valid, rejected
+    const std::string vs = updates.validation_status;
+    if (vs != "pending" && vs != "valid" && vs != "rejected") return false;
+
     node->data.external_code       = updates.external_code;
     node->data.title               = updates.title;
     node->data.description         = updates.description;
@@ -177,6 +181,21 @@ ProductAuthorNode* add_product_author(const ProductAuthor& prototype) {
         tail->nextInProduct = node;
     }
     return node;
+}
+
+bool update_product_author(int product_id, int researcher_id, const ProductAuthor& updates) {
+    ProductAuthorNode* cur = _authorHead;
+    while (cur) {
+        if (cur->data.productId == product_id && cur->data.researcherId == researcher_id) {
+            cur->data.authorOrder     = updates.authorOrder;
+            cur->data.externalAuthorName     = updates.externalAuthorName;
+            cur->data.externalAuthorIdentifier = updates.externalAuthorIdentifier;
+            cur->data.matchStatus     = updates.matchStatus;
+            return true;
+        }
+        cur = cur->nextInProduct;
+    }
+    return false;
 }
 
 std::vector<ProductAuthor> authors_of_product(int product_id) {

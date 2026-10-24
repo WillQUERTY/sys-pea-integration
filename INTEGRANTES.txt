@@ -2,7 +2,7 @@ UNIVERSIDAD POPULAR DEL CESAR
 FACULTAD DE INGENIERÍAS Y TECNOLÓGICAS
 INGENIERÍA DE SISTEMAS
 ASIGNATURA: ESTRUCTURA DE DATOS
-TALLER 2 — PROGRAMA ESTADÍSTICO DE ANÁLISIS DE INVESTIGACIÓN (PEA-i)
+PARCIAL 2 — PROGRAMA ESTADÍSTICO DE ANÁLISIS DE INVESTIGACIÓN (PEA-i / Khemia)
 DOCENTE: ING. ADITH PÉREZ
 
 ======================================================================
@@ -11,31 +11,44 @@ IDENTIFICACIÓN DE LOS ESTUDIANTES DEL GRUPO (INICIALES: WP - DN - EO)
 
 INTEGRANTE 1 (WP):
 - Iniciales: WP
-- Nombres y Apellidos: [Completar Nombre Estudiante 1]
-- Código Estudiantil: [Completar Código]
-- Documento de Identidad: [Completar Documento]
-- Correo Institucional: [usuario1]@unicesar.edu.co
+- Nombres y Apellidos: William Andrés Peñaranda Oñate
+- Programa: Ingeniería de Sistemas
+- Universidad: Universidad Popular del Cesar (UPC)
 
 INTEGRANTE 2 (DN):
 - Iniciales: DN
-- Nombres y Apellidos: [Completar Nombre Estudiante 2]
-- Código Estudiantil: [Completar Código]
-- Documento de Identidad: [Completar Documento]
-- Correo Institucional: [usuario2]@unicesar.edu.co
+- Nombres y Apellidos: Donaldo David Noriega Palomino
+- Programa: Ingeniería de Sistemas
+- Universidad: Universidad Popular del Cesar (UPC)
 
 INTEGRANTE 3 (EO):
 - Iniciales: EO
-- Nombres y Apellidos: [Completar Nombre Estudiante 3]
-- Código Estudiantil: [Completar Código]
-- Documento de Identidad: [Completar Documento]
-- Correo Institucional: [usuario3]@unicesar.edu.co
+- Nombres y Apellidos: Edinson José Olivero Rojas
+- Programa: Ingeniería de Sistemas
+- Universidad: Universidad Popular del Cesar (UPC)
 
 ======================================================================
-INFORMACIÓN DE ENTREGA
+ARCHIVOS DE ENTREGA (los archivos fuente llevan las iniciales, NOTAS 8)
 ======================================================================
-- Asunto del Correo: Estructura de datos Taller 2 Grupo WP-DN-EO 2026
+1. Taller2_WP-DN-EO.py    — Ejercicios PARCIAL 1 y 2 en Python (I_Grupo, I_Investigador)
+2. Taller2_WP-DN-EO.cpp   — Ejercicios PARCIAL 1 y 2 en C++ (I_Grupo, I_Investigador)
+3. Parcial2_WP-DN-EO.docx — Especificación técnica integral (Word, con diagramas UML)
+4. INTEGRANTES.txt        — Este archivo de identificación de los estudiantes
+5. pea_data.json          — Archivo de persistencia de datos (12 colecciones, formato JSON)
+
+======================================================================
+INFORMACIÓN DE ENTREGA Y ENLACES OFICIALES
+======================================================================
+- Asunto del Correo: Estructura de datos Parcial 2 Grupo # 2026
 - Destinatario: adithperez@unicesar.edu.co
-- Repositorio del Proyecto: sys_pea_integration
-- Documento de Especificación: docs/word/Taller2_WP-DN-EO.docx
-- Archivo de Persistencia: pea_data.json (12 colecciones completas)
-- Video Demostrativo (10 min): [Enlace a YouTube / Carpeta compartida]
+- Entrega preliminar: viernes 23 de octubre de 2026, 11:59 a. m.
+- Entrega definitiva: lunes 26 de octubre de 2026, 11:59 a. m.
+- Repositorio GitHub: https://github.com/WillQUERTY/sys-pea-integration
+- Versión en Vivo (Despliegue Web HTTP): http://155.133.22.12/
+- Video Demostrativo (YouTube): https://www.youtube.com/watch?v=eezB3oZ3n2w
+- Documento de Especificación Oficial: docs/word/Parcial2_WP-DN-EO.docx
+- Especificación Integral en Markdown (fuente del Word): docs/PEA-i_Especificacion_Integral_Cumplimiento_Taller2.md
+- Copia de Base de Datos SQL Server: docs/peai.bak (Backup físico oficial)
+- Archivo de Persistencia JSON: pea_data.json (12 colecciones completas)
+- Guion de Sustentación Técnica en Video: docs/guion_sustentacion_video_parcial2.md
+- Análisis Comparativo Arquitectural: docs/ANALISIS_COMPARATIVO_PEA_I.md

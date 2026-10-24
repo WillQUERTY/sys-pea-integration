@@ -1,10 +1,11 @@
 # backend/app/evaluator/metrics_collector.py
 """
-Recolección y agregación de métricas institucionales de Grupo:
-- Antigüedad e integrantes
+Recolección y agregación de métricas institucionales de Grupo e Investigador:
+- Antigüedad e integrantes (grupo)
 - Nivel de formación (PhD, Maestría)
 - Agregación de obras en ventana y por familias
 - Cálculo del Indicador de Cohesión (IC)
+- Cálculo del Indicador de Producción Científica por Investigador (I_Investigador)
 """
 
 from typing import Any, Dict, Set
@@ -173,6 +174,28 @@ def collect_group_metrics(group_id: int, repository_module: Any) -> Dict[str, An
 
     projects_count = len(projects)
 
+    # --- Formula ponderada legacy (APROXIMACION, no es el indicador oficial) ---
+    # AP (apropiacion social) y DPC (divulgacion publica) son terminos separados.
+    # Este valor NO es el Ind.Grupo oficial (§3.10): no aplica λ (§2.2.9), ni los
+    # pesos por clase (§3.6), ni la normalizacion contra la poblacion (§3.9).
+    # Vive solo como insumo del semaforo de categorizacion, por eso se expone
+    # como `i_grupo_legacy` (Fase 6, brecha B5).
+    cohe = icoh  # cohesion interna aplica al colectivo
+    coop = coauthored_products_count  # coautoria con otros investigadores del grupo
+
+    i_grupo_legacy = round(
+        3.7 * top_count
+        + 2.3 * type_a_count
+        + 0.4 * type_b_count
+        + 1.5 * asc_count
+        + 0.5 * dpc_count
+        + 1.0 * frh_a_count
+        + 0.2 * frh_b_count
+        + 0.1 * cohe
+        + 0.3 * coop,
+        3,
+    )
+
     return {
         "group": group,
         "years_active": years_active,
@@ -199,4 +222,191 @@ def collect_group_metrics(group_id: int, repository_module: Any) -> Dict[str, An
         "coauthored_products_count": coauthored_products_count,
         "gnc_dti_in_window": gnc_dti_in_window,
         "asc_dpc_frh_in_window": asc_dpc_frh_in_window,
+        "i_grupo_legacy": i_grupo_legacy,
+    }
+
+
+def collect_researcher_metrics(researcher_id: int, repository_module: Any) -> Dict[str, Any]:
+    """Obtiene y calcula todas las métricas individuales del investigador.
+
+    IMPORTANTE (Fase 5, brecha B3): esto NO es el indicador del modelo de
+    medición Minciencias 2024. Ese modelo define UN solo indicador de
+    producción y es de GRUPO (§3.10): no hay indicador de producción por
+    persona. Este cálculo es una APROXIMACIÓN LEGACY —conteos CRUDOS
+    ponderados con los coeficientes del modelo— que se conserva como
+    referencia (`i_investigador_legacy`).
+
+    La lectura con la escala del modelo es la ADAPTACIÓN INDIVIDUAL
+    declarada (`official_researcher.py` + `official_researcher_population.py`),
+    que llega en la clave aditiva `adaptacion_individual_2024`.
+
+    Reutiliza las funciones de clasificacion de product_classifier.py para determinar
+    familia, ventana, calidad y formacion de cada producto vinculado al investigador.
+    La suma ponderada legacy es:
+
+        I_Investigador(legacy) ≡ 3,7·Nc.Top + 2,3·Nc.A + 0,4·Nc.B + 1,5·AP
+                                 + 0,5·DPC + 1,0·Fr.A + 0,2·Fr.B + 0,1·Cohe
+                                 + 0,3·Coop
+
+    Donde Cohe (cohesion) es 0 para un investigador individual y Coop (coautoría)
+    cuenta los productos con al menos otro autor vinculado.
+    """
+    researcher = repository_module.get_researcher(researcher_id)
+
+    # --- Obtencion de productos del investigador (RAM o BD) ---
+    pids: list[int] = []
+    try:
+        pids = list(repository_module.products_of_researcher(researcher_id))
+    except Exception:
+        pids = []
+
+    # Fallback a enlace RAM directo del core C++ cuando no hay conexion BD activa
+    if not pids and getattr(repository_module, "_active_connection_string", None) is None:
+        try:
+            import abpoxx_pybind  # type: ignore
+            pids = list(abpoxx_pybind.products_of_researcher_ram(researcher_id))
+        except Exception:
+            pids = []
+
+    prods = []
+    for pid in pids:
+        try:
+            p = repository_module.get_product(pid)
+            if p is not None:
+                prods.append(p)
+        except Exception:
+            pass
+
+    total_products = len(prods)
+    current_year = datetime.now().year
+
+    # --- Contadores por familia, calidad, formacion y ventana ---
+    gnc_count = 0
+    dti_count = 0
+    asc_count = 0
+    dpc_count = 0
+    frh_count = 0
+
+    top_count = 0
+    type_a_count = 0
+    type_b_count = 0
+
+    frh_a_count = 0
+    frh_b_count = 0
+
+    products_in_window = 0
+    gnc_dti_in_window = 0
+    asc_dpc_frh_in_window = 0
+
+    coauthor_evaluated_prods = 0
+    coauthored_products_count = 0
+
+    for p in prods:
+        desc = f"{p.description or ''} {p.title or ''}"
+        desc_l = desc.lower()
+
+        p_year = (
+            p.year
+            or extract_year_from_date(p.obtained_date)
+            or extract_year_from_date(p.publication_date)
+            or current_year
+        )
+        age = current_year - p_year
+        if age < 0:
+            age = 0
+
+        fam = determine_family(p, desc_l)
+        max_window = get_applicable_window(desc_l)
+
+        in_window = age <= max_window
+        if in_window:
+            products_in_window += 1
+            if fam == "GNC":
+                gnc_count += 1
+                gnc_dti_in_window += 1
+            elif fam == "DTI":
+                dti_count += 1
+                gnc_dti_in_window += 1
+            elif fam == "ASC":
+                asc_count += 1
+                asc_dpc_frh_in_window += 1
+            elif fam == "DPC":
+                dpc_count += 1
+                asc_dpc_frh_in_window += 1
+            elif fam == "FRH":
+                frh_count += 1
+                asc_dpc_frh_in_window += 1
+
+            is_top, is_a, is_b, is_frh_a, is_frh_b = classify_quality_and_formation(desc_l, fam)
+            if is_top:
+                top_count += 1
+            elif is_a:
+                type_a_count += 1
+            else:
+                type_b_count += 1
+
+            if is_frh_a:
+                frh_a_count += 1
+            elif is_frh_b:
+                frh_b_count += 1
+
+            if fam in ("GNC", "DTI"):
+                coauthor_evaluated_prods += 1
+                try:
+                    authors = repository_module.authors_of_product_ram(p.id)
+                    other_authors = [a for a in authors if a != researcher_id]
+                    if other_authors:
+                        coauthored_products_count += 1
+                except Exception:
+                    # Si no hay autores de producto disponibles, se asume unica autoría
+                    pass
+
+    # Fallback cuando no hay productos en ventana pero sí productos totales
+    if products_in_window == 0 and total_products > 0:
+        products_in_window = total_products
+        gnc_dti_in_window = max(1, total_products // 2)
+        asc_dpc_frh_in_window = max(1, total_products // 3)
+
+    # --- APROXIMACIÓN LEGACY del indicador individual ---
+    # No es el indicador del modelo Minciencias 2024: ese modelo NO define un
+    # indicador de producción por persona (§3.10 es de grupo). Es una suma
+    # ponderada de CONTEO CRUDOS que solo sirve como referencia (Fase 5,
+    # brecha B3); la lectura con la escala del modelo llega en
+    # `adaptacion_individual_2024`.
+    cohe = 0.0  # Cohesion interna no aplica a investigador individual
+    coop = coauthored_products_count  # Coautoría con otros investigadores
+
+    i_investigador_legacy = round(
+        3.7 * top_count
+        + 2.3 * type_a_count
+        + 0.4 * type_b_count
+        + 1.5 * asc_count     # AP = apropiacion social (termino separado de DPC)
+        + 0.5 * dpc_count     # DPC = divulgacion publica (termino separado de AP)
+        + 1.0 * frh_a_count
+        + 0.2 * frh_b_count
+        + 0.1 * cohe
+        + 0.3 * coop,
+        3,
+    )
+
+    return {
+        "researcher": researcher,
+        "researcher_id": researcher_id,
+        "total_products": total_products,
+        "products_in_window": products_in_window,
+        "gnc_count": gnc_count,
+        "dti_count": dti_count,
+        "frh_count": frh_count,
+        "asc_count": asc_count,
+        "dpc_count": dpc_count,
+        "top_count": top_count,
+        "type_a_count": type_a_count,
+        "type_b_count": type_b_count,
+        "frh_a_count": frh_a_count,
+        "frh_b_count": frh_b_count,
+        "asc_dpc_count": asc_count + dpc_count,
+        "coauthored_products_count": coauthored_products_count,
+        "gnc_dti_in_window": gnc_dti_in_window,
+        "asc_dpc_frh_in_window": asc_dpc_frh_in_window,
+        "i_investigador_legacy": i_investigador_legacy,
     }

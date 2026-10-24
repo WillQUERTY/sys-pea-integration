@@ -1,10 +1,10 @@
-# PEA-i: Especificación integral, arquitectura, dominio y cumplimiento del Taller 2
+# PEA-i: Especificación integral, arquitectura, dominio y cumplimiento del Parcial 2
 
-> **Programa Estadístico de Análisis de Investigación**  
-> Universidad Popular del Cesar  
-> Asignatura: Estructura de Datos  
-> Documento maestro de análisis, diseño y trazabilidad  
-> Versión 2.1 - 25 de septiembre de 2026
+> **Programa Estadístico de Análisis de Investigación (PEA-i / Khemia)**  
+> Universidad Popular del Cesar — Facultad de Ingenierías y Tecnológicas  
+> Asignatura: Estructura de Datos | Docente: Ing. Adith Pérez  
+> Grupo de Trabajo (WP - DN - EO): William Andrés Peñaranda Oñate · Donaldo David Noriega Palomino · Edinson José Olivero Rojas  
+> Octubre de 2026 — Entrega Final Oficial Parcial 2
 
 ---
 
@@ -34,7 +34,7 @@ Este archivo sustituye la versión anterior y consolida en un solo lugar:
 ## Tabla de contenido general
 
 1. Contexto, dominio y especificación funcional
-2. Correcciones de cobertura del Taller 2
+2. Correcciones de cobertura del Parcial 2
 3. Matriz de cumplimiento completa
 4. Hipercubo de información
 5. Variables de entrada y salida
@@ -64,7 +64,7 @@ En este marco, la categorización institucional y la asignación de recursos dep
 - **Falta de trazabilidad y auditoría:** Se carece de un flujo de validación técnica formal que permita certificar si una evidencia cumple los periodos de observación (ventanas de 2 o 5 años) o las exigencias documentales antes del cierre de convocatorias.
 - **Rendimiento computacional:** La gestión de miles de registros bibliográficos y relaciones cruzadas mediante bases de datos puramente relacionales genera sobrecargas innecesarias cuando se requieren cálculos interactivos en tiempo real.
 
-Para responder a estos desafíos se concibió **PEA-i (Programa Estadístico de Análisis de Investigación)**, desarrollado como proyecto integrador del Taller 2 de la asignatura *Estructura de Datos* en la Universidad Popular del Cesar.
+Para responder a estos desafíos se concibió **PEA-i (Programa Estadístico de Análisis de Investigación)**, desarrollado como proyecto integrador del Parcial 2 de la asignatura *Estructura de Datos* en la Universidad Popular del Cesar.
 
 ### 1.2 Objeto del sistema
 PEA-i es una solución híbrida de alto rendimiento diseñada para:
@@ -77,9 +77,9 @@ PEA-i es una solución híbrida de alto rendimiento diseñada para:
 
 ---
 
-## 2. Correcciones de cobertura del Taller 2
+## 2. Correcciones de cobertura del Parcial 2
 
-Para garantizar que el sistema satisfaga los requisitos del Taller 2 sin incurrir en contradicciones entre la especificación y la base de código real, se establecen las siguientes directrices y aclaraciones canónicas:
+Para garantizar que el sistema satisfaga los requisitos del Parcial 2 sin incurrir en contradicciones entre la especificación y la base de código real, se establecen las siguientes directrices y aclaraciones canónicas:
 
 1. **Unificación de la persistencia de productos:** Todo producto gestionado almacena los 20 atributos canónicos requeridos por el modelo Minciencias 2024 (código externo, título, descripción, familia, subtipo, categoría de calidad, fecha de obtención, fecha de publicación, año, idioma, país, DOI, ISBN, ISSN, URL, evidencia documental, atributos especializados, estado de validación y estado del registro).
 2. **Autores de productos como entidad formal:** Conforme a la sección 30 y 33.2, la relación entre productos e investigadores se implementa mediante la multilista `ProductAuthorNode` en C++, sincronizada tanto con la tabla SQL Server `ProductAuthor` como con la colección `"authors"` del archivo JSON de persistencia.
@@ -91,7 +91,7 @@ Para garantizar que el sistema satisfaga los requisitos del Taller 2 sin incurri
 
 ## 3. Matriz de cumplimiento completa
 
-A continuación se sintetiza el estado de cobertura de cada requerimiento del Taller 2:
+A continuación se sintetiza el estado de cobertura de cada requerimiento del Parcial 2:
 
 | Requisito | Descripción Taller | Implementación en Core C++ | Implementación en Python / React | Estado |
 |---|---|---|---|:---:|
@@ -233,7 +233,7 @@ El núcleo C++ modela las operaciones de creación, lectura, actualización y el
 +-------------------------------------------------------------------------+
 |                            PERSISTENCIA FÍSICA                          |
 |                                                                         |
-|       SQL Server (16 tablas)           pea_data.json (12 colecciones)   |
+|       SQL Server (22 tablas)           pea_data.json (12 colecciones)   |
 +-------------------------------------------------------------------------+
 ```
 
@@ -277,7 +277,7 @@ El núcleo C++ modela las operaciones de creación, lectura, actualización y el
 
 ## 7. Dos soluciones ejecutables e integración
 
-Conforme a la decisión de alcance **D-01**, el proyecto entrega las dos soluciones requeridas por el Taller 2 en un esquema de arquitectura limpia e integrada:
+Conforme a la decisión de alcance **D-01**, el proyecto entrega las dos soluciones requeridas por el Parcial 2 en un esquema de arquitectura limpia e integrada:
 
 ### 7.1 Solución A: Núcleo y CLI en C++ (`core_cpp`)
 - **Tecnología:** C++20 estándar, compilado con MSVC / GCC / Clang bajo CMake.
@@ -302,7 +302,7 @@ Conforme a la decisión de alcance **D-01**, el proyecto entrega las dos solucio
 - **Tecnología:** Python 3.12, framework FastAPI, Uvicorn, Pydantic v2.
 - **Componentes:**
   - Módulo `app/repository.py`: Orquestador de la solución. No implementa estructuras en memoria duplicadas; interactúa directamente con el núcleo C++ a través de los bindings compilados.
-  - Módulo `app/api/v1.py`: Expone 71 rutas REST organizadas por recursos (`Groups`, `Researchers`, `Products`, `Projects`, `Plans`, `System`, `Reports`).
+  - Módulo `app/api/v1.py`: Expone 86 rutas REST organizadas en routers por recurso (`groups`, `researchers`, `products`, `projects`, `plans`, `imports`, `analytics`, `system`).
   - Módulos de scraping y deduplicación (`scraper.py`, `cvlac_scraper.py`): Ingesta directa desde Scienti con conciliación automática de autores y productos.
 
 ### 7.3 Puente de Interoperabilidad Nativa (`pybind11`)
@@ -316,7 +316,7 @@ Conforme a la decisión de alcance **D-01**, el proyecto entrega las dos solucio
 El sistema provee dos mecanismos de persistencia complementarios que aseguran la máxima resiliencia:
 
 ### 8.1 Motor Relacional SQL Server
-- **Esquema de 16 tablas:** Define llaves primarias autoincrementales, restricciones de unicidad sobre códigos externos (`UQ_ResearchGroup_ExternalCode`, `UQ_Product_ExternalCode`), llaves foráneas con integridad referencial e índices especializados.
+- **Esquema de 22 tablas físicas:** Define llaves primarias autoincrementales, restricciones de unicidad sobre códigos externos (`UQ_ResearchGroup_ExternalCode`, `UQ_Product_ExternalCode`), llaves foráneas con integridad referencial e índices especializados. El diagrama ER de la sección 38.2 detalla las 17 tablas del núcleo; las cinco restantes (`ResearchLine`, `GroupResearchLine`, `ResearcherProject`, `ProjectProduct`, `ImportRecord`) corresponden a enlaces de líneas y proyectos y al soporte de importaciones.
 - **Operaciones Write-Through:** Toda mutación aprobada en memoria RAM dispara inmediatamente una instrucción SQL mediante ODBC nativo (`SQLExecDirect` con sentencias `MERGE`), garantizando que la base de datos física permanezca en exacta sincronía con la memoria.
 - **Transaccionalidad en Validaciones:** La validación de un producto actualiza atómicamente la tabla `Product`, el enlace `GroupProductLink`, el registro en `ValidationQueueItem` e inserta una traza inmutable en `AuditLog`.
 
@@ -372,13 +372,15 @@ Calculado puramente recorriendo los nodos enlazados en memoria:
 
 ## 10. Entregables obligatorios
 
-El proyecto satisface la totalidad de entregables estipulados para el Taller 2:
-1. **Código Fuente Completo:** Estructurado en repositorio Git con historial limpio y trazable (`core_cpp/`, `backend/`, `frontend/web-react/`, `database/`).
-2. **Documento Técnico en Word (`ABPOXX.docx`):** Documento formal generado a partir de esta especificación integral maestra, que incluye arquitectura, diagramas, casos de uso, historias de usuario y matriz de trazabilidad.
+El proyecto satisface la totalidad de entregables estipulados para el Parcial 2:
+1. **Código Fuente Completo:** Estructurado en repositorio Git con historial limpio y trazable: [GitHub - WillQUERTY/sys-pea-integration](https://github.com/WillQUERTY/sys-pea-integration).
+2. **Documento Técnico en Word (`docs/word/Parcial2_WP-DN-EO.docx`):** Documento formal generado a partir de esta especificación integral maestra, que incluye arquitectura, diagramas, casos de uso, historias de usuario y matriz de trazabilidad.
 3. **Archivo de Persistencia (`pea_data.json`):** Archivo JSON generado con la producción completa, integrantes, productos enriquecidos y autores listo para prueba de carga independiente.
-4. **Archivo de Identificación (`INTEGRANTES.txt`):** Ficha institucional con datos del grupo de estudiantes, código y programa.
-5. **Video Demostrativo de 10 minutos:** Grabación en alta definición sustentando los requisitos del taller, el funcionamiento independiente de `pea_cli`, la API FastAPI, la interfaz React y la reversión de operaciones con la pila.
-6. **Correo de entrega institucional:** Remisión formal a la coordinación docente (`adithperez@unicesar.edu.co`).
+4. **Archivo de Identificación (`INTEGRANTES.txt`):** Ficha institucional con datos del grupo de estudiantes (William Andrés Peñaranda Oñate, Donaldo David Noriega Palomino, Edinson José Olivero Rojas).
+5. **Video Demostrativo (Sustentación):** Grabación en alta definición sustentando los requisitos del taller, el funcionamiento independiente de `pea_cli`, la API FastAPI, la interfaz React y la reversión de operaciones con la pila: [PRESENTACIÓN KHEMIA (YouTube)](https://www.youtube.com/watch?v=eezB3oZ3n2w&t=12s).
+6. **Versión en Vivo en Internet (Despliegue Web):** Acceso público web operativo en [http://155.133.22.12/](http://155.133.22.12/).
+7. **Copia de Seguridad de la Base de Datos (`docs/peai.bak`):** Archivo de respaldo físico de Microsoft SQL Server para restauración directa.
+8. **Correo de entrega institucional:** Remisión formal a la coordinación docente (`adithperez@unicesar.edu.co`).
 
 ---
 
@@ -386,7 +388,7 @@ El proyecto satisface la totalidad de entregables estipulados para el Taller 2:
 
 La documentación del sistema incorpora los siguientes modelos formales:
 - **Diagrama de Casos de Uso:** Interacciones entre actores (Administrador, Gestor, Validador, Investigador, Público) y casos centrales del sistema.
-- **Diagrama Entidad-Relación (ER):** Modelo físico de 16 tablas con llaves primarias, foráneas, tipos y restricciones.
+- **Diagrama Entidad-Relación (ER):** Modelo físico de 22 tablas (17 detalladas en el diagrama) con llaves primarias, foráneas, tipos y restricciones.
 - **Diagrama de Clases C++:** Relación estructural entre nodos dinámicos (`GroupNode`, `MembershipNode`, etc.), clases de entidad y servicios coordinadores.
 - **Diagramas de Secuencia UML:** Flujos detallados para creación write-through, importación de GrupLAC con deduplicación, validación FIFO y deshacer LIFO.
 - **Diagrama de Despliegue:** Topología física de ejecución de los procesos en local o en servidor.
@@ -397,12 +399,16 @@ La documentación del sistema incorpora los siguientes modelos formales:
 
 El aseguramiento de calidad del sistema se sustenta en tres capas de pruebas automatizadas:
 1. **Pruebas de Estructuras en C++ (`pea_tests.exe`):** 159 aserciones unitarias que verifican la correcta gestión de memoria, inserción en cabeza/cola, actualización de punteros ortogonales, aislamiento de cascadas de borrado, LIFO de la pila, FIFO de la cola y serialización round-trip en JSON.
-2. **Pruebas Automatizadas de Backend en Python (`pytest`):** 11 suites de pruebas con 84 tests ejecutados en verde que cubren:
+2. **Pruebas Automatizadas de Backend en Python (`pytest`):** 18 suites de pruebas con 160 tests automatizados (141 aprobados y 19 saltados por el gate de base de datos en la verificación más reciente) que cubren, entre otras:
    - Reglas de vinculación temporal RV-001 y RV-002 (`test_membership_rules.py`).
    - Lógica simétrica y no recursión de la pila de deshacer (`test_undo_logic.py`).
    - Paginación, búsqueda y filtros de la cola de validación (`test_validation_queue_pagination.py`).
    - Contratos y catálogos de la API 2024 (`test_catalog_2024.py`).
    - Idempotencia de scrapers GrupLAC y CvLAC con resolución de identificadores externos.
+   - Diagnóstico y semáforo Minciencias 2024 (`test_minciencias_evaluator.py`).
+   - Red de colaboración y analítica comparada (`test_collaboration_network.py`, `test_analytics_comparator.py`).
+   - Dossier ejecutivo, informe PDF de grupo y exportadores CSV (`test_dossier_and_exports.py`).
+   - Importadores de CSV y PDF con sus endpoints de vista previa y confirmación idempotente (`test_import_*.py`).
 3. **Pruebas de Integración y End-to-End en Navegador:** Verificación interactiva de flujos completos en la SPA de React.
 
 ---
@@ -431,47 +437,71 @@ El aseguramiento de calidad del sistema se sustenta en tres capas de pruebas aut
 
 ```text
 sys_pea_integration/
-├── backend/                  # Solución Python (FastAPI)
+├── backend/                  # Solución Python (FastAPI) — D-01
 │   ├── app/
-│   │   ├── api/              # Enrutadores REST (v1.py - 71 rutas)
-│   │   ├── config.py         # Configuración y conexión ODBC
-│   │   ├── cvlac_scraper.py  # Ingesta y parseo de CvLAC
 │   │   ├── main.py           # Ciclo de vida y arranque FastAPI
-│   │   ├── pdf_report.py     # Generación de informes PDF institucionales
-│   │   ├── repository.py     # Fachada que delega en abpoxx_pybind
-│   │   ├── scraper.py        # Ingesta y deduplicación de GrupLAC
+│   │   ├── config.py         # Configuración y conexión ODBC
+│   │   ├── models.py         # Modelos Pydantic de la API
+│   │   ├── api/              # v1.py + routers/ (86 rutas: groups, researchers, products,
+│   │   │                     #   projects, plans, imports, analytics, system)
+│   │   ├── repository.py     # Fachada que delega en abpoxx_pybind (sin SQL directo)
+│   │   ├── scraping/         # Pipeline GrupLAC modular (client, parser, normalizer,
+│   │   │                     #   commit_service, cvlac/); scraper.py y cvlac_scraper.py son
+│   │   │                     #   fachadas (excepción pyodbc documentada)
+│   │   ├── pdf_import/       # Importador PDF modular (T-13): extractor, basic_data,
+│   │   │                     #   members_projects, products; import_pdf.py es fachada
+│   │   ├── import_csv.py     # Importador CSV del dataset oficial datos.gov.co (T-12)
+│   │   ├── evaluator/        # Diagnóstico Minciencias 2024: tier_rules, product_classifier,
+│   │   │                     #   metrics_collector, helpers; minciencias_evaluator.py es fachada
+│   │   ├── repositories/     # Acceso a datos por dominio (groups, researchers, products,
+│   │   │                     #   projects, work_plans, validation_queue, undo, audit, analytics)
+│   │   ├── reporting/        # Informes institucionales: gruppac_pdf, executive_dossier_pdf,
+│   │   │                     #   csv_exporters, canvas, theme; reports.py es fachada
+│   │   ├── datos_abiertos.py / datos_abiertos_grupos.py  # Enriquecimiento datos.gov.co
+│   │   ├── analytics_comparator.py                       # Comparador analítico entre vistas
 │   │   └── abpoxx_pybind.pyd # Módulo binario compilado C++
-│   ├── tests/                # Suites de pruebas pytest (84 tests)
+│   ├── tests/                # 18 suites pytest (160 pruebas; 141 en verde, 19 por gate de BD)
 │   └── requirements.txt
-├── core_cpp/                 # Solución C++ (Estructuras de datos manuales)
+├── core_cpp/                 # Solución C(C++) — estructuras de datos manuales (D-01)
 │   ├── include/
-│   │   ├── entities/         # Definición de structs de datos
-│   │   ├── persistence/      # Cabeceras ODBC y JSON
-│   │   └── services/         # Cabeceras de servicios de estructuras
+│   │   ├── core.h            # Cabecera raíz de agregación
+│   │   ├── entities/         # Structs de nodos (group, researcher, membership, product, project)
+│   │   ├── services/         # group/researcher/product/project/work_plan service,
+│   │   │                     #   undo_stack (pila LIFO), validation_queue (cola FIFO)
+│   │   └── persistence/      # Cabeceras ODBC (db_persistence.h) y JSON (json_persistence.h)
 │   ├── src/
-│   │   ├── persistence/      # db_persistence.cpp y json_persistence.cpp
-│   │   ├── services/         # Listas, multilistas, pila y cola en C++
-│   │   └── pea_cli.cpp       # CLI ejecutable independiente
+│   │   ├── pea_cli.cpp       # CLI ejecutable autónomo (solución C independiente)
+│   │   ├── cli/              # Comandos CLI modulares y REPL interactivo
+│   │   ├── services/         # Implementación de listas, multilistas, pila y cola
+│   │   └── persistence/      # db_persistence.cpp + db/ (loader, saver, operations,
+│   │                         #   entity_sync, analytics, catalogs); json_persistence.cpp +
+│   │                         #   json/ (loader, exporter, common)
 │   ├── pybind/
-│   │   └── bindings.cpp      # Envolturas nativas pybind11
+│   │   └── bindings.cpp      # Envolturas nativas pybind11 -> abpoxx_pybind.pyd
 │   ├── tests/
-│   │   └── test_structures.cpp # 159 pruebas unitarias de memoria
+│   │   └── test_structures.cpp # 159 aserciones unitarias de memoria
 │   └── CMakeLists.txt
 ├── database/                 # Scripts SQL y catálogos
 │   ├── catalog_2024.json     # Catálogo canónico 5 familias y 70 subtipos
-│   ├── init_schema.sql       # DDL de tablas y restricciones
+│   ├── init_schema.sql       # DDL de 22 tablas y restricciones
 │   ├── recreate_database.sql # Recreación limpia de BD peai
 │   └── seed_catalog_2024.py  # Script de siembra e idempotencia
-├── docs/                     # Especificaciones y documentos de entrega
-│   └── PEA-i_Especificacion_Integral_Cumplimiento_Taller2.md
 ├── frontend/web-react/       # Aplicación Web SPA (React + TypeScript)
 │   ├── src/
-│   │   ├── features/         # Módulos: admin, portal, groups, undo, etc.
-│   │   └── components/       # Componentes Shadcn / Tailwind
+│   │   ├── features/         # Módulos: dashboard, groups, researchers, products, projects,
+│   │   │                     #   import, portal, undo, validation-queue, system, settings, errors
+│   │   └── components/       # Componentes shadcn/Tailwind (+ config, context, hooks, lib,
+│   │                         #   routes, stores, styles, test-utils)
 │   └── package.json
+├── docs/                     # Especificaciones y documentos de entrega
+│   ├── word/                 # Parcial2_WP-DN-EO.docx (generado desde esta SPEC)
+│   ├── guion_sustentacion_video_parcial2.md  # Guion cronometrado de la sustentacion (~10 min)
+│   ├── diagrams/             # 11 diagramas Mermaid + PNG + SVG + galería web
+│   ├── modelo-medicion-2024.md y catálogo oficial de pesos  # Referencia normativa
+│   └── PEA-i_Especificacion_Integral_Cumplimiento_Taller2.md  # Documento maestro (esta SPEC)
 ├── pea_data.json             # Archivo JSON de entrega (12 colecciones completas)
 ├── build_cpp.bat             # Script de compilación automática MSVC
-└── README.md                 # Guía de despliegue y puesta en marcha
+└── README.md                 # Guía de instalación, despliegue y solución de problemas
 ```
 
 ---
@@ -482,11 +512,11 @@ sys_pea_integration/
 - [x] Ejecutable `pea_cli.exe` corre de forma autónoma con todos los comandos de gestión, multilistas y resumen.
 - [x] Módulo `abpoxx_pybind.pyd` comunica el core C++ con FastAPI en tiempo real.
 - [x] Backend FastAPI arranca sin errores y expone la documentación interactiva en `/docs`.
-- [x] 84 pruebas unitarias de backend (`pytest`) pasan con 0 fallas.
+- [x] 18 suites de backend (`pytest`) en verde: 141 pruebas aprobadas, 19 saltadas por el gate de BD (`PEAI_TEST_DB=1`) y 160 recolectadas en total.
 - [x] Reglas RV-001 y RV-002 implementadas en código, con pruebas automáticas y validación en API (HTTP 400).
 - [x] Exportador JSON escribe todos los 20 campos de productos y la colección completa de autores.
 - [x] Archivo `pea_data.json` generado con datos íntegros de persistencia.
-- [x] Base de datos SQL Server configurada con 16 tablas y 70 subtipos canónicos del catálogo 2024.
+- [x] Base de datos SQL Server configurada con 22 tablas físicas y 70 subtipos canónicos del catálogo 2024.
 - [x] Frontend React compila y renderiza portal público con gráficos Recharts y dashboard administrativo.
 - [x] Documento maestro actualizado para compilación del informe Word de entrega.
 
@@ -496,7 +526,7 @@ sys_pea_integration/
 
 ## 26. Declaración de cumplimiento
 
-La solución se diseñó para cumplir los requisitos obligatorios del Taller 2 — bajo las decisiones de alcance registradas en la sección 26.1 — y, de forma separada, varios complementos. El cumplimiento se evaluará en tres niveles:
+La solución se diseñó para cumplir los requisitos obligatorios del Parcial 2 — bajo las decisiones de alcance registradas en la sección 26.1 — y, de forma separada, varios complementos. El cumplimiento se evaluará en tres niveles:
 
 ```text
 DISEÑADO      La función está especificada en este documento.
@@ -1235,14 +1265,16 @@ Guion recomendado:
 09:40 Decisiones de alcance (26.1) y conclusiones
 ```
 
+El guion definitivo de grabación está disponible en `docs/guion_sustentacion_video_parcial2.md`: escenas cronometradas de 10 a 12 minutos, checklist técnico previo a la grabación, distribución de presentadores por escena y requisitos de la rúbrica (identidad institucional e integrantes visibles en cámara).
+
 ### 37.6 Correo de entrega
 
 ```text
 Destinatario: adithperez@unicesar.edu.co
-Asunto: Estructura de datos Taller 2 Grupo XX 2026
+Asunto: Estructura de datos Parcial 2 Grupo # 2026
 ```
 
-Antes del envío debe comprobarse la fecha límite indicada en el documento original del taller.
+Según el enunciado del Parcial 2, la entrega se realiza en dos fechas: entrega preliminar el viernes 23 de octubre de 2026 a las 11:59 a. m. y entrega definitiva el lunes 26 de octubre de 2026 a las 11:59 a. m.
 
 ## 38. Diagramas de arquitectura, estructuras y flujos del sistema
 
@@ -1341,9 +1373,9 @@ graph TD
 
 ---
 
-### 38.2 Diagrama entidad-relación (Modelo relacional de 16 tablas)
+### 38.2 Diagrama entidad-relación (Modelo relacional físico)
 
-El siguiente diagrama detalla las 16 tablas del esquema relacional físico en SQL Server, reflejando sus llaves primarias, llaves foráneas, cardinalidades y restricciones:
+El siguiente diagrama detalla las 17 tablas principales del esquema relacional físico en SQL Server (las cinco restantes —`ResearchLine`, `GroupResearchLine`, `ResearcherProject`, `ProjectProduct` e `ImportRecord`— son tablas de enlace y soporte de importaciones generadas por el DDL), reflejando sus llaves primarias, llaves foráneas, cardinalidades y restricciones:
 
 ```mermaid
 erDiagram
@@ -2080,7 +2112,7 @@ graph TB
 
     subgraph Servidor ["Servidor de Aplicación (Host Local / VPS)"]
         subgraph PythonRuntime ["Proceso Python 3.12 (Uvicorn ASGI)"]
-            FastAPI["Framework FastAPI\n(71 Rutas REST / OpenAPI)"]:::serverStyle
+            FastAPI["Framework FastAPI\n(86 Rutas REST / OpenAPI)"]:::serverStyle
             RepoModule["app/repository.py\n(Orquestador de Dominio)"]:::serverStyle
             ScraperEngine["Módulo de Scraping\n(GrupLAC, CvLAC, Dedupe)"]:::serverStyle
             PDFEngine["Motor de Reportes PDF\n(ReportLab Engine)"]:::serverStyle
@@ -2103,7 +2135,7 @@ graph TB
     end
 
     subgraph Persistencia ["Capa de Persistencia y Almacenamiento"]
-        SQLServer[("Motor Relacional SQL Server\n(peai — 16 Tablas Normalizadas)")]:::dataStyle
+        SQLServer[("Motor Relacional SQL Server\n(peai — 22 Tablas Físicas)")]:::dataStyle
         JSONFile[("Archivo JSON Portátil\n(pea_data.json — 12 Colecciones)")]:::dataStyle
         PDFStorage[("Informes Generados\n(Archivos PDF Descargables)")]:::dataStyle
     end
@@ -2127,7 +2159,7 @@ graph TB
 
 ### 38.6 Diagrama del Hipercubo de información multidimensional
 
-El siguiente diagrama formaliza el modelo de hipercubo recomendado en las especificaciones del Taller 2 ($\mathcal{H} = D_1 \times D_2 \times D_3 \times D_4 \to \mathcal{M}$), las dimensiones de enriquecimiento del catálogo Minciencias 2024, el vector de medidas analíticas y las cinco operaciones OLAP soportadas en la plataforma:
+El siguiente diagrama formaliza el modelo de hipercubo recomendado en las especificaciones del Parcial 2 ($\mathcal{H} = D_1 \times D_2 \times D_3 \times D_4 \to \mathcal{M}$), las dimensiones de enriquecimiento del catálogo Minciencias 2024, el vector de medidas analíticas y las cinco operaciones OLAP soportadas en la plataforma:
 
 ```mermaid
 graph TB
@@ -2453,44 +2485,50 @@ OLAP empresarial real
 ## 43. Estructura final del repositorio
 
 ```text
-pea-i/
-├── README.md
-├── INTEGRANTES.txt                  (pendiente de entrega)
+sys_pea_integration/
+├── README.md                        (manual de instalación, ejecución y verificación)
+├── INTEGRANTES.txt                  (ficha de identificación del grupo WP-DN-EO — completar datos personales)
 ├── pea_data.json                    (archivo de persistencia, entregable)
 ├── core_cpp/                        (solución C/C++ — D-01)
-│   ├── include/
-│   │   ├── entities/
-│   │   ├── services/
-│   │   └── persistence/
+│   ├── include/                     (nodos de multilista, servicios e interfaces)
 │   ├── src/
-│   │   ├── services/
-│   │   ├── persistence/
-│   │   └── pea_cli.cpp              (CLI ejecutable: pea_cli.exe)
+│   │   ├── cli/                     (consola autónoma: pea_cli.exe)
+│   │   ├── services/                (servicios del dominio: grupos, productos, cola, pila)
+│   │   └── persistence/
+│   │       ├── db/                  (escritura dual a SQL Server vía ODBC)
+│   │       └── json/                (carga y exportación de pea_data.json)
 │   ├── pybind/
-│   │   └── bindings.cpp             (puente de interoperabilidad)
+│   │   └── bindings.cpp             (puente C++/Python: abpoxx_pybind.pyd)
 │   └── CMakeLists.txt
 ├── backend/                         (solución Python — D-01)
 │   ├── app/
-│   │   ├── api/                     (router v1)
-│   │   ├── scraper.py               (GrupLAC + buscador Scienti)
-│   │   ├── cvlac_scraper.py         (CvLAC)
-│   │   ├── datos_abiertos.py        (enriquecimiento datos.gov.co)
-│   │   ├── repository.py            (orquestación RAM + núcleo C++)
-│   │   └── main.py
-│   ├── tests/
+│   │   ├── api/                     (86 rutas REST en routers por recurso)
+│   │   ├── repositories/           (capa de repositorio y persistencia)
+│   │   ├── scraping/               (GrupLAC, CvLAC y buscador Scienti)
+│   │   ├── pdf_import/             (importador de PDF estilo GrupLAC)
+│   │   ├── evaluator/               (motor de auditoría MinCiencias 2024)
+│   │   ├── reporting/              (informes PDF, CSV y dossier ejecutivo)
+│   │   ├── import_csv.py           (dataset oficial hrhc-c4wu de datos.gov.co)
+│   │   ├── models.py               (DTOs de entrada y salida)
+│   │   └── main.py                  (aplicación FastAPI)
+│   ├── tests/                       (18 suites pytest con 160 pruebas automatizadas)
 │   └── requirements.txt
 ├── frontend/
-│   └── web-react/                   (dashboard y vistas — D-02)
+│   └── web-react/                   (SPA React + TypeScript — D-02)
 ├── database/
-│   └── init_schema.sql
+│   └── init_schema.sql              (DDL de 22 tablas físicas)
 └── docs/
-    ├── PEA-i_Especificacion_Integral_Cumplimiento_Taller2.md
-    ├── Taller 2 EdD (2026-09-24) - G 5.md
-    └── diagrams/                    (11 diagramas Mermaid, PNG alta resolución, SVG y visor web)
-
-Pendientes de crear para la entrega:
-├── docs/word/                       (especificación técnica .docx)
-└── docs/video-script/               (guion del video de 10 minutos)
+    ├── PEA-i_Especificacion_Integral_Cumplimiento_Taller2.md   (este documento)
+    ├── Taller 2 EdD (2026-09-24) - G 5.md                      (enunciado original)
+    ├── ANALISIS_COMPARATIVO_PEA_I.md                           (análisis técnico frente a alternativa)
+    ├── modelo-medicion-2024.md                                 (marco normativo MinCiencias — Punto 5)
+    ├── guion_sustentacion_video_parcial2.md                    (guion del video — 37.5)
+    ├── word/
+    │   ├── build_word_doc.py                    (generador del Word desde esta especificación)
+    │   ├── doc_formatter.py                     (módulo de formateo y estilos enriquecidos)
+    │   └── Parcial2_WP-DN-EO.docx               (especificación técnica oficial — entregable)
+    ├── peai.bak                                 (copia de respaldo física de SQL Server)
+    └── diagrams/                                (11 diagramas Mermaid, PNG alta resolución, SVG y visor web)
 ```
 
 ## 44. Lista de comprobación final
@@ -2539,9 +2577,9 @@ Pendientes de crear para la entrega:
 
 ### Documentación
 
-- [ ] Word final.
+- [x] Word final (`docs/word/Parcial2_WP-DN-EO.docx`, regenerado desde esta especificación con `build_word_doc.py`).
 - [x] Arquitectura (diagrama y descripción detallada en §38.5).
-- [x] Modelo relacional (diagrama ER de 16 tablas en §38.2).
+- [x] Modelo relacional (modelo físico de 22 tablas en §8.1; diagrama ER de las 17 tablas principales en §38.2).
 - [x] Hipercubo (diagrama y operaciones OLAP en §4, §29 y §38.6).
 - [x] Entradas y salidas (catálogo de variables en §5 y §31).
 - [x] Casos de uso (diagrama de 5 actores y 6 subsistemas en §38.1).
@@ -2551,20 +2589,20 @@ Pendientes de crear para la entrega:
 - [x] Diagramas de secuencia (5 diagramas UML en §38.4).
 - [x] Diccionario de datos (especificación de entidades y atributos en §17 y §38.2).
 - [x] Matriz de trazabilidad (requisitos T-01 a T-43 en §3 y §28).
-- [ ] Manual de instalación.
-- [ ] Manual de usuario.
+- [x] Manual de instalación (README.md: prerrequisitos, instalación desde cero, verificación rápida y solución de problemas).
+- [x] Manual de usuario (video demostrativo con guion cronometrado — sección 37.5 —, recorrido de verificación del README.md y la propia interfaz web de la aplicación).
 
 ### Entrega
 
-- [ ] `INTEGRANTES.txt`.
-- [ ] Archivos con iniciales correctas — sustituido por entrega modular (D-01).
-- [ ] Video aproximado de 10 minutos.
-- [ ] Identidad institucional en video.
-- [ ] Integrantes visibles en video.
-- [ ] Repositorio o paquete final.
-- [ ] Asunto de correo correcto.
-- [ ] Destinatario correcto.
-- [ ] Fecha límite verificada.
+- [ ] `INTEGRANTES.txt` con los datos personales completos de los tres integrantes (nombre, código, correo y programa).
+- [ ] Archivos con iniciales correctas — sustituido por entrega modular (D-01): Word `Parcial2_WP-DN-EO.docx` y núcleo compilado `abpoxx_pybind.pyd`.
+- [ ] Video aproximado de 10 minutos, grabado siguiendo el guion cronometrado de `docs/guion_sustentacion_video_parcial2.md`.
+- [ ] Identidad institucional de la UPC en el video.
+- [ ] Integrantes visibles en cámara durante toda la grabación.
+- [ ] Repositorio Git/GitHub publicado con la versión final.
+- [ ] Asunto del correo correcto: «Estructura de datos Parcial 2 Grupo # 2026».
+- [ ] Destinatario correcto: `adithperez@unicesar.edu.co`.
+- [ ] Envío antes de la fecha límite: entrega preliminar viernes 23 de octubre de 2026 y entrega definitiva lunes 26 de octubre de 2026, ambas a las 11:59 a. m.
 
 ## 45. Veredicto de cobertura
 
@@ -2586,6 +2624,102 @@ Alcance ajustado por las decisiones del equipo (sección 26.1): D-01 entrega amb
 
 La afirmación de cumplimiento total dependerá de completar la implementación y reunir las evidencias enumeradas en la matriz de trazabilidad y en la lista de comprobación.
 
+> **Estado de documentación (2026-10-18, corte de entrega):** Esta especificación quedó sincronizada con el estado real del repositorio tras la modularización de finales de la fase de desarrollo: el backend se organiza en los paquetes `api/` (86 rutas REST en routers por recurso), `repositories/`, `scraping/`, `pdf_import/`, `evaluator/` y `reporting/` con fachadas de compatibilidad; la consola C++ se estructura en `core_cpp/src/cli/` y su persistencia en `persistence/db/` y `persistence/json/`; y `database/init_schema.sql` define 22 tablas físicas (17 detalladas en el diagrama ER de la sección 38.2 y cinco de enlace/soporte). La verificación de esta fecha deja 18 suites de `pytest` con 160 pruebas recolectadas — 141 aprobadas y 19 saltadas por el gate de base de datos (`PEAI_TEST_DB`), con salida exitosa — y el ejecutable de estructuras C++ se mantiene en 159/159 aserciones. El guion del video (37.5) y el análisis comparativo técnico quedaron integrados en `docs/`, y el documento Word `docs/word/Parcial2_WP-DN-EO.docx` se regenera desde esta especificación con `docs/word/build_word_doc.py`.
+
 > **Estado de implementación y verificación integral (2026-10-09, T-12/T-13):** Los importadores por archivo quedaron implementados de punta a punta. **CSV (T-12):** `backend/app/import_csv.py` parsea el dataset oficial de MinCiencias en datos.gov.co (Socrata `hrhc-c4wu`; tolera BOM, fechas ISO con milisegundos, "No registra" y numéricos "16.0"), deduplica por código COL conservando la convocatoria más reciente, aplica un tope de 200 grupos distintos por importación (HTTP 400 con orientación de filtrado) y permite enriquecer cada grupo con su GrupLAC completo resolviendo COL→nro únicamente por el buscador oficial (con fallback a los datos del archivo si la resolución o el scrapeo fallan); cada fila es una transacción independiente y la RAM se recarga una sola vez al final. **PDF (T-13):** `backend/app/import_pdf.py` extrae el texto con PyMuPDF y ataca la estructura de secciones/etiquetas compartida por el reporte que genera el propio sistema y una impresión del visor de Scienti; exige código COL válido (un nro pelado se rechaza con HTTP 400, trampa de identidad) y resuelve el subtipo de producto por nombre contra el catálogo 2024 sin requerir BD. Ambos exponen `/groups/import/csv(/preview)` y `/groups/import/pdf(/preview)` con flujo de vista previa→confirmación, registran `ImportJob.source_type` de `csv`/`pdf`, son idempotentes ante doble importación y tienen UI en React (pestañas "CSV (datos.gov.co)" y "PDF (GrupLAC)" en `/admin/import`). La suite backend cuenta con 13 archivos de prueba: 147 pruebas en verde con SQL Server local activado (`PEAI_TEST_DB=1`; 128 aprobadas y 19 saltadas por el gate sin BD). El build de React (`tsc -b && vite build`) pasa en limpio.
 
 > **Estado de implementación y verificación integral (2026-10-04):** T-08 (gestión de planes) está implementado de punta a punta: `PlanNode` en la multilista C++, `work_plan_service`, persistencia JSON y SQL Server (MERGE por id estable), pybind11, endpoints REST (`/groups/{id}/plans`, `/plans/{id}`), pestaña "Planes" en el detalle de grupo en React, comandos `plans` en `pea_cli` y pruebas unitarias. El CRUD independiente de proyectos (Requerimiento 3) está completo de punta a punta: `ProjectNode` en la lista global C++, `project_service`, persistencia JSON y SQL Server (MERGE por id estable), pybind11, endpoints REST (`/api/v1/projects` con paginación/búsqueda/estado, `/groups/{id}/projects`), página "Proyectos" en React, comandos `projects` en `pea_cli` y pruebas unitarias. El periodo de observación personalizado (T-26 / HU-07) está cubierto en toda la pila: rango arbitrario `start_year`–`end_year` y "últimos N años" (`window_years`) en `/products`, CLI `products by-year`, e informe PDF de grupo con selector de ventana en la UI que muestra la ventana aplicada y filtra la producción por año de obtención. T-07 (Membresías con rol/fechas) y las reglas de vinculación temporal (RV-001 de periodo invertido y RV-002 de periodos solapados/reingreso) están completamente implementadas en C++, RAM, persistencia (JSON/SQL), API (HTTP 400 en infracción) y deshacer bidireccional. La multilista de autores `ProductAuthorNode` y la exportación íntegra de los 20 atributos de producto del modelo Minciencias 2024 están operativas y sincronizadas en `pea_data.json`. La suite de pruebas de estructuras en C++ (`pea_tests.exe`) cuenta con 159/159 aserciones en verde (0 fallos). El backend en Python cuenta con 11 suites de pruebas automatizadas con 84 tests en verde (100% aprobadas) que cubren reglas de membresía, lógica y simetría de deshacer, enriquecimiento y filtros de cola, contratos 2024, scrapers e importadores. Todas las brechas documentales y funcionales detectadas en la auditoría han sido subsanadas.
+
+
+---
+
+## 46. Indicador de producción científica (ejercicios PARCIAL 1 y 2)
+
+### 46.1 Modelo normativo aplicado
+
+El indicador de producción científica se define en el **Modelo de Medición Minciencias 2024** (Anexo 1 de la Convocatoria Nacional para el Reconocimiento y Medición de Grupos de Investigación, Desarrollo Tecnológico o de Innovación, código M601PR04G01, versión 02), transcrito en `docs/modelo-medicion-2024.md` y catalogado en `docs/catalogo_oficial_pesos_minciencias_2024.md`:
+
+| Sección del modelo | Contenido normativo | Uso en PEA-i |
+|---|---|---|
+| §2.2.9 | λ del subtipo: λ = ln(productos en la ventana + 1) | Peso temporal de cada subtipo dentro de la ventana de observación |
+| §3.6 | Peso global del subtipo = ancla del subtipo (Tabla 6) × peso relativo (Anexo 1) | **Valor en puntos y peso relativo de cada producto** |
+| §3.7 | Familias y clases de productos: TOP, A, B, ASC, DPC, FRH-A, FRH-B | Clasificación del producto por familia y clase |
+| §3.8.1 | Índice de clase = Σ (λ × peso global) | Producción ponderada por clase |
+| §3.8.2 y §3.8.3 | Indicadores de cohesión (Cohe) y de cooperación (Coop) | Términos de red del grupo |
+| §3.9 | Normalización de cada índice frente al máximo de la población | Índices comparables entre grupos de una misma convocatoria |
+| §3.10 | Ind.Grupo = 3,7·Nc.Top + 2,3·Nc.A + 0,4·Nc.B + 1,5·AP + 0,5·DPC + 1·Fr.A + 0,2·Fr.B + 0,1·Cohe + 0,3·Coop | **Indicador del grupo de investigación** |
+
+La prioridad de la §3.6 es la **categoría de calidad validada** cuando existe: si el producto tiene categoría validada por el validador se usa esa; si no, se infiere de la descripción; y un subtipo ajeno al catálogo 2024 se excluye con motivo explícito.
+
+### 46.2 Variables de entrada y salida del modelo (ejercicio 6)
+
+#### 46.2.1 Grupo de investigación
+
+| Variables de entrada | Variables de salida |
+|---|---|
+| Productos del grupo: tipología, familia, subtipo, año de obtención y categoría de calidad | Productos clasificados dentro de la ventana de observación |
+| Integrantes del grupo y antigüedad de la vinculación | Nc.Top, Nc.A, Nc.B, AP, DPC, Fr.A y Fr.B (conteo por clase) |
+| Año de cierre de la convocatoria en curso | Cohe (cohesión interna) y Coop (productos coautorizados con otros grupos) |
+| Población de comparación de la convocatoria | λ, peso relativo, ancla y peso global de cada subtipo (§2.2.9 y §3.6) |
+| | **I_Grupo**: indicador de producción científica del grupo |
+
+#### 46.2.2 Investigador
+
+| Variables de entrada | Variables de salida |
+|---|---|
+| Identificador y datos del investigador | Productos totales y productos en la ventana de observación |
+| Productos propios: tipología, familia, subtipo, año y categoría de calidad | Nc.Top, Nc.A, Nc.B, AP, DPC, Fr.A y Fr.B (conteo por clase) |
+| Membresías y fecha de primera vinculación (antigüedad) | Cohe y Coop de la red del investigador |
+| Año de cierre de la convocatoria en curso | **I_Investigador**: indicador de producción científica del investigador |
+
+En el nivel individual el indicador de cohesión (Cohe) no aplica y se fija en 0, por definición del modelo: la cohesión es una magnitud de grupo.
+
+### 46.3 Fórmula del indicador y valores verificados
+
+```
+I ≡ 3,7·Nc.Top + 2,3·Nc.A + 0,4·Nc.B + 1,5·AP + 0,5·DPC
+    + 1,0·Fr.A + 0,2·Fr.B + 0,1·Cohe + 0,3·Coop
+```
+
+Valores obtenidos al ejecutar los archivos entregables `Taller2_WP-DN-EO.py` y `Taller2_WP-DN-EO.cpp` sobre el conjunto de datos del enunciado:
+
+| Magnitud | Grupo | Investigador |
+|---|---:|---:|
+| Nc.Top | 2 | 2 |
+| Nc.A | 1 | 1 |
+| Nc.B | 2 | 1 |
+| AP (apropiación social) | 0 | 0 |
+| DPC (divulgación pública) | 1 | 0 |
+| Fr.A (formación de RH tipo A) | 1 | 1 |
+| Fr.B (formación de RH tipo B) | 0 | 0 |
+| Cohe (cohesión) | 0,667 | 0,000 |
+| Coop (productos coautorizados) | 2 | 2 |
+| **Resultado del indicador** | **I_Grupo = 12,667** | **I_Investigador = 11,700** |
+
+El valor de Cohe del grupo se obtiene como (autores coincidentes / productos GNC+DTI) − 1 = (5 / 3) − 1 = 0,667.
+
+### 46.4 Alcance de la medición: conteo propio frente a índice normalizado
+
+La §3.10 pondera **índices**, no conteos crudos: la §3.9 normaliza cada índice frente al máximo alcanzado por la población de la convocatoria. Los dos archivos entregables (`Taller2_WP-DN-EO.py` y `Taller2_WP-DN-EO.cpp`) resuelven el ejercicio con el **conteo** de los productos de la URL del enunciado, y esa es la lectura correcta para el alcance del Parcial 2: el enunciado entrega una sola URL (un grupo y un investigador), de modo que no existe población contra la cual normalizar y las §3.9 y §3.8.3 son incalculables por diseño en ese escenario.
+
+PEA-i implementa y distingue ambas lecturas, con rótulo explícito en el payload, la API y la consola. En la interfaz se exhibe **exclusivamente la lectura oficial** (grupo) o la adaptación individual declarada, siempre rotulada "NO oficial"; el conteo ponderado legacy **no se muestra en ninguna pantalla** desde el 2026-10-24 y queda únicamente en el payload de la API, para trazabilidad:
+
+| Artefacto | Ubicación en el repositorio | Magnitud que produce | Rótulo |
+|---|---|---|---|
+| Archivos entregables del Parcial 2 | `Taller2_WP-DN-EO.py`, `Taller2_WP-DN-EO.cpp` | Suma ponderada de **conteos** sobre la URL del enunciado | Respuesta del ejercicio |
+| Evaluador oficial de la API | `backend/app/evaluator/official_indicator.py` (grupo) y `official_researcher.py` (investigador) | Índice **normalizado** (§3.9) sobre la población de la convocatoria | `modelo_oficial_2024` / `adaptacion_individual_2024` |
+| Espejo C++ del evaluador oficial | `core_cpp/src/services/official_indicator.cpp`, comando `pea_cli indicator` | Idéntico al anterior (paridad verificada por `scripts/pea_paridad_indicador.py` y `scripts/pea_paridad_individual.py`) | Salida de consola |
+| Conteo ponderado conservado | Payload de la API (no en la interfaz) | Suma ponderada de conteos crudos | `i_grupo_legacy` / `i_investigador_legacy` — **NO es un indicador del modelo 2024**, se conserva solo por trazabilidad |
+
+La adaptación individual se declara como **no oficial** de forma explícita: el modelo 2024 define el indicador de producción a nivel de grupo, de modo que la lectura individual se construye con el mismo pipeline del grupo, sustituyendo la edad del grupo por la antigüedad del investigador y rotulando las tres adaptaciones en la interfaz.
+
+### 46.5 Evidencia de paridad y de pruebas
+
+```
+python -X utf8 scripts/pea_paridad_indicador.py --golden     # CONTRATO CONFIRMADO (grupo)
+python -X utf8 scripts/pea_paridad_individual.py --golden    # CONTRATO CONFIRMADO (individual)
+python -X utf8 scripts/gen_contrato_oficial.py --check        # CONTRATO AL DIA
+python -X utf8 scripts/gen_contrato_individual.py --check     # CONTRATO INDIVIDUAL AL DIA
+core_cpp/build2/Release/pea_tests_indicador.exe              # 283 aserciones, 0 fallos
+python -X utf8 -m pytest backend/tests -q                     # 235 aprobadas, 19 saltadas por el gate de base de datos
+```

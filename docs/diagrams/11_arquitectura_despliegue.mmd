@@ -13,7 +13,7 @@ graph TB
 
     subgraph Servidor ["Servidor de Aplicación (Host Local / VPS)"]
         subgraph PythonRuntime ["Proceso Python 3.12 (Uvicorn ASGI)"]
-            FastAPI["Framework FastAPI\n(71 Rutas REST / OpenAPI)"]:::serverStyle
+            FastAPI["Framework FastAPI\n(86 Rutas REST / OpenAPI)"]:::serverStyle
             RepoModule["app/repository.py\n(Orquestador de Dominio)"]:::serverStyle
             ScraperEngine["Módulo de Scraping\n(GrupLAC, CvLAC, Dedupe)"]:::serverStyle
             PDFEngine["Motor de Reportes PDF\n(ReportLab Engine)"]:::serverStyle
@@ -36,7 +36,7 @@ graph TB
     end
 
     subgraph Persistencia ["Capa de Persistencia y Almacenamiento"]
-        SQLServer[("Motor Relacional SQL Server\n(peai — 16 Tablas Normalizadas)")]:::dataStyle
+        SQLServer[("Motor Relacional SQL Server\n(peai — 22 Tablas Físicas)")]:::dataStyle
         JSONFile[("Archivo JSON Portátil\n(pea_data.json — 12 Colecciones)")]:::dataStyle
         PDFStorage[("Informes Generados\n(Archivos PDF Descargables)")]:::dataStyle
     end

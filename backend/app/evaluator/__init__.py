@@ -6,7 +6,7 @@ Referencia: Minciencias - Modelo de Medición 2024 (Convocatoria 957 / Anexo 1 -
 
 from typing import Any, Dict
 from .helpers import clean_classification
-from .metrics_collector import collect_group_metrics
+from .metrics_collector import collect_group_metrics, collect_researcher_metrics
 from .tier_rules import build_tiers_config, audit_tiers
 
 def evaluate_group_minciencias(group_id: int, repository_module: Any) -> Dict[str, Any]:
@@ -28,6 +28,10 @@ def evaluate_group_minciencias(group_id: int, repository_module: Any) -> Dict[st
         "current_classification": clean_classification(group.classification),
         "raw_classification": group.classification or "",
         "max_qualified_tier": max_qualified_tier,
+        # Aproximación legacy (conteos crudos): NO es el indicador oficial
+        # 2024 (§3.10), que llega aparte en `modelo_oficial_2024`. El legacy
+        # existe solo como insumo del semáforo (Fase 6, brecha B5).
+        "i_grupo_legacy": metrics["i_grupo_legacy"],
         "next_tier": next_tier,
         "next_tier_progress": next_tier_progress,
         "next_tier_gap": next_tier_gap,
@@ -58,4 +62,55 @@ def evaluate_group_minciencias(group_id: int, repository_module: Any) -> Dict[st
         "tiers": evaluated_tiers,
     }
 
-__all__ = ["evaluate_group_minciencias"]
+
+def evaluate_researcher_minciencias(researcher_id: int, repository_module: Any) -> Dict[str, Any]:
+    """Evalúa la producción científica individual de un investigador con la
+    APROXIMACIÓN LEGACY (conteos crudos ponderados con los coeficientes del
+    modelo, aplicados al investigador).
+
+    OJO: el modelo de medición Minciencias 2024 **no define** un indicador de
+    producción por persona (su único indicador de producción, §3.10, es de
+    GRUPO). Esta suma ponderada de conteos NO es el indicador del modelo: por
+    eso el número sale en `i_investigador_legacy` (Fase 5, brecha B3).
+
+    La lectura con la escala del modelo —una ADAPTACIÓN DECLARADA del pipeline
+    §2.2.9 → §3.10 aplicada a la unidad "investigador"— llega aparte, en la
+    clave aditiva `adaptacion_individual_2024`, que agrega la capa de
+    repositorio (`repositories.analytics.get_researcher_minciencias_indicator`).
+
+    Retorna el valor de referencia y el desglose por clase de producto.
+    """
+    metrics = collect_researcher_metrics(researcher_id, repository_module)
+    researcher = metrics["researcher"]
+
+    return {
+        "researcher_id": researcher_id,
+        "researcher_name": f"{researcher.first_names} {researcher.last_names}".strip(),
+        "external_code": researcher.external_code or "",
+        "classification_records": researcher.classification_records or "",
+        "highest_education_level": researcher.highest_education_level or "",
+        # Aproximación legacy (conteos crudos): NO es el indicador del modelo
+        # 2024 — a nivel individual ese modelo no define ninguno. La lectura
+        # con la escala del modelo va en `adaptacion_individual_2024`.
+        "i_investigador_legacy": metrics["i_investigador_legacy"],
+        "summary": {
+            "total_products": metrics["total_products"],
+            "products_in_window": metrics["products_in_window"],
+            "gnc_count": metrics["gnc_count"],
+            "dti_count": metrics["dti_count"],
+            "frh_count": metrics["frh_count"],
+            "asc_count": metrics["asc_count"],
+            "dpc_count": metrics["dpc_count"],
+            "top_count": metrics["top_count"],
+            "type_a_count": metrics["type_a_count"],
+            "type_b_count": metrics["type_b_count"],
+            "frh_a_count": metrics["frh_a_count"],
+            "frh_b_count": metrics["frh_b_count"],
+            "asc_dpc_count": metrics["asc_dpc_count"],
+            "coauthored_products_count": metrics["coauthored_products_count"],
+            "gnc_dti_in_window": metrics["gnc_dti_in_window"],
+            "asc_dpc_frh_in_window": metrics["asc_dpc_frh_in_window"],
+        },
+    }
+
+__all__ = ["evaluate_group_minciencias", "evaluate_researcher_minciencias"]

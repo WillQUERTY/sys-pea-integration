@@ -1,4 +1,6 @@
 import { api } from './client'
+import type { MincienciasOfficialModel2024 } from './contrato-oficial-2024.generated'
+import type { MincienciasIndividualAdaptation2024 } from './contrato-individual-2024.generated'
 
 // --- Dashboard ---
 export interface Modelo2024Stats {
@@ -116,9 +118,31 @@ export interface MincienciasTierDiagnosis {
   missing_summary: string[]
 }
 
+/** Lectura oficial del modelo de medición Minciencias 2024 (§2.2.9 → §3.10).
+ *  Viene como clave aditiva del diagnóstico: no reemplaza el semáforo legacy.
+ *  La forma está GENERADA desde el contrato único
+ *  (backend/app/evaluator/contrato_oficial.py): no editar aquí. */
+export type { MincienciasOfficialModel2024 }
+
+/** ADAPTACIÓN INDIVIDUAL del modelo de medición 2024 (NO oficial).
+ *  El modelo 2024 define un único indicador de producción y es DE GRUPO
+ *  (§3.10): no existe un indicador oficial por persona. Este bloque es la
+ *  adaptación declarada del mismo pipeline a la unidad "investigador".
+ *  La forma está GENERADA desde el contrato único
+ *  (backend/app/evaluator/contrato_individual.py): no editar aquí. */
+export type { MincienciasIndividualAdaptation2024 }
+
 export interface MincienciasGroupDiagnosis {
   group_id: number
   group_name: string
+  /** Aproximacion legacy (conteos crudos) del indicador de produccion del
+   *  grupo: NO es el indicador oficial 2024 (§3.10, que llega en
+   *  `modelo_oficial_2024`). Solo alimenta el semaforo de categorizacion.
+   *  **La interfaz ya no lo muestra** (desde 2026-10-24): se conserva en el
+   *  payload de la API solo para trazabilidad. */
+  i_grupo_legacy?: number
+  /** Lectura aditiva del modelo oficial 2024 (misma forma que devuelve la API). */
+  modelo_oficial_2024?: MincienciasOfficialModel2024
   current_classification: string
   raw_classification: string
   max_qualified_tier: string
@@ -196,6 +220,60 @@ export interface ResearcherStats {
 export async function getResearcherStats(researcherId: number) {
   const { data } = await api.get<ResearcherStats>(
     `/researchers/${researcherId}/stats`
+  )
+  return data
+}
+
+/**
+ * Conteos crudos de la clasificación PREVIA (la misma del semáforo legacy) de
+ * un investigador. El backend ya los envía en `summary`; aquí solo se declara
+ * la forma para poder mostrarlos rotulados como "conteo crudo" en el panel de
+ * la adaptación individual (punto 6 del enunciado: variables de entrada y
+ * salida del modelo).
+ *
+ * La forma la produce `backend/app/evaluator/__init__.py` (evaluador legacy),
+ * NO el contrato único del modelo 2024: por eso es una interfaz escrita a
+ * mano y no un tipo generado.
+ */
+export interface ResearcherIndicatorSummary {
+  total_products?: number
+  products_in_window?: number
+  gnc_count?: number
+  dti_count?: number
+  frh_count?: number
+  asc_count?: number
+  dpc_count?: number
+  top_count?: number
+  type_a_count?: number
+  type_b_count?: number
+  frh_a_count?: number
+  frh_b_count?: number
+  asc_dpc_count?: number
+  coauthored_products_count?: number
+  gnc_dti_in_window?: number
+  asc_dpc_frh_in_window?: number
+}
+
+export interface ResearcherIndicator {
+  researcher_id: number
+  researcher_name: string
+  /** Aproximación legacy (conteos crudos ponderados): NO es un indicador del
+   *  modelo 2024 — ese modelo no define producción por persona.
+   *  **La interfaz ya no lo muestra** (desde 2026-10-24): se conserva en el
+   *  payload de la API solo para trazabilidad. */
+  i_investigador_legacy?: number
+  /** Conteos crudos de la clasificación previa: son ENTRADAS del modelo
+   *  (conteos crudos por clase), nunca puntos del indicador oficial. */
+  summary?: ResearcherIndicatorSummary
+  /** ADAPTACIÓN INDIVIDUAL declarada del modelo 2024 (NO oficial). La forma
+   *  está GENERADA desde el contrato único
+   *  (backend/app/evaluator/contrato_individual.py): no editar aquí. */
+  adaptacion_individual_2024?: MincienciasIndividualAdaptation2024
+}
+
+export async function getResearcherIndicator(researcherId: number) {
+  const { data } = await api.get<ResearcherIndicator>(
+    `/researchers/${researcherId}/indicator`
   )
   return data
 }

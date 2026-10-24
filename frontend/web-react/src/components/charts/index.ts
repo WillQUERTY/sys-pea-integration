@@ -7,6 +7,8 @@ export * from './strategic-kpi-cards'
 export * from './group-top-researchers'
 export * from './researcher-groups-contribution'
 export * from './minciencias-diagnosis-card'
+export * from './official-indicator-panel'
+export * from './researcher-official-adaptation-panel'
 export * from './group-collaboration-network'
 export * from './groups-radar-comparison'
 

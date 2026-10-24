@@ -1,178 +1,254 @@
-# Khemia — Plataforma de Producción Científica
+# Khemia — Plataforma de Producción Científica (PEA-i)
 
-Sistema de gestión de producción académica de grupos de investigación (Universidad Popular del Cesar — Taller 2, Estructura de Datos, Grupo 5).
-
-Arquitectura híbrida: **núcleo C++** con estructuras de datos manuales en memoria (listas, multilistas, pila LIFO de deshacer, cola FIFO de validación), puente **pybind11**, API **FastAPI**, frontend **React** (shadcn + TanStack) y persistencia en **SQL Server**.
-
-## 🏗️ Arquitectura: "Memoria como Caché Activa + Write-Through"
-
-1. **Core C++** (`core_cpp/`): las entidades viven en RAM como nodos enlazados a mano; las consultas y relaciones se resuelven recorriendo punteros. **Todo el SQL vive aquí** (`src/persistence/db_persistence.cpp`, ODBC nativo): CRUD por `MERGE` sobre `external_code`, enlaces, cola de validación, pila de deshacer, auditoría y agregados del dashboard.
-2. **pybind11** (`core_cpp/pybind/`): expone el core a Python como `abpoxx_pybind`.
-3. **FastAPI** (`backend/`): orquesta la RAM y delega todo el SQL al core (`app/repository.py` no usa pyodbc).
-4. **React** (`frontend/web-react/`): SPA de gestión.
-5. **SQL Server**: persistencia; al arrancar el backend se carga a RAM y cada escritura se replica al instante (write-through).
-
-> **Clave del write-through:** el match con BD es por `external_code` (no por id). Las entidades creadas por API sin código reciben uno auto-generado (`API-GRP-<id>`, etc.) para que el `MERGE` sea idempotente.
-
-> **Excepción documentada — ingesta masiva:** solo `GruplacCommitService` (`backend/app/scraper.py`) y `CvCommitService` (`backend/app/cvlac_scraper.py`) escriben directo a SQL Server con pyodbc (transacción atómica + conciliación/dedupe canónico). Tras cada commit, la API recarga la RAM desde la BD. Las importaciones no participan de la pila de deshacer (se revierten borrando el grupo).
+> **Universidad Popular del Cesar (UPC)** — Facultad de Ingenierías y Tecnológicas  
+> **Asignatura:** Estructura de Datos | **Docente:** Ing. Adith Pérez  
+> **Taller 2:** Programa Estadístico de Análisis de Investigación (PEA-i)  
+> **Grupo Oficial:** **WP - DN - EO**  
+> **Integrantes:** William Andrés Peñaranda Oñate · Donaldo David Noriega Palomino · Edinson José Olivero Rojas  
 
 ---
 
-## ✅ Requisitos previos
+## 🚀 Enlaces de Evaluación Rápida (Sin Instalar Nada)
 
-| Herramienta | Versión / notas |
-|---|---|
-| Windows | 10/11 |
-| Visual Studio | 2022/2026 con workload **C++** (trae CMake y MSVC). Ruta típica de cmake: `C:\Program Files\Microsoft Visual Studio\18\Community\Common7\IDE\CommonExtensions\Microsoft\CMake\CMake\bin\cmake.exe` |
-| SQL Server | Cualquier edición local (Express sirve) + **ODBC Driver 17 for SQL Server** |
-| sqlcmd | Client SDK 170/180 (incluido con SQL Server). Con driver 18 usar flags `-C -I` (ver abajo) |
-| Python | 3.12 (el `.pyd` compilado es para cp312) |
-| Node.js | 20+ (para el frontend; `npm` incluido) |
+Para facilitar la calificación inmediata del Taller 2 sin requerir configuración local:
+
+| Recurso | Enlace de Acceso Directo | Descripción |
+|---|---|---|
+| 🌐 **Despliegue Web en Vivo** | **[http://155.133.22.12/](http://155.133.22.12/)** | Aplicación completa en servidor de producción (React + FastAPI + SQL Server). |
+| 🎥 **Video de Sustentación** | **[PRESENTACIÓN KHEMIA (YouTube)](https://www.youtube.com/watch?v=eezB3oZ3n2w&t=12s)** | Video demostrativo oficial de 10 minutos sustentando cada requisito. |
+| 📄 **Documento Maestro Word** | [`docs/word/Parcial2_WP-DN-EO.docx`](file:///c:/repos/sys_pea_integration/docs/word/Parcial2_WP-DN-EO.docx) | Especificación técnica formal, diagramas retina y matrices de cumplimiento. |
+| 💾 **Backup de Base de Datos** | [`docs/peai.bak`](file:///c:/repos/sys_pea_integration/docs/peai.bak) | Respaldo nativo de SQL Server con datos precargados para restauración en 1 clic. |
 
 ---
 
-## 🚀 Instalación desde cero
+## 🏗️ Arquitectura del Sistema
 
-### 1. Base de datos
+El sistema implementa una arquitectura híbrida de alto rendimiento: **"Memoria RAM como Caché Activa + Write-Through sincrónico"**:
 
-Desde `database/`, con el servidor de backend **detenido** (libera conexiones ODBC):
-
-```powershell
-cd database
-sqlcmd -S localhost -E -C -b -i recreate_database.sql           # DROP + CREATE peai
-sqlcmd -S localhost -E -C -I -b -d peai -i init_schema.sql      # Tablas DDL + ObservationWindow
-python seed_catalog_2024.py                                     # Siembra canónica modelo Minciencias 2024
+```text
+       [Navegador Web / React SPA]               [Consola Terminal / pea_cli.exe]
+                   │                                             │
+                   ▼ HTTP / JSON                                 ▼ Llamada directa
+     [Backend Python / FastAPI]                                  │
+                   │                                             │
+                   ▼ Puente nativo pybind11                      │
+ ┌─────────────────┴─────────────────────────────────────────────┴─────────────────┐
+ │                            MEMORIA RAM (C++ Puro)                               │
+ │                                                                                 │
+ │   [Lista Grupos] <===========> [Multilista Membresías] <====> [Investigadores]  │
+ │         │                               │                              │        │
+ │         ▼                               ▼                              ▼        │
+ │   [Planes Trabajo]             [ProductAuthorNode]                [Proyectos]   │
+ │         │                               │                                       │
+ │         └────────────────────> [Multilista Productos]                           │
+ │                                         │                                       │
+ │                   ┌─────────────────────┴────────────────────┐                  │
+ │                   ▼                                          ▼                  │
+ │          [Cola FIFO Validación]                     [Pila LIFO Deshacer]        │
+ └───────────────────┬──────────────────────────────────────────┬──────────────────┘
+                     │ Write-Through sincrónico                 │ Reversión LIFO
+                     ▼                                          ▼
+ ┌─────────────────────────────────────────────────────────────────────────────────┐
+ │                              PERSISTENCIA FÍSICA                                │
+ │       SQL Server (22 tablas normalizadas)     │    JSON (pea_data.json)         │
+ └─────────────────────────────────────────────────────────────────────────────────┘
 ```
 
-- `-E`: autenticación Windows. `-C`: confiar en el certificado del servidor (driver 18 lo exige). `-I`: `QUOTED_IDENTIFIER ON` (requerido por los índices filtrados de `ProductAuthor`).
-- Esto siembra **5 familias y 70 subtipos canónicos Minciencias Convocatoria 957/2024** (GNC: 10, DTI: 26, ASC: 4, DPC: 21, FRH: 9) y deja las tablas de datos vacías listas para ingesta.
-- Si la BD ya existe y solo se desea actualizar o sincronizar el catálogo 2024: `python seed_catalog_2024.py` (es un upsert idempotente por `code`).
+1. **Núcleo C++ (`core_cpp/`)**: Todo el grafo de entidades vive en RAM como nodos dinámicos enlazados con punteros directos (`GroupNode`, `ResearcherNode`, `MembershipNode`, etc.).
+2. **Estructuras requeridas**: Listas enlazadas, Multilistas ortogonales, Pila LIFO de deshacer (`undo`) y Cola FIFO de validación técnica.
+3. **Persistencia dual**:
+   - **SQL Server**: Persistencia transaccional relacional (22 tablas físicas).
+   - **JSON (`pea_data.json`)**: Exportación serializada completa para portabilidad offline.
 
-### 2. Core C++ (compilar el puente pybind11)
+---
 
+## ⚡ Guía de Evaluación Paso a Paso ("A Prueba de Fallos")
+
+### Vía 1: Evaluación Local Rápida (Backend + Frontend en 2 minutos)
+
+> 💡 **Nota clave:** El puente C++ `backend/app/abpoxx_pybind.pyd` **ya se encuentra precompilado** para Python 3.12 en Windows x64. No necesitas instalar Visual Studio ni compilar C++ para probar la aplicación web localmente.
+
+#### 1. Restaurar la Base de Datos SQL Server (Opción más rápida)
+En **SQL Server Management Studio (SSMS)**:
+- Clic derecho en *Databases* → *Restore Database...* → *Device* → Seleccionar el archivo `docs/peai.bak` → Clic en *OK*.
+
+*O por comando PowerShell con `sqlcmd`:*
 ```powershell
-cd core_cpp
-$cmake = "C:\Program Files\Microsoft Visual Studio\18\Community\Common7\IDE\CommonExtensions\Microsoft\CMake\CMake\bin\cmake.exe"
-& $cmake -S . -B build2
-& $cmake --build build2 --config Release --target abpoxx_pybind
-& $cmake\..\ctest.exe --test-dir build2 -C Release --output-on-failure   # tests del core
+sqlcmd -S localhost -E -Q "RESTORE DATABASE peai FROM DISK = '$(Get-Location)\docs\peai.bak' WITH REPLACE"
 ```
 
-Copiar el módulo al backend (ver nota "pyd ocupado" en Solución de problemas):
+*(Alternativa sin archivo .bak: ver sección "Instalación desde DDL" más abajo).*
 
-```powershell
-copy build2\Release\abpoxx_pybind.cp312-win_amd64.pyd ..\backend\app\abpoxx_pybind.pyd
-```
-
-### 3. Backend (FastAPI)
-
+#### 2. Iniciar el Backend (FastAPI)
 ```powershell
 cd backend
-python -m venv venv                    # solo la primera vez
+python -m venv venv
 .\venv\Scripts\Activate.ps1
-pip install -r requirements.txt        # fastapi, uvicorn, pyodbc, reportlab, ...
+pip install -r requirements.txt
 python -m uvicorn app.main:app --host 127.0.0.1 --port 8000 --reload
 ```
+- API REST interactiva (Swagger UI): **[http://127.0.0.1:8000/docs](http://127.0.0.1:8000/docs)**
+- Al iniciar, la RAM de C++ se sincroniza automáticamente desde la BD.
 
-Al arrancar, la RAM se carga desde la BD automáticamente. Si necesitas recargarla a mano (p. ej. tras una ingesta por script):
-
-```powershell
-curl -X POST http://127.0.0.1:8000/api/v1/system/initialize/database `
-  -H "Content-Type: application/json" `
-  -d '{"connection_string": "Driver={ODBC Driver 17 for SQL Server};Server=localhost;Database=peai;Trusted_Connection=yes;"}'
-```
-
-API y Swagger UI: **http://127.0.0.1:8000/docs**
-
-### 4. Frontend (React)
-
+#### 3. Iniciar el Frontend (React + Vite)
+En una nueva terminal:
 ```powershell
 cd frontend\web-react
-npm install                            # solo la primera vez
-npm run dev                            # http://localhost:5173
+npm install
+npm run dev
 ```
-
-El dev server de Vite reenvía `/api/*` al backend local (`http://127.0.0.1:8000`, configurable en `vite.config.ts` → `server.proxy`); el build de producción usa URLs relativas contra la misma origen, igual que en el servidor. Para apuntar a otro host/puerto solo en local, crea `frontend/web-react/.env`:
-
-```env
-VITE_API_URL=http://localhost:8000/api/v1
-```
-
-Build de producción: `npm run build` (tsc + vite, sale en `dist/`).
+- Interfaz gráfica en vivo: **[http://localhost:5173](http://localhost:5173)**
 
 ---
 
-## 🧪 Verificación rápida (smoke test)
+### Vía 2: Ejecución de la Solución A en C++ (`pea_cli.exe`)
 
-Con backend y frontend arriba:
-
-1. `GET /api/v1/dashboard/stats` → responde con conteos (0 en BD limpia).
-2. Crear un grupo desde la UI (o `POST /api/v1/groups`), editarlo, validarlo.
-3. Perfil del grupo → botón **"Informe PDF"** → descarga el PDF estilo GrupLAC.
-4. Importar un GrupLAC desde la UI, procesar la **cola de validación** (FIFO) y probar **deshacer** (pila LIFO) en Sistema.
-
----
-
-## 📥 Cargar datos de ejemplo (grupo AITICE)
-
-Dos vías idempotentes (concilian por `external_code` y dejan los productos en la cola como `pending`):
-
-**A. Desde el HTML local** (`docs/AITICE-PAGE.html`, no depende de Scienti):
+El Taller 2 exige una solución ejecutable autónoma en consola C++. Esta se implementa a través de la CLI interactiva:
 
 ```powershell
-cd backend
-.\venv\Scripts\python.exe ..\database\reimport_aitice.py
+# Ubicación del ejecutable compilado (o tras compilar core_cpp):
+cd core_cpp\build\Release
+.\pea_cli.exe summary
 ```
 
-**B. Desde la URL en vivo de Scienti** (como lo haría un usuario):
+#### Comandos interactivos de la CLI C++:
+| Comando | Descripción | Requisito Taller |
+|---|---|---|
+| `pea_cli summary` | Muestra resumen estadístico y conteo de nodos en memoria | Req. 12a |
+| `pea_cli groups list` | Recorre la **lista simplemente enlazada** de grupos en RAM | Req. 3 / 8 |
+| `pea_cli researchers list` | Recorre la lista enlazada de investigadores | Req. 4 / 8 |
+| `pea_cli members list <id_grupo>` | Recorre la **multilista ortogonal** de integrantes del grupo | Req. 3 / 15 |
+| `pea_cli products list <id_grupo>` | Recorre la **multilista** de productos asociados al grupo | Req. 2 / 15 |
+| `pea_cli products by-year last 5` | Filtra productos por **ventana de observación** (últimos 5 años) | Req. 10 |
+| `pea_cli queue list` | Muestra los productos en la **cola FIFO de validación** | Req. 17 |
+| `pea_cli queue process` | Desencola y aprueba técnicamente el primer producto en orden de llegada | Req. 17 |
+| `pea_cli history list` | Inspecciona el tope de la **pila LIFO de operaciones** | Req. 16 |
+| `pea_cli history undo` | **Deshace** la última operación registrada en la pila (reversión simétrica) | Req. 16 |
 
+---
+
+### Vía 3: Compilación del Núcleo C++ desde Cero (Opcional)
+
+Si deseas recompilar el núcleo `abpoxx.lib`, el ejecutable `pea_cli.exe` o el puente `abpoxx_pybind.pyd`:
+
+#### Opción Automática (Recomendada):
+Ejecuta el script bat en la raíz del proyecto:
+```cmd
+build_cpp.bat
+```
+
+#### Opción Manual con CMake:
+```powershell
+cd core_cpp
+cmake -S . -B build
+cmake --build build --config Release
+copy /Y build\Release\abpoxx_pybind.cp312-win_amd64.pyd ..\backend\app\abpoxx_pybind.pyd
+```
+
+---
+
+## 📥 Ingesta Masiva y Web Scraping Scienti
+
+El sistema incluye scrapers idempotentes con deduplicación canónica para alimentar la base de datos y la memoria RAM:
+
+### 1. Ingesta desde archivo HTML local de prueba (Sin conexión a internet):
 ```powershell
 cd backend
-.\venv\Scripts\python.exe -m app.scraper "<URL_GRUPLAC>" --preview     # solo vista previa
-.\venv\Scripts\python.exe -m app.scraper "<URL_GRUPLAC>" --enrich-cvlac # importa y enriquece integrantes
+python ..\database\reimport_aitice.py
 ```
 
-El scraper extrae del GrupLAC: datos del grupo, líneas, integrantes, proyectos y toda la producción clasificada por familia/subtipo Minciencias (artículos, libros, capítulos, software, eventos, tutorías —doctorado/maestría/pregrado/monografía—, apropiación social, jurados, etc.). Tras importar por script, recarga la RAM del backend (paso 3) si el servidor estaba corriendo.
+### 2. Ingesta directa desde URL oficial de Scienti Minciencias:
+```powershell
+cd backend
+# Vista previa en consola:
+python -m app.scraper "https://scienti.minciencias.gov.co/gruplac/jsp/visualiza/visualizagr.jsp?nro=00000000002099" --preview
+
+# Importación completa con enriquecimiento de CvLAC:
+python -m app.scraper "https://scienti.minciencias.gov.co/gruplac/jsp/visualiza/visualizagr.jsp?nro=00000000002099" --enrich-cvlac
+```
 
 ---
 
-## 🧹 Limpieza / reset total
+## 📊 Matriz de Cobertura de Requisitos del Taller 2
 
-1. Detener el backend (libera la BD y el `.pyd`).
-2. Ejecutar los comandos de **1. Base de datos** (`recreate_database.sql` + `init_schema.sql` + `python seed_catalog_2024.py`).
-3. Arrancar el backend: arranca con RAM vacía y catálogos Minciencias 2024 listos, consistente con la BD limpia.
+| ID | Requisito del Taller | Implementación C++ | Implementación Python / Web | Estado |
+|---|---|---|---|---|
+| **T-01** | Solución en C/C++ autónoma | `core_cpp/src/pea_cli.cpp` (`pea_cli.exe`) | Ejecución nativa en terminal | ✓ Cumplido |
+| **T-02** | Solución en Python | Integración vía `abpoxx_pybind` | Backend FastAPI (`backend/app/`) | ✓ Cumplido |
+| **T-03** | Estructuras en memoria RAM | Punteros manuales y nodos enlazados | Lectura/escritura sincronizada | ✓ Cumplido |
+| **T-04** | Gestión de Grupos | `GroupNode` (lista enlazada simple) | Endpoints `/api/v1/groups` + UI | ✓ Cumplido |
+| **T-05** | Gestión de Investigadores | `ResearcherNode` (lista simple) | Endpoints `/api/v1/researchers` + UI | ✓ Cumplido |
+| **T-06** | Multilista de Integrantes | `MembershipNode` (doble cadena ortogonal) | Módulo "Integrantes" + `/memberships` | ✓ Cumplido |
+| **T-07** | Multilista de Productos | `GroupProductNode` (cadena grupo/producto) | Módulo "Productos" + filtros 2024 | ✓ Cumplido |
+| **T-08** | Ingesta URL Scienti | Ingesta transaccional con deduplicación | Scrapers GrupLAC y CvLAC | ✓ Cumplido |
+| **T-09** | Ingesta PDF y CSV | Parsers de PDF estructurado y CSV | Endpoints `/groups/import/pdf` y `/csv` | ✓ Cumplido |
+| **T-10** | Cola FIFO de validación | `ValidationQueue` / `ValidationQueueItem` | Panel interactivo `/admin/validation-queue` | ✓ Cumplido |
+| **T-11** | Pila LIFO de deshacer | `UndoStack` / `UndoOperation` | Historial interactivo `/admin/undo` | ✓ Cumplido |
+| **T-12** | Ventana de observación | Filtrado dinámico por fechas y años | Selector en UI y reportes PDF | ✓ Cumplido |
+| **T-13** | Persistencia SQL Server | ODBC nativo (`db_persistence.cpp`) | 22 tablas físicas + `docs/peai.bak` | ✓ Cumplido |
+| **T-14** | Persistencia JSON | Serialización manual C++ | `pea_data.json` exportable | ✓ Cumplido |
+| **T-15** | Dashboard estadístico | Agregados estadísticos de nodos | Métricas Recharts en `/admin` y `/portal` | ✓ Cumplido |
 
 ---
 
-## 🩹 Solución de problemas
+## 📁 Estructura del Repositorio
+
+```text
+sys_pea_integration/
+├── backend/                        # Solución B: API REST FastAPI y servicios
+│   ├── app/
+│   │   ├── abpoxx_pybind.pyd       # Binario C++ precompilado para Python 3.12
+│   │   ├── main.py                 # Punto de entrada de FastAPI
+│   │   ├── repository.py           # Orquestador RAM <-> C++
+│   │   ├── scraper.py              # Ingesta y conciliación de GrupLAC
+│   │   └── cvlac_scraper.py        # Ingesta y conciliación de CvLAC
+│   └── requirements.txt            # Dependencias Python
+│
+├── core_cpp/                       # Solución A: Núcleo algorítmico C++
+│   ├── CMakeLists.txt              # Configuración de compilación CMake
+│   ├── include/                    # Cabeceras y contratos
+│   ├── pybind/                     # Enlace pybind11 hacia Python
+│   └── src/                        # Implementación de nodos RAM, multilistas y CLI
+│
+├── database/                       # Persistencia física SQL Server
+│   ├── init_schema.sql             # DDL oficial con las 22 tablas físicas
+│   ├── recreate_database.sql       # Script DROP + CREATE de la base peai
+│   ├── seed_catalog_2024.py        # Semilla del catálogo Minciencias (5 familias, 70 subtipos)
+│   └── catalog_2024.json           # Definición canónica de tipologías 2024
+│
+├── docs/                           # Documentación oficial y artefactos de entrega
+│   ├── peai.bak                    # Copia de seguridad física de la BD SQL Server
+│   ├── PEA-i_Especificacion_...md  # Documento técnico maestro integral (2.600+ líneas)
+│   ├── guion_sustentacion_video...# Guion técnico y minutero del video
+│   ├── ANALISIS_COMPARATIVO_...md  # Análisis técnico comparativo
+│   └── word/
+│       ├── build_word_doc.py       # Generador del documento Word oficial
+│       ├── doc_formatter.py        # Motor de estilos enriquecidos y tablas Word
+│       └── Parcial2_WP-DN-EO.docx  # Documento oficial entregable en formato Word
+│
+├── frontend/web-react/             # Interfaz web de usuario (React + TypeScript)
+│   ├── src/                        # Vistas, componentes shadcn y stores TanStack
+│   └── package.json                # Dependencias npm
+│
+├── scripts/                        # Utilidades organizadas de mantenimiento y pruebas
+│   ├── check_counts.py             # Verificación de conteo de registros en BD
+│   └── recreate_database.py        # Recreación y siembra integral por script
+│
+├── INTEGRANTES.txt                 # Ficha formal de identificación del grupo
+├── pea_data.json                   # Archivo de persistencia serializada del sistema
+└── README.md                       # Esta guía técnica de evaluación
+```
+
+> Los adjuntos de la entrega (Word, fuentes `Taller2.cpp` / `Taller2.py`, `pea_data.json` e
+> `INTEGRANTES.txt`) están listados en [`docs/correo_entrega_parcial2.md`](docs/correo_entrega_parcial2.md).
+
+---
+
+## 🩹 Solución de Problemas Frecuentes
 
 | Síntoma | Causa | Solución |
 |---|---|---|
-| `SSL Provider: The certificate chain was issued by an authority that is not trusted` | sqlcmd con ODBC Driver 18 | Agregar flag `-C` (trust server certificate) |
-| `CREATE INDEX failed ... QUOTED_IDENTIFIER` al correr `init_schema.sql` | sqlcmd apaga QUOTED_IDENTIFIER por defecto; los índices filtrados de `ProductAuthor` lo requieren | Agregar flag `-I` |
-| `Device or resource busy` al copiar `abpoxx_pybind.pyd` | Un proceso python (uvicorn) lo tiene cargado | Detener el servidor, **o** renombrar primero (`ren abpoxx_pybind.pyd abpoxx_pybind.old.pyd`) y copiar encima; borrar el `.old` cuando el proceso viejo muera |
-| `[Error de Codificación]` en un campo | (Corregido en `db_persistence.cpp`) el core devolvía cp1252 sin transcodificar a UTF-8 | Recompilar el core y actualizar el `.pyd` del backend; los datos en BD no se dañan |
-| curl con tildes/ñ corrompe el JSON | Git Bash re-codifica `-d` | Escribir el JSON a un archivo y usar `--data-binary @archivo.json` |
-| Puerto 8000 ocupado / cambios de Python no surten efecto | uvicorn sin `--reload` o proceso zombie | Matar el proceso del puerto y reiniciar (el `--reload` **no** recarga el `.pyd`: para cambios del core hay que reiniciar el servidor) |
-
----
-
-## 📁 Estructura del repositorio
-
-```
-core_cpp/            Núcleo C++: entidades, servicios, persistencia ODBC, pybind11
-  build2/            Build de CMake (Release -> abpoxx_pybind.cp312-win_amd64.pyd)
-backend/
-  app/main.py        FastAPI (arranque, carga RAM desde BD)
-  app/repository.py  Orquestación RAM <-> core (sin SQL directo)
-  app/scraper.py     Importador GrupLAC (excepción: pyodbc directo)
-  app/reports.py     Informe PDF estilo GrupLAC (ReportLab)
-  app/abpoxx_pybind.pyd   <- copia del módulo compilado (regenerar tras cada build del core)
-frontend/web-react/  SPA React (shadcn + TanStack Query/Router)
-database/
-  init_schema.sql    Tablas + semillas Minciencias (56 subtipos, 5 familias)
-  recreate_database.sql  DROP + CREATE de la BD peai
-  seed_new_subtypes.py   Semillas idempotentes para BD existente
-  reimport_aitice.py     Importación de ejemplo desde docs/AITICE-PAGE.html
-docs/AITICE-PAGE.html    Página GrupLAC de ejemplo (fixture de pruebas del scraper)
-```
+| `SSL Provider: The certificate chain was issued by an authority that is not trusted` | sqlcmd con ODBC Driver 18 | Agregar el parámetro `-C` para confiar en el certificado local. |
+| `CREATE INDEX failed ... QUOTED_IDENTIFIER` | sqlcmd apaga QUOTED_IDENTIFIER por defecto | Usar el flag `-I` en sqlcmd. |
+| `PermissionError: [Errno 13] ... Parcial2_WP-DN-EO.docx` | El archivo Word está abierto en Microsoft Word | Cerrar Microsoft Word antes de regenerar el documento, o revisar la copia automática de respaldo. |
+| El puerto 8000 ya está en uso | Proceso uvicorn huérfano | Terminar el proceso con `Get-Process python \| Stop-Process` y reiniciar. |

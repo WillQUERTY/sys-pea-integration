@@ -1,8 +1,10 @@
 #!/usr/bin/env python3
 """
-Generador del Documento Oficial Word (.docx) para la entrega del Taller 2 de Estructura de Datos.
-Universidad Popular del Cesar - Grupo: WP-DN-EO
-Procesa la especificación técnica maestra e incrusta imágenes retina de los diagramas y tablas estilizadas.
+Generador del Documento Oficial Word (.docx) para la entrega del Parcial 2 de Estructura de Datos.
+Universidad Popular del Cesar - Grupo Oficial: WP-DN-EO
+Procesa la especificación técnica maestra completa (2.600+ líneas), incrusta imágenes retina
+de los diagramas, aplica el formateador institucional de tablas de alta fidelidad,
+cajas de callout y bloques de consola.
 """
 
 import os
@@ -12,46 +14,38 @@ from pathlib import Path
 import docx
 from docx.shared import Inches, Pt, RGBColor
 from docx.enum.text import WD_ALIGN_PARAGRAPH
-from docx.enum.table import WD_TABLE_ALIGNMENT, WD_ALIGN_VERTICAL
-from docx.oxml import parse_xml, OxmlElement
-from docx.oxml.ns import nsdecls, qn
 
-REPO_ROOT = Path(__file__).resolve().parent.parent.parent
+# Asegurar importación de módulos hermanos
+DOCS_WORD_DIR = Path(__file__).resolve().parent
+if str(DOCS_WORD_DIR) not in sys.path:
+    sys.path.append(str(DOCS_WORD_DIR))
+
+from doc_formatter import (
+    COLOR_PRIMARY_HEX,
+    COLOR_SECONDARY_HEX,
+    COLOR_ACCENT_HEX,
+    split_markdown_table_row,
+    render_table_from_markdown,
+    add_callout_box,
+    add_code_block,
+    apply_inline_formatting,
+)
+
+REPO_ROOT = DOCS_WORD_DIR.parent.parent
+# Fuente ÚNICA del entregable Word: la especificación integral (2.700+ líneas).
+# Es la que contiene los encabezados §38.x que anclan el mapeo de diagramas y
+# la sección §46 con los indicadores; el EdD del Parcial 2 (5 KB) es solo el
+# enunciado y no debe usarse como insumo del documento.
 SPEC_MD_PATH = REPO_ROOT / "docs" / "PEA-i_Especificacion_Integral_Cumplimiento_Taller2.md"
 DIAGRAMS_DIR = REPO_ROOT / "docs" / "diagrams"
-WORD_OUTPUT_DIR = REPO_ROOT / "docs" / "word"
+WORD_OUTPUT_DIR = DOCS_WORD_DIR
 
 # Iniciales oficiales
 INITIALS = "WP-DN-EO"
-DOCX_NAME = f"Taller2_{INITIALS}.docx"
-
-# Colores institucionales UPC
-COLOR_PRIMARY_HEX = "1A365D"    # Azul institucional oscuro
-COLOR_SECONDARY_HEX = "0D9488"  # Verde UPC
-COLOR_ACCENT_HEX = "2B6CB0"     # Azul medio
-COLOR_BG_LIGHT_HEX = "F8FAFC"   # Fondo tenue
-COLOR_CODE_BG_HEX = "0F172A"    # Fondo código
-COLOR_BORDER_HEX = "CBD5E1"     # Borde tablas
-
-def set_cell_background(cell, hex_color):
-    """Aplica color de fondo a una celda de tabla."""
-    shading_xml = f'<w:shd {nsdecls("w")} w:fill="{hex_color}"/>'
-    cell._tc.get_or_add_tcPr().append(parse_xml(shading_xml))
-
-def set_cell_margins(cell, top=100, bottom=100, left=150, right=150):
-    """Aplica márgenes internos (padding) a una celda."""
-    tcPr = cell._tc.get_or_add_tcPr()
-    tcMar = OxmlElement('w:tcMar')
-    for m, val in [('w:top', top), ('w:bottom', bottom), ('w:left', left), ('w:right', right)]:
-        node = OxmlElement(m)
-        node.set(qn('w:w'), str(val))
-        node.set(qn('w:type'), 'dxa')
-        tcMar.append(node)
-    tcPr.append(tcMar)
+DOCX_NAME = f"Parcial2_{INITIALS}.docx"
 
 def create_cover_page(doc):
     """Genera la portada institucional de la Universidad Popular del Cesar."""
-    # Espaciado superior
     for _ in range(2):
         doc.add_paragraph()
 
@@ -88,7 +82,7 @@ def create_cover_page(doc):
     run_title.font.bold = True
     run_title.font.color.rgb = RGBColor(0x1A, 0x36, 0x5D)
 
-    run_taller = p_title.add_run("DOCUMENTO MAESTRO DE ESPECIFICACIÓN TÉCNICA, ARQUITECTURA,\nMODELO DE DATOS Y CUMPLIMIENTO DEL TALLER 2\n")
+    run_taller = p_title.add_run("DOCUMENTO MAESTRO DE ESPECIFICACIÓN TÉCNICA, ARQUITECTURA,\nMODELO DE DATOS Y CUMPLIMIENTO DEL PARCIAL 2\n")
     run_taller.font.name = "Arial"
     run_taller.font.size = Pt(12)
     run_taller.font.bold = True
@@ -100,28 +94,33 @@ def create_cover_page(doc):
     # Integrantes y Docente
     p_meta = doc.add_paragraph()
     p_meta.alignment = WD_ALIGN_PARAGRAPH.CENTER
-    
+
     run_doc_lbl = p_meta.add_run("DOCENTE:\n")
     run_doc_lbl.font.size = Pt(10)
     run_doc_lbl.font.bold = True
     run_doc_lbl.font.color.rgb = RGBColor(0x71, 0x80, 0x96)
-    
+
     run_doc = p_meta.add_run("ING. ADITH PÉREZ\n\n")
     run_doc.font.size = Pt(12)
     run_doc.font.bold = True
     run_doc.font.color.rgb = RGBColor(0x1A, 0x20, 0x2C)
 
-    run_int_lbl = p_meta.add_run("GRUPO DE TRABAJO (INICIALES):\n")
+    run_int_lbl = p_meta.add_run("INTEGRANTES DEL GRUPO (INICIALES: WP - DN - EO):\n")
     run_int_lbl.font.size = Pt(10)
     run_int_lbl.font.bold = True
     run_int_lbl.font.color.rgb = RGBColor(0x71, 0x80, 0x96)
 
-    run_int = p_meta.add_run(f"{INITIALS}\n(Grupo Oficial Taller 2 — 2026)\n")
-    run_int.font.size = Pt(13)
+    run_int = p_meta.add_run(
+        "WILLIAM ANDRÉS PEÑARANDA OÑATE (WP)\n"
+        "DONALDO DAVID NORIEGA PALOMINO (DN)\n"
+        "EDINSON JOSÉ OLIVERO ROJAS (EO)\n\n"
+        "(Grupo Oficial Parcial 2 — 2026)\n"
+    )
+    run_int.font.size = Pt(11)
     run_int.font.bold = True
     run_int.font.color.rgb = RGBColor(0x0D, 0x94, 0x88)
 
-    for _ in range(3):
+    for _ in range(2):
         doc.add_paragraph()
 
     # Ciudad y Fecha
@@ -149,7 +148,7 @@ def setup_page_formatting(doc):
         header = section.header
         hp = header.paragraphs[0]
         hp.alignment = WD_ALIGN_PARAGRAPH.RIGHT
-        hrun = hp.add_run("Universidad Popular del Cesar | PEA-i — Taller 2 (Estructura de Datos)")
+        hrun = hp.add_run("Universidad Popular del Cesar | PEA-i — Parcial 2 (Estructura de Datos)")
         hrun.font.name = "Calibri"
         hrun.font.size = Pt(8.5)
         hrun.font.color.rgb = RGBColor(0x71, 0x80, 0x96)
@@ -176,7 +175,7 @@ def insert_diagram(doc, diagram_key, caption_text, figure_num):
     p_img.paragraph_format.space_before = Pt(12)
     p_img.paragraph_format.space_after = Pt(4)
     run_img = p_img.add_run()
-    
+
     # Ajuste de ancho responsivo
     if "casos_de_uso" in diagram_key or "modelo_entidad" in diagram_key or "multilista" in diagram_key or "arquitectura" in diagram_key:
         run_img.add_picture(str(png_path), width=Inches(6.2))
@@ -190,7 +189,7 @@ def insert_diagram(doc, diagram_key, caption_text, figure_num):
     p_cap.alignment = WD_ALIGN_PARAGRAPH.CENTER
     p_cap.paragraph_format.space_before = Pt(2)
     p_cap.paragraph_format.space_after = Pt(14)
-    
+
     run_lbl = p_cap.add_run(f"Figura {figure_num}: ")
     run_lbl.font.bold = True
     run_lbl.font.size = Pt(9.5)
@@ -201,62 +200,27 @@ def insert_diagram(doc, diagram_key, caption_text, figure_num):
     run_text.font.size = Pt(9.5)
     run_text.font.color.rgb = RGBColor(0x4A, 0x55, 0x68)
 
-def format_table(table, col_widths=None):
-    """Estiliza una tabla Word con formato institucional UPC."""
-    table.alignment = WD_TABLE_ALIGNMENT.CENTER
-    
-    # Encabezado (Fila 0)
-    for cell in table.rows[0].cells:
-        set_cell_background(cell, COLOR_PRIMARY_HEX)
-        set_cell_margins(cell, top=120, bottom=120, left=140, right=140)
-        for p in cell.paragraphs:
-            p.alignment = WD_ALIGN_PARAGRAPH.CENTER
-            for r in p.runs:
-                r.font.bold = True
-                r.font.size = Pt(9.5)
-                r.font.color.rgb = RGBColor(0xFF, 0xFF, 0xFF)
-
-    # Filas de datos
-    for r_idx, row in enumerate(table.rows[1:], start=1):
-        bg_color = "F8FAFC" if (r_idx % 2 == 1) else "FFFFFF"
-        for cell in row.cells:
-            set_cell_background(cell, bg_color)
-            set_cell_margins(cell, top=80, bottom=80, left=120, right=120)
-            for p in cell.paragraphs:
-                for r in p.runs:
-                    r.font.size = Pt(9)
-                    r.font.color.rgb = RGBColor(0x2D, 0x37, 0x48)
-
-    # Anchos de columna si se proporcionan
-    if col_widths:
-        for row in table.rows:
-            for idx, width in enumerate(col_widths):
-                if idx < len(row.cells):
-                    row.cells[idx].width = width
-
 def parse_markdown_and_build_doc():
-    """Parsea el documento maestro de especificación y ensambla el .docx completo."""
-    print("Iniciando lectura de especificación...")
+    """Parsea el documento maestro de especificación completo y ensambla el .docx oficial."""
+    print("Iniciando lectura de especificación completa...")
     content = SPEC_MD_PATH.read_text(encoding="utf-8")
+
+    # La documentación de los indicadores Minciencias 2024 (I_Grupo /
+    # I_Investigador, variables de entrada y salida del modelo y alcance de la
+    # medición) vive en la §46 de la especificación integral: la especificación
+    # es la fuente ÚNICA del entregable y no debe duplicarse aquí.
 
     doc = docx.Document()
     setup_page_formatting(doc)
     create_cover_page(doc)
 
     lines = content.splitlines()
-    in_code_block = False
-    code_lang = ""
-    code_lines = []
-    
-    in_table = False
-    table_rows = []
-
     figure_counter = 1
 
     # Mapeo de secciones a imágenes de diagramas
     diagram_mapping = [
         (re.compile(r'### 38\.1 Diagrama de casos de uso', re.IGNORECASE), "01_casos_de_uso", "Diagrama de Casos de Uso del Sistema PEA-i (5 Actores y 6 Subsistemas)"),
-        (re.compile(r'### 38\.2 Diagrama entidad-relación', re.IGNORECASE), "02_modelo_entidad_relacion", "Modelo Entidad-Relación Físico (16 Tablas SQL Server con Catálogo 2024)"),
+        (re.compile(r'### 38\.2 Diagrama entidad-relación', re.IGNORECASE), "02_modelo_entidad_relacion", "Modelo Entidad-Relación Físico (17 Tablas Principales en SQL Server con Catálogo 2024)"),
         (re.compile(r'### 38\.3 Diagrama de clases C\+\+', re.IGNORECASE), "04_clases_cpp", "Diagrama de Clases C++ y Servicios del Núcleo de Dominio"),
         (re.compile(r'### 38\.3\.1 Esquema gráfico de punteros', re.IGNORECASE), "03_multilista_memoria_ram", "Disposición en Memoria RAM de la Multilista Ortogonal y Punteros C++"),
         (re.compile(r'#### Secuencia 1: Creación de Producto', re.IGNORECASE), "06_secuencia_creacion_escritura_dual", "Secuencia: Creación Write-Through en RAM y SQL Server con Pila LIFO"),
@@ -271,81 +235,77 @@ def parse_markdown_and_build_doc():
     current_diagram_to_insert = None
 
     i = 0
-    while i < len(lines):
+    total_lines = len(lines)
+    while i < total_lines:
         line = lines[i]
 
-        # Detección de títulos de diagramas
+        # 1. Detección de títulos de diagramas mapeados
         for pattern, diag_key, cap_text in diagram_mapping:
             if pattern.search(line):
                 current_diagram_to_insert = (diag_key, cap_text)
                 break
 
-        # Manejo de bloques de código (```)
+        # 2. Manejo de bloques de código (```)
         if line.startswith("```"):
-            if not in_code_block:
-                in_code_block = True
-                code_lang = line[3:].strip().lower()
-                code_lines = []
+            code_lang = line[3:].strip().lower()
+            code_lines = []
+            i += 1
+            while i < total_lines and not lines[i].startswith("```"):
+                code_lines.append(lines[i])
+                i += 1
+            if i < total_lines:
+                i += 1  # Consumir el ``` de cierre
+
+            # Si era un bloque mermaid con diagrama mapeado, insertar la imagen renderizada
+            if code_lang == "mermaid" and current_diagram_to_insert:
+                diag_key, cap_text = current_diagram_to_insert
+                insert_diagram(doc, diag_key, cap_text, figure_counter)
+                figure_counter += 1
+                current_diagram_to_insert = None
             else:
-                in_code_block = False
-                # Si era un bloque mermaid y teníamos un diagrama mapeado, insertamos la imagen renderizada
-                if code_lang == "mermaid" and current_diagram_to_insert:
-                    diag_key, cap_text = current_diagram_to_insert
-                    insert_diagram(doc, diag_key, cap_text, figure_counter)
-                    figure_counter += 1
-                    current_diagram_to_insert = None
-                else:
-                    # Insertar bloque de código formateado
-                    code_text = "\n".join(code_lines)
-                    if code_text.strip():
-                        p_code = doc.add_paragraph()
-                        p_code.paragraph_format.space_before = Pt(6)
-                        p_code.paragraph_format.space_after = Pt(8)
-                        p_code.paragraph_format.left_indent = Inches(0.2)
-                        run_code = p_code.add_run(code_text)
-                        run_code.font.name = "Consolas"
-                        run_code.font.size = Pt(8.5)
-                        run_code.font.color.rgb = RGBColor(0x33, 0x41, 0x55)
-            i += 1
+                code_text = "\n".join(code_lines)
+                if code_text.strip():
+                    add_code_block(doc, code_text)
             continue
 
-        if in_code_block:
-            code_lines.append(line)
-            i += 1
-            continue
-
-        # Manejo de tablas Markdown (| Col 1 | Col 2 |)
+        # 3. Manejo de tablas Markdown (| Col 1 | Col 2 |)
         if line.strip().startswith("|") and line.strip().endswith("|"):
-            if not in_table:
-                in_table = True
-                table_rows = []
-            table_rows.append(line)
-            i += 1
-            continue
-        elif in_table:
-            # Fin de la tabla: renderizarla
-            in_table = False
-            # Filtrar separadores (|---|---|)
+            table_lines = []
+            while i < total_lines and lines[i].strip().startswith("|") and lines[i].strip().endswith("|"):
+                table_lines.append(lines[i])
+                i += 1
+
             clean_rows = []
-            for row_str in table_rows:
-                parts = [c.strip() for c in row_str.strip().split("|")[1:-1]]
-                if all(re.match(r'^:?-+:?$', p) for p in parts if p):
+            for row_str in table_lines:
+                cells = split_markdown_table_row(row_str)
+                # Omitir separadores tipo |---|---|
+                if all(re.match(r'^:?-+:?$', c) for c in cells if c):
                     continue
-                clean_rows.append(parts)
+                clean_rows.append(cells)
 
             if clean_rows:
-                num_cols = max(len(r) for r in clean_rows)
-                num_rows = len(clean_rows)
-                table = doc.add_table(rows=num_rows, cols=num_cols)
-                for r_idx, row_data in enumerate(clean_rows):
-                    for c_idx, cell_value in enumerate(row_data):
-                        if c_idx < num_cols:
-                            table.cell(r_idx, c_idx).text = cell_value
-                format_table(table)
-                p_sep = doc.add_paragraph()
-                p_sep.paragraph_format.space_after = Pt(8)
+                render_table_from_markdown(doc, clean_rows)
+            continue
 
-        # Encabezados Markdown
+        # 4. Manejo de llamadas / notas (> ...)
+        if line.startswith("> "):
+            callout_lines = []
+            while i < total_lines and lines[i].startswith("> "):
+                callout_lines.append(lines[i][2:].strip())
+                i += 1
+            callout_text = " ".join(callout_lines)
+
+            # Detectar si inicia con un título destacado como **Nota:** o **Estado:**
+            title_match = re.match(r'^\*\*(.*?)\*\*:?\s*(.*)$', callout_text)
+            if title_match:
+                title_str = title_match.group(1).upper()
+                body_str = title_match.group(2)
+                add_callout_box(doc, body_str, title=title_str)
+            else:
+                add_callout_box(doc, callout_text, title="NOTA TÉCNICA INSTITUCIONAL")
+            continue
+
+        # 5. Encabezados Markdown (#, ##, ###, ####)
         if line.startswith("# "):
             heading_text = line[2:].strip()
             h = doc.add_heading(heading_text, level=1)
@@ -395,21 +355,7 @@ def parse_markdown_and_build_doc():
             i += 1
             continue
 
-        # Citas y notas (> ...)
-        if line.startswith("> "):
-            quote_text = line[2:].strip()
-            p_q = doc.add_paragraph()
-            p_q.paragraph_format.left_indent = Inches(0.3)
-            p_q.paragraph_format.space_before = Pt(4)
-            p_q.paragraph_format.space_after = Pt(6)
-            run_q = p_q.add_run(quote_text)
-            run_q.font.italic = True
-            run_q.font.size = Pt(9.5)
-            run_q.font.color.rgb = RGBColor(0x4A, 0x55, 0x68)
-            i += 1
-            continue
-
-        # Listas con viñetas (- o *)
+        # 6. Listas con viñetas (- o *)
         if re.match(r'^\s*[-*]\s+', line):
             indent_level = (len(line) - len(line.lstrip())) // 2
             bullet_text = re.sub(r'^\s*[-*]\s+', '', line).strip()
@@ -419,81 +365,54 @@ def parse_markdown_and_build_doc():
             p_b.paragraph_format.left_indent = Inches(0.25 * (indent_level + 1))
             p_b.paragraph_format.space_before = Pt(1)
             p_b.paragraph_format.space_after = Pt(2)
-            
-            # Formatear negritas inline (**texto**)
-            parts = re.split(r'(\*\*.*?\*\*)', bullet_text)
-            for part in parts:
-                if part.startswith('**') and part.endswith('**'):
-                    r = p_b.add_run(part[2:-2])
-                    r.font.bold = True
-                else:
-                    p_b.add_run(part)
+            apply_inline_formatting(p_b, bullet_text, default_color=RGBColor(0x2D, 0x37, 0x48), default_size=Pt(9.5))
             i += 1
             continue
 
-        # Listas numeradas (1. 2. etc.)
+        # 7. Listas numeradas (1. 2. etc.)
         if re.match(r'^\s*\d+\.\s+', line):
             num_text = re.sub(r'^\s*\d+\.\s+', '', line).strip()
             p_n = doc.add_paragraph(style='List Number')
             p_n.paragraph_format.space_before = Pt(1)
             p_n.paragraph_format.space_after = Pt(2)
-            parts = re.split(r'(\*\*.*?\*\*)', num_text)
-            for part in parts:
-                if part.startswith('**') and part.endswith('**'):
-                    r = p_n.add_run(part[2:-2])
-                    r.font.bold = True
-                else:
-                    p_n.add_run(part)
+            apply_inline_formatting(p_n, num_text, default_color=RGBColor(0x2D, 0x37, 0x48), default_size=Pt(9.5))
             i += 1
             continue
 
-        # Líneas horizontales (---)
+        # 8. Líneas horizontales separadoras (---)
         if re.match(r'^-{3,}$', line.strip()):
             i += 1
             continue
 
-        # Párrafos de texto regular
+        # 9. Párrafos de texto regular
         stripped_line = line.strip()
         if stripped_line:
             p = doc.add_paragraph()
             p.paragraph_format.space_before = Pt(2)
             p.paragraph_format.space_after = Pt(4)
             p.paragraph_format.line_spacing = 1.15
-            
-            # Parseo de negritas (**...**) y código inline (`...`)
-            tokens = re.split(r'(\*\*.*?\*\*|`.*?`)', stripped_line)
-            for token in tokens:
-                if token.startswith('**') and token.endswith('**'):
-                    run = p.add_run(token[2:-2])
-                    run.font.bold = True
-                    run.font.name = "Calibri"
-                    run.font.size = Pt(10)
-                elif token.startswith('`') and token.endswith('`'):
-                    run = p.add_run(token[1:-1])
-                    run.font.name = "Consolas"
-                    run.font.size = Pt(9)
-                    run.font.color.rgb = RGBColor(0x9A, 0x34, 0x12)
-                else:
-                    run = p.add_run(token)
-                    run.font.name = "Calibri"
-                    run.font.size = Pt(10)
-                    run.font.color.rgb = RGBColor(0x1E, 0x29, 0x3B)
+            apply_inline_formatting(p, stripped_line, default_color=RGBColor(0x1E, 0x29, 0x3B), default_size=Pt(10))
 
         i += 1
 
-    # Asegurar que la carpeta docs/word existe
+    # Guardar documento oficial
     WORD_OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
     out_file = WORD_OUTPUT_DIR / DOCX_NAME
-    doc.save(str(out_file))
+    try:
+        doc.save(str(out_file))
+        saved_file = out_file
+    except PermissionError:
+        fallback_file = WORD_OUTPUT_DIR / f"{out_file.stem}_actualizado.docx"
+        print(f"\n[AVISO] El archivo '{out_file.name}' está abierto en Microsoft Word u otro visor.")
+        print(f"[AVISO] Para no perder los cambios, se guardó en: {fallback_file.name}")
+        doc.save(str(fallback_file))
+        saved_file = fallback_file
 
-    # También crear copia como WPDNEO.docx por conveniencia de entrega
-    alt_file = WORD_OUTPUT_DIR / f"{INITIALS.replace('-', '')}.docx"
-    doc.save(str(alt_file))
-
-    size_mb = out_file.stat().st_size / (1024 * 1024)
-    print(f"=== Documento Word generado con éxito ===")
-    print(f"Archivo principal: {out_file} ({size_mb:.2f} MB)")
-    print(f"Archivo alterno:   {alt_file}")
+    size_mb = saved_file.stat().st_size / (1024 * 1024)
+    print(f"\n=== Documento Word generado con éxito ===")
+    print(f"Archivo oficial: {saved_file} ({size_mb:.2f} MB)")
+    if saved_file != out_file:
+        print(f"Sugerencia: Cierra '{out_file.name}' en Microsoft Word para sobrescribir directamente el archivo principal.")
 
 if __name__ == "__main__":
     parse_markdown_and_build_doc()

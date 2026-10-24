@@ -451,4 +451,57 @@ void query_catalog(SQLHDBC dbc, const char* sql, bool with_extra, std::string& o
     SQLFreeHandle(SQL_HANDLE_STMT, stmt);
 }
 
+// Catalyst 2024 shape: each column declares its JSON key and data type, so the
+// same helper serializes families, subtypes and quality categories without
+// losing the 2024 fields (code, weights, class, sort_order).
+bool query_catalog_rows(SQLHDBC dbc, const char* select_sql,
+                        const std::vector<CatalogColumn>& cols,
+                        std::string& out) {
+    SQLHSTMT stmt;
+    SQLAllocHandle(SQL_HANDLE_STMT, dbc, &stmt);
+    if (!SQL_SUCCEEDED(SQLExecDirect(stmt, (SQLCHAR*)select_sql, SQL_NTS))) {
+        SQLFreeHandle(SQL_HANDLE_STMT, stmt);
+        return false;
+    }
+    bool first = true;
+    while (SQLFetch(stmt) == SQL_SUCCESS) {
+        if (!first) out += ",";
+        first = false;
+        out += "{";
+        for (size_t c = 0; c < cols.size(); ++c) {
+            if (c) out += ",";
+            out += "\"";
+            out += cols[c].json_key;
+            out += "\":";
+            const SQLSMALLINT col = static_cast<SQLSMALLINT>(c + 1);
+            SQLLEN ind = 0;
+            if (cols[c].kind == 1) {
+                char value[512];
+                SQLGetData(stmt, col, SQL_C_CHAR, value, sizeof(value), &ind);
+                out += "\"";
+                out += json_escape(ind != SQL_NULL_DATA ? cp1252_to_utf8(value) : "");
+                out += "\"";
+            } else if (cols[c].kind == 2) {
+                double value = 0.0;
+                SQLGetData(stmt, col, SQL_C_DOUBLE, &value, 0, &ind);
+                if (ind == SQL_NULL_DATA) {
+                    out += "null";
+                } else {
+                    char buffer[32];
+                    std::snprintf(buffer, sizeof(buffer), "%.*g", 10, value);
+                    out += buffer;
+                }
+            } else {
+                int value = 0;
+                SQLGetData(stmt, col, SQL_C_LONG, &value, 0, &ind);
+                if (ind == SQL_NULL_DATA) out += "null";
+                else out += std::to_string(value);
+            }
+        }
+        out += "}";
+    }
+    SQLFreeHandle(SQL_HANDLE_STMT, stmt);
+    return true;
+}
+
 } // namespace peai

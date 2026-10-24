@@ -30,6 +30,7 @@ bool load_from_file(const std::string& path) {
         g.name           = extract_string(block, "name");
         g.acronym        = extract_string(block, "acronym");
         g.description    = extract_string(block, "description");
+        g.declared_creation_date = extract_string(block, "declared_creation_date");
         g.classification = extract_string(block, "classification");
         g.status         = extract_string(block, "status");
         if (g.status.empty()) g.status = "active";

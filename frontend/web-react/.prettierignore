@@ -17,3 +17,7 @@
 
 # Ignore auto generated routeTree.gen.ts
 /src/routeTree.gen.ts
+
+# Ignore artefactos generados por scripts/gen_contrato_oficial.py
+/src/lib/api/contrato-oficial-2024.generated.ts
+/src/components/charts/__fixtures__/modelo-oficial-2024.generated.ts
