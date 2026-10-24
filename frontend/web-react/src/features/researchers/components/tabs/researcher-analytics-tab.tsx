@@ -14,7 +14,7 @@ import {
   ResearcherGroupsContribution,
   ResearcherTopCoauthors,
 } from '@/components/charts'
-import { getResearcherStats, getResearcherIndicator, type ResearcherStats, type ResearcherIndicator } from '@/lib/api'
+import { getResearcherStats, getResearcherIndicator, type ResearcherStats } from '@/lib/api'
 
 interface ResearcherAnalyticsTabProps {
   researcherId: number
@@ -129,7 +129,9 @@ export function ResearcherAnalyticsTab({
             <span className="text-2xl font-bold font-mono tracking-tight text-foreground">
               {indicator?.i_investigador?.toFixed(2) ?? 0}
             </span>
-            <span className="text-xs text-muted-foreground">I_Investigador &#8212; Minciencias 2024, secci&oacute;n 10.6</span>
+            <span className="text-xs text-muted-foreground">
+              I_Investigador &#8212; adaptaci&oacute;n &sect;10.6 sobre conteos (no oficial)
+            </span>
           </div>
         </div>
       </div>

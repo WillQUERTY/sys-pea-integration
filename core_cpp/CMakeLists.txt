@@ -68,6 +68,13 @@ add_executable(pea_tests tests/test_structures.cpp)
 target_link_libraries(pea_tests PRIVATE abpoxx)
 add_test(NAME estructuras COMMAND pea_tests)
 
+# ---- Tests del indicador oficial Minciencias 2024 (Fase 4) ----
+# Verifican el modelo §2.2.9 → §3.10 en C++ contra el caso sintético del
+# contrato (backend/tests/fixtures/indicador_oficial_caso.json).
+add_executable(pea_tests_indicador tests/test_official_indicator.cpp)
+target_link_libraries(pea_tests_indicador PRIVATE abpoxx)
+add_test(NAME indicador_oficial COMMAND pea_tests_indicador)
+
 # ---- Python bindings (optional) ----
 find_package(pybind11 CONFIG QUIET)
 if(pybind11_FOUND)

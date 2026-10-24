@@ -36,7 +36,7 @@ Un requisito con un solo gap funcional es `parcial`, no `cumple`. Por eso varios
 | R1 | CRUD grupos e investigadores | `cumple` | `core_cpp/src/services/group_service.cpp:47,75,81,91,114`; `researcher_service.cpp:31,57,63,73,93`; `status="active"` por defecto (`group.h:35`, `researcher.h:23`) | Ninguna relevante |
 | R2 | Tipología / valor / peso por producto | `cumple` | `family_id/subtype_id/quality_category_id` (`models.py:76-96`); `QualityCategory.weight` + `global_weight` (`models.py:27-35`, `init_schema.sql:44-53`, `catalog_2024.json`); 5 familias verificadas | Puntaje no persistido por producto (solo derivable por join a `QualityCategory`) |
 | R3 | Vinculaciones grupo-inv-producto con puntaje | `cumple` | `MembershipNode` (doble cadena), `ProductAuthorNode`, `GroupProductNode` (`init_schema.sql:171-215`, `models.py:98-124`); persistencia idempotente en `GruplacCommitService.commit` | Tablas de vinculación sin columna `score`; puntaje derivado indirectamente por producto |
-| R4fuentes | Variables entrada/salida (código) | `cumple` | `Taller2.cpp:12-21`, `Taller2.py:12-21` (entrada/salida etiquetadas); `main` imprime cada variable | `grupo_id` declarado como entrada pero ninguna función de indicador lo recibe |
+| R4fuentes | Variables entrada/salida (código) | `cumple` | `Taller2_WP-DN-EO.py:12-22`, `Taller2_WP-DN-EO.cpp:12-22` (entrada/salida etiquetadas + NOTAS de implementación); `main` imprime cada variable | `grupo_id` declarado como entrada pero ninguna función de indicador lo recibe |
 | R4word | Variables entrada/salida (Word) | `parcial` | `docs/word/Parcial2_WP-DN-EO.docx` existe (372250 bytes) | Es el Word del Taller 2 renombrado (solo 1 línea distinta en portada); `build_word_doc.py` lee spec md del Taller 2; sin sección de variables entrada/salida para grupos e investigadores del Parcial 2 |
 | R5 | Importación URL GrupLAC / CvLAC / PDF / CSV | `cumple` | 4 vías con preview/confirm: GrupLAC (`imports.py:118-153`), CvLAC (`:51-115`), PDF (`:206-283`), CSV (`:156-203`) | CSV solo grupos (sin integrantes ni productos directos); importación 100% en Python, nada en CLI C++ |
 | R6 | LISTAS con punteros, sin STL en grafo | `cumple` | Nodos encadenados `GroupNode`/`MembershipNode`/`ProductNode`/`ResearcherNode` (`group.h:40-47`, `membership.h:19-23`, `product.h:43-63`, `researcher.h:28-32`); recorridos por puntero | Solo `unordered_map` en `db_network_analytics.cpp:9,50` (fuera del grafo RAM) |
@@ -47,7 +47,7 @@ Un requisito con un solo gap funcional es `parcial`, no `cumple`. Por eso varios
 | R11 | Dashboard Python (histogramas / barras) | `cumple` | `scripts/pea_dashboard.py` genera 4 PNG en `docs/dashboard/` (productos por familia, productos por año, membresías por grupo, productos con/sin autores) usando matplotlib y paleta categórica validada con `validate_palette.js` | El dashboard web React+recharts sigueexistente como capa web; R11 se satisface con el script Python standalone |
 | R12 | Indicador del GRUPO (I_Grupo) | `cumple` | `collect_group_metrics` aplica suma ponderada completa (`metrics_collector.py:182-193`) y retorna `i_grupo` (línea 221); `evaluate_group_minciencias` lo retorna (línea 31); endpoint `/groups/{group_id}/minciencias-diagnosis` lo devuelve (`analytics.py:317-321`, `routers/groups.py:183-191`) | **C++ resuelto**: `pea_cli indicator group` ya aplica el modelo oficial (§2.2.9→§3.10) en `core_cpp/src/services/official_indicator.cpp`; la paridad con Python la verifica `scripts/pea_paridad_indicador.py` (mismo Ind.Grupo exacto) |
 | R13 | Indicador del INVESTIGADOR (I_Investigador) | `cumple` | `metrics_collector.py:360-371` aplica `1.5·asc_count + 0.5·dpc_count` separados (pesos oficiales); `i_investigador` retornado (`__init__.py:78`); endpoint `/researchers/{res_id}/indicator` (`researchers.py:139-149`); C++ y Python demos ya usan AP y DPC separados | Cohe=0 hardcodeado para individuo (aceptable, no aplica a nivel individual) |
-| R14 | 2 archivos de texto con respuestas | `cumple` | `Taller2.cpp` (Ejercicio 1 ll.161-237, Ejercicio 2 ll.243-316) y `Taller2.py` (ll.123-207, 214-298) con fórmula y ejecución real | Ambos usan datos embebidos en `main()`, no leen `pea_data.json` |
+| R14 | 2 archivos de texto con respuestas | `cumple` | `Taller2_WP-DN-EO.cpp` (Ejercicio 1 ll.300-396, Ejercicio 2 ll.399-462) y `Taller2_WP-DN-EO.py` (ll.162-267, 272-362) con fórmula y ejecución real | Ambos usan datos embebidos en `main()`, no leen `pea_data.json`; ya **no divergen numéricamente** (paridad exacta py↔cpp) |
 | R15 | Especificación Word + UML | `cumple` | `docs/word/Parcial2_WP-DN-EO.docx` existe (372250 bytes, regenerado en esta sesión); diagramas UML en `docs/diagrams/`; `build_word_doc.py` lee `docs/Parcial 2 EdD (2026-10-19).md` y cuerpo incluye sección de `I_Grupo`/`I_Investigador` con pesos oficiales (3,7/2,3/0,4/1,5/0,5/1,0/0,2/0,1/0,3) | Puede quedar alguna mención residual de "Taller 2" dentro del .docx (binario, no auditable por texto); verificar visual antes de entregar |
 | R16 | Video YouTube ~10 min, UPC, estudiantes | `parcial` | Enlace vivo en `INTEGRANTENES.txt:37`; oEmbed HTTP 200 "PRESENTACION KHEMIA" | Duración ~10 min no verificable; identidad UPC y estudiantes visibles no auditables desde repo; guion de sustentación del Parcial 2 **borrado** (`docs/guion_de_sustentaci_n_en_video_taller_2_edd.*`, estado 'D') |
 | R17 | Archivo identificación estudiantes | `cumple` | `INTEGRANTENES.txt` con 3 integrantes WP-DN-EO (ll.12-26); ll.38 apunta a `Parcial2_WP-DN-EO.docx`; ll.41 registra guion del Parcial 2 como pendiente (creado en `docs/guion_sustentacion_video_parcial2.md`) | Ninguna relevante |
@@ -82,7 +82,7 @@ Un requisito con un solo gap funcional es `parcial`, no `cumple`. Por eso varios
 - `backend/app/evaluator/metrics_collector.py:360-371` — aplica `1.5 * asc_count + 0.5 * dpc_count` como términos separados (pesos oficiales 1.5 y 0.5).
 - `backend/app/evaluator/__init__.py:78` — `evaluate_researcher_minciencias` retorna `i_investigador`.
 - `backend/app/api/routers/researchers.py:139-149` — endpoint `/researchers/{res_id}/indicator` responde con `i_investigador`.
-- `core_cpp/src/cli/researcher_commands.cpp:86-164` y `Taller2.cpp`/`Taller2.py` demos — ya usan AP y DPC separados.
+- `core_cpp/src/cli/researcher_commands.cpp:86-164` y `Taller2_WP-DN-EO.cpp`/`Taller2_WP-DN-EO.py` demos — ya usan AP y DPC separados.
 
 **Observación:** `Cohe = 0.0` para investigador individual es intencional y aceptable (la cohesión interna no aplica a nivel individual).
 
@@ -167,11 +167,11 @@ Un requisito con un solo gap funcional es `parcial`, no `cumple`. Por eso varios
 
 ### R21 — Nombres de archivo con iniciales — cumple
 
-**Estado:** Fuentes con iniciales creados y commiteados.
+**Estado:** Fuentes con iniciales creados y commiteados; son la **única fuente mantenida** de los dos ejercicios.
 
 **Evidencia:**
-- `Taller2_WP-DN-EO.cpp` — copia exacta de `Taller2.cpp` con iniciales WP-DN-EO en el nombre.
-- `Taller2_WP-DN-EO.py` — copia exacta de `Taller2.py` con iniciales WP-DN-EO en el nombre.
+- `Taller2_WP-DN-EO.cpp` / `Taller2_WP-DN-EO.py` — fuentes versionadas en el repo (los nombres `Taller2.cpp`/`Taller2.py` que pide el correo son copias de trabajo sin versionar: se deben regenerar desde estos archivos, no corregirse aparte).
+- Las dos versiones calculan **lo mismo**: normalizan el texto antes de clasificar (minúsculas, sin tildes y espacios colapsados), el Cohe del grupo se calcula con §2.2.10.1 (`autores coincidentes / productos GNC+DTI − 1`) y la fórmula impresa coincide con el cálculo (`AP = ASC`, DPC como término aparte). Verificado: I_Grupo = 12,667 e I_Investigador = 11,700 en ambas.
 
 ### R23 — Cargar datos o ejecutar sin datos — cumple
 

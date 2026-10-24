@@ -1,0 +1,274 @@
+// ARCHIVO GENERADO — NO EDITAR A MANO.
+// Fuente: backend/tests/fixtures/indicador_oficial_golden.json (bloque `esperado`).
+// Regenerar: python -X utf8 scripts/gen_contrato_oficial.py --regenerar
+// Verificar:  python -X utf8 scripts/gen_contrato_oficial.py --check
+
+import type { MincienciasOfficialModel2024 } from '@/lib/api'
+
+/** Lecturas oficiales del caso sintético, indexadas por id de grupo. */
+export const MODELO_OFICIAL_CASO: Record<string, MincienciasOfficialModel2024> = {
+  "10": {
+    "modelo": "Minciencias 2024 — modelo de medición (§2.2.9 → §3.10)",
+    "anio_cierre": 2026,
+    "grupo": {
+      "id": 10,
+      "identificacion": "AITICE (#10)",
+      "edad_anos": 8
+    },
+    "ind_grupo": 0.8152872176748235,
+    "rango_teorico": 10.0,
+    "posicion_poblacion": {
+      "puesto": 2,
+      "de": 2,
+      "percentil": 50.0
+    },
+    "poblacion": [
+      {
+        "grupo": "GISICO (#20)",
+        "ind_grupo": 1.0
+      },
+      {
+        "grupo": "AITICE (#10)",
+        "ind_grupo": 0.8152872176748235
+      }
+    ],
+    "indices": {
+      "Nc.Top": 0.0,
+      "Nc.A": 0.0,
+      "Nc.B": 0.0,
+      "AP": 0.0,
+      "DPC": 0.8993205735735829,
+      "Fr.A": 0.0,
+      "Fr.B": 0.5781346544401604,
+      "Cohe": 1.0,
+      "Coop": 0.5
+    },
+    "terminos_ponderados": {
+      "Nc.Top": 0.0,
+      "Nc.A": 0.0,
+      "Nc.B": 0.0,
+      "AP": 0.0,
+      "DPC": 0.44966028678679143,
+      "Fr.A": 0.0,
+      "Fr.B": 0.1156269308880321,
+      "Cohe": 0.1,
+      "Coop": 0.15
+    },
+    "ind_clase": {
+      "TOP": 0.0,
+      "A": 0.0,
+      "B": 0.0,
+      "ASC": 0.0,
+      "DPC": 364.64311358790917,
+      "FRH-A": 0.0,
+      "FRH-B": 82.04470055727957
+    },
+    "maximos_poblacion": {
+      "TOP": 0.0,
+      "A": 0.0,
+      "B": 0.0,
+      "ASC": 0.0,
+      "DPC": 405.4651081081644,
+      "FRH-A": 0.0,
+      "FRH-B": 141.91278783785754
+    },
+    "maximo_cohe_poblacion": 1.0,
+    "maximo_coop_poblacion": 1.0,
+    "subtipos": [
+      {
+        "codigo": "LIB_DIV",
+        "clase": "DPC",
+        "familia": "DPC",
+        "n": 1,
+        "periodo": 5,
+        "lambda": 0.1823215567939546,
+        "ancla_subtipo": 100.0,
+        "peso_relativo": 10.0,
+        "peso_global": 1000.0,
+        "termino": 182.32155679395458
+      },
+      {
+        "codigo": "WP",
+        "clase": "DPC",
+        "familia": "DPC",
+        "n": 1,
+        "periodo": 5,
+        "lambda": 0.1823215567939546,
+        "ancla_subtipo": 100.0,
+        "peso_relativo": 10.0,
+        "peso_global": 1000.0,
+        "termino": 182.32155679395458
+      },
+      {
+        "codigo": "TM_B",
+        "clase": "FRH-B",
+        "familia": "FRH",
+        "n": 1,
+        "periodo": 5,
+        "lambda": 0.1823215567939546,
+        "ancla_subtipo": 70.0,
+        "peso_relativo": 5.0,
+        "peso_global": 350.0,
+        "termino": 63.81254487788411
+      },
+      {
+        "codigo": "TP_B",
+        "clase": "FRH-B",
+        "familia": "FRH",
+        "n": 1,
+        "periodo": 5,
+        "lambda": 0.1823215567939546,
+        "ancla_subtipo": 20.0,
+        "peso_relativo": 5.0,
+        "peso_global": 100.0,
+        "termino": 18.232155679395458
+      }
+    ],
+    "cohe": {
+      "suma_autores": 4,
+      "productos": 2,
+      "valor": 1.0
+    },
+    "coop": {
+      "suma_grupos": 3,
+      "productos": 2,
+      "valor": 0.5
+    },
+    "excluidos": {
+      "artículo sin calidad oficial A1–D (Publindex/Scimago no está en la fuente)": 2,
+      "trabajo en evento (ponencia/congreso): no es tipo de producto en el modelo 2024": 1,
+      "sin descripción (categoría no verificable)": 1
+    },
+    "sin_ano": {
+      "WP": 1
+    },
+    "fuera_de_periodo": {
+      "WP": 1
+    },
+    "supuestos": [
+      "Edad del grupo: fecha de fundación declarada si el repositorio la trae; si no, se aproxima al primer año plausible de producción registrada.",
+      "Calidad de las direcciones de trabajo (TP/TM): se asume B — la fuente no evidencia la 'categoría A' de la dirección.",
+      "Los artículos en 'revista especializada' quedan fuera de los indicadores de producción (la calidad A1–D depende de Publindex/Scimago, que la fuente no trae), pero §2.2.10 es relacional: sí cuentan para Cohe/Coop.",
+      "Normalización §3.9: contra la población cargada en el repositorio; el modelo oficial exigiría TODOS los grupos del área OCDE.",
+      "Coop solo cuenta firmantes con investigador vinculado en el repositorio; los autores externos no aportan grupos relacionados.",
+      "Ventana de notas científicas: el OCR de la Tabla 5 no la preserva (5 años)."
+    ]
+  },
+  "20": {
+    "modelo": "Minciencias 2024 — modelo de medición (§2.2.9 → §3.10)",
+    "anio_cierre": 2026,
+    "grupo": {
+      "id": 20,
+      "identificacion": "GISICO (#20)",
+      "edad_anos": 2
+    },
+    "ind_grupo": 1.0,
+    "rango_teorico": 10.0,
+    "posicion_poblacion": {
+      "puesto": 1,
+      "de": 2,
+      "percentil": 100.0
+    },
+    "poblacion": [
+      {
+        "grupo": "GISICO (#20)",
+        "ind_grupo": 1.0
+      },
+      {
+        "grupo": "AITICE (#10)",
+        "ind_grupo": 0.8152872176748235
+      }
+    ],
+    "indices": {
+      "Nc.Top": 0.0,
+      "Nc.A": 0.0,
+      "Nc.B": 0.0,
+      "AP": 0.0,
+      "DPC": 1.0,
+      "Fr.A": 0.0,
+      "Fr.B": 1.0,
+      "Cohe": 0.0,
+      "Coop": 1.0
+    },
+    "terminos_ponderados": {
+      "Nc.Top": 0.0,
+      "Nc.A": 0.0,
+      "Nc.B": 0.0,
+      "AP": 0.0,
+      "DPC": 0.5,
+      "Fr.A": 0.0,
+      "Fr.B": 0.2,
+      "Cohe": 0.0,
+      "Coop": 0.3
+    },
+    "ind_clase": {
+      "TOP": 0.0,
+      "A": 0.0,
+      "B": 0.0,
+      "ASC": 0.0,
+      "DPC": 405.4651081081644,
+      "FRH-A": 0.0,
+      "FRH-B": 141.91278783785754
+    },
+    "maximos_poblacion": {
+      "TOP": 0.0,
+      "A": 0.0,
+      "B": 0.0,
+      "ASC": 0.0,
+      "DPC": 405.4651081081644,
+      "FRH-A": 0.0,
+      "FRH-B": 141.91278783785754
+    },
+    "maximo_cohe_poblacion": 1.0,
+    "maximo_coop_poblacion": 1.0,
+    "subtipos": [
+      {
+        "codigo": "WP",
+        "clase": "DPC",
+        "familia": "DPC",
+        "n": 1,
+        "periodo": 2,
+        "lambda": 0.4054651081081644,
+        "ancla_subtipo": 100.0,
+        "peso_relativo": 10.0,
+        "peso_global": 1000.0,
+        "termino": 405.4651081081644
+      },
+      {
+        "codigo": "TM_B",
+        "clase": "FRH-B",
+        "familia": "FRH",
+        "n": 1,
+        "periodo": 2,
+        "lambda": 0.4054651081081644,
+        "ancla_subtipo": 70.0,
+        "peso_relativo": 5.0,
+        "peso_global": 350.0,
+        "termino": 141.91278783785754
+      }
+    ],
+    "cohe": {
+      "suma_autores": 1,
+      "productos": 1,
+      "valor": 0.0
+    },
+    "coop": {
+      "suma_grupos": 2,
+      "productos": 1,
+      "valor": 1.0
+    },
+    "excluidos": {
+      "artículo sin calidad oficial A1–D (Publindex/Scimago no está en la fuente)": 1
+    },
+    "sin_ano": {},
+    "fuera_de_periodo": {},
+    "supuestos": [
+      "Edad del grupo: fecha de fundación declarada si el repositorio la trae; si no, se aproxima al primer año plausible de producción registrada.",
+      "Calidad de las direcciones de trabajo (TP/TM): se asume B — la fuente no evidencia la 'categoría A' de la dirección.",
+      "Los artículos en 'revista especializada' quedan fuera de los indicadores de producción (la calidad A1–D depende de Publindex/Scimago, que la fuente no trae), pero §2.2.10 es relacional: sí cuentan para Cohe/Coop.",
+      "Normalización §3.9: contra la población cargada en el repositorio; el modelo oficial exigiría TODOS los grupos del área OCDE.",
+      "Coop solo cuenta firmantes con investigador vinculado en el repositorio; los autores externos no aportan grupos relacionados.",
+      "Ventana de notas científicas: el OCR de la Tabla 5 no la preserva (5 años)."
+    ]
+  }
+}

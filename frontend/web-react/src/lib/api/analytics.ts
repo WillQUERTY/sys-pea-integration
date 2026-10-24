@@ -1,4 +1,5 @@
 import { api } from './client'
+import type { MincienciasOfficialModel2024 } from './contrato-oficial-2024.generated'
 
 // --- Dashboard ---
 export interface Modelo2024Stats {
@@ -117,41 +118,10 @@ export interface MincienciasTierDiagnosis {
 }
 
 /** Lectura oficial del modelo de medición Minciencias 2024 (§2.2.9 → §3.10).
- *  Viene como clave aditiva del diagnóstico: no reemplaza el semáforo legacy. */
-export interface MincienciasOfficialModel2024 {
-  modelo: string
-  anio_cierre: number
-  grupo: { id: number; identificacion: string; edad_anos: number }
-  /** Ind.Grupo final (§3.10): suma de coeficiente × índice normalizado (§3.9). */
-  ind_grupo: number
-  rango_teorico: number
-  posicion_poblacion: { puesto: number; de: number; percentil: number }
-  poblacion: { grupo: string; ind_grupo: number }[]
-  indices: Record<string, number>
-  terminos_ponderados: Record<string, number>
-  ind_clase: Record<string, number>
-  maximos_poblacion: Record<string, number>
-  maximo_cohe_poblacion: number
-  maximo_coop_poblacion: number
-  subtipos: {
-    codigo: string
-    clase: string
-    familia: string
-    n: number
-    periodo: number
-    lambda: number
-    ancla_subtipo: number | null
-    peso_relativo: number
-    peso_global: number
-    termino: number
-  }[]
-  cohe: { suma_autores: number; productos: number; valor: number }
-  coop: { suma_grupos: number; productos: number; valor: number }
-  excluidos: Record<string, number>
-  sin_ano: Record<string, number>
-  fuera_de_periodo: Record<string, number>
-  supuestos: string[]
-}
+ *  Viene como clave aditiva del diagnóstico: no reemplaza el semáforo legacy.
+ *  La forma está GENERADA desde el contrato único
+ *  (backend/app/evaluator/contrato_oficial.py): no editar aquí. */
+export type { MincienciasOfficialModel2024 }
 
 export interface MincienciasGroupDiagnosis {
   group_id: number

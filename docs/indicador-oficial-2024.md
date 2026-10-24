@@ -22,10 +22,14 @@ de grupos de investigación.
 | **Núcleo C++** | `core_cpp/src/services/official_indicator.cpp` (+ `core_cpp/include/services/official_indicator.h`) | **El mismo modelo en C++**: λ §2.2.9, pesos §3.6, clases §3.7, Ind_Clase §3.8.1, Cohe/Coop §2.2.10, normalización §3.9 y fórmula §3.10, sobre la RAM de grupos/productos. |
 | Catálogo para C++ | `scripts/gen_catalogo_cpp.py` → `core_cpp/include/services/catalog_2024_generated.h` | Genera la tabla del catálogo (ancla §3.6, peso relativo, ventana §2.2.5) **con el mismo código Python del backend**, para que C++ no pueda divergir. `--check` detecta drift. |
 | CLI | `pea_cli indicator group <id> --data <repo.json> [--year <año>] [--json]` | Imprime el modelo oficial (encabezado) y, debajo, el `I_Grupo` legacy rotulado como referencia. `--json` emite el mismo contrato que la API. |
-| Verificador de paridad | `scripts/pea_paridad_indicador.py` | Compara **campo por campo** el JSON del CLI contra el del evaluador Python sobre el mismo repositorio. |
-| Tests | `backend/tests/test_official_indicator.py` (27, golden a mano), `backend/tests/test_official_population.py` (9, sobre los grupos reales) y `backend/tests/test_catalogo_cpp.py` (drift del catálogo C++). | |
+| **Contrato único** | `backend/app/evaluator/contrato_oficial.py` | Declara la forma del bloque oficial **una sola vez** (`CONTRATO`: 20 claves raíz con sus tipos) y de ahí se derivan el golden, el tipo TS y el fixture del frontend. Trae además el comparador (`comparar_indicadores`), el validador (`validar_contra_contrato`) y el adaptador que replica el mapeo del cargador JSON de C++. |
+| Golden | `backend/tests/fixtures/indicador_oficial_golden.json` (+ `indicador_oficial_caso.json`) | El caso sintético de entrada y el resultado esperado, versionados. `scripts/gen_contrato_oficial.py --regenerar` los escribe y `--check` falla si hay drift. |
+| Verificador de paridad | `scripts/pea_paridad_indicador.py` | Compara **campo por campo** el JSON del CLI contra el del evaluador Python sobre el mismo repositorio. Con `--golden` compara **los tres** (CLI C++, backend Python y contrato versionado) contra el golden. |
+| **Tests del modelo en C++** | `core_cpp/tests/test_official_indicator.cpp` (target `pea_tests_indicador`, `ctest -C Release`) | 8 casos / 151 aserciones sobre el caso sintético del contrato: piezas puras (λ, categoría, familia, año), evaluación completa, normalización §3.9, fórmula §3.10 y las 20 claves del contrato JSON. |
+| Tests | `backend/tests/test_official_indicator.py` (27, golden a mano), `backend/tests/test_official_population.py` (9, sobre los grupos reales), `backend/tests/test_catalogo_cpp.py` (drift del catálogo C++) y `backend/tests/test_indicador_oficial_contrato.py` (12, contrato único). | |
 | API | `backend/app/repositories/analytics.py` → `get_group_minciencias_diagnosis` | Agrega la clave **aditiva** `modelo_oficial_2024` al diagnóstico. |
-| Frontend | `frontend/web-react/src/lib/api/analytics.ts` | Tipo `MincienciasOfficialModel2024` (opcional). La UI no cambia. |
+| Frontend | `frontend/web-react/src/lib/api/contrato-oficial-2024.generated.ts` (**generado**) + `analytics.ts` | Tipo `MincienciasOfficialModel2024` **generado desde el contrato** (no escrito a mano) y re-exportado por `analytics.ts`. |
+| UI | `frontend/web-react/src/components/charts/minciencias-diagnosis-card.tsx` + `official-indicator-panel.tsx` | La tarjeta muestra el oficial como titular (el legacy, rotulado como referencia); el panel desglosa los 9 términos de §3.10, las clases frente al máximo de la población, los subtipos que aportan, las exclusiones y el ranking. |
 
 ## Cómo se ejecuta
 
@@ -43,6 +47,15 @@ core_cpp/build2/Release/pea_cli.exe indicator group 10 --data pea_data.json --js
 
 # Paridad C++ <-> Python (debe decir PARIDAD CONFIRMADA)
 python -X utf8 scripts/pea_paridad_indicador.py
+
+# Los tres lados contra el contrato versionado (debe decir CONTRATO CONFIRMADO)
+python -X utf8 scripts/pea_paridad_indicador.py --golden
+
+# El golden, el tipo TS y el fixture TS estan al dia (CONTRATO AL DIA)
+python -X utf8 scripts/gen_contrato_oficial.py --check
+
+# Test unitario del modelo en C++ (debe decir 151 OK, 0 fallas)
+core_cpp/build2/Release/pea_tests_indicador.exe
 ```
 
 ## Paridad C++ ↔ Python
@@ -70,6 +83,42 @@ Lo que hace posible esa paridad:
   NFD sin marcas combinantes.
 - La cascada de años replica `extraer_anio`: `year` → `obtained_date` →
   `publication_date` → primer año plausible de la descripción.
+
+## El contrato único (golden)
+
+La paridad C++↔Python demuestra que las dos implementaciones coinciden **entre
+sí**. El contrato único demuestra que **las tres** coinciden con una forma
+declarada una sola vez, en `backend/app/evaluator/contrato_oficial.py`:
+
+```
+CONTRATO (declarado en Python)
+   ├─> backend/tests/fixtures/indicador_oficial_golden.json   (golden versionado)
+   │       ├─> pytest test_indicador_oficial_contrato.py       (backend vs contrato)
+   │       └─> scripts/pea_paridad_indicador.py --golden       (CLI C++ vs contrato)
+   ├─> frontend/.../contrato-oficial-2024.generated.ts         (tipo TS)
+   │       └─> frontend/.../__fixtures__/modelo-oficial-2024.generated.ts
+   │               └─> official-indicator-panel.test.tsx        (UI vs contrato)
+   └─> scripts/gen_contrato_oficial.py --check                  (detecta drift)
+```
+
+Sobre el caso sintético (`indicador_oficial_caso.json`: 2 grupos, 4 subtipos que
+aportan, un producto sin año, uno fuera de la ventana y 4 excluidos con 3
+motivos), los tres lados dan **exactamente** los mismos números:
+
+| Grupo | Ind.Grupo | Puesto | Cohe | Coop |
+|---|---|---|---|---|
+| AITICE (#10) | 0,8152872176748235 | 2 de 2 | 1,0 | 0,5 |
+| GISICO (#20) | 1,0 | 1 de 2 | 0,0 | 1,0 |
+
+La forma del contrato son **20 claves raíz**: `modelo`, `anio_cierre`, `grupo`,
+`ind_grupo`, `rango_teorico`, `posicion_poblacion`, `poblacion`, `indices`,
+`terminos_ponderados`, `ind_clase`, `maximos_poblacion`,
+`maximo_cohe_poblacion`, `maximo_coop_poblacion`, `subtipos`, `cohe`, `coop`,
+`excluidos`, `sin_ano`, `fuera_de_periodo`, `supuestos`.
+
+El caso sintético cubre a propósito las dos reglas que se confunden entre sí:
+en el grupo 10 (edad 8) **manda la ventana** del subtipo (5 años), y en el
+grupo 20 (edad 2) **manda la edad**.
 
 ## Qué implementa (y dónde está la evidencia)
 

@@ -27,6 +27,14 @@ export interface MincienciasDiagnosisCardProps {
   className?: string
 }
 
+/**
+ * §3.9 normaliza cada indicador contra el MÁXIMO de la población de grupos.
+ * Con menos de este número de grupos cargados, la normalización y el
+ * percentil no son comparables con los del modelo real (área OCDE): la UI lo
+ * advierte en vez de dejar leer un ranking engañoso.
+ */
+const POBLACION_MINIMA_NORMALIZACION = 10
+
 export function MincienciasDiagnosisCard({ data, className }: MincienciasDiagnosisCardProps) {
   const [selectedTier, setSelectedTier] = useState<string>('A')
 
@@ -50,6 +58,16 @@ export function MincienciasDiagnosisCard({ data, className }: MincienciasDiagnos
         ? `+${data.summary.cohesion_index.toFixed(3)}`
         : data.summary.cohesion_index.toFixed(3)
       : '0.000'
+
+  // Lectura OFICIAL del modelo de medición Minciencias 2024 (§2.2.9 → §3.10):
+  // es la única cifra que puede rotularse como oficial. `i_grupo` es el
+  // indicador legacy (conteos crudos, sin λ ni pesos globales ni
+  // normalización §3.9) y por eso queda solo como referencia rotulada.
+  // Ver docs/plan-integracion-modelo-oficial.md (brecha B1).
+  const oficial = data.modelo_oficial_2024
+  const tamanoPoblacion = oficial?.posicion_poblacion.de ?? oficial?.poblacion.length ?? 0
+  const poblacionReducida =
+    tamanoPoblacion > 0 && tamanoPoblacion < POBLACION_MINIMA_NORMALIZACION
 
   return (
     <Card className={cn('border-border/60 shadow-xs overflow-hidden', className)}>
@@ -80,12 +98,58 @@ export function MincienciasDiagnosisCard({ data, className }: MincienciasDiagnos
               <div className='text-xs font-bold font-mono text-foreground'>
                 Categoría {data.current_classification}
               </div>
+              {oficial && (
+                <div className='mt-1 space-y-0.5'>
+                  <div className='text-[10px] text-muted-foreground uppercase font-medium'>
+                    Ind.Grupo — modelo oficial 2024
+                  </div>
+                  <div className='text-sm font-bold font-mono text-foreground' data-testid='ind-grupo-oficial'>
+                    {oficial.ind_grupo.toLocaleString('es-CO', {
+                      minimumFractionDigits: 3,
+                      maximumFractionDigits: 3,
+                    })}
+                    <span className='text-[10px] font-normal text-muted-foreground ml-1'>
+                      / {oficial.rango_teorico.toLocaleString('es-CO', { maximumFractionDigits: 0 })} rango teórico
+                    </span>
+                  </div>
+                  <div className='text-[10px] text-muted-foreground' data-testid='posicion-poblacion'>
+                    Puesto {oficial.posicion_poblacion.puesto} de {oficial.posicion_poblacion.de} · cierre{' '}
+                    {oficial.anio_cierre}
+                  </div>
+                  {poblacionReducida && (
+                    <div
+                      className='flex items-start gap-1 text-[10px] font-medium text-amber-600 dark:text-amber-400'
+                      data-testid='aviso-poblacion'
+                    >
+                      <AlertCircle className='h-3 w-3 shrink-0 mt-px' />
+                      <span>
+                        Población medida: {tamanoPoblacion} grupos — la normalización §3.9 es débil
+                      </span>
+                    </div>
+                  )}
+                </div>
+              )}
+
               {data.i_grupo !== undefined && (
                 <div className='mt-1'>
-                  <div className='text-[10px] text-muted-foreground uppercase font-medium'>I_Grupo (Minciencias 2024)</div>
-                  <div className='text-xs font-bold font-mono text-foreground'>
+                  <div
+                    className='text-[10px] text-muted-foreground uppercase font-medium'
+                    data-testid='ind-grupo-legacy-label'
+                  >
+                    I_Grupo (referencia legacy, no oficial)
+                  </div>
+                  <div
+                    className='text-xs font-bold font-mono text-muted-foreground'
+                    data-testid='ind-grupo-legacy'
+                  >
                     {data.i_grupo.toLocaleString('es-CO', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                   </div>
+                </div>
+              )}
+
+              {!oficial && (
+                <div className='mt-1 text-[10px] text-muted-foreground' data-testid='oficial-no-disponible'>
+                  Lectura oficial no disponible para este grupo
                 </div>
               )}
             </div>

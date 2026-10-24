@@ -10,6 +10,7 @@ import {
   GroupTopResearchers,
   TopSubtypesRanking,
   MincienciasDiagnosisCard,
+  OfficialIndicatorPanel,
   GroupCollaborationNetwork,
   GroupsRadarComparison,
 } from '@/components/charts'
@@ -211,6 +212,11 @@ export function GroupAnalyticsTab({
 
       {/* Diagnóstico y Semáforo de Categorización Minciencias 2024 */}
       {mincienciasDiagnosis && <MincienciasDiagnosisCard data={mincienciasDiagnosis} />}
+
+      {/* Lectura oficial 2024: desglose auditable del cálculo (§2.2.9 → §3.10) */}
+      {mincienciasDiagnosis?.modelo_oficial_2024 && (
+        <OfficialIndicatorPanel modelo={mincienciasDiagnosis.modelo_oficial_2024} />
+      )}
 
       {/* Red de Colaboración y Grafo de Coautorías Interactivas */}
       <GroupCollaborationNetwork
