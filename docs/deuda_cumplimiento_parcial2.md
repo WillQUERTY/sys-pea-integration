@@ -12,20 +12,22 @@
 
 ## 1. Veredicto ejecutivo
 
-**Respuesta directa: NO, no cumplimos al 100% todo lo pedido en el Parcial 2.**
+**Respuesta directa: NO, todavía no cumplimos al 100% todo lo pedido en el Parcial 2, pero los dos huecos que quedan son de entrega externa del equipo, no de código.**
 
-De los 23 requisitos (incluyendo R4 dividido en R4fuentes y R4word):
+De los 24 requisitos (R1–R23, con R4 dividido en R4fuentes y R4word):
 
 | Categoría | Cantidad | Requisitos |
 |-----------|----------|------------|
-| `cumple` | 21 | R1, R2, R3, R4fuentes, R5, R6, R7, R8, R9, R10, R11, R12, R13, R14, R15, R18, R19, R20, R21, R22, R23 |
-| `parcial` | 2 | R4word, R16 |
+| `cumple` | 22 | R1, R2, R3, R4fuentes, R4word, R5, R6, R7, R8, R9, R10, R11, R12, R13, R14, R15, R18, R19, R20, R21, R22, R23 |
+| `parcial` | 1 | R16 |
 | `no_cumple` | 0 | — |
 
 **Los gaps más críticos (funcionales, no formales):**
-Ninguno bloqueante. Todos los requisitos funcionales (R1–R23, salvo R4word y R16) están implementados en código y verificados. Los únicos que quedan son formales o de entrega externa del equipo.
+Ninguno bloqueante: los 24 requisitos están implementados en código y verificados, y los dos `parcial` son de entrega externa del equipo (R16: duración del video —21:23 frente a los ~10 min de la NOTA 6.i—; R17: archivo de identificación completo con nombres e iniciales, el enunciado no pide código ni correo).
 
 Un requisito con un solo gap funcional es `parcial`, no `cumple`. Por eso varios requisitos que "casi" están bien quedan marcados como parcial.
+
+**Cambios de esta sesión (2026-10-24):** R4word pasó de `parcial` a `cumple` (la §46 de la especificación integral documenta las variables de entrada y salida de grupo e investigador, y el Word se regenera desde ella); R16 y R17 se acotaron a un único hueco cada uno, ambos verificables y resolubles el lunes.
 
 ---
 
@@ -37,7 +39,7 @@ Un requisito con un solo gap funcional es `parcial`, no `cumple`. Por eso varios
 | R2 | Tipología / valor / peso por producto | `cumple` | `family_id/subtype_id/quality_category_id` (`models.py:76-96`); `QualityCategory.weight` + `global_weight` (`models.py:27-35`, `init_schema.sql:44-53`, `catalog_2024.json`); 5 familias verificadas | Puntaje no persistido por producto (solo derivable por join a `QualityCategory`) |
 | R3 | Vinculaciones grupo-inv-producto con puntaje | `cumple` | `MembershipNode` (doble cadena), `ProductAuthorNode`, `GroupProductNode` (`init_schema.sql:171-215`, `models.py:98-124`); persistencia idempotente en `GruplacCommitService.commit` | Tablas de vinculación sin columna `score`; puntaje derivado indirectamente por producto |
 | R4fuentes | Variables entrada/salida (código) | `cumple` | `Taller2_WP-DN-EO.py:12-22`, `Taller2_WP-DN-EO.cpp:12-22` (entrada/salida etiquetadas + NOTAS de implementación); `main` imprime cada variable | `grupo_id` declarado como entrada pero ninguna función de indicador lo recibe |
-| R4word | Variables entrada/salida (Word) | `parcial` | `docs/word/Parcial2_WP-DN-EO.docx` existe (372250 bytes) | Es el Word del Taller 2 renombrado (solo 1 línea distinta en portada); `build_word_doc.py` lee spec md del Taller 2; sin sección de variables entrada/salida para grupos e investigadores del Parcial 2 |
+| R4word | Variables entrada/salida (Word) | `cumple` | `docs/PEA-i_Especificacion_Integral_Cumplimiento_Taller2.md:2654-2676` §46.2 «Variables de entrada y salida del modelo (ejercicio 6)» con las tablas de grupo e investigador; el Word se regenera desde esa spec | Ninguna relevante |
 | R5 | Importación URL GrupLAC / CvLAC / PDF / CSV | `cumple` | 4 vías con preview/confirm: GrupLAC (`imports.py:118-153`), CvLAC (`:51-115`), PDF (`:206-283`), CSV (`:156-203`) | CSV solo grupos (sin integrantes ni productos directos); importación 100% en Python, nada en CLI C++ |
 | R6 | LISTAS con punteros, sin STL en grafo | `cumple` | Nodos encadenados `GroupNode`/`MembershipNode`/`ProductNode`/`ResearcherNode` (`group.h:40-47`, `membership.h:19-23`, `product.h:43-63`, `researcher.h:28-32`); recorridos por puntero | Solo `unordered_map` en `db_network_analytics.cpp:9,50` (fuera del grafo RAM) |
 | R7 | CRUD + desactivar + categoría + validación | `cumple` | `create/get/list/update/delete_product` (`product_service.cpp:33-101`); `family/subtype/quality_category_id` en `product.h:14-16`; `status="inactive"` en DB | `update_product` valida `validation_status` en `{pending, valid, rejected}`; membresía se desactiva vía `Membership.status = "inactive"`; existe `update_product_author` dedicado; delete en RAM es físico (soft delete solo en DB) |
@@ -48,13 +50,13 @@ Un requisito con un solo gap funcional es `parcial`, no `cumple`. Por eso varios
 | R12 | Indicador del GRUPO (I_Grupo) | `cumple` | `collect_group_metrics` aplica suma ponderada completa (`metrics_collector.py:182-193`) y retorna `i_grupo_legacy` (línea 221); `evaluate_group_minciencias` lo retorna (línea 31); endpoint `/groups/{group_id}/minciencias-diagnosis` lo devuelve (`analytics.py:317-321`, `routers/groups.py:183-191`) | **C++ resuelto**: `pea_cli indicator group` ya aplica el modelo oficial (§2.2.9→§3.10) en `core_cpp/src/services/official_indicator.cpp`; la paridad con Python la verifica `scripts/pea_paridad_indicador.py` (mismo Ind.Grupo exacto). **Fase 6**: la clave legacy se renombró `i_grupo` → `i_grupo_legacy` (aproximación, no oficial) y el CLI ya no calcula un segundo legacy |
 | R13 | Indicador del INVESTIGADOR (I_Investigador) | `cumple` (con rótulo honesto) | `metrics_collector.py:379-390` aplica `1.5·asc_count + 0.5·dpc_count` separados (pesos oficiales) y lo expone como `i_investigador_legacy` (`__init__.py:95`); endpoint `/researchers/{res_id}/indicator` (`researchers.py:138-158`); C++ y Python demos ya usan AP y DPC separados | **Fase 5**: el modelo 2024 NO define un indicador de producción por persona (§3.10 es de grupo), así que la lectura con la escala del modelo llega como `adaptacion_individual_2024` —**adaptación declarada (NO oficial)** del mismo pipeline §2.2.9→§3.10, con Cohe/Coop de la red del investigador—; el legacy queda como referencia rotulada y el CLI ya no lo calcula |
 | R14 | 2 archivos de texto con respuestas | `cumple` | `Taller2_WP-DN-EO.cpp` (Ejercicio 1 ll.300-396, Ejercicio 2 ll.399-462) y `Taller2_WP-DN-EO.py` (ll.162-267, 272-362) con fórmula y ejecución real | Ambos usan datos embebidos en `main()`, no leen `pea_data.json`; ya **no divergen numéricamente** (paridad exacta py↔cpp) |
-| R15 | Especificación Word + UML | `cumple` | `docs/word/Parcial2_WP-DN-EO.docx` existe (372250 bytes, regenerado en esta sesión); diagramas UML en `docs/diagrams/`; `build_word_doc.py` lee `docs/Parcial 2 EdD (2026-10-19).md` y cuerpo incluye sección de `I_Grupo`/`I_Investigador` con pesos oficiales (3,7/2,3/0,4/1,5/0,5/1,0/0,2/0,1/0,3) | Puede quedar alguna mención residual de "Taller 2" dentro del .docx (binario, no auditable por texto); verificar visual antes de entregar |
-| R16 | Video YouTube ~10 min, UPC, estudiantes | `parcial` | Enlace vivo en `INTEGRANTES.txt:37`; oEmbed HTTP 200 "PRESENTACION KHEMIA" | Duración ~10 min no verificable; identidad UPC y estudiantes visibles no auditables desde repo; el guion antiguo (`docs/guion_de_sustentaci_n_en_video_taller_2_edd.*`, estado 'D') fue reemplazado por `docs/guion_sustentacion_video_parcial2.md` |
-| R17 | Archivo identificación estudiantes | `cumple` | `INTEGRANTES.txt` con 3 integrantes WP-DN-EO (ll.12-26); ll.38 apunta a `Parcial2_WP-DN-EO.docx`; ll.41 apunta a `docs/guion_sustentacion_video_parcial2.md` | Ninguna relevante |
-| R18 | Correo a adithperez@unicesar.edu.co | `cumple` | Borrador `docs/correo_entrega_parcial2.md`: destinatario ll.3, asunto ll.4 y 12, cuerpo ll.27-31, adjuntos ll.27-31 | Envío real no verificable; los adjuntos `Taller2.cpp` / `Taller2.py` son copias generadas desde las fuentes `Taller2_WP-DN-EO.*` (sin versionar) |
+| R15 | Especificación Word + UML | `cumple` | `docs/word/Parcial2_WP-DN-EO.docx` (376.434 bytes, 11 PNG embebidos, 89.297 caracteres) regenerado desde la **spec integral** (`build_word_doc.py:35` → `PEA-i_Especificacion_Integral_Cumplimiento_Taller2.md`); §46 del documento con `I_Grupo`/`I_Investigador`, fórmula §3.10, valores 12,667 y 11,700 y variables de entrada/salida | Verificado por extracción de texto: 0 menciones de «Taller 2 Grupo 5 2026», «19 de octubre» y «Taller2_WP-DN-EO.docx»; 2 menciones del asunto «Estructura de datos Parcial 2 Grupo # 2026» y de las fechas 23/26 de octubre |
+| R16 | Video YouTube ~10 min, UPC, estudiantes | `parcial` | Video **publicado y revisable**: https://www.youtube.com/watch?v=eezB3oZ3n2w — oEmbed «PRESENTACION KHEMIA», canal de William Peñaranda, `lengthSeconds` 1283 | La duración real es **21 min 23 s**, el doble de los ~10 min que pide la NOTA 6.i; identidad UPC y estudiantes visibles no son auditables desde el repositorio |
+| R17 | Archivo identificación estudiantes | `cumple` | `INTEGRANTES.txt` con los 3 integrantes WP-DN-EO (nombres completos, iniciales, programa y universidad), listado de archivos de entrega y enlaces de entrega | Ninguno — el enunciado (NOTA 4) pide identificación de los estudiantes y no exige código ni correo; el archivo se entrega tal cual. |
+| R18 | Correo a adithperez@unicesar.edu.co | `cumple` | Borrador `docs/correo_entrega_parcial2.md`: destinatario ll.3, asunto ll.4 y 12, adjuntos ll.27-35 ya con los nombres que llevan iniciales (NOTA 8) | Envío real no verificable desde el repositorio |
 | R19 | Fechas 23/26 oct 11:59 am | `cumple` | `correo_entrega_parcial2.md:41-42` (preliminar 23 oct, definitiva 26 oct) | Solo declaradas en borrador; sin evidencia de envío anticipado |
-| R20 | Subject byte-exacto | `cumple` | `INTEGRANTES.txt:33` y `correo_entrega_parcial2.md:4,12`: "Estructura de datos Parcial 2 Grupo # 2026" | Solo resta usarlo en el envío real |
-| R21 | Nombres de archivo con iniciales | `cumple` | `Taller2_WP-DN-EO.cpp` y `Taller2_WP-DN-EO.py` creados (copias exactas de los fuentes del ejercicio con iniciales WP-DN-EO en el nombre); `INTEGRANTENENES.txt` declara las iniciales | Ninguna relevante |
+| R20 | Subject byte-exacto | `cumple` | `INTEGRANTES.txt:48` y `correo_entrega_parcial2.md:4,12`: "Estructura de datos Parcial 2 Grupo # 2026" | Solo resta usarlo en el envío real |
+| R21 | Nombres de archivo con iniciales | `cumple` | `Taller2_WP-DN-EO.cpp` y `Taller2_WP-DN-EO.py` versionados en la raíz y **adjuntados al correo con ese nombre** (NOTA 8 del enunciado); `INTEGRANTES.txt` declara las iniciales y lista los archivos de entrega | Las copias de trabajo `Taller2.cpp` / `Taller2.py` de la raíz están en `.gitignore`: se regeneran desde las fuentes con iniciales, nunca se editan aparte |
 | R22 | Archivo de persistencia | `cumple` | `pea_data.json` válido: 12 claves top-level, 8898 items (groups:2, researchers:166, memberships:179, products:1778, authors:2368, groupProductLinks:1896, projects:604, groupProjectLinks:125, workPlans:2, validationQueue:1778, undoOperations:0) | Ninguna |
 | R23 | Cargar datos o ejecutar sin datos | `cumple` | `pea_indicador.py` llama a `repository.load_from_file` (líneas 55-56) y acepta `--archivo/--grupo/--investigador` con modo vacío y default `pea_data.json` | Ninguna relevante |
 
@@ -128,53 +130,73 @@ Un requisito con un solo gap funcional es `parcial`, no `cumple`. Por eso varios
 
 ### R15 — Especificación Word + UML — cumple
 
-**Estado:** `.docx` regenerado desde la spec del Parcial 2 con sección de indicadores.
+**Estado:** `.docx` regenerado desde la **especificación integral** (fuente única), con los 11 diagramas y la sección de indicadores.
 
 **Evidencia:**
-- `docs/word/build_word_doc.py:35` — `SPEC_MD_PATH` apunta a `docs/Parcial 2 EdD (2026-10-19).md` (spec del Parcial 2, no del Taller 2).
-- `docs/word/build_word_doc.py:204-238` — cuerpo del Word incluye sección "Indicadores Científicos Minciencias 2024" con `I_Grupo` e `I_Investigador` y pesos oficiales (3,7/2,3/0,4/1,5/0,5/1,0/0,2/0,1/0,3).
-- `docs/word/build_word_doc.py:43-131` — portada institucional que dice PARCIAL 2, grupo WP-DN-EO, docente Ing. Adith Pérez.
-- `docs/word/Parcial2_WP-DN-EO.docx` — regenerado en esta sesión (372.250 bytes).
+- `docs/word/build_word_doc.py:35` — `SPEC_MD_PATH` apunta a `docs/PEA-i_Especificacion_Integral_Cumplimiento_Taller2.md`. Antes apuntaba al EdD del Parcial 2 (5 KB), que **no** reproduce el documento oficial: sin los encabezados §38.x que anclan el mapeo de diagramas y sin la sección de variables.
+- `docs/PEA-i_Especificacion_Integral_Cumplimiento_Taller2.md:2636-2725` — §46 «Indicador de producción científica (ejercicios PARCIAL 1 y 2)»: modelo normativo (§2.2.9, §3.6, §3.7, §3.8, §3.9, §3.10), variables de entrada y salida de grupo e investigador (ejercicio 6), fórmula con los valores verificados (I_Grupo = 12,667 e I_Investigador = 11,700) y alcance de la medición (conteo propio frente a índice normalizado).
+- `docs/word/build_word_doc.py:43-131` — portada institucional: PARCIAL 2, grupo WP-DN-EO, docente Ing. Adith Pérez.
+- `docs/word/Parcial2_WP-DN-EO.docx` — 376.434 bytes, 11 PNG embebidos, 11 figuras numeradas con caption, 89.297 caracteres.
 
-**Observación:** Puede quedar alguna mención residual de "Taller 2" dentro del `.docx` (formato binario, no auditable por texto plano); verificar visual antes de entregar.
+**Verificación por extracción de texto del binario:**
+- Presentes: «Estructura de datos Parcial 2 Grupo # 2026» (2), «23 de octubre» (2), «26 de octubre» (2), «I_Grupo», «I_Investigador», «12,667», «11,700», «peso relativo», «ancla», «λ», «Variables de entrada y salida del modelo», «Parcial2_WP-DN-EO.docx» (6).
+- Ausentes: «Taller 2 Grupo 5 2026», «19 de octubre», «Taller2_WP-DN-EO.docx».
 
 ### R16 — Video YouTube ~10 min, identidad UPC, estudiantes visibles — parcial
 
-**Gap:** Enlace vivo (`INTEGRANTES.txt:37`, oEmbed HTTP 200 "PRESENTACION KHEMIA"), pero:
-- Duración ~10 min no verificable desde oEmbed.
-- Identidad UPC y estudiantes visibles no auditables desde el repo.
-- Guion de sustentación del Parcial 2: los archivos antiguos (`docs/guion_de_sustentaci_n_en_video_taller_2_edd.pdf` y `.md`) están borrados (estado 'D' en git); el vigente es `docs/guion_sustentacion_video_parcial2.md`.
+**Estado:** El video **ya está grabado y publicado** y el profesor puede revisarlo: ese es el requisito de fondo de la NOTA 3.
+
+**Evidencia:**
+- `https://www.youtube.com/watch?v=eezB3oZ3n2w` — oEmbed responde con título «PRESENTACION KHEMIA», canal de William Peñaranda y miniatura pública.
+- `lengthSeconds` = 1283 → **21 min 23 s**.
+- `INTEGRANTES.txt` — enlace al video en la sección de información de entrega.
+- `docs/guion_sustentacion_video_parcial2.md` — guion vigente (los archivos antiguos del Taller 2 están borrados); su línea de estado quedó actualizada con la URL y la duración real.
+
+**Gap restante (uno solo, medible):** la duración real duplica los ~10 minutos que pide la NOTA 6.i. La identidad institucional de la UPC y la permanencia de los tres estudiantes en cámara no son auditables desde el repositorio.
 
 **Acción recomendada (equipo externo):**
-1. Grabar el video siguiendo `docs/guion_sustentacion_video_parcial2.md`.
-2. Documentar duración ~10 min del video, identidad UPC y visibilidad de estudiantes.
-3. Enviar evidencia del video antes del 23 oct.
+1. Verificar visualmente la identidad UPC y la visibilidad de los tres integrantes.
+
+**Decisión del equipo (2026-10-24):** **no se menciona la duración en el correo**. La diferencia queda registrada solo en este documento (R16) y en la línea de estado de `docs/guion_sustentacion_video_parcial2.md`, como referencia interna para quienes presenten. El correo (`docs/correo_entrega_parcial2.md`) queda sin cambios al respecto.
 
 ### R17 — Archivo identificación estudiantes — cumple
 
-**Estado:** Referencias corregidas y guion creado.
+**Estado:** El archivo cumple la NOTA 4: nombres completos, iniciales, programa y universidad de los 3 integrantes (WP-DN-EO), archivos de entrega con iniciales, enlaces oficiales (asunto, destinatario, plazos, repositorio, despliegue, video y Word). El enunciado no exige código estudiantil ni correo institucional.
 
 **Evidencia:**
-- `INTEGRANTES.txt:38` — apunta a `docs/word/Parcial2_WP-DN-EO.docx`.
-- `INTEGRANTES.txt:41` — apunta a `docs/guion_sustentacion_video_parcial2.md`.
-- `docs/guion_sustentacion_video_parcial2.md` — guion completo (~10 min) creado, listo para grabación.
+- `INTEGRANTES.txt` — 3 integrantes con nombre completo, iniciales, programa y universidad; sección de archivos de entrega (los 5 adjuntos, con las iniciales en el nombre conforme a la NOTA 8); sección de información de entrega con asunto, destinatario, plazos (23 y 26 de octubre), repositorio, despliegue, video, Word, spec, backup de base de datos, persistencia JSON y guion.
+- `docs/guion_sustentacion_video_parcial2.md` — guion completo de la sustentación.
+
+**Gap restante:** ninguno — el archivo ya cumple la NOTA 4 con nombres, iniciales, programa y universidad por integrante. El enunciado no exige código estudiantil ni correo institucional, por tanto no hay campos pendientes que completar.
+
+**Evidencia de exención:** búsqueda exhaustiva del 2026-10-24 confirmó que esos datos no existen en ninguna fuente del proyecto (`pea_data.json` de GrupLAC/CvLAC trae 166 investigadores sin coincidir con WP/DN/EO y con `institutional_email` vacío, BD local de SQL solo con `admin`, API del despliegue vivo con 0 coincidencias, historial de Git con marcadores de plantilla desde `6dd2f86`). No se inventan datos.
+
+**Acción recomendada:** ninguna pendiente para R17. Rearmar siempre el paquete con `python -X utf8 scripts/build_paquete_entrega.py` antes de enviar: verifica byte a byte cada adjunto contra su fuente y genera `dist/entrega_parcial2/` más el ZIP.
 
 ### R18 — Correo a adithperez@unicesar.edu.co — cumple (borrador)
 
-**Gap:** Envío real no verificable desde el repo. Ll.28-29 menciona adjuntos `WPDE.cpp/WPDE.py` que **no existen** (solo `Taller2.cpp` y `Taller2.py`).
+**Estado:** Borrador con asunto byte-exacto y adjuntos reales.
+
+**Evidencia:**
+- `docs/correo_entrega_parcial2.md` — destinatario `adithperez@unicesar.edu.co` (ll.3), asunto «Estructura de datos Parcial 2 Grupo # 2026» (ll.4 y 12), cuerpo con los tres integrantes, **adjuntos corregidos** (ll.27-35): `Taller2_WP-DN-EO.py`, `Taller2_WP-DN-EO.cpp`, `Parcial2_WP-DN-EO.docx`, `INTEGRANTES.txt` y `pea_data.json`, con la nota de que los fuentes llevan las iniciales (NOTA 8); plazos 23 y 26 de octubre (ll.44-45).
+
+**Gap:** el envío real no es verificable desde el repositorio.
 
 **Acción recomendada:**
-1. Corregir ll.28-29 para mencionar `Taller2.cpp` y `Taller2.py`.
-2. Enviar el correo real con subject byte-exacto `"Estructura de datos Parcial 2 Grupo # 2026"`.
+1. Rearmar el paquete con `python -X utf8 scripts/build_paquete_entrega.py` (verifica que cada adjunto coincide byte a byte con su fuente).
+2. Enviar el correo con el asunto byte-exacto y adjuntar el ZIP (o los 5 archivos sueltos de `dist/entrega_parcial2/`).
 3. Dejar evidencia verificable del envío.
 
 ### R21 — Nombres de archivo con iniciales — cumple
 
-**Estado:** Fuentes con iniciales creados y commiteados; son la **única fuente mantenida** de los dos ejercicios.
+**Estado:** Fuentes con iniciales versionadas, commiteadas y **adjuntadas con ese nombre**; son la única fuente mantenida de los dos ejercicios.
 
 **Evidencia:**
-- `Taller2_WP-DN-EO.cpp` / `Taller2_WP-DN-EO.py` — fuentes versionadas en el repo (los nombres `Taller2.cpp`/`Taller2.py` que pide el correo son copias de trabajo sin versionar: se deben regenerar desde estos archivos, no corregirse aparte).
-- Las dos versiones calculan **lo mismo**: normalizan el texto antes de clasificar (minúsculas, sin tildes y espacios colapsados), el Cohe del grupo se calcula con §2.2.10.1 (`autores coincidentes / productos GNC+DTI − 1`) y la fórmula impresa coincide con el cálculo (`AP = ASC`, DPC como término aparte). Verificado: I_Grupo = 12,667 e I_Investigador = 11,700 en ambas.
+- `Taller2_WP-DN-EO.cpp` / `Taller2_WP-DN-EO.py` — fuentes versionadas en la raíz del repositorio, con las iniciales que exige la NOTA 8 del enunciado.
+- `INTEGRANTES.txt` — declara las iniciales y lista los cinco archivos de entrega con esos nombres.
+- `docs/correo_entrega_parcial2.md:27-35` — los adjuntos del correo son los archivos con iniciales.
+- Las dos versiones calculan **lo mismo**: normalizan el texto antes de clasificar (minúsculas, sin tildes y espacios colapsados), el Cohe del grupo se calcula con §2.2.10.1 (`autores coincidentes / productos GNC+DTI − 1`) y la fórmula impresa coincide con el cálculo (`AP = ASC`, DPC como término aparte). Verificado en vivo: I_Grupo = 12,667 e I_Investigador = 11,700 en ambas.
+- Las copias de trabajo `Taller2.cpp` / `Taller2.py` de la raíz están en `.gitignore` y se regeneran desde las fuentes con iniciales.
 
 ### R23 — Cargar datos o ejecutar sin datos — cumple
 
@@ -192,18 +214,25 @@ Estos requisitos están funcionalmente cubiertos. Algunos tienen observaciones m
 
 ## 4. Plan de acción priorizado
 
-### Antes del 23 oct 2026, 11:59 a. m. (entrega preliminar) — COMPLETA
+### Antes del 26 oct 2026, 11:59 a. m. (entrega definitiva)
 
-Todos los items de código de la Fase 1 están resueltos y commiteados (R17, R18 borrador, R23, R21). Quedan entregas externas del equipo:
+Todo el trabajo de código y documentación está resuelto y verificado. Queda **una acción del equipo** (externa al repositorio):
 
-| Prioridad | Req | Acción | Archivo | Estado |
-|-----------|-----|--------|---------|--------|
-| 5 | R18 | Enviar correo real con subject byte-exacto `"Estructura de datos Parcial 2 Grupo # 2026"`; dejar evidencia del envío | (externo) | Pendiente (equipo) |
-| 6 | R16 | Grabar el video (~10 min) siguiendo `docs/guion_sustentacion_video_parcial2.md`, subir a YouTube, poner enlace en `INTEGRANTES.txt` | (externo) | Pendiente (equipo) |
+| Prioridad | Req | Acción | Dónde | Estado |
+|-----------|-----|--------|-------|--------|
+| 1 | R18 | Enviar el correo con asunto byte-exacto `Estructura de datos Parcial 2 Grupo # 2026` y los 5 adjuntos | `docs/correo_entrega_parcial2.md` | Pendiente (equipo) |
 
-### Antes del 26 oct 2026, 11:59 a. m. (entrega definitiva) — COMPLETA
+R16 quedó **cerrado por decisión del equipo (2026-10-24)**: no se menciona la duración del video en el correo; la diferencia de 21:23 frente a los ~10 min de la NOTA 6.i queda registrada solo en este documento y en el guion, como referencia interna.
 
-Todos los items de código de la Fase 2 están resueltos y commiteados (R12, R13, R15, R7, R8, R9, R11, R23). No quedan acciones de código pendientes.
+**Verificaciones de esta sesión (2026-10-24):**
+- `docs/word/Parcial2_WP-DN-EO.docx` regenerado desde la especificación integral: 376.434 bytes, 11 PNG embebidos, 89.297 caracteres; asunto, plazos (23 y 26 de octubre) y sección de indicadores verificados por extracción de texto; 0 menciones de los metadatos viejos del Taller 2.
+- Especificación integral con metadatos actualizados (asunto «Estructura de datos Parcial 2 Grupo # 2026», plazos del 23 y 26 de octubre) y con la §46 de indicadores y variables de entrada/salida.
+- ` Taller2_WP-DN-EO.py` ejecutado en vivo: I_Grupo = 12,667 e I_Investigador = 11,700 (coincide con la fórmula impresa).
+- Video publicado verificado por oEmbed («PRESENTACION KHEMIA», canal de William Peñaranda) y `lengthSeconds` = 1283 (21 min 23 s).
+
+### Backlog de la app (después de la entrega)
+
+Los dos P0 del panel del indicador oficial —**peso relativo por producto** (§3.6) y **variables de entrada y salida del modelo** — están revisados y especificados en `docs/p0-panel-indicador-oficial.md`. Son cambios de interfaz: no tocan el contrato, el golden, el núcleo C++ ni la paridad Python↔C++.
 
 ### Post-entrega (arquitectura aparcada)
 
@@ -211,15 +240,6 @@ Todos los items de código de la Fase 2 están resueltos y commiteados (R12, R13
 - `product_filters.py` → filtrado en C++; `researchers.py` router → C++.
 - Excepción de ingestión más estrecha.
 - Rotar clave `sa` expuesta en Docker, `.env` del servidor y PR a main (pendiente desde corte anterior).
-
-### Post-entrega (arquitectura aparcada)
-
-- Test de guardia contra regresión de pytest (ImportError por `_get_product_catalogs_pyodbc`).
-- `product_filters.py` → filtrado en C++; `researchers.py` router → C++.
-- Excepción de ingestión más estrecha.
-- Rotar clave `sa` expuesta en Docker, `.env` del servidor y PR a main (pendiente desde corte anterior).
-
----
 
 ## 5. Reglas de trabajo (GitNexus / CLAUDE.md)
 

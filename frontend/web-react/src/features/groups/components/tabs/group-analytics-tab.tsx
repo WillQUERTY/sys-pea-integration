@@ -215,7 +215,10 @@ export function GroupAnalyticsTab({
 
       {/* Lectura oficial 2024: desglose auditable del cálculo (§2.2.9 → §3.10) */}
       {mincienciasDiagnosis?.modelo_oficial_2024 && (
-        <OfficialIndicatorPanel modelo={mincienciasDiagnosis.modelo_oficial_2024} />
+        <OfficialIndicatorPanel
+          modelo={mincienciasDiagnosis.modelo_oficial_2024}
+          summary={mincienciasDiagnosis.summary}
+        />
       )}
 
       {/* Red de Colaboración y Grafo de Coautorías Interactivas */}

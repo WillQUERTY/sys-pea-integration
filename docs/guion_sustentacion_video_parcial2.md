@@ -10,7 +10,7 @@
 
 **Programa:** PEA-i / Khemia — Programa Estadístico de Análisis de Investigación  
 **Duración estimada:** ~10 minutos  
-**Estado:** Borrador para revisión del equipo (pendiente grabación y subida a YouTube)
+**Estado:** Video **grabado y publicado**: https://www.youtube.com/watch?v=eezB3oZ3n2w (título "PRESENTACION KHEMIA", canal de William Peñaranda, público para revisión del docente). Duración real verificada: **21 min 23 s** — por encima de los ~10 minutos que pide el enunciado (NOTAS 6.i); ver `docs/deuda_cumplimiento_parcial2.md` (R16) antes de enviar. El guion se conserva como soporte de la sustentación y para una eventual reedición recortada.
 
 ---
 
@@ -30,7 +30,9 @@
 
 **Guion:**
 
-> El objetivo del parcial es diseñar e implementar un sistema que modele grupos de investigación, investigadores, miembros, productos científicos y sus vinculaciones, usando exclusivamente estructuras de datos dinámicas con punteros — listas enlazadas y multilistas ortogonales — sin STL en el grafo del núcleo C++. Además, se deben calcular dos indicadores de producción científica según el Modelo de Medición Minciencias 2024, sección 10.6: **I_Grupo** e **I_Investigador**. El primero es el indicador oficial de grupo del modelo; el segundo lo entregamos como una adaptación declarada a nivel individual, como explicamos en el minuto 5.
+> El objetivo del parcial es diseñar e implementar un sistema que modele grupos de investigación, investigadores, miembros, productos científicos y sus vinculaciones, usando exclusivamente estructuras de datos dinámicas con punteros — listas enlazadas y multilistas ortogonales — sin STL en el grafo del núcleo C++. Además, se deben calcular dos indicadores de producción científica según el Modelo de Medición Minciencias 2024, **§3.10 «Indicador del Grupo de Investigación, Desarrollo Tecnológico o de Innovación»** del Anexo 1 M601PR04G01 v02: **I_Grupo** e **I_Investigador**. El primero es el indicador oficial de grupo del modelo; el segundo lo entregamos como una adaptación declarada a nivel individual, como explicamos en el minuto 5.
+>
+> *Nota de numeración para quien lo presente:* el enunciado y los dos archivos de texto entregados citan esta fórmula como «sección 10.6», que es la numeración de una versión anterior del modelo; en la versión vigente (Anexo 1 de la Convocatoria 2024, código M601PR04G01, versión 02) el indicador del grupo es el **§3.10** y su cadena de cálculo es §2.2.9 (λ) → §3.6 (peso global = ancla × peso relativo) → §3.8 (índices por clase, cohesión y cooperación) → §3.9 (normalización contra la población) → §3.10 (fórmula del indicador).
 
 ---
 

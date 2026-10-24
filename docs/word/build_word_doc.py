@@ -32,7 +32,11 @@ from doc_formatter import (
 )
 
 REPO_ROOT = DOCS_WORD_DIR.parent.parent
-SPEC_MD_PATH = REPO_ROOT / "docs" / "Parcial 2 EdD (2026-10-19).md"
+# Fuente ÚNICA del entregable Word: la especificación integral (2.700+ líneas).
+# Es la que contiene los encabezados §38.x que anclan el mapeo de diagramas y
+# la sección §46 con los indicadores; el EdD del Parcial 2 (5 KB) es solo el
+# enunciado y no debe usarse como insumo del documento.
+SPEC_MD_PATH = REPO_ROOT / "docs" / "PEA-i_Especificacion_Integral_Cumplimiento_Taller2.md"
 DIAGRAMS_DIR = REPO_ROOT / "docs" / "diagrams"
 WORD_OUTPUT_DIR = DOCS_WORD_DIR
 
@@ -201,42 +205,10 @@ def parse_markdown_and_build_doc():
     print("Iniciando lectura de especificación completa...")
     content = SPEC_MD_PATH.read_text(encoding="utf-8")
 
-    # Documentación de indicadores Minciencias 2024 (I_Grupo / I_Investigador)
-    indicadores_md = """
-
-## Indicadores Científicos Minciencias 2024
-
-### I_Grupo — Indicador de Producción Científica del Grupo
-
-El Indicador de Grupo (I_Grupo) se calcula según el Modelo de Medición Minciencias 2024, Sección 10.6:
-
-```
-I ≡ 3.7·Top + 2.3·A + 0.4·B + 1.5·AP + 0.5·DPC + 1.0·Fr.A + 0.2·Fr.B + 0.1·Cohe + 0.3·Coop
-```
-
-Donde:
-- **Top**: Productos en tipología TOP
-- **A**: Productos Tipo A
-- **B**: Productos Tipo B
-- **AP**: Apropiación Social (asc_count)
-- **DPC**: Divulgación Pública (dpc_count)
-- **Fr.A**: Formación de Recurso Humano Tipo A (Doctoral)
-- **Fr.B**: Formación de Recurso Humano Tipo B (Maestría)
-- **Cohe**: Índice de Cohesión interna del grupo
-- **Coop**: Productos coautorizados con otros investigadores
-
-**Pesos oficiales:** 3.7, 2.3, 0.4, 1.5, 0.5, 1.0, 0.2, 0.1, 0.3
-
-### I_Investigador — Indicador de Producción Científica del Investigador
-
-El Indicador del Investigador (I_Investigador) aplica la misma fórmula a nivel individual, con Cohe = 0 (no aplica a investigador individual):
-
-```
-I ≡ 3.7·Top + 2.3·A + 0.4·B + 1.5·AP + 0.5·DPC + 1.0·Fr.A + 0.2·Fr.B + 0.3·Coop
-```
-
-"""
-    content += indicadores_md
+    # La documentación de los indicadores Minciencias 2024 (I_Grupo /
+    # I_Investigador, variables de entrada y salida del modelo y alcance de la
+    # medición) vive en la §46 de la especificación integral: la especificación
+    # es la fuente ÚNICA del entregable y no debe duplicarse aquí.
 
     doc = docx.Document()
     setup_page_formatting(doc)

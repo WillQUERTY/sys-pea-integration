@@ -28,14 +28,26 @@ INTEGRANTE 3 (EO):
 - Universidad: Universidad Popular del Cesar (UPC)
 
 ======================================================================
+ARCHIVOS DE ENTREGA (los archivos fuente llevan las iniciales, NOTAS 8)
+======================================================================
+1. Taller2_WP-DN-EO.py    — Ejercicios PARCIAL 1 y 2 en Python (I_Grupo, I_Investigador)
+2. Taller2_WP-DN-EO.cpp   — Ejercicios PARCIAL 1 y 2 en C++ (I_Grupo, I_Investigador)
+3. Parcial2_WP-DN-EO.docx — Especificación técnica integral (Word, con diagramas UML)
+4. INTEGRANTES.txt        — Este archivo de identificación de los estudiantes
+5. pea_data.json          — Archivo de persistencia de datos (12 colecciones, formato JSON)
+
+======================================================================
 INFORMACIÓN DE ENTREGA Y ENLACES OFICIALES
 ======================================================================
 - Asunto del Correo: Estructura de datos Parcial 2 Grupo # 2026
 - Destinatario: adithperez@unicesar.edu.co
+- Entrega preliminar: viernes 23 de octubre de 2026, 11:59 a. m.
+- Entrega definitiva: lunes 26 de octubre de 2026, 11:59 a. m.
 - Repositorio GitHub: https://github.com/WillQUERTY/sys-pea-integration
 - Versión en Vivo (Despliegue Web HTTP): http://155.133.22.12/
-- Video Demostrativo (YouTube): https://www.youtube.com/watch?v=eezB3oZ3n2w&t=12s
+- Video Demostrativo (YouTube): https://www.youtube.com/watch?v=eezB3oZ3n2w
 - Documento de Especificación Oficial: docs/word/Parcial2_WP-DN-EO.docx
+- Especificación Integral en Markdown (fuente del Word): docs/PEA-i_Especificacion_Integral_Cumplimiento_Taller2.md
 - Copia de Base de Datos SQL Server: docs/peai.bak (Backup físico oficial)
 - Archivo de Persistencia JSON: pea_data.json (12 colecciones completas)
 - Guion de Sustentación Técnica en Video: docs/guion_sustentacion_video_parcial2.md

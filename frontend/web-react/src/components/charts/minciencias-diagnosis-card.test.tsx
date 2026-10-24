@@ -118,17 +118,22 @@ describe('MincienciasDiagnosisCard — lectura del indicador', () => {
       .toHaveTextContent('cierre 2026')
   })
 
-  it('deja el i_grupo_legacy como aproximación no oficial, nunca como titular', async () => {
+  it('no muestra el i_grupo_legacy: la interfaz solo exhibe la lectura oficial', async () => {
     const { getByTestId } = await render(
       <MincienciasDiagnosisCard data={diagnostico(true)} />
     )
 
+    // Desde 2026-10-24 el conteo ponderado legacy vive solo en el payload de
+    // la API (trazabilidad); la tarjeta muestra únicamente la lectura oficial.
     await expect
       .element(getByTestId('ind-grupo-legacy-label'))
-      .toHaveTextContent('I_Grupo (aproximación legacy, no oficial)')
+      .not.toBeInTheDocument()
     await expect
       .element(getByTestId('ind-grupo-legacy'))
-      .toHaveTextContent('36,00')
+      .not.toBeInTheDocument()
+    await expect
+      .element(getByTestId('ind-grupo-oficial'))
+      .toHaveTextContent('0,854')
   })
 
   it('advierte cuando la población de normalización §3.9 es pequeña', async () => {
@@ -158,8 +163,8 @@ describe('MincienciasDiagnosisCard — lectura del indicador', () => {
       .element(getByTestId('oficial-no-disponible'))
       .toHaveTextContent('Lectura oficial no disponible')
     await expect
-      .element(getByTestId('ind-grupo-legacy-label'))
-      .toHaveTextContent('aproximación legacy, no oficial')
+      .element(getByTestId('ind-grupo-legacy'))
+      .not.toBeInTheDocument()
     await expect
       .element(getByTestId('ind-grupo-oficial'))
       .not.toBeInTheDocument()

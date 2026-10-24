@@ -140,3 +140,114 @@ describe('ResearcherOfficialAdaptationPanel — adaptación individual', () => {
     expect(container.innerHTML).toBe('')
   })
 })
+
+describe('ResearcherOfficialAdaptationPanel — P0-2: cadena de §3.6', () => {
+  it('muestra peso relativo, ancla y peso global de cada subtipo', async () => {
+    const { getByTestId } = await render(
+      <ResearcherOfficialAdaptationPanel adaptacion={adaptacion()} />
+    )
+
+    // LIB_DIV: peso relativo 10,0 (Anexo 1) × ancla 100 (Tabla 6) = 1000
+    await expect
+      .element(getByTestId('subtipo-LIB_DIV-peso-relativo'))
+      .toHaveTextContent('10,0')
+    await expect
+      .element(getByTestId('subtipo-LIB_DIV-ancla'))
+      .toHaveTextContent('100')
+    await expect
+      .element(getByTestId('subtipo-LIB_DIV-peso-global'))
+      .toHaveTextContent(/1\.000|1000/)
+  })
+
+  it('un subtipo sin ancla se imprime «—», nunca 0', async () => {
+    const sinAncla: MincienciasIndividualAdaptation2024 = {
+      ...ANA,
+      subtipos: ANA.subtipos.map((sub) =>
+        sub.codigo === 'LIB_DIV' ? { ...sub, ancla_subtipo: null } : sub
+      ),
+    }
+    const { getByTestId } = await render(
+      <ResearcherOfficialAdaptationPanel adaptacion={sinAncla} />
+    )
+
+    await expect
+      .element(getByTestId('subtipo-LIB_DIV-ancla'))
+      .toHaveTextContent('—')
+    await expect
+      .element(getByTestId('subtipo-LIB_DIV-ancla'))
+      .not.toHaveTextContent('0')
+  })
+})
+
+describe('ResearcherOfficialAdaptationPanel — P0-1: entradas y salidas', () => {
+  const RESUMEN = {
+    total_products: 12,
+    products_in_window: 5,
+    gnc_count: 3,
+    dti_count: 2,
+    frh_count: 1,
+    asc_count: 1,
+    dpc_count: 4,
+    top_count: 2,
+    type_a_count: 3,
+    type_b_count: 1,
+    frh_a_count: 1,
+    frh_b_count: 0,
+  }
+
+  it('cataloga las entradas y las salidas con antigüedad e Ind.Investigador', async () => {
+    const { getByTestId } = await render(
+      <ResearcherOfficialAdaptationPanel
+        adaptacion={adaptacion()}
+        summary={RESUMEN}
+      />
+    )
+
+    await expect
+      .element(getByTestId('entradas-salidas-modelo'))
+      .toHaveTextContent('Entradas y salidas del modelo')
+
+    // ENTRADAS: la antigüedad ocupa el lugar de la edad del grupo
+    await expect
+      .element(getByTestId('dato-investigador'))
+      .toHaveTextContent('Ana Perez (#101)')
+    await expect.element(getByTestId('dato-antiguedad')).toHaveTextContent('8')
+    await expect.element(getByTestId('dato-anio-cierre')).toHaveTextContent('2026')
+    await expect.element(getByTestId('dato-conteo-nc-top')).toHaveTextContent('2')
+    await expect
+      .element(getByTestId('dato-contexto'))
+      .toHaveTextContent('12 productos · 5 en ventana')
+
+    // SALIDAS: el valor titular es el Ind.Investigador de la adaptación
+    await expect
+      .element(getByTestId('dato-ind-investigador'))
+      .toHaveTextContent('0,739')
+    await expect
+      .element(getByTestId('dato-puesto'))
+      .toHaveTextContent('puesto 2 de 3')
+
+    // La sección NO oficial sobrevive al catálogo nuevo
+    await expect
+      .element(getByTestId('rotulo-no-oficial'))
+      .toHaveTextContent('NO oficial')
+    await expect
+      .element(getByTestId('adaptacion-0'))
+      .toHaveTextContent('Unidad de medición')
+  })
+
+  it('separa explícitamente el conteo crudo del valor en puntos', async () => {
+    const { getByTestId } = await render(
+      <ResearcherOfficialAdaptationPanel
+        adaptacion={adaptacion()}
+        summary={RESUMEN}
+      />
+    )
+
+    await expect
+      .element(getByTestId('nota-conteo-vs-puntos'))
+      .toHaveTextContent('Conteo crudo')
+    await expect
+      .element(getByTestId('nota-conteo-vs-puntos'))
+      .toHaveTextContent('Valor en puntos')
+  })
+})

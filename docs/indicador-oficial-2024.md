@@ -11,8 +11,9 @@ de grupos de investigación.
 > normaliza cada indicador contra el máximo de la población (§3.9) y aplica λ
 > (§2.2.9) y pesos globales (§3.6) por subtipo. Con los datos reales, el legacy
 > da **491,7** (sin escala) y el oficial da **0,85** sobre un rango teórico de
-> 10. Ambos conviven en el mismo endpoint, pero el legacy solo se rotula como
-> *aproximación* y vive como insumo del semáforo (§8).
+> 10. Ambos conviven en el mismo endpoint, pero **desde el 2026-10-24 la
+> interfaz ya no muestra el legacy**: queda en el payload de la API solo para
+> trazabilidad y sigue siendo insumo del semáforo (§8).
 >
 > Desde la **Fase 5** existe además una lectura **a nivel de investigador**:
 > `adaptacion_individual_2024`. El modelo 2024 define **un solo** indicador de
@@ -38,7 +39,74 @@ de grupos de investigación.
 | API | `backend/app/repositories/analytics.py` → `get_group_minciencias_diagnosis` | Agrega la clave **aditiva** `modelo_oficial_2024` al diagnóstico. |
 | Categoría de calidad validada | `backend/app/repositories/catalogs.py` (`quality_category_codes`) + `core_cpp/src/persistence/db/db_common.cpp` (`query_catalog_rows`) | Traduce `Product.quality_category_id` → `QualityCategory.code` (§3.6) leyendo el catálogo 2024 de SQL Server. La API (con BD conectada) usa esa categoría; el snapshot JSON no la trae. Ver [La categoría de calidad validada](#la-categoría-de-calidad-validada-§36). |
 | Frontend | `frontend/web-react/src/lib/api/contrato-oficial-2024.generated.ts` (**generado**) + `analytics.ts` | Tipo `MincienciasOfficialModel2024` **generado desde el contrato** (no escrito a mano) y re-exportado por `analytics.ts`. |
-| UI | `frontend/web-react/src/components/charts/minciencias-diagnosis-card.tsx` + `official-indicator-panel.tsx` | La tarjeta muestra el oficial como titular (el legacy, rotulado como referencia); el panel desglosa los 9 términos de §3.10, las clases frente al máximo de la población, los subtipos que aportan, las exclusiones y el ranking. |
+| UI | `frontend/web-react/src/components/charts/minciencias-diagnosis-card.tsx` + `official-indicator-panel.tsx` + `researcher-official-adaptation-panel.tsx` + `modelo-2024-comun.tsx` | La tarjeta muestra **solo** el oficial como titular (el legacy ya no se muestra en la interfaz: vive únicamente en el payload de la API, para trazabilidad); el panel desglosa los 9 términos de §3.10, las clases frente al máximo de la población, los subtipos que aportan **con la cadena de §3.6**, las exclusiones, el ranking y el **catálogo de variables de entrada y salida** del modelo. |
+
+## El panel: la cadena de §3.6 y el catálogo de variables (P0‑1 / P0‑2)
+
+Implementado el 2026-10-24 (Opción A: **solo UI**, sin tocar el contrato, el
+golden, el tipo TS generado ni el C++ — la paridad queda intacta). El
+enunciado del Parcial 2 pide dos cosas que antes solo existían en el
+entregable `.py/.cpp`:
+
+### P0‑2 — el peso por producto, celda por celda (§3.6)
+
+La tabla **«Subtipos que aportan (§2.2.9 → §3.8.1)»** ya no imprime solo el
+peso global: muestra la cadena completa que lo produce.
+
+| Columna | Origen | Formato |
+|---|---|---|
+| `Peso rel.` | `subtipo.peso_relativo` (Anexo 1) | `numero(v, 1)` → `10,0` · `9,5` · `3,5` |
+| `Ancla` | `subtipo.ancla_subtipo` (Tabla 6) | `entero(v)` o **`—`** si es `null` |
+| `Peso global` | `subtipo.peso_global` (§3.6) | `entero(v)` o **`—`** si el ancla es `null` |
+| `Término` | `subtipo.termino` (§3.10) | `numero(v, 2)` |
+
+Ejemplo real (caso sintético del golden): `LIB_DIV` → peso relativo **10,0**
+× ancla **100** = peso global **1.000** → término **182,32**.
+
+⚠️ Un subtipo **sin ancla** en Tabla 6 se imprime `—` y **nunca `0`**: el 0
+diría «no aporta nada» cuando en realidad es «no se puede ponderar». En el
+backend ese caso se excluye de la medición (*«subtipo '%s' sin ancla en
+Tabla 6: peso no calculable»*), y el `peso_relativo` es decimal: jamás se
+redondea con `entero()` (9,5 → 10 falsearía el catálogo).
+
+### P0‑1 — variables de entrada y de salida del modelo
+
+Nueva sección **«Entradas y salidas del modelo»** en los dos paneles, derivada
+del payload del contrato único (la UI no calcula ni inventa datos):
+
+- **Entradas**: grupo e investigator (identificación, edad / antigüedad), año
+  de cierre, población de normalización, productos y ventana por subtipo,
+  ancla × peso relativo, Cohe y Coop (autores/grupos por producto) y los
+  **conteos crudos por clase** (`Nc.Top`, `Nc.A`, `Nc.B`, `AP`, `DPC`,
+  `Fr.A`, `Fr.B`) que llegan en el `summary` del diagnóstico / del indicador
+  individual.
+- **Salidas**: índice normalizado y término ponderado de los 9 términos
+  (§3.9 → §3.10), valor de clase frente al máximo de población (§3.8.1),
+  `Ind.Grupo` / `Ind.Investigador` con su rango teórico, puesto y percentil en
+  la población, y las exclusiones con motivo (§3.6).
+
+Cada fila declara **de dónde sale** el dato (`modelo.indices`,
+`modelo.subtipos[]`, `summary.top_count`, …).
+
+⚠️ **Conteo crudo ≠ valor en puntos.** Los conteos del `summary` son de la
+clasificación **previa (no oficial)** — cantidad de productos, sin
+normalizar; los índices y términos son del modelo **oficial**. Son
+magnitudes incomparables (legacy 491,7 frente a oficial 0,815): la sección
+los rotula de forma explícita y **no los mezcla en la misma columna**.
+
+### Piezas de código
+
+| Pieza | Ruta | Qué hace |
+|---|---|---|
+| Módulo compartido | `frontend/web-react/src/components/charts/modelo-2024-comun.tsx` | Formateadores (`numero`, `entero`), componentes (`Barra`, `Seccion`) y la sección `EntradasSalidasModelo`. Antes cada panel tenía su propia copia: ahora hay una sola fuente para los dos. |
+| Panel de grupo | `frontend/web-react/src/components/charts/official-indicator-panel.tsx` | Recibe `modelo` y `summary` (opcional) y muestra ambas secciones. |
+| Panel individual | `frontend/web-react/src/components/charts/researcher-official-adaptation-panel.tsx` | Igual, con `antiguedad_anos` y `Ind.Investigador`; conserva el rótulo **NO oficial** y las tres adaptaciones declaradas. |
+| Tipos a mano | `frontend/web-react/src/lib/api/analytics.ts` | `ResearcherIndicator.summary` (+ `ResearcherIndicatorSummary`): el backend ya lo envía; **no** es el tipo generado del contrato, por eso se declara a mano. |
+
+El `summary` del panel **de grupo** es el del diagnóstico
+(`MincienciasGroupDiagnosis['summary']`); el del panel **individual** es el
+del endpoint `/researchers/{id}/indicator` (`ResearcherIndicatorSummary`).
+Si no se pasan, los conteos crudos se muestran como `—` (nunca `0`).
 
 ## Cómo se ejecuta
 

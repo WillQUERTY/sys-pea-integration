@@ -25,7 +25,8 @@
 **En la arquitectura principal, el indicador de GRUPO ya está integrado de punta
 a punta: C++ → Python → API → React.** Lo que falta ya no es "que el número
 llegue a la pantalla" — eso está hecho y auditado: la tarjeta muestra el
-oficial como titular, el legacy rotulado como referencia, y hay un panel con
+oficial como titular (y **desde el 2026-10-24 no muestra el legacy**, que
+queda solo en el payload de la API para trazabilidad), y hay un panel con
 el desglose completo de §3.10 que hace el número auditable término a término.
 
 Lo que queda abierto es otro orden de cosas:
@@ -59,11 +60,11 @@ define, mientras el oficial (0,854) quedaba invisible detrás de él.
 | CLI C++ (`indicator group`) | ✅ Completo | Imprime **solo** el oficial (Fase 6: el legacy ya no se calcula en el CLI) |
 | Backend Python | ✅ Completo (grupo) | `official_indicator.py` + `official_population.py` |
 | API (`/groups/{id}/minciencias-diagnosis`) | ✅ Expone el bloque | Clave aditiva `modelo_oficial_2024`, sin romper lo legacy |
-| **Frontend React** | **✅ Integrado (Fases 1–3)** | Titular oficial + panel de desglose; el legacy queda como referencia rotulada; el tipo y el fixture del panel son **generados** desde el contrato |
+| **Frontend React** | **✅ Integrado (Fases 1–3)** | Titular oficial + panel de desglose; **el legacy ya no se muestra en la UI** (desde 2026-10-24: queda solo en el payload de la API, para trazabilidad); el tipo y el fixture del panel son **generados** desde el contrato |
 | **Contrato único (B7)** | **✅ Implementado (Fase 3)** | `CONTRATO` declarado en `backend/app/evaluator/contrato_oficial.py`: de ahí salen el golden, el tipo TS y el fixture del panel |
 | **Test C++ del modelo (B6)** | **✅ Implementado (Fase 4)** | `core_cpp/tests/test_official_indicator.cpp`, registrado en `ctest` como `indicador_oficial` |
 | **Contrato HTTP (Fase 6)** | **✅ Implementado** | `backend/tests/test_indicador_oficial_http.py`: el payload que sale por HTTP cumple el golden del contrato |
-| Nivel investigador | ✅ **Adaptación declarada (Fase 5)** | `adaptacion_individual_2024`: el MISMO pipeline (§2.2.9 → §3.10) con la antigüedad del investigador en el lugar de la edad del grupo, **rotulado "NO oficial"**; el legacy queda como `i_investigador_legacy` |
+| Nivel investigador | ✅ **Adaptación declarada (Fase 5)** | `adaptacion_individual_2024`: el MISMO pipeline (§2.2.9 → §3.10) con la antigüedad del investigador en el lugar de la edad del grupo, **rotulado "NO oficial"**; el legacy queda solo en el payload (`i_investigador_legacy`), sin mostrarse en la UI |
 | Datos que alimentan §3.7/§3.8 | ⚠️ Parcial | GrupLAC no trae calidad A1–D → sin validación, `Nc.Top/A/B = 0` (ahora **visible** en el panel). El **cableado de la categoría validada** (§3.6) ya está: `Product.quality_category_id` → `QualityCategory.code` llega al modelo cuando el validador la registró |
 
 ### Estado de las fases
@@ -120,7 +121,7 @@ con `USE_DATABASE=false`, 2026-10-23):
 | Lectura | Valor | Escala | Dónde |
 |---|---|---|---|
 | **Oficial** | **0,8541030927835052** | Rango teórico 0–10, normalizado contra la población | `modelo_oficial_2024.ind_grupo` (API) / `official::evaluar_modelo_oficial` (CLI) |
-| Legacy (API) | 491,704 | Sin escala (conteos crudos) | `i_grupo_legacy` del diagnóstico → **lo que veía el usuario en React** |
+| Legacy (API) | 491,704 | Sin escala (conteos crudos) | `i_grupo_legacy` del diagnóstico → lo que veía el usuario en React **hasta el 2026-10-24** (desde esa fecha no se muestra en la interfaz) |
 
 ⚠ **Antes de la Fase 6 había DOS legacies distintos**: el CLI calculaba
 36,00 y la API 491,704 para el mismo grupo, porque el CLI aproximaba la
@@ -160,16 +161,16 @@ grupo:
 
 | Componente | Qué del bloque oficial muestra |
 |---|---|
-| [minciencias-diagnosis-card.tsx](frontend/web-react/src/components/charts/minciencias-diagnosis-card.tsx) | Titular `ind_grupo` (3 decimales) + "/ 10 rango teórico", puesto/percentil y cierre, aviso de población reducida; el legacy baja a línea secundaria rotulada |
+| [minciencias-diagnosis-card.tsx](frontend/web-react/src/components/charts/minciencias-diagnosis-card.tsx) | Titular `ind_grupo` (3 decimales) + "/ 10 rango teórico", puesto/percentil y cierre, aviso de población reducida; **ninguna línea secundaria con el legacy** (se retiró de la UI el 2026-10-24) |
 | [official-indicator-panel.tsx](frontend/web-react/src/components/charts/official-indicator-panel.tsx) | El desglose auditable: los 9 términos de §3.10, índice por clase frente al máximo de la población, Cohe/Coop, subtipos que aportan, exclusiones, ranking de §3.9 y supuestos |
 
 ### 3.4 Dónde más aparece el número (o no)
 
 | Superficie | ¿Muestra el indicador? |
 |---|---|
-| Tarjeta de diagnóstico (React) | **Sí — el oficial como titular**; el legacy como "aproximación legacy, no oficial" ([minciencias-diagnosis-card.tsx](frontend/web-react/src/components/charts/minciencias-diagnosis-card.tsx)) |
+| Tarjeta de diagnóstico (React) | **Sí — solo el oficial como titular**; el legacy se retiró de la interfaz el 2026-10-24 y queda únicamente en el payload de la API ([minciencias-diagnosis-card.tsx](frontend/web-react/src/components/charts/minciencias-diagnosis-card.tsx)) |
 | Panel de desglose (React) | **Sí — el oficial, término a término** (§3.10 → §3.9 → §3.8.1 → §2.2.9) ([official-indicator-panel.tsx](frontend/web-react/src/components/charts/official-indicator-panel.tsx)) |
-| Pestaña de investigador (React) | **Sí — la adaptación individual declarada como titular** (rótulo "Ind.Investigador — adaptación declarada del modelo 2024 (NO oficial)") y el legacy como referencia explícita ([researcher-analytics-tab.tsx](frontend/web-react/src/features/researchers/components/tabs/researcher-analytics-tab.tsx)) |
+| Pestaña de investigador (React) | **Sí — solo la adaptación individual declarada como titular** (rótulo "Ind.Investigador — adaptación declarada del modelo 2024 (NO oficial)"); la línea "Referencia legacy" se retiró de la interfaz el 2026-10-24 ([researcher-analytics-tab.tsx](frontend/web-react/src/features/researchers/components/tabs/researcher-analytics-tab.tsx)) |
 | KPI banners / radar de grupos | No usan el indicador (usan conteos y perfiles) |
 | Dossier PDF (`/dossier/pdf`) | No numera el indicador; muestra categoría, meta de ascenso y brechas |
 | Export CSV (`/export/ranking.csv`) | No incluye el indicador |
@@ -177,7 +178,10 @@ grupo:
 
 → **La UI React era el único punto donde el número engañaba.** Eso acotaba el
 problema y también su arreglo: hoy el titular es el oficial (grupo) o la
-adaptación rotulada (investigador), y el legacy aparece solo como referencia.
+adaptación rotulada (investigador), y **el legacy ya no aparece en ninguna
+interfaz** (desde el 2026-10-24): solo queda en el payload de la API, para
+trazabilidad, y en los conteos crudos que el panel de desglose lista como
+ENTRADAS del modelo.
 
 ---
 
@@ -185,9 +189,9 @@ adaptación rotulada (investigador), y el legacy aparece solo como referencia.
 
 | # | Brecha | Impacto | Tamaño | Estado (2026-10-23) |
 |---|---|---|---|---|
-| **B1** | La tarjeta rotula el legacy como "I_Grupo (Minciencias 2024)" | **Alto**: es el número que ve el evaluador. 36,00 (legacy) vs 0,854 (oficial) conviven y el que se muestra es el que el modelo no define | Chico | ✅ **Cerrada** (Fase 1): titular = oficial; legacy = "referencia legacy, no oficial" |
+| **B1** | La tarjeta rotula el legacy como "I_Grupo (Minciencias 2024)" | **Alto**: es el número que ve el evaluador. 36,00 (legacy) vs 0,854 (oficial) conviven y el que se muestra es el que el modelo no define | Chico | ✅ **Cerrada** (Fase 1): titular = oficial; legacy = "referencia legacy, no oficial". **Desde el 2026-10-24 la referencia también se retira de la UI**: el legacy ya no se muestra en ninguna pantalla |
 | **B2** | La UI no tiene lectura del modelo oficial | Alto: se pierde el 100 % del payload oficial (ranking, percentil, 9 términos, subtipos λ/peso, exclusiones, supuestos) | Mediano | ✅ **Cerrada** (Fase 2): `OfficialIndicatorPanel` consume todo el bloque |
-| **B3** | No hay modelo oficial a nivel de investigador | Medio-alto: el rótulo "Minciencias 2024, sección 10.6" sobre una fórmula de conteos crudos | Grande (requiere decisión de modelo) | ✅ **Cerrada como adaptación declarada** (Fase 5): el modelo de medición 2024 **no define** un indicador por persona, así que la lectura individual es una **adaptación declarada** del mismo pipeline, rotulada "NO oficial" en el payload, en la API, en la UI y en el CLI; el legacy queda como referencia (`i_investigador_legacy`) |
+| **B3** | No hay modelo oficial a nivel de investigador | Medio-alto: el rótulo "Minciencias 2024, sección 10.6" sobre una fórmula de conteos crudos | Grande (requiere decisión de modelo) | ✅ **Cerrada como adaptación declarada** (Fase 5): el modelo de medición 2024 **no define** un indicador por persona, así que la lectura individual es una **adaptación declarada** del mismo pipeline, rotulada "NO oficial" en el payload, en la API, en la UI y en el CLI; el legacy queda solo en el payload (`i_investigador_legacy`), sin mostrarse en la UI desde el 2026-10-24 |
 | **B4** | La población de normalización no se expone | Alto: con 2 grupos el percentil no significa nada; el usuario no puede saber si el 0,854 es comparable | Chico-mediano | ✅ **Cerrada en la UI**: tarjeta muestra puesto/percentil, cierre, "N grupos" y avisa si < 10; el panel muestra el ranking completo de §3.9 |
 | **B5** | Tres implementaciones del cálculo (oficial Python, oficial C++, legacy Python) + 2 copias en los entregables | Alto: ya se demostró una divergencia histórica (py 10,2 vs cpp 13,5) | Mediano (deprecación, no borrado) | ✅ **Cerrada** (Fase 6): `i_grupo` → `i_grupo_legacy` (una sola implementación legacy, la de la API, que alimenta el semáforo); el CLI ya no calcula un segundo legacy |
 | **B6** | Cobertura de tests incompleta en el lado nuevo | Medio: el modelo oficial C++ no tiene test unitario (solo el script de paridad, que exige binario); el front no tiene test que verifique qué número ni qué rótulo se muestra | Mediano | ✅ **Cerrada** (Fases 2, 3, 4 y 5): front cubierto (12 casos: 5 de la tarjeta + 7 del panel), contrato cubierto por 12 tests de Python y C++ cubierto por 12 casos / 283 aserciones (`pea_tests_indicador.exe`: 8 del grupo + 4 de la adaptación individual) |

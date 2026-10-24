@@ -1,10 +1,10 @@
-# PEA-i: Especificación integral, arquitectura, dominio y cumplimiento del Taller 2
+# PEA-i: Especificación integral, arquitectura, dominio y cumplimiento del Parcial 2
 
 > **Programa Estadístico de Análisis de Investigación (PEA-i / Khemia)**  
 > Universidad Popular del Cesar — Facultad de Ingenierías y Tecnológicas  
 > Asignatura: Estructura de Datos | Docente: Ing. Adith Pérez  
 > Grupo de Trabajo (WP - DN - EO): William Andrés Peñaranda Oñate · Donaldo David Noriega Palomino · Edinson José Olivero Rojas  
-> Octubre de 2026 — Entrega Final Oficial Taller 2
+> Octubre de 2026 — Entrega Final Oficial Parcial 2
 
 ---
 
@@ -34,7 +34,7 @@ Este archivo sustituye la versión anterior y consolida en un solo lugar:
 ## Tabla de contenido general
 
 1. Contexto, dominio y especificación funcional
-2. Correcciones de cobertura del Taller 2
+2. Correcciones de cobertura del Parcial 2
 3. Matriz de cumplimiento completa
 4. Hipercubo de información
 5. Variables de entrada y salida
@@ -64,7 +64,7 @@ En este marco, la categorización institucional y la asignación de recursos dep
 - **Falta de trazabilidad y auditoría:** Se carece de un flujo de validación técnica formal que permita certificar si una evidencia cumple los periodos de observación (ventanas de 2 o 5 años) o las exigencias documentales antes del cierre de convocatorias.
 - **Rendimiento computacional:** La gestión de miles de registros bibliográficos y relaciones cruzadas mediante bases de datos puramente relacionales genera sobrecargas innecesarias cuando se requieren cálculos interactivos en tiempo real.
 
-Para responder a estos desafíos se concibió **PEA-i (Programa Estadístico de Análisis de Investigación)**, desarrollado como proyecto integrador del Taller 2 de la asignatura *Estructura de Datos* en la Universidad Popular del Cesar.
+Para responder a estos desafíos se concibió **PEA-i (Programa Estadístico de Análisis de Investigación)**, desarrollado como proyecto integrador del Parcial 2 de la asignatura *Estructura de Datos* en la Universidad Popular del Cesar.
 
 ### 1.2 Objeto del sistema
 PEA-i es una solución híbrida de alto rendimiento diseñada para:
@@ -77,9 +77,9 @@ PEA-i es una solución híbrida de alto rendimiento diseñada para:
 
 ---
 
-## 2. Correcciones de cobertura del Taller 2
+## 2. Correcciones de cobertura del Parcial 2
 
-Para garantizar que el sistema satisfaga los requisitos del Taller 2 sin incurrir en contradicciones entre la especificación y la base de código real, se establecen las siguientes directrices y aclaraciones canónicas:
+Para garantizar que el sistema satisfaga los requisitos del Parcial 2 sin incurrir en contradicciones entre la especificación y la base de código real, se establecen las siguientes directrices y aclaraciones canónicas:
 
 1. **Unificación de la persistencia de productos:** Todo producto gestionado almacena los 20 atributos canónicos requeridos por el modelo Minciencias 2024 (código externo, título, descripción, familia, subtipo, categoría de calidad, fecha de obtención, fecha de publicación, año, idioma, país, DOI, ISBN, ISSN, URL, evidencia documental, atributos especializados, estado de validación y estado del registro).
 2. **Autores de productos como entidad formal:** Conforme a la sección 30 y 33.2, la relación entre productos e investigadores se implementa mediante la multilista `ProductAuthorNode` en C++, sincronizada tanto con la tabla SQL Server `ProductAuthor` como con la colección `"authors"` del archivo JSON de persistencia.
@@ -91,7 +91,7 @@ Para garantizar que el sistema satisfaga los requisitos del Taller 2 sin incurri
 
 ## 3. Matriz de cumplimiento completa
 
-A continuación se sintetiza el estado de cobertura de cada requerimiento del Taller 2:
+A continuación se sintetiza el estado de cobertura de cada requerimiento del Parcial 2:
 
 | Requisito | Descripción Taller | Implementación en Core C++ | Implementación en Python / React | Estado |
 |---|---|---|---|:---:|
@@ -277,7 +277,7 @@ El núcleo C++ modela las operaciones de creación, lectura, actualización y el
 
 ## 7. Dos soluciones ejecutables e integración
 
-Conforme a la decisión de alcance **D-01**, el proyecto entrega las dos soluciones requeridas por el Taller 2 en un esquema de arquitectura limpia e integrada:
+Conforme a la decisión de alcance **D-01**, el proyecto entrega las dos soluciones requeridas por el Parcial 2 en un esquema de arquitectura limpia e integrada:
 
 ### 7.1 Solución A: Núcleo y CLI en C++ (`core_cpp`)
 - **Tecnología:** C++20 estándar, compilado con MSVC / GCC / Clang bajo CMake.
@@ -372,12 +372,12 @@ Calculado puramente recorriendo los nodos enlazados en memoria:
 
 ## 10. Entregables obligatorios
 
-El proyecto satisface la totalidad de entregables estipulados para el Taller 2:
+El proyecto satisface la totalidad de entregables estipulados para el Parcial 2:
 1. **Código Fuente Completo:** Estructurado en repositorio Git con historial limpio y trazable: [GitHub - WillQUERTY/sys-pea-integration](https://github.com/WillQUERTY/sys-pea-integration).
 2. **Documento Técnico en Word (`docs/word/Parcial2_WP-DN-EO.docx`):** Documento formal generado a partir de esta especificación integral maestra, que incluye arquitectura, diagramas, casos de uso, historias de usuario y matriz de trazabilidad.
 3. **Archivo de Persistencia (`pea_data.json`):** Archivo JSON generado con la producción completa, integrantes, productos enriquecidos y autores listo para prueba de carga independiente.
 4. **Archivo de Identificación (`INTEGRANTES.txt`):** Ficha institucional con datos del grupo de estudiantes (William Andrés Peñaranda Oñate, Donaldo David Noriega Palomino, Edinson José Olivero Rojas).
-5. **Video Demostrativo de 10 minutos (Sustentación):** Grabación en alta definición sustentando los requisitos del taller, el funcionamiento independiente de `pea_cli`, la API FastAPI, la interfaz React y la reversión de operaciones con la pila: [PRESENTACIÓN KHEMIA (YouTube)](https://www.youtube.com/watch?v=eezB3oZ3n2w&t=12s).
+5. **Video Demostrativo (Sustentación):** Grabación en alta definición sustentando los requisitos del taller, el funcionamiento independiente de `pea_cli`, la API FastAPI, la interfaz React y la reversión de operaciones con la pila: [PRESENTACIÓN KHEMIA (YouTube)](https://www.youtube.com/watch?v=eezB3oZ3n2w&t=12s).
 6. **Versión en Vivo en Internet (Despliegue Web):** Acceso público web operativo en [http://155.133.22.12/](http://155.133.22.12/).
 7. **Copia de Seguridad de la Base de Datos (`docs/peai.bak`):** Archivo de respaldo físico de Microsoft SQL Server para restauración directa.
 8. **Correo de entrega institucional:** Remisión formal a la coordinación docente (`adithperez@unicesar.edu.co`).
@@ -495,7 +495,7 @@ sys_pea_integration/
 │   └── package.json
 ├── docs/                     # Especificaciones y documentos de entrega
 │   ├── word/                 # Parcial2_WP-DN-EO.docx (generado desde esta SPEC)
-│   ├── guion_de_sustentacion_en_video_taller_2_edd.md/.pdf  # Guion del video (10-12 min)
+│   ├── guion_sustentacion_video_parcial2.md  # Guion cronometrado de la sustentacion (~10 min)
 │   ├── diagrams/             # 11 diagramas Mermaid + PNG + SVG + galería web
 │   ├── modelo-medicion-2024.md y catálogo oficial de pesos  # Referencia normativa
 │   └── PEA-i_Especificacion_Integral_Cumplimiento_Taller2.md  # Documento maestro (esta SPEC)
@@ -526,7 +526,7 @@ sys_pea_integration/
 
 ## 26. Declaración de cumplimiento
 
-La solución se diseñó para cumplir los requisitos obligatorios del Taller 2 — bajo las decisiones de alcance registradas en la sección 26.1 — y, de forma separada, varios complementos. El cumplimiento se evaluará en tres niveles:
+La solución se diseñó para cumplir los requisitos obligatorios del Parcial 2 — bajo las decisiones de alcance registradas en la sección 26.1 — y, de forma separada, varios complementos. El cumplimiento se evaluará en tres niveles:
 
 ```text
 DISEÑADO      La función está especificada en este documento.
@@ -1271,10 +1271,10 @@ El guion definitivo de grabación está disponible en `docs/guion_sustentacion_v
 
 ```text
 Destinatario: adithperez@unicesar.edu.co
-Asunto: Estructura de datos Taller 2 Grupo 5 2026
+Asunto: Estructura de datos Parcial 2 Grupo # 2026
 ```
 
-Según el enunciado original del taller, la entrega debe enviarse antes del lunes 19 de octubre de 2026, 11:59 a. m.
+Según el enunciado del Parcial 2, la entrega se realiza en dos fechas: entrega preliminar el viernes 23 de octubre de 2026 a las 11:59 a. m. y entrega definitiva el lunes 26 de octubre de 2026 a las 11:59 a. m.
 
 ## 38. Diagramas de arquitectura, estructuras y flujos del sistema
 
@@ -2159,7 +2159,7 @@ graph TB
 
 ### 38.6 Diagrama del Hipercubo de información multidimensional
 
-El siguiente diagrama formaliza el modelo de hipercubo recomendado en las especificaciones del Taller 2 ($\mathcal{H} = D_1 \times D_2 \times D_3 \times D_4 \to \mathcal{M}$), las dimensiones de enriquecimiento del catálogo Minciencias 2024, el vector de medidas analíticas y las cinco operaciones OLAP soportadas en la plataforma:
+El siguiente diagrama formaliza el modelo de hipercubo recomendado en las especificaciones del Parcial 2 ($\mathcal{H} = D_1 \times D_2 \times D_3 \times D_4 \to \mathcal{M}$), las dimensiones de enriquecimiento del catálogo Minciencias 2024, el vector de medidas analíticas y las cinco operaciones OLAP soportadas en la plataforma:
 
 ```mermaid
 graph TB
@@ -2600,9 +2600,9 @@ sys_pea_integration/
 - [ ] Identidad institucional de la UPC en el video.
 - [ ] Integrantes visibles en cámara durante toda la grabación.
 - [ ] Repositorio Git/GitHub publicado con la versión final.
-- [ ] Asunto del correo correcto: «Estructura de datos Taller 2 Grupo 5 2026».
+- [ ] Asunto del correo correcto: «Estructura de datos Parcial 2 Grupo # 2026».
 - [ ] Destinatario correcto: `adithperez@unicesar.edu.co`.
-- [ ] Envío antes de la fecha límite: lunes 19 de octubre de 2026, 11:59 a. m.
+- [ ] Envío antes de la fecha límite: entrega preliminar viernes 23 de octubre de 2026 y entrega definitiva lunes 26 de octubre de 2026, ambas a las 11:59 a. m.
 
 ## 45. Veredicto de cobertura
 
@@ -2629,3 +2629,97 @@ La afirmación de cumplimiento total dependerá de completar la implementación 
 > **Estado de implementación y verificación integral (2026-10-09, T-12/T-13):** Los importadores por archivo quedaron implementados de punta a punta. **CSV (T-12):** `backend/app/import_csv.py` parsea el dataset oficial de MinCiencias en datos.gov.co (Socrata `hrhc-c4wu`; tolera BOM, fechas ISO con milisegundos, "No registra" y numéricos "16.0"), deduplica por código COL conservando la convocatoria más reciente, aplica un tope de 200 grupos distintos por importación (HTTP 400 con orientación de filtrado) y permite enriquecer cada grupo con su GrupLAC completo resolviendo COL→nro únicamente por el buscador oficial (con fallback a los datos del archivo si la resolución o el scrapeo fallan); cada fila es una transacción independiente y la RAM se recarga una sola vez al final. **PDF (T-13):** `backend/app/import_pdf.py` extrae el texto con PyMuPDF y ataca la estructura de secciones/etiquetas compartida por el reporte que genera el propio sistema y una impresión del visor de Scienti; exige código COL válido (un nro pelado se rechaza con HTTP 400, trampa de identidad) y resuelve el subtipo de producto por nombre contra el catálogo 2024 sin requerir BD. Ambos exponen `/groups/import/csv(/preview)` y `/groups/import/pdf(/preview)` con flujo de vista previa→confirmación, registran `ImportJob.source_type` de `csv`/`pdf`, son idempotentes ante doble importación y tienen UI en React (pestañas "CSV (datos.gov.co)" y "PDF (GrupLAC)" en `/admin/import`). La suite backend cuenta con 13 archivos de prueba: 147 pruebas en verde con SQL Server local activado (`PEAI_TEST_DB=1`; 128 aprobadas y 19 saltadas por el gate sin BD). El build de React (`tsc -b && vite build`) pasa en limpio.
 
 > **Estado de implementación y verificación integral (2026-10-04):** T-08 (gestión de planes) está implementado de punta a punta: `PlanNode` en la multilista C++, `work_plan_service`, persistencia JSON y SQL Server (MERGE por id estable), pybind11, endpoints REST (`/groups/{id}/plans`, `/plans/{id}`), pestaña "Planes" en el detalle de grupo en React, comandos `plans` en `pea_cli` y pruebas unitarias. El CRUD independiente de proyectos (Requerimiento 3) está completo de punta a punta: `ProjectNode` en la lista global C++, `project_service`, persistencia JSON y SQL Server (MERGE por id estable), pybind11, endpoints REST (`/api/v1/projects` con paginación/búsqueda/estado, `/groups/{id}/projects`), página "Proyectos" en React, comandos `projects` en `pea_cli` y pruebas unitarias. El periodo de observación personalizado (T-26 / HU-07) está cubierto en toda la pila: rango arbitrario `start_year`–`end_year` y "últimos N años" (`window_years`) en `/products`, CLI `products by-year`, e informe PDF de grupo con selector de ventana en la UI que muestra la ventana aplicada y filtra la producción por año de obtención. T-07 (Membresías con rol/fechas) y las reglas de vinculación temporal (RV-001 de periodo invertido y RV-002 de periodos solapados/reingreso) están completamente implementadas en C++, RAM, persistencia (JSON/SQL), API (HTTP 400 en infracción) y deshacer bidireccional. La multilista de autores `ProductAuthorNode` y la exportación íntegra de los 20 atributos de producto del modelo Minciencias 2024 están operativas y sincronizadas en `pea_data.json`. La suite de pruebas de estructuras en C++ (`pea_tests.exe`) cuenta con 159/159 aserciones en verde (0 fallos). El backend en Python cuenta con 11 suites de pruebas automatizadas con 84 tests en verde (100% aprobadas) que cubren reglas de membresía, lógica y simetría de deshacer, enriquecimiento y filtros de cola, contratos 2024, scrapers e importadores. Todas las brechas documentales y funcionales detectadas en la auditoría han sido subsanadas.
+
+
+---
+
+## 46. Indicador de producción científica (ejercicios PARCIAL 1 y 2)
+
+### 46.1 Modelo normativo aplicado
+
+El indicador de producción científica se define en el **Modelo de Medición Minciencias 2024** (Anexo 1 de la Convocatoria Nacional para el Reconocimiento y Medición de Grupos de Investigación, Desarrollo Tecnológico o de Innovación, código M601PR04G01, versión 02), transcrito en `docs/modelo-medicion-2024.md` y catalogado en `docs/catalogo_oficial_pesos_minciencias_2024.md`:
+
+| Sección del modelo | Contenido normativo | Uso en PEA-i |
+|---|---|---|
+| §2.2.9 | λ del subtipo: λ = ln(productos en la ventana + 1) | Peso temporal de cada subtipo dentro de la ventana de observación |
+| §3.6 | Peso global del subtipo = ancla del subtipo (Tabla 6) × peso relativo (Anexo 1) | **Valor en puntos y peso relativo de cada producto** |
+| §3.7 | Familias y clases de productos: TOP, A, B, ASC, DPC, FRH-A, FRH-B | Clasificación del producto por familia y clase |
+| §3.8.1 | Índice de clase = Σ (λ × peso global) | Producción ponderada por clase |
+| §3.8.2 y §3.8.3 | Indicadores de cohesión (Cohe) y de cooperación (Coop) | Términos de red del grupo |
+| §3.9 | Normalización de cada índice frente al máximo de la población | Índices comparables entre grupos de una misma convocatoria |
+| §3.10 | Ind.Grupo = 3,7·Nc.Top + 2,3·Nc.A + 0,4·Nc.B + 1,5·AP + 0,5·DPC + 1·Fr.A + 0,2·Fr.B + 0,1·Cohe + 0,3·Coop | **Indicador del grupo de investigación** |
+
+La prioridad de la §3.6 es la **categoría de calidad validada** cuando existe: si el producto tiene categoría validada por el validador se usa esa; si no, se infiere de la descripción; y un subtipo ajeno al catálogo 2024 se excluye con motivo explícito.
+
+### 46.2 Variables de entrada y salida del modelo (ejercicio 6)
+
+#### 46.2.1 Grupo de investigación
+
+| Variables de entrada | Variables de salida |
+|---|---|
+| Productos del grupo: tipología, familia, subtipo, año de obtención y categoría de calidad | Productos clasificados dentro de la ventana de observación |
+| Integrantes del grupo y antigüedad de la vinculación | Nc.Top, Nc.A, Nc.B, AP, DPC, Fr.A y Fr.B (conteo por clase) |
+| Año de cierre de la convocatoria en curso | Cohe (cohesión interna) y Coop (productos coautorizados con otros grupos) |
+| Población de comparación de la convocatoria | λ, peso relativo, ancla y peso global de cada subtipo (§2.2.9 y §3.6) |
+| | **I_Grupo**: indicador de producción científica del grupo |
+
+#### 46.2.2 Investigador
+
+| Variables de entrada | Variables de salida |
+|---|---|
+| Identificador y datos del investigador | Productos totales y productos en la ventana de observación |
+| Productos propios: tipología, familia, subtipo, año y categoría de calidad | Nc.Top, Nc.A, Nc.B, AP, DPC, Fr.A y Fr.B (conteo por clase) |
+| Membresías y fecha de primera vinculación (antigüedad) | Cohe y Coop de la red del investigador |
+| Año de cierre de la convocatoria en curso | **I_Investigador**: indicador de producción científica del investigador |
+
+En el nivel individual el indicador de cohesión (Cohe) no aplica y se fija en 0, por definición del modelo: la cohesión es una magnitud de grupo.
+
+### 46.3 Fórmula del indicador y valores verificados
+
+```
+I ≡ 3,7·Nc.Top + 2,3·Nc.A + 0,4·Nc.B + 1,5·AP + 0,5·DPC
+    + 1,0·Fr.A + 0,2·Fr.B + 0,1·Cohe + 0,3·Coop
+```
+
+Valores obtenidos al ejecutar los archivos entregables `Taller2_WP-DN-EO.py` y `Taller2_WP-DN-EO.cpp` sobre el conjunto de datos del enunciado:
+
+| Magnitud | Grupo | Investigador |
+|---|---:|---:|
+| Nc.Top | 2 | 2 |
+| Nc.A | 1 | 1 |
+| Nc.B | 2 | 1 |
+| AP (apropiación social) | 0 | 0 |
+| DPC (divulgación pública) | 1 | 0 |
+| Fr.A (formación de RH tipo A) | 1 | 1 |
+| Fr.B (formación de RH tipo B) | 0 | 0 |
+| Cohe (cohesión) | 0,667 | 0,000 |
+| Coop (productos coautorizados) | 2 | 2 |
+| **Resultado del indicador** | **I_Grupo = 12,667** | **I_Investigador = 11,700** |
+
+El valor de Cohe del grupo se obtiene como (autores coincidentes / productos GNC+DTI) − 1 = (5 / 3) − 1 = 0,667.
+
+### 46.4 Alcance de la medición: conteo propio frente a índice normalizado
+
+La §3.10 pondera **índices**, no conteos crudos: la §3.9 normaliza cada índice frente al máximo alcanzado por la población de la convocatoria. Los dos archivos entregables (`Taller2_WP-DN-EO.py` y `Taller2_WP-DN-EO.cpp`) resuelven el ejercicio con el **conteo** de los productos de la URL del enunciado, y esa es la lectura correcta para el alcance del Parcial 2: el enunciado entrega una sola URL (un grupo y un investigador), de modo que no existe población contra la cual normalizar y las §3.9 y §3.8.3 son incalculables por diseño en ese escenario.
+
+PEA-i implementa y distingue ambas lecturas, con rótulo explícito en el payload, la API y la consola. En la interfaz se exhibe **exclusivamente la lectura oficial** (grupo) o la adaptación individual declarada, siempre rotulada "NO oficial"; el conteo ponderado legacy **no se muestra en ninguna pantalla** desde el 2026-10-24 y queda únicamente en el payload de la API, para trazabilidad:
+
+| Artefacto | Ubicación en el repositorio | Magnitud que produce | Rótulo |
+|---|---|---|---|
+| Archivos entregables del Parcial 2 | `Taller2_WP-DN-EO.py`, `Taller2_WP-DN-EO.cpp` | Suma ponderada de **conteos** sobre la URL del enunciado | Respuesta del ejercicio |
+| Evaluador oficial de la API | `backend/app/evaluator/official_indicator.py` (grupo) y `official_researcher.py` (investigador) | Índice **normalizado** (§3.9) sobre la población de la convocatoria | `modelo_oficial_2024` / `adaptacion_individual_2024` |
+| Espejo C++ del evaluador oficial | `core_cpp/src/services/official_indicator.cpp`, comando `pea_cli indicator` | Idéntico al anterior (paridad verificada por `scripts/pea_paridad_indicador.py` y `scripts/pea_paridad_individual.py`) | Salida de consola |
+| Conteo ponderado conservado | Payload de la API (no en la interfaz) | Suma ponderada de conteos crudos | `i_grupo_legacy` / `i_investigador_legacy` — **NO es un indicador del modelo 2024**, se conserva solo por trazabilidad |
+
+La adaptación individual se declara como **no oficial** de forma explícita: el modelo 2024 define el indicador de producción a nivel de grupo, de modo que la lectura individual se construye con el mismo pipeline del grupo, sustituyendo la edad del grupo por la antigüedad del investigador y rotulando las tres adaptaciones en la interfaz.
+
+### 46.5 Evidencia de paridad y de pruebas
+
+```
+python -X utf8 scripts/pea_paridad_indicador.py --golden     # CONTRATO CONFIRMADO (grupo)
+python -X utf8 scripts/pea_paridad_individual.py --golden    # CONTRATO CONFIRMADO (individual)
+python -X utf8 scripts/gen_contrato_oficial.py --check        # CONTRATO AL DIA
+python -X utf8 scripts/gen_contrato_individual.py --check     # CONTRATO INDIVIDUAL AL DIA
+core_cpp/build2/Release/pea_tests_indicador.exe              # 283 aserciones, 0 fallos
+python -X utf8 -m pytest backend/tests -q                     # 235 aprobadas, 19 saltadas por el gate de base de datos
+```

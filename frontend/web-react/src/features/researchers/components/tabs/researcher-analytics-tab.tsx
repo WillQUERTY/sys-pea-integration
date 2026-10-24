@@ -7,6 +7,7 @@ import {
   TrendingUp,
 } from 'lucide-react'
 import { Skeleton } from '@/components/ui/skeleton'
+import { Badge } from '@/components/ui/badge'
 import {
   ProductionHistogram,
   FamiliesDonut,
@@ -51,18 +52,20 @@ export function ResearcherAnalyticsTab({
    * Fase 5 (brecha B3): el modelo de medición 2024 NO define un indicador de
    * producción por persona — su único indicador (§3.10) es de GRUPO. Por eso
    * lo que se muestra como titular es la ADAPTACIÓN INDIVIDUAL declarada
-   * (`adaptacion_individual_2024`), siempre rotulada como NO oficial; el
-   * conteo crudo legacy queda solo como referencia explícita.
+   * (`adaptacion_individual_2024`), siempre rotulada como NO oficial. El
+   * conteo ponderado legacy (`i_investigador_legacy`) ya NO se muestra en la
+   * interfaz: desde el 2026-10-24 vive solo en el payload de la API, para
+   * trazabilidad; los conteos crudos que sí interesan aparecen como ENTRADAS
+   * del modelo dentro del panel de desglose.
    */
   const adaptacion = indicator?.adaptacion_individual_2024
   const valorTitular = adaptacion?.ind_investigador
-  const referenciaLegacy = indicator?.i_investigador_legacy
 
   if (isLoadingStats || isLoadingIndicator) {
     return (
       <div className="space-y-6">
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-          {[...Array(4)].map((_, i) => (
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4">
+          {[...Array(5)].map((_, i) => (
             <Skeleton key={i} className="h-24 w-full rounded-xl" />
           ))}
         </div>
@@ -74,10 +77,12 @@ export function ResearcherAnalyticsTab({
     )
   }
 
+  const posPoblacion = adaptacion?.posicion_poblacion
+
   return (
     <div className="space-y-6">
       {/* Métricas y KPIs Estratégicos del Docente */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4">
         <div className="rounded-xl border border-border/50 bg-card p-4 shadow-xs">
           <div className="flex items-center justify-between text-muted-foreground">
             <span className="text-xs font-medium uppercase tracking-wider">Producción Total</span>
@@ -133,36 +138,60 @@ export function ResearcherAnalyticsTab({
         </div>
 
         <div className="rounded-xl border border-border/50 bg-card p-4 shadow-xs">
-          <div className="flex items-center justify-between text-muted-foreground">
-            <span className="text-xs font-medium uppercase tracking-wider">
-              Indicador de Producción (adaptación individual)
-            </span>
-            <TrendingUp className="h-4 w-4 text-blue-600" />
-          </div>
-          <div className="mt-2 flex items-baseline gap-2">
-            <span className="text-2xl font-bold font-mono tracking-tight text-foreground">
-              {valorTitular !== undefined ? valorTitular.toFixed(2) : '—'}
-            </span>
-            <span className="text-xs text-muted-foreground">
-              {adaptacion
-                ? 'Ind.Investigador — adaptación declarada del modelo 2024 (NO oficial)'
-                : 'Adaptación individual no disponible'}
-            </span>
-          </div>
-          {adaptacion && referenciaLegacy !== undefined && (
-            <div className="mt-1 text-[11px] text-muted-foreground">
-              Referencia legacy (conteos crudos, no oficial):{' '}
-              <span className="font-mono text-foreground">
-                {referenciaLegacy.toFixed(2)}
+          <div className="flex items-center justify-between gap-1 text-muted-foreground">
+            <div className="flex items-center gap-1.5 min-w-0">
+              <span className="text-xs font-medium uppercase tracking-wider truncate">
+                Ind. Investigador
               </span>
+              <Badge
+                variant="outline"
+                className="border-amber-500/40 bg-amber-500/10 text-[9px] font-semibold text-amber-700 dark:text-amber-300 px-1 py-0 uppercase shrink-0"
+              >
+                No oficial
+              </Badge>
             </div>
-          )}
+            <TrendingUp className="h-4 w-4 text-amber-500 shrink-0" />
+          </div>
+          <div className="mt-2 flex flex-col gap-0.5">
+            <div className="flex items-baseline gap-1.5">
+              <span className="text-2xl font-bold font-mono tracking-tight text-foreground">
+                {valorTitular !== undefined
+                  ? valorTitular.toLocaleString('es-CO', {
+                      minimumFractionDigits: 3,
+                      maximumFractionDigits: 3,
+                    })
+                  : '—'}
+              </span>
+              {adaptacion?.rango_teorico != null && (
+                <span className="text-[11px] font-mono text-muted-foreground">
+                  / {adaptacion.rango_teorico.toLocaleString('es-CO', { maximumFractionDigits: 0 })}
+                </span>
+              )}
+            </div>
+            <span
+              className="text-xs text-muted-foreground truncate"
+              title={
+                posPoblacion
+                  ? `Puesto ${posPoblacion.puesto} de ${posPoblacion.de} (percentil ${posPoblacion.percentil?.toFixed(1)}%)`
+                  : undefined
+              }
+            >
+              {posPoblacion
+                ? `Puesto ${posPoblacion.puesto} de ${posPoblacion.de} · pctl ${posPoblacion.percentil?.toFixed(1)}%`
+                : adaptacion
+                  ? 'Adaptación Minciencias 2024'
+                  : 'No disponible'}
+            </span>
+          </div>
         </div>
       </div>
 
       {/* Desglose auditable de la adaptación individual (§2.2.9 → §3.10) */}
       {adaptacion && (
-        <ResearcherOfficialAdaptationPanel adaptacion={adaptacion} />
+        <ResearcherOfficialAdaptationPanel
+          adaptacion={adaptacion}
+          summary={indicator?.summary}
+        />
       )}
 
       {/* Grid 1: Histograma Temporal y Familias Minciencias */}
