@@ -122,6 +122,16 @@ static int motivo_excluido(const official::ResultadoOficial& r,
     return -1;
 }
 
+/// ¿Algún supuesto documentado contiene el fragmento? (§3.6: la categoría de
+/// calidad validada por el validador humano entra al modelo).
+static bool supuesto_contiene(const std::vector<std::string>& supuestos,
+                              const std::string& fragmento) {
+    for (const auto& s : supuestos) {
+        if (s.find(fragmento) != std::string::npos) return true;
+    }
+    return false;
+}
+
 // =====================================================================
 //  PIEZAS PURAS DEL MODELO
 // =====================================================================
@@ -367,7 +377,9 @@ static void test_json_cumple_el_contrato() {
     CHECK(json.front() == '{' && json.find("\n}\n") != std::string::npos,
           "el JSON es un objeto completo");
     CHECK(json.find("\"ind_grupo\":") != std::string::npos, "el JSON trae el Ind.Grupo");
-    CHECK(official::supuestos().size() == 6, "los supuestos documentados son seis");
+    CHECK(official::supuestos().size() == 7, "los supuestos documentados son siete");
+    CHECK(supuesto_contiene(official::supuestos(), "Categoría de calidad (§3.6)"),
+          "los supuestos documentan la categoría de calidad validada (§3.6)");
 }
 
 // =====================================================================
@@ -531,7 +543,9 @@ static void test_json_individual_cumple_el_contrato() {
     CHECK(json.find("\"adaptaciones\":") != std::string::npos,
           "el JSON declara las TRES adaptaciones");
     CHECK(official::adaptaciones().size() == 3, "hay TRES adaptaciones declaradas");
-    CHECK(official::supuestos_individual().size() == 4, "hay cuatro supuestos del dato");
+    CHECK(official::supuestos_individual().size() == 5, "hay cinco supuestos del dato");
+    CHECK(supuesto_contiene(official::supuestos_individual(), "Categoría de calidad (§3.6)"),
+          "los supuestos individuales documentan la categoría validada (§3.6)");
 }
 
 int main() {

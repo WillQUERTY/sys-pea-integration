@@ -260,3 +260,79 @@ def test_el_anio_y_la_familia_son_los_mismos_del_grupo():
     producto = {"description": "12.- Publicado en revista especializada : Paper, 2023"}
     assert extraer_anio(producto) == 2023
     assert familia_relacional(producto) == "GNC"
+
+
+# --- Categoría de calidad validada (§3.6) ---------------------------------------
+# La adaptación individual usa el MISMO criterio de clasificación que el grupo:
+# la categoría de calidad validada por el validador humano manda sobre la
+# inferencia conservadora del texto GrupLAC.
+
+
+class _ProductoFake:
+    description = "12.- Publicado en revista especializada : Revista X : 2025"
+
+    def __init__(self, quality_category_id=0):
+        self.id = 900
+        self.description = self.description
+        self.quality_category_id = quality_category_id
+        self.family_id = 6        # GNC
+        self.subtype_id = 57      # ART
+        self.year = 2025
+        self.obtained_date = "2025"
+        self.publication_date = "2025"
+
+
+class _InvestigadorFake:
+    id = 900
+    first_names = "Persona"
+    last_names = "De Prueba"
+
+
+class _RepoFake:
+    def __init__(self, calidad_id=0, codigos=None):
+        self.calidad_id = calidad_id
+        self.codigos = codigos if codigos is not None else {}
+
+    def list_groups(self):
+        return []
+
+    def list_researchers(self):
+        return [_InvestigadorFake()]
+
+    def products_of_researcher(self, rid):
+        return [900]
+
+    def get_product(self, pid):
+        return _ProductoFake(quality_category_id=self.calidad_id)
+
+    def members_of_group(self, gid):
+        return []
+
+    def authors_of_product_ram(self, pid):
+        return []
+
+    def membership_details(self, gid, rid):
+        return None
+
+    def quality_category_codes(self):
+        return dict(self.codigos)
+
+
+def test_la_adaptacion_individual_usa_la_categoria_validada():
+    repo = _RepoFake(calidad_id=9, codigos={9: "ART_A1"})
+    investigadores = construir_poblacion_investigadores(repo, ANO_CIERRE)
+
+    producto = investigadores[0].productos[0]
+    assert producto.categoria == "ART_A1"
+    assert "validada" in producto.motivo
+
+
+def test_la_adaptacion_individual_sin_validacion_excluye_con_motivo():
+    repo = _RepoFake(calidad_id=0, codigos={9: "ART_A1"})
+    investigadores = construir_poblacion_investigadores(repo, ANO_CIERRE)
+
+    producto = investigadores[0].productos[0]
+    assert producto.categoria is None
+    assert "Publindex" in producto.motivo
+    # Sigue siendo GNC para el Cohe/Coop de la red (§2.2.10 es relacional).
+    assert producto.familia_medicion == "GNC"

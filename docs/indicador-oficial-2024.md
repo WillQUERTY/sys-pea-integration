@@ -33,9 +33,10 @@ de grupos de investigación.
 | **Contrato único** | `backend/app/evaluator/contrato_oficial.py` | Declara la forma del bloque oficial **una sola vez** (`CONTRATO`: 20 claves raíz con sus tipos) y de ahí se derivan el golden, el tipo TS y el fixture del frontend. Trae además el comparador (`comparar_indicadores`), el validador (`validar_contra_contrato`) y el adaptador que replica el mapeo del cargador JSON de C++. |
 | Golden | `backend/tests/fixtures/indicador_oficial_golden.json` (+ `indicador_oficial_caso.json`) | El caso sintético de entrada y el resultado esperado, versionados. `scripts/gen_contrato_oficial.py --regenerar` los escribe y `--check` falla si hay drift. |
 | Verificador de paridad | `scripts/pea_paridad_indicador.py` | Compara **campo por campo** el JSON del CLI contra el del evaluador Python sobre el mismo repositorio. Con `--golden` compara **los tres** (CLI C++, backend Python y contrato versionado) contra el golden. |
-| **Tests del modelo en C++** | `core_cpp/tests/test_official_indicator.cpp` (target `pea_tests_indicador`, `ctest -C Release`) | 12 casos / 281 aserciones sobre el caso sintético del contrato: piezas puras (λ, categoría, familia, año), evaluación completa, normalización §3.9, fórmula §3.10, las 20 claves del contrato JSON y los 4 casos de la adaptación individual (Fase 5). |
+| **Tests del modelo en C++** | `core_cpp/tests/test_official_indicator.cpp` (target `pea_tests_indicador`, `ctest -C Release`) | 12 casos / 283 aserciones sobre el caso sintético del contrato: piezas puras (λ, categoría, familia, año), evaluación completa, normalización §3.9, fórmula §3.10, las 20 claves del contrato JSON y los 4 casos de la adaptación individual (Fase 5). |
 | Tests | `backend/tests/test_official_indicator.py` (27, golden a mano), `backend/tests/test_official_population.py` (9, sobre los grupos reales), `backend/tests/test_catalogo_cpp.py` (drift del catálogo C++) y `backend/tests/test_indicador_oficial_contrato.py` (12, contrato único). | |
 | API | `backend/app/repositories/analytics.py` → `get_group_minciencias_diagnosis` | Agrega la clave **aditiva** `modelo_oficial_2024` al diagnóstico. |
+| Categoría de calidad validada | `backend/app/repositories/catalogs.py` (`quality_category_codes`) + `core_cpp/src/persistence/db/db_common.cpp` (`query_catalog_rows`) | Traduce `Product.quality_category_id` → `QualityCategory.code` (§3.6) leyendo el catálogo 2024 de SQL Server. La API (con BD conectada) usa esa categoría; el snapshot JSON no la trae. Ver [La categoría de calidad validada](#la-categoría-de-calidad-validada-§36). |
 | Frontend | `frontend/web-react/src/lib/api/contrato-oficial-2024.generated.ts` (**generado**) + `analytics.ts` | Tipo `MincienciasOfficialModel2024` **generado desde el contrato** (no escrito a mano) y re-exportado por `analytics.ts`. |
 | UI | `frontend/web-react/src/components/charts/minciencias-diagnosis-card.tsx` + `official-indicator-panel.tsx` | La tarjeta muestra el oficial como titular (el legacy, rotulado como referencia); el panel desglosa los 9 términos de §3.10, las clases frente al máximo de la población, los subtipos que aportan, las exclusiones y el ranking. |
 
@@ -62,7 +63,7 @@ python -X utf8 scripts/pea_paridad_indicador.py --golden
 # El golden, el tipo TS y el fixture TS estan al dia (CONTRATO AL DIA)
 python -X utf8 scripts/gen_contrato_oficial.py --check
 
-# Test unitario del modelo en C++ (debe decir 281 OK, 0 fallas)
+# Test unitario del modelo en C++ (debe decir 283 OK, 0 fallas)
 core_cpp/build2/Release/pea_tests_indicador.exe
 
 # --- Adaptación individual (NO oficial) ---------------------------------
@@ -101,6 +102,42 @@ Lo que hace posible esa paridad:
   NFD sin marcas combinantes.
 - La cascada de años replica `extraer_anio`: `year` → `obtained_date` →
   `publication_date` → primer año plausible de la descripción.
+
+## La categoría de calidad validada (§3.6)
+
+El modelo mide la calidad con el **catálogo 2024** (categorías A1–D de
+Publindex, cuartiles,etc.) y esa es justo la información que la fuente GrupLAC
+**no trae**. Por eso el evaluador solo podía inferir la categoría por el prefijo
+del texto ("12.- Publicado en revista especializada…"), y esa inferencia es
+**conservadora a propósito**: lo que la fuente no evidencia se **excluye con
+motivo**, nunca con categoría inventada.
+
+El repositorio sí tiene el dato: `Product.quality_category_id` apunta a
+`QualityCategory`, que es el catálogo 2024 sembrado en SQL Server (`code`,
+`measurement_class`, pesos globales). Ese camino ya está **cableado al modelo**:
+
+| Paso | Pieza | Qué hace |
+|---|---|---|
+| 1. Leer el catálogo | `core_cpp/src/persistence/db/db_common.cpp` (`query_catalog_rows`) + `db_catalogs_analytics.cpp` (`get_product_catalogs_json`) | Trae el catálogo 2024 completo (id, code, name, subtipo, clase de medición, pesos y orden), no solo el nombre; si la consulta falla (esquema legacy), cae al respaldo `id, name`. |
+| 2. Resolver el código | `backend/app/repositories/catalogs.py` (`quality_category_codes`) | Mapa `id` → `code` en una sola lectura. **Solo SQL Server**: el catálogo del archivo JSON asigna ids propios y no son los de la FK. |
+| 3. Clasificar el producto | `backend/app/evaluator/official_population.py` (`resolver_calidades`, `categoria_producto`) | **Precedencia (§3.6)**: si el validador humano asignó categoría, esa manda ("categoría de calidad validada por el validador (ART_A1)"); si el código no está en el catálogo 2024, el producto se excluye con motivo ("fuera del catálogo 2024"); si no hay validación, se usa la inferencia del texto. |
+| 4. La adaptación individual | `backend/app/evaluator/official_researcher_population.py` | La **misma** regla para el investigador (misma función `categoria_producto`). |
+
+Efecto real (verificado en vivo contra la BD local, **sin escribir nada**): el
+catálogo trae **170 categorías**; al validar como `ART_A1` (`quality_category_id`
+= 9) un artículo de 2020 de AITICE (#10), su `Nc.Top` pasó de **0,0** a **1,0**,
+`ind_clase.TOP` de **0,0** a **126,85** y el `Ind.Grupo` de **0,854** a **4,554**;
+las exclusiones por "artículo sin calidad oficial A1–D" bajaron de **43** a **42**.
+
+Lo que **no** cambia:
+
+- El **snapshot JSON** (`pea_data.json`) no tiene la colección de categorías de
+  calidad, así que el **CLI y el reporte** (que leen ese archivo) siguen usando
+  la inferencia conservadora. Es coherente con la paridad: el contrato C++↔Python
+  se verifica sobre ese mismo snapshot.
+- La **validación es humana**: el cableado no inventa la calidad; solo la usa
+  cuando el validador la dejó registrada. Mientras no haya validación, el modelo
+  sigue excluyendo esos productos con motivo explícito.
 
 ## El contrato único (golden)
 
@@ -245,6 +282,11 @@ dataset tiene calidad oficial verificable** (A1–A3, B, C de Publindex, cuartil
 Q1–Q3 o categoría A de una dirección): la fuente GrupLAC no la trae. Los
 términos que sobreviven son DPC, Fr.B y los relacionales Cohe/Coop.
 
+Estos son los números **del snapshot JSON** (`pea_data.json`, que es lo que
+miden el CLI y el reporte). Con la base de datos conectada, los productos que el
+validador ya clasificó entran por su categoría validada (§3.6) y sí activan
+TOP/A/B — ver [La categoría de calidad validada](#la-categoría-de-calidad-validada-§36).
+
 Corolario: el `i_grupo_legacy` legacy **no es comparable con el oficial** ni con
 otras convocatorias; el oficial sí tiene escala (0–10) y es el que §3.9 define.
 
@@ -253,16 +295,20 @@ otras convocatorias; el oficial sí tiene escala (0–10) y es el que §3.9 defi
 1. **Edad del grupo**: GrupLAC no publica fecha de fundación en el dataset; se
    usa la fecha declarada si el repositorio la trae y, si no, el primer año
    plausible de producción registrada.
-2. **Calidad de las direcciones de trabajo (TP/TM)**: se asume **B** — la
+2. **Categoría de calidad (§3.6)**: si el validador humano la asignó, esa
+   categoría es la que entra al modelo; si no, el producto se clasifica con la
+   inferencia conservadora del texto GrupLAC.
+3. **Calidad de las direcciones de trabajo (TP/TM)**: se asume **B** — la
    fuente no evidencia la "categoría A" de la dirección.
-3. **Artículos en revista especializada**: quedan **fuera** de los indicadores de
-   producción (su calidad A1–D depende de Publindex/Scimago). Pero §2.2.10 es
-   **relacional**, no de calidad: esos productos sí cuentan para Cohe/Coop.
-4. **Normalización §3.9**: contra la población cargada en el repositorio; el
+4. **Artículos en revista especializada SIN categoría validada**: quedan **fuera**
+   de los indicadores de producción (su calidad A1–D depende de
+   Publindex/Scimago). Pero §2.2.10 es **relacional**, no de calidad: esos
+   productos sí cuentan para Cohe/Coop.
+5. **Normalización §3.9**: contra la población cargada en el repositorio; el
    modelo oficial exigiría *todos* los grupos del área OCDE.
-5. **Coop**: solo cuentan los firmantes con investigador vinculado en el
+6. **Coop**: solo cuentan los firmantes con investigador vinculado en el
    repositorio; los autores externos no aportan grupos (no hay afiliación).
-6. **Ventana de notas científicas**: el OCR de la Tabla 5 no la preserva (5 años).
+7. **Ventana de notas científicas**: el OCR de la Tabla 5 no la preserva (5 años).
 
 Todo producto que no puede clasificarse se **excluye con motivo explícito**
 (histograma `excluidos` en la respuesta y en el reporte), nunca con categoría
@@ -273,6 +319,15 @@ inventada.
 - El modelo oficial completo (catálogo de 70 subtipos, Tabla 5 de ventanas y
   Anexo 1 de pesos) está en `database/catalog_2024.json`; el dataset real solo
   alcanza para 4 subtipos con calidad verificable (LIB_DIV, IFI, TP_B, TM_B).
+- La **categoría de calidad validada solo llega por la API con BD conectada**:
+  el snapshot `pea_data.json` no tiene la colección de categorías de calidad, así
+  que el CLI y el reporte siguen usando la inferencia conservadora del texto.
+  Es coherente con la paridad (el contrato se verifica sobre ese snapshot), pero
+  significa que el CLI y la API pueden diferir en Nc.Top/Nc.A/Nc.B cuando
+  existen validaciones: la API es la que manda.
+- La **validación de la calidad sigue siendo humana y manual**: el cableado no
+  inventa la categoría; solo la usa si el validador la registró. Mientras eso no
+  ocurra, los artículos sin clase verificable siguen excluidos con motivo.
 - El indicador a nivel de **investigador** ya no es solo el legacy: desde la
   Fase 5 la API expone `adaptacion_individual_2024`, una **adaptación
   declarada** (NO oficial) del mismo pipeline §2.2.9 → §3.10. El modelo

@@ -30,7 +30,9 @@ el desglose completo de §3.10 que hace el número auditable término a término
 
 Lo que queda abierto es otro orden de cosas:
 
-- la **calidad de los datos** que no activa las clases TOP/A/B (B8).
+- la **calidad de los datos** que no activa las clases TOP/A/B (B8): el cableado
+  de la categoría validada ya está (§3.6), lo que falta es la **validación
+  humana** de los productos y el cruce ISSN→Publindex que nadie ha automatizado.
 
 Lo que se cerró en esta línea (Fases 3 a 6, aplicadas el 2026-10-23):
 
@@ -40,7 +42,7 @@ Lo que se cerró en esta línea (Fases 3 a 6, aplicadas el 2026-10-23):
 - el **contrato verificable** entre las tres implementaciones (B7): hay un
   contrato único declarado del que se derivan el golden, el tipo TS y el
   fixture del frontend;
-- el **test unitario** del modelo oficial en C++ (B6): 12 casos y 281
+- el **test unitario** del modelo oficial en C++ (B6): 12 casos y 283
   aserciones sobre el caso sintético, ejecutados por `ctest`;
 - la **decisión de modelo** para el investigador (B3/D5): entró la opción (a)
   como **adaptación declarada** del mismo pipeline, rotulada SIEMPRE como
@@ -62,7 +64,7 @@ define, mientras el oficial (0,854) quedaba invisible detrás de él.
 | **Test C++ del modelo (B6)** | **✅ Implementado (Fase 4)** | `core_cpp/tests/test_official_indicator.cpp`, registrado en `ctest` como `indicador_oficial` |
 | **Contrato HTTP (Fase 6)** | **✅ Implementado** | `backend/tests/test_indicador_oficial_http.py`: el payload que sale por HTTP cumple el golden del contrato |
 | Nivel investigador | ✅ **Adaptación declarada (Fase 5)** | `adaptacion_individual_2024`: el MISMO pipeline (§2.2.9 → §3.10) con la antigüedad del investigador en el lugar de la edad del grupo, **rotulado "NO oficial"**; el legacy queda como `i_investigador_legacy` |
-| Datos que alimentan §3.7/§3.8 | ⚠️ Parcial | GrupLAC no trae calidad A1–D → `Nc.Top/A/B = 0` siempre (ahora **visible** en el panel) |
+| Datos que alimentan §3.7/§3.8 | ⚠️ Parcial | GrupLAC no trae calidad A1–D → sin validación, `Nc.Top/A/B = 0` (ahora **visible** en el panel). El **cableado de la categoría validada** (§3.6) ya está: `Product.quality_category_id` → `QualityCategory.code` llega al modelo cuando el validador la registró |
 
 ### Estado de las fases
 
@@ -188,9 +190,9 @@ adaptación rotulada (investigador), y el legacy aparece solo como referencia.
 | **B3** | No hay modelo oficial a nivel de investigador | Medio-alto: el rótulo "Minciencias 2024, sección 10.6" sobre una fórmula de conteos crudos | Grande (requiere decisión de modelo) | ✅ **Cerrada como adaptación declarada** (Fase 5): el modelo de medición 2024 **no define** un indicador por persona, así que la lectura individual es una **adaptación declarada** del mismo pipeline, rotulada "NO oficial" en el payload, en la API, en la UI y en el CLI; el legacy queda como referencia (`i_investigador_legacy`) |
 | **B4** | La población de normalización no se expone | Alto: con 2 grupos el percentil no significa nada; el usuario no puede saber si el 0,854 es comparable | Chico-mediano | ✅ **Cerrada en la UI**: tarjeta muestra puesto/percentil, cierre, "N grupos" y avisa si < 10; el panel muestra el ranking completo de §3.9 |
 | **B5** | Tres implementaciones del cálculo (oficial Python, oficial C++, legacy Python) + 2 copias en los entregables | Alto: ya se demostró una divergencia histórica (py 10,2 vs cpp 13,5) | Mediano (deprecación, no borrado) | ✅ **Cerrada** (Fase 6): `i_grupo` → `i_grupo_legacy` (una sola implementación legacy, la de la API, que alimenta el semáforo); el CLI ya no calcula un segundo legacy |
-| **B6** | Cobertura de tests incompleta en el lado nuevo | Medio: el modelo oficial C++ no tiene test unitario (solo el script de paridad, que exige binario); el front no tiene test que verifique qué número ni qué rótulo se muestra | Mediano | ✅ **Cerrada** (Fases 2, 3, 4 y 5): front cubierto (12 casos: 5 de la tarjeta + 7 del panel), contrato cubierto por 12 tests de Python y C++ cubierto por 12 casos / 281 aserciones (`pea_tests_indicador.exe`: 8 del grupo + 4 de la adaptación individual) |
+| **B6** | Cobertura de tests incompleta en el lado nuevo | Medio: el modelo oficial C++ no tiene test unitario (solo el script de paridad, que exige binario); el front no tiene test que verifique qué número ni qué rótulo se muestra | Mediano | ✅ **Cerrada** (Fases 2, 3, 4 y 5): front cubierto (12 casos: 5 de la tarjeta + 7 del panel), contrato cubierto por 12 tests de Python y C++ cubierto por 12 casos / 283 aserciones (`pea_tests_indicador.exe`: 8 del grupo + 4 de la adaptación individual) |
 | **B7** | El contrato JSON oficial está triplicado a mano (`resultado_a_json` C++, dict Python, tipo TS) | Medio: un campo nuevo se puede añadir en un lado y romperse en otro en silencio | Chico-mediano | ✅ **Cerrada** (Fase 3): un `CONTRATO` declarado del que se derivan el golden, el tipo TS y el fixture del panel |
-| **B8** | Los datos no activan las clases TOP/A/B | Medio (contexto, no bug): la fuente GrupLAC no trae Publindex/Scimago, así que `Nc.Top = Nc.A = Nc.B = 0` y el indicador oficial solo mueve DPC, Fr.B, Cohe y Coop | Datos (+visibilidad) | ⚠️ **Visibilidad cerrada** (el panel muestra TOP/A/B en 0 y su máximo de población); **el dato no llega** y no depende del código |
+| **B8** | Los datos no activan las clases TOP/A/B | Medio (contexto, no bug): la fuente GrupLAC no trae Publindex/Scimago, así que `Nc.Top = Nc.A = Nc.B = 0` y el indicador oficial solo mueve DPC, Fr.B, Cohe y Coop | Datos (+visibilidad) | ⚠️ **Visibilidad cerrada** (el panel muestra TOP/A/B en 0 y su máximo de población) y **cableado cerrado** (la categoría validada por el validador —`Product.quality_category_id` → `QualityCategory.code`— ya entra al modelo por §3.6); **el dato humano sigue faltando**: sin validación (y sin el cruce ISSN→Publindex, no automatizado), TOP/A/B siguen en 0 |
 
 ### Detalle de las brechas que no son obvias
 
@@ -525,12 +527,16 @@ El caso cubre a propósito las dos reglas que se confunden: en Ana **manda la
 ventana** del subtipo (5 < 8) y en Sara **manda la antigüedad** (2 < 5).
 
 Verificaciones (2026-10-23): build C++ ✅ ·
-`pea_tests_indicador.exe` **281 OK / 0 fallas** (12 tests: 8 del grupo + 4 de
+`pea_tests_indicador.exe` **283 OK / 0 fallas** (12 tests: 8 del grupo + 4 de
 la adaptación) ✅ · `ctest -C Release` **2/2** ✅ ·
-`pea_paridad_individual.py --golden` **CONTRATO CONFIRMADO** (CLI C++ = backend
-Python = golden) ✅ · `gen_contrato_individual.py --check` **CONTRATO INDIVIDUAL
-AL DIA** ✅ · `pytest backend/tests` **229 passed / 19 skipped** ✅ · vitest
-**12 archivos / 90 pruebas** ✅ · `npm run build` ✅.
+`pea_paridad_indicador.py --golden` **CONTRATO CONFIRMADO** (CLI C++ = backend
+Python = golden) ✅ · `pea_paridad_individual.py --golden` **CONTRATO
+CONFIRMADO** ✅ · `gen_contrato_oficial.py --check` **CONTRATO AL DIA** ✅ ·
+`gen_contrato_individual.py --check` **CONTRATO INDIVIDUAL AL DIA** ✅ ·
+`pytest backend/tests` **235 passed / 19 skipped** ✅ · vitest **10 de 12
+archivos / 72 de 90 pruebas** ✅ —los 2 archivos que fallan
+(`use-table-url-state`, `handle-server-error`) son del toolchain del entorno y
+**no importan ningún archivo modificado** en esta línea— · `npm run build` ✅.
 
 ⚠ **Lo que la adaptación NO resuelve (y no pretende):**
 

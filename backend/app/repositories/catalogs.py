@@ -1,7 +1,7 @@
 import json
 import logging
 import pathlib
-from typing import Optional
+from typing import Dict, Optional
 
 logger = logging.getLogger("peai.repository")
 
@@ -93,3 +93,37 @@ def get_product_catalogs(conn_str: str = "") -> dict:
             logger.warning(f"C++ core catalog read failed: {e}; fallback a catalogo JSON canonico.")
 
     return _get_product_catalogs_from_file()
+
+
+def quality_category_codes(conn_str: str = "") -> Dict[int, str]:
+    """Mapa `id` de QualityCategory -> código del catálogo 2024 (una sola lectura).
+
+    Es el puente que deja llegar la categoría de calidad VALIDADA por el
+    validador humano (par. 3.6) hasta el modelo oficial: `Product.
+    quality_category_id` es la FK en SQL Server y el evaluador trabaja con el
+    código del catálogo (ART_A1, TP_B, ...).
+
+    Solo se usa la lectura de SQL Server: el catálogo del archivo JSON asigna
+    ids propios (1..N) al leer el archivo, y ese espacio NO es el de la FK de
+    la base de datos (que arranca en 8 tras la siembra 2024). Con la base de
+    datos inaccesible se devuelve un mapa vacío y el modelo oficial sigue con
+    la inferencia conservadora del texto GrupLAC.
+    """
+    if not conn_str:
+        from .. import repository
+        conn_str = repository._active_connection_string
+    if not conn_str:
+        return {}
+
+    try:
+        import abpoxx_pybind
+        doc = json.loads(abpoxx_pybind.get_product_catalogs_json(conn_str))
+    except Exception as e:
+        logger.warning(f"No se pudo leer el catalogo de calidad desde SQL Server: {e}")
+        return {}
+
+    return {
+        int(c["id"]): c["code"]
+        for c in doc.get("quality_categories", [])
+        if c.get("id") and c.get("code")
+    }

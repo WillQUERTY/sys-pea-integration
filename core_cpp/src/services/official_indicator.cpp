@@ -821,11 +821,15 @@ std::vector<std::string> supuestos() {
     return {
         "Edad del grupo: fecha de fundación declarada si el repositorio la trae; "
         "si no, se aproxima al primer año plausible de producción registrada.",
+        "Categoría de calidad (§3.6): si el validador humano la asignó, esa "
+        "categoría es la que entra al modelo; si no, el producto se clasifica con "
+        "la inferencia conservadora del texto GrupLAC.",
         "Calidad de las direcciones de trabajo (TP/TM): se asume B — la fuente no "
         "evidencia la 'categoría A' de la dirección.",
-        "Los artículos en 'revista especializada' quedan fuera de los indicadores de "
-        "producción (la calidad A1–D depende de Publindex/Scimago, que la fuente no "
-        "trae), pero §2.2.10 es relacional: sí cuentan para Cohe/Coop.",
+        "Los artículos en 'revista especializada' SIN categoría validada quedan fuera "
+        "de los indicadores de producción (la calidad A1–D depende de "
+        "Publindex/Scimago, que la fuente no trae), pero §2.2.10 es relacional: sí "
+        "cuentan para Cohe/Coop.",
         "Normalización §3.9: contra la población cargada en el repositorio; el modelo "
         "oficial exigiría TODOS los grupos del área OCDE.",
         "Coop solo cuenta firmantes con investigador vinculado en el repositorio; "
@@ -971,9 +975,13 @@ std::vector<std::string> supuestos_individual() {
         "(fecha de inicio de la membresía); si no hay membresía con fecha, se "
         "aproxima al primer año plausible de producción registrada; si no hay "
         "ninguno, se cuenta 1 año.",
-        "Los artículos en 'revista especializada' quedan fuera de los indicadores "
-        "de producción (su calidad A1–D depende de Publindex/Scimago, que la "
-        "fuente no trae), pero §2.2.10 es relacional: sí cuentan para Cohe/Coop.",
+        "Categoría de calidad (§3.6): si el validador humano la asignó, esa "
+        "categoría es la que entra al modelo; si no, el producto se clasifica con "
+        "la inferencia conservadora del texto GrupLAC.",
+        "Los artículos en 'revista especializada' SIN categoría validada quedan "
+        "fuera de los indicadores de producción (su calidad A1–D depende de "
+        "Publindex/Scimago, que la fuente no trae), pero §2.2.10 es relacional: "
+        "sí cuentan para Cohe/Coop.",
         "Cohe y Coop solo cuentan firmantes registrados en el repositorio: los "
         "autores externos (sin investigador vinculado) no aportan coautores ni "
         "grupos.",

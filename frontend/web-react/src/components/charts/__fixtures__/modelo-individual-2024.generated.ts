@@ -132,7 +132,8 @@ export const MODELO_INDIVIDUAL_CASO: Record<string, MincienciasIndividualAdaptat
     ],
     "supuestos": [
       "Antigüedad del investigador: años desde su primera vinculación (fecha de inicio de la membresía); si no hay membresía con fecha, se aproxima al primer año plausible de producción registrada; si no hay ninguno, se cuenta 1 año.",
-      "Los artículos en 'revista especializada' quedan fuera de los indicadores de producción (su calidad A1–D depende de Publindex/Scimago, que la fuente no trae), pero §2.2.10 es relacional: sí cuentan para Cohe/Coop.",
+      "Categoría de calidad (§3.6): si el validador humano la asignó, esa categoría es la que entra al modelo; si no, el producto se clasifica con la inferencia conservadora del texto GrupLAC.",
+      "Los artículos en 'revista especializada' SIN categoría validada quedan fuera de los indicadores de producción (su calidad A1–D depende de Publindex/Scimago, que la fuente no trae), pero §2.2.10 es relacional: sí cuentan para Cohe/Coop.",
       "Cohe y Coop solo cuentan firmantes registrados en el repositorio: los autores externos (sin investigador vinculado) no aportan coautores ni grupos.",
       "Normalización §3.9: contra la población de investigadores cargada en el repositorio; una convocatoria real mediría a todos los investigadores reconocidos del área."
     ]
@@ -264,7 +265,8 @@ export const MODELO_INDIVIDUAL_CASO: Record<string, MincienciasIndividualAdaptat
     ],
     "supuestos": [
       "Antigüedad del investigador: años desde su primera vinculación (fecha de inicio de la membresía); si no hay membresía con fecha, se aproxima al primer año plausible de producción registrada; si no hay ninguno, se cuenta 1 año.",
-      "Los artículos en 'revista especializada' quedan fuera de los indicadores de producción (su calidad A1–D depende de Publindex/Scimago, que la fuente no trae), pero §2.2.10 es relacional: sí cuentan para Cohe/Coop.",
+      "Categoría de calidad (§3.6): si el validador humano la asignó, esa categoría es la que entra al modelo; si no, el producto se clasifica con la inferencia conservadora del texto GrupLAC.",
+      "Los artículos en 'revista especializada' SIN categoría validada quedan fuera de los indicadores de producción (su calidad A1–D depende de Publindex/Scimago, que la fuente no trae), pero §2.2.10 es relacional: sí cuentan para Cohe/Coop.",
       "Cohe y Coop solo cuentan firmantes registrados en el repositorio: los autores externos (sin investigador vinculado) no aportan coautores ni grupos.",
       "Normalización §3.9: contra la población de investigadores cargada en el repositorio; una convocatoria real mediría a todos los investigadores reconocidos del área."
     ]
@@ -404,7 +406,8 @@ export const MODELO_INDIVIDUAL_CASO: Record<string, MincienciasIndividualAdaptat
     ],
     "supuestos": [
       "Antigüedad del investigador: años desde su primera vinculación (fecha de inicio de la membresía); si no hay membresía con fecha, se aproxima al primer año plausible de producción registrada; si no hay ninguno, se cuenta 1 año.",
-      "Los artículos en 'revista especializada' quedan fuera de los indicadores de producción (su calidad A1–D depende de Publindex/Scimago, que la fuente no trae), pero §2.2.10 es relacional: sí cuentan para Cohe/Coop.",
+      "Categoría de calidad (§3.6): si el validador humano la asignó, esa categoría es la que entra al modelo; si no, el producto se clasifica con la inferencia conservadora del texto GrupLAC.",
+      "Los artículos en 'revista especializada' SIN categoría validada quedan fuera de los indicadores de producción (su calidad A1–D depende de Publindex/Scimago, que la fuente no trae), pero §2.2.10 es relacional: sí cuentan para Cohe/Coop.",
       "Cohe y Coop solo cuentan firmantes registrados en el repositorio: los autores externos (sin investigador vinculado) no aportan coautores ni grupos.",
       "Normalización §3.9: contra la población de investigadores cargada en el repositorio; una convocatoria real mediría a todos los investigadores reconocidos del área."
     ]

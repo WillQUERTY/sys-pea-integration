@@ -22,6 +22,12 @@ Desde la Fase 6 el legacy se llama `i_grupo_legacy` en toda la API: es una
 APROXIMACIÓN (conteos crudos, sin λ, sin pesos §3.6 y sin normalización §3.9)
 que solo alimenta el semáforo, nunca un indicador.
 
+Clasificación del producto (§3.6): la categoría de calidad VALIDADA por el
+validador humano (`Product.quality_category_id` -> `QualityCategory.code`) es
+la que entra al modelo; sin ella, el producto se clasifica con la inferencia
+conservadora del prefijo del texto GrupLAC (`inferir_categoria`), que excluye
+con motivo explícito lo que la fuente no evidencia.
+
 Las funciones puras de este archivo (`extraer_anio`, `grupos_relacionados`,
 `edad_grupo`) las reutiliza `scripts/pea_indicador_ofICIAL.py`, que trabaja
 sobre `pea_data.json` en vez de la RAM: así el reporte y la API calculan lo
@@ -33,7 +39,7 @@ from __future__ import annotations
 import datetime
 import re
 from collections import defaultdict
-from typing import Any, Dict, Iterable, List, Mapping, Optional, Sequence, Set
+from typing import Any, Callable, Dict, Iterable, List, Mapping, Optional, Sequence, Set, Tuple
 
 from .helpers import extract_year_from_date
 from .official_indicator import (
@@ -189,6 +195,58 @@ def resolver_autores(repository_module: Any):
     return _por_nucleo
 
 
+def resolver_calidades(repository_module: Any):
+    """Devuelve un callable (quality_category_id) -> código del catálogo 2024,
+    o None si el repositorio no expone el catálogo de calidad de la base de datos.
+
+    La categoría de calidad VALIDADA es el dato que el modelo exige (§3.6): el
+    texto de GrupLAC no trae la calidad oficial (Publindex/Scimago), así que sin
+    ella el producto se clasifica con la inferencia conservadora del prefijo.
+    """
+    fn = getattr(repository_module, "quality_category_codes", None)
+    if not callable(fn):
+        return None
+
+    try:
+        codigos = fn() or {}
+    except Exception:
+        return None
+    if not codigos:
+        return None
+
+    def _codigo(calidad_id: Any) -> Optional[str]:
+        try:
+            return codigos.get(int(calidad_id))
+        except (TypeError, ValueError):
+            return None
+
+    return _codigo
+
+
+def categoria_producto(
+    producto: Any,
+    descripcion: str,
+    codigo_de_calidad: Optional[Callable[[Any], Optional[str]]],
+    catalogo: Mapping[str, Any],
+) -> Tuple[Optional[str], str]:
+    """Categoría oficial del producto y el motivo auditable de esa decisión.
+
+    Precedencia (§3.6): la categoría VALIDADA por el validador humano manda
+    sobre la inferencia del texto GrupLAC — es el dato que el modelo necesita
+    (la calidad oficial verificable que la fuente no trae). Si el validador no
+    ha clasificado el producto, se usa la inferencia conservadora: lo que la
+    fuente no evidencia se excluye con motivo, no se inventa.
+    """
+    if codigo_de_calidad is not None:
+        codigo = codigo_de_calidad(_valor(producto, "quality_category_id"))
+        if codigo:
+            if codigo in catalogo:
+                return codigo, "categoría de calidad validada por el validador (%s)" % codigo
+            return None, "categoría de calidad validada (%s) fuera del catálogo 2024" % codigo
+
+    return inferir_categoria(descripcion)
+
+
 def mapa_membresias(repository_module: Any, grupos: Sequence[Any]) -> Dict[int, Set[int]]:
     """mapa investigador -> grupos donde está vinculado.
 
@@ -218,6 +276,7 @@ def construir_poblacion(
     grupos_ram = list(repository_module.list_groups() or [])
     membresias = mapa_membresias(repository_module, grupos_ram)
     autores_de = resolver_autores(repository_module)
+    codigo_de = resolver_calidades(repository_module)
 
     grupos: List[GrupoOficial] = []
     for grupo in grupos_ram:
@@ -241,7 +300,7 @@ def construir_poblacion(
             if anio:
                 anios.append(anio)
 
-            categoria, motivo = inferir_categoria(descripcion)
+            categoria, motivo = categoria_producto(producto, descripcion, codigo_de, catalogo)
             firmantes: List[int] = []
             if autores_de is not None:
                 try:
@@ -371,11 +430,15 @@ def _supuestos() -> List[str]:
     return [
         "Edad del grupo: fecha de fundación declarada si el repositorio la trae; "
         "si no, se aproxima al primer año plausible de producción registrada.",
+        "Categoría de calidad (§3.6): si el validador humano la asignó, esa "
+        "categoría es la que entra al modelo; si no, el producto se clasifica con "
+        "la inferencia conservadora del texto GrupLAC.",
         "Calidad de las direcciones de trabajo (TP/TM): se asume B — la fuente no "
         "evidencia la 'categoría A' de la dirección.",
-        "Los artículos en 'revista especializada' quedan fuera de los indicadores de "
-        "producción (la calidad A1–D depende de Publindex/Scimago, que la fuente no "
-        "trae), pero §2.2.10 es relacional: sí cuentan para Cohe/Coop.",
+        "Los artículos en 'revista especializada' SIN categoría validada quedan fuera "
+        "de los indicadores de producción (la calidad A1–D depende de "
+        "Publindex/Scimago, que la fuente no trae), pero §2.2.10 es relacional: sí "
+        "cuentan para Cohe/Coop.",
         "Normalización §3.9: contra la población cargada en el repositorio; el modelo "
         "oficial exigiría TODOS los grupos del área OCDE.",
         "Coop solo cuenta firmantes con investigador vinculado en el repositorio; "
@@ -387,6 +450,7 @@ def _supuestos() -> List[str]:
 __all__ = [
     "CLASES",
     "COEFICIENTES",
+    "categoria_producto",
     "construir_poblacion",
     "descripcion_producto",
     "edad_grupo",
@@ -396,4 +460,5 @@ __all__ = [
     "grupos_relacionados",
     "mapa_membresias",
     "resolver_autores",
+    "resolver_calidades",
 ]

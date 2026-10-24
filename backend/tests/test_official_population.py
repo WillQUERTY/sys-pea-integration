@@ -17,6 +17,7 @@ from backend.app import repository
 from backend.app.config import settings
 from backend.app.evaluator.official_indicator import COEFICIENTES
 from backend.app.evaluator.official_population import (
+    construir_poblacion,
     edad_grupo,
     evaluar_modelo_oficial,
     extraer_anio,
@@ -143,8 +144,116 @@ def test_exclusiones_quedan_documentadas():
     assert r["supuestos"]
 
 
-# --- Contrato del endpoint -----------------------------------------------------
+# --- Categoría de calidad validada (§3.6) ---------------------------------------
 
+
+class _ProductoFake:
+    """Producto mínimo: solo los campos que lee el adaptador."""
+    description = "12.- Publicado en revista especializada : Revista X : 2025"
+
+    def __init__(self, quality_category_id=0):
+        self.id = 900
+        self.description = self.description
+        self.quality_category_id = quality_category_id
+        self.family_id = 6        # GNC
+        self.subtype_id = 57      # ART
+        self.year = 2025
+        self.obtained_date = "2025"
+        self.publication_date = "2025"
+
+
+class _GrupoFake:
+    def __init__(self, gid=900, acronym="PRUEBA"):
+        self.id = gid
+        self.acronym = acronym
+        self.name = "Grupo de prueba"
+        self.declared_creation_date = "2019-01-01"
+
+
+class _RepoFake:
+    """Repositorio mínimo para probar la clasificación por categoría validada.
+
+    `quality_category_codes` es el puente `id` de QualityCategory -> código del
+    catálogo 2024 (par. 3.6); `calidad_id` es el valor de
+    `Product.quality_category_id` del producto.
+    """
+
+    def __init__(self, calidad_id=0, codigos=None):
+        self.calidad_id = calidad_id
+        self.codigos = codigos if codigos is not None else {}
+
+    def list_groups(self):
+        return [_GrupoFake()]
+
+    def products_of_group(self, gid):
+        return [900]
+
+    def get_product(self, pid):
+        return _ProductoFake(quality_category_id=self.calidad_id)
+
+    def members_of_group(self, gid):
+        return []
+
+    def authors_of_product_ram(self, pid):
+        return []
+
+    def quality_category_codes(self):
+        return dict(self.codigos)
+
+
+def test_categoria_validada_manda_sobre_la_inferencia_del_texto():
+    """El texto de GrupLAC NO trae calidad oficial, pero la categoría validada sí.
+
+    Sin validación, este artículo queda excluido ("sin calidad oficial A1–D");
+    con la categoría validada (ART_A1) entra como clase TOP (§3.6).
+    """
+    repo = _RepoFake(calidad_id=9, codigos={9: "ART_A1"})
+    grupos = construir_poblacion(repo, ANO_CIERRE)
+
+    producto = grupos[0].productos[0]
+    assert producto.categoria == "ART_A1"
+    assert "validada" in producto.motivo
+    # Con categoría, el producto no entra por la vía relacional (§2.2.10): entra
+    # por su categoría oficial, que es lo que el modelo mide.
+    assert producto.familia_medicion is None
+
+
+def test_sin_validacion_se_conserva_la_inferencia_conservadora():
+    """Sin categoría validada, el producto se excluye con el motivo de la fuente."""
+    repo = _RepoFake(calidad_id=0, codigos={9: "ART_A1"})
+    grupos = construir_poblacion(repo, ANO_CIERRE)
+
+    producto = grupos[0].productos[0]
+    assert producto.categoria is None
+    assert "Publindex" in producto.motivo
+    # Sigue siendo un producto GNC para Cohe/Coop (§2.2.10 es relacional).
+    assert producto.familia_medicion == "GNC"
+
+
+def test_categoria_validada_fuera_del_catalogo_se_excluye_con_motivo():
+    """Un código que no existe en el catálogo 2024 no se inventa ni se empaqueta."""
+    repo = _RepoFake(calidad_id=9, codigos={9: "LEGACY_X"})
+    grupos = construir_poblacion(repo, ANO_CIERRE)
+
+    producto = grupos[0].productos[0]
+    assert producto.categoria is None
+    assert "fuera del catálogo 2024" in producto.motivo
+
+
+def test_la_categoria_validada_sube_a_la_clase_top():
+    """El efecto real en el indicador: el artículo validado cuenta como TOP."""
+    repo = _RepoFake(calidad_id=9, codigos={9: "ART_A1"})
+    grupos = construir_poblacion(repo, ANO_CIERRE)
+
+    from backend.app.evaluator.official_indicator import evaluar_poblacion
+
+    resultado = evaluar_poblacion(grupos, ANO_CIERRE)[0]
+    assert resultado["ind_clase"]["TOP"] > 0
+    assert resultado["subtipos"]["ART_A1"]["n"] == 1
+    assert resultado["excluidos"] == {}
+
+
+# --- Contrato del endpoint -----------------------------------------------------
 
 def test_endpoint_agrega_el_modelo_oficial_sin_romper_el_contrato():
     diagnostico = repository.get_group_minciencias_diagnosis(10)

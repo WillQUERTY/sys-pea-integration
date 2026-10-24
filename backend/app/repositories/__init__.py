@@ -11,7 +11,11 @@ from .context import (
     export_to_file,
     print_summary,
 )
-from .catalogs import _get_product_catalogs_from_file, get_product_catalogs
+from .catalogs import (
+    _get_product_catalogs_from_file,
+    get_product_catalogs,
+    quality_category_codes,
+)
 from .validation_queue import (
     vq_clear,
     vq_dequeue,
@@ -139,6 +143,7 @@ __all__ = [
     "get_group_minciencias_diagnosis",
     "get_group_stats",
     "get_product_catalogs",
+    "quality_category_codes",
     "get_researcher_minciencias_indicator",
     "get_researcher_stats",
     "safe_get_str",

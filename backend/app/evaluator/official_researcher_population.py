@@ -32,14 +32,15 @@ from .official_indicator import (
     COEFICIENTES,
     ProductoOficial,
     cargar_catalogo,
-    inferir_categoria,
 )
 from .official_population import (
+    categoria_producto,
     descripcion_producto,
     extraer_anio,
     familia_relacional,
     mapa_membresias,
     resolver_autores,
+    resolver_calidades,
 )
 from .official_researcher import (
     ADAPTACIONES,
@@ -203,8 +204,9 @@ def construir_poblacion_investigadores(
     Cada investigador queda con:
       - su antigüedad (años desde su primera vinculación; si no hay membresía
         con fecha, desde su primer producto),
-      - sus productos clasificados con el catálogo 2024 (misma regla
-        conservadora del grupo: lo no verificable se excluye con motivo),
+      - sus productos clasificados con el catálogo 2024 (misma regla del
+        grupo: la categoría de calidad validada manda y, sin ella, lo no
+        verificable en la fuente se excluye con motivo),
       - los datos relacionales de SU RED: firmantes registrados del producto
         (Cohe) y grupos de la red (Coop).
     """
@@ -213,6 +215,7 @@ def construir_poblacion_investigadores(
     membresias = mapa_membresias(repository_module, grupos_ram)
     inicios = _primeras_vinculaciones(repository_module, grupos_ram, membresias)
     autores_de = resolver_autores(repository_module)
+    codigo_de = resolver_calidades(repository_module)
 
     investigadores: List[InvestigadorOficial] = []
     for investigador in repository_module.list_researchers() or []:
@@ -240,7 +243,7 @@ def construir_poblacion_investigadores(
             if anio:
                 anios.append(anio)
 
-            categoria, motivo = inferir_categoria(descripcion)
+            categoria, motivo = categoria_producto(producto, descripcion, codigo_de, catalogo)
 
             firmantes: List[int] = []
             if autores_de is not None:
