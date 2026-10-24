@@ -13,6 +13,7 @@ import {
   TopSubtypesRanking,
   ResearcherGroupsContribution,
   ResearcherTopCoauthors,
+  ResearcherOfficialAdaptationPanel,
 } from '@/components/charts'
 import { getResearcherStats, getResearcherIndicator, type ResearcherStats } from '@/lib/api'
 
@@ -45,6 +46,17 @@ export function ResearcherAnalyticsTab({
   const indicator = fetchedIndicator
   const isLoadingStats = propsIsLoadingStats ?? isFetchingStats
   const isLoadingIndicator = isFetchingIndicator
+
+  /**
+   * Fase 5 (brecha B3): el modelo de medición 2024 NO define un indicador de
+   * producción por persona — su único indicador (§3.10) es de GRUPO. Por eso
+   * lo que se muestra como titular es la ADAPTACIÓN INDIVIDUAL declarada
+   * (`adaptacion_individual_2024`), siempre rotulada como NO oficial; el
+   * conteo crudo legacy queda solo como referencia explícita.
+   */
+  const adaptacion = indicator?.adaptacion_individual_2024
+  const valorTitular = adaptacion?.ind_investigador
+  const referenciaLegacy = indicator?.i_investigador_legacy
 
   if (isLoadingStats || isLoadingIndicator) {
     return (
@@ -122,19 +134,36 @@ export function ResearcherAnalyticsTab({
 
         <div className="rounded-xl border border-border/50 bg-card p-4 shadow-xs">
           <div className="flex items-center justify-between text-muted-foreground">
-            <span className="text-xs font-medium uppercase tracking-wider">Indicador de Producción Científica</span>
+            <span className="text-xs font-medium uppercase tracking-wider">
+              Indicador de Producción (adaptación individual)
+            </span>
             <TrendingUp className="h-4 w-4 text-blue-600" />
           </div>
           <div className="mt-2 flex items-baseline gap-2">
             <span className="text-2xl font-bold font-mono tracking-tight text-foreground">
-              {indicator?.i_investigador?.toFixed(2) ?? 0}
+              {valorTitular !== undefined ? valorTitular.toFixed(2) : '—'}
             </span>
             <span className="text-xs text-muted-foreground">
-              I_Investigador &#8212; adaptaci&oacute;n &sect;10.6 sobre conteos (no oficial)
+              {adaptacion
+                ? 'Ind.Investigador — adaptación declarada del modelo 2024 (NO oficial)'
+                : 'Adaptación individual no disponible'}
             </span>
           </div>
+          {adaptacion && referenciaLegacy !== undefined && (
+            <div className="mt-1 text-[11px] text-muted-foreground">
+              Referencia legacy (conteos crudos, no oficial):{' '}
+              <span className="font-mono text-foreground">
+                {referenciaLegacy.toFixed(2)}
+              </span>
+            </div>
+          )}
         </div>
       </div>
+
+      {/* Desglose auditable de la adaptación individual (§2.2.9 → §3.10) */}
+      {adaptacion && (
+        <ResearcherOfficialAdaptationPanel adaptacion={adaptacion} />
+      )}
 
       {/* Grid 1: Histograma Temporal y Familias Minciencias */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">

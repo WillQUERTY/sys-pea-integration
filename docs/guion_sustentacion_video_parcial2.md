@@ -30,7 +30,7 @@
 
 **Guion:**
 
-> El objetivo del parcial es diseñar e implementar un sistema que modele grupos de investigación, investigadores, miembros, productos científicos y sus vinculaciones, usando exclusivamente estructuras de datos dinámicas con punteros — listas enlazadas y multilistas ortogonales — sin STL en el grafo del núcleo C++. Además, se deben calcular dos indicadores de producción científica según el Modelo de Medición Minciencias 2024, sección 10.6: **I_Grupo** y **I_Investigador**.
+> El objetivo del parcial es diseñar e implementar un sistema que modele grupos de investigación, investigadores, miembros, productos científicos y sus vinculaciones, usando exclusivamente estructuras de datos dinámicas con punteros — listas enlazadas y multilistas ortogonales — sin STL en el grafo del núcleo C++. Además, se deben calcular dos indicadores de producción científica según el Modelo de Medición Minciencias 2024, sección 10.6: **I_Grupo** e **I_Investigador**. El primero es el indicador oficial de grupo del modelo; el segundo lo entregamos como una adaptación declarada a nivel individual, como explicamos en el minuto 5.
 
 ---
 
@@ -62,18 +62,18 @@
 
 ## 5. Indicadores de producción científica (4:30 – 6:30)
 
-**Visual:** Diapositiva con la fórmulaI_Grupo / I_Investigador y la tabla de pesos.
+**Visual:** Diapositiva con la fórmula I_Grupo / I_Investigador y la tabla de pesos.
 
 **Guion:**
 
-> Los indicadores se calculan con la fórmula del Modelo Minciencias 2024, sección 10.6:  
+> Los indicadores de producción se calculan con la fórmula del Modelo de Medición Minciencias 2024 (sección 10.6 de nuestra investigación, que es el §3.10 del documento normativo):  
 > I ≡ 3,7·Top + 2,3·A + 0,4·B + 1,5·AP + 0,5·DPC + 1,0·Fr.A + 0,2·Fr.B + 0,1·Cohe + 0,3·Coop  
 >  
 > Donde AP (apropiación social) y DPC (divulgación pública) son términos **separados**, cada uno con su propio peso.  
 > - **I_Grupo** se calcula a nivel de grupo con todos los productos activos en ventana temporal (5, 7 u 10 años según tipología) e incluye el índice de cohesión interna.  
-> - **I_Investigador** aplica la misma fórmula a nivel individual; el índice de cohesión vale cero porque no aplica a una persona sola.  
+> - **I_Investigador** **no es un indicador oficial**: el modelo 2024 define un único indicador de producción y es de grupo. Lo que entregamos a nivel individual es una **adaptación declarada** —el mismo pipeline del grupo, con la antigüedad del investigador en el lugar de la edad del grupo— y el sistema la rotula como tal en todas partes, con sus adaptaciones y supuestos a la vista.  
 >  
-> Ambos indicadores están implementados en el núcleo C++ (`Taller2.cpp`), en Python (`Taller2.py`) y expuestos por el backend FastAPI en el endpoint de diagnóstico Minciencias, que devuelve `i_grupo_legacy` (aproximación legacy, no oficial) para cada grupo. El indicador oficial 2024 (§3.10) llega aparte en `modelo_oficial_2024.ind_grupo`.
+> La fórmula con los pesos está resuelta en los dos archivos de texto del parcial (`Taller2.cpp` y `Taller2.py`), que además tienen paridad exacta entre sí. El modelo completo del 2024 —con λ por subtipo, pesos globales por clase, normalización contra el máximo de la población y los nueve términos de §3.10— está implementado en el núcleo C++ y en Python, y la paridad se verifica campo por campo. La API expone las dos cosas por separado: para cada grupo, `modelo_oficial_2024` (el oficial de §3.10) junto a `i_grupo_legacy` (aproximación legacy, no oficial); y para cada investigador, `adaptacion_individual_2024` (adaptación declarada, no oficial) junto a `i_investigador_legacy`.
 
 ---
 

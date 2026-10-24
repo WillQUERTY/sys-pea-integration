@@ -33,6 +33,7 @@ from .analytics import (
     get_group_collaboration_network,
     get_group_minciencias_diagnosis,
     get_group_stats,
+    get_researcher_minciencias_indicator,
     get_researcher_stats,
 )
 from .undo import (
@@ -138,6 +139,7 @@ __all__ = [
     "get_group_minciencias_diagnosis",
     "get_group_stats",
     "get_product_catalogs",
+    "get_researcher_minciencias_indicator",
     "get_researcher_stats",
     "safe_get_str",
     "sanitize_str",

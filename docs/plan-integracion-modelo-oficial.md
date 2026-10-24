@@ -10,7 +10,7 @@
 > la arquitectura principal esté integrada de punta a punta** y en qué orden
 > atacarlo.
 >
-> Corte: **2026-10-23**, con las **Fases 1, 2, 3 y 4 aplicadas y verificadas**
+> Corte: **2026-10-23**, con las **Fases 1 a 6 aplicadas y verificadas**
 > (build, vitest, pytest, ctest, eslint y contrato real de la API). Verificado
 > leyendo el código y ejecutando el CLI, el script de paridad (clásico y
 > `--golden`), el modelo sobre `pea_data.json` y las suites de `backend`,
@@ -30,17 +30,22 @@ el desglose completo de §3.10 que hace el número auditable término a término
 
 Lo que queda abierto es otro orden de cosas:
 
-- la **deprecación explícita** del legacy (B5),
-- la **decisión de modelo** para el investigador (B3),
 - la **calidad de los datos** que no activa las clases TOP/A/B (B8).
 
-Lo que **ya no** queda abierto (Fases 3 y 4, aplicadas el 2026-10-23):
+Lo que se cerró en esta línea (Fases 3 a 6, aplicadas el 2026-10-23):
 
+- la **deprecación explícita** del legacy (B5): el CLI ya no calcula un segundo
+  legacy y la API expone `i_grupo_legacy` / `i_investigador_legacy` rotulados
+  como aproximación;
 - el **contrato verificable** entre las tres implementaciones (B7): hay un
   contrato único declarado del que se derivan el golden, el tipo TS y el
   fixture del frontend;
-- el **test unitario** del modelo oficial en C++ (B6): 8 casos y 151
-  aserciones sobre el caso sintético, ejecutados por `ctest`.
+- el **test unitario** del modelo oficial en C++ (B6): 12 casos y 281
+  aserciones sobre el caso sintético, ejecutados por `ctest`;
+- la **decisión de modelo** para el investigador (B3/D5): entró la opción (a)
+  como **adaptación declarada** del mismo pipeline, rotulada SIEMPRE como
+  "NO oficial" (el modelo de medición 2024 define un único indicador de
+  producción y es de GRUPO, §3.10).
 
 Lo que se corrigió en esta línea: la tarjeta rotulaba como "Minciencias 2024"
 un indicador legacy de conteos crudos (491,704 en AITICE) que el modelo no
@@ -56,7 +61,7 @@ define, mientras el oficial (0,854) quedaba invisible detrás de él.
 | **Contrato único (B7)** | **✅ Implementado (Fase 3)** | `CONTRATO` declarado en `backend/app/evaluator/contrato_oficial.py`: de ahí salen el golden, el tipo TS y el fixture del panel |
 | **Test C++ del modelo (B6)** | **✅ Implementado (Fase 4)** | `core_cpp/tests/test_official_indicator.cpp`, registrado en `ctest` como `indicador_oficial` |
 | **Contrato HTTP (Fase 6)** | **✅ Implementado** | `backend/tests/test_indicador_oficial_http.py`: el payload que sale por HTTP cumple el golden del contrato |
-| Nivel investigador | ⚠️ Rótulo honesto (provisional) | `I_Investigador` legacy, rotulado "adaptación §10.6 sobre conteos (no oficial)"; falta decidir el modelo (D5) |
+| Nivel investigador | ✅ **Adaptación declarada (Fase 5)** | `adaptacion_individual_2024`: el MISMO pipeline (§2.2.9 → §3.10) con la antigüedad del investigador en el lugar de la edad del grupo, **rotulado "NO oficial"**; el legacy queda como `i_investigador_legacy` |
 | Datos que alimentan §3.7/§3.8 | ⚠️ Parcial | GrupLAC no trae calidad A1–D → `Nc.Top/A/B = 0` siempre (ahora **visible** en el panel) |
 
 ### Estado de las fases
@@ -67,7 +72,7 @@ define, mientras el oficial (0,854) quedaba invisible detrás de él.
 | **Fase 2** | Lectura oficial en la UI + desglose auditable (B2, B8-visibilidad) | ✅ **Implementada y verificada** (2026-10-23) |
 | **Fase 3** | Contrato único / golden JSON (B7) | ✅ **Implementada y verificada** (2026-10-23) |
 | **Fase 4** | Test unitario del modelo oficial en C++ (B6) | ✅ **Implementada y verificada** (2026-10-23) |
-| **Fase 5** | Investigador (B3, D5) | ⏸️ En espera de la decisión D5 (aplicado solo el rótulo interino de la Fase 1) |
+| **Fase 5** | Investigador (B3, D5) | ✅ **Implementada y verificada** (2026-10-23) — adaptación declarada (NO oficial) |
 | **Fase 6** | Deprecación del legacy (B5) | ✅ **Implementada y verificada** (2026-10-23) |
 
 ---
@@ -162,14 +167,15 @@ grupo:
 |---|---|
 | Tarjeta de diagnóstico (React) | **Sí — el oficial como titular**; el legacy como "aproximación legacy, no oficial" ([minciencias-diagnosis-card.tsx](frontend/web-react/src/components/charts/minciencias-diagnosis-card.tsx)) |
 | Panel de desglose (React) | **Sí — el oficial, término a término** (§3.10 → §3.9 → §3.8.1 → §2.2.9) ([official-indicator-panel.tsx](frontend/web-react/src/components/charts/official-indicator-panel.tsx)) |
-| Pestaña de investigador (React) | Sí — `i_investigador` legacy, rotulado "adaptación §10.6 sobre conteos (no oficial)" ([researcher-analytics-tab.tsx:130](frontend/web-react/src/features/researchers/components/tabs/researcher-analytics-tab.tsx#L130)) |
+| Pestaña de investigador (React) | **Sí — la adaptación individual declarada como titular** (rótulo "Ind.Investigador — adaptación declarada del modelo 2024 (NO oficial)") y el legacy como referencia explícita ([researcher-analytics-tab.tsx](frontend/web-react/src/features/researchers/components/tabs/researcher-analytics-tab.tsx)) |
 | KPI banners / radar de grupos | No usan el indicador (usan conteos y perfiles) |
 | Dossier PDF (`/dossier/pdf`) | No numera el indicador; muestra categoría, meta de ascenso y brechas |
 | Export CSV (`/export/ranking.csv`) | No incluye el indicador |
 | PDF `/report/pdf` | No |
 
-→ **La UI React es el único punto donde el número engaña.** Eso acota el
-problema y también su arreglo.
+→ **La UI React era el único punto donde el número engañaba.** Eso acotaba el
+problema y también su arreglo: hoy el titular es el oficial (grupo) o la
+adaptación rotulada (investigador), y el legacy aparece solo como referencia.
 
 ---
 
@@ -179,10 +185,10 @@ problema y también su arreglo.
 |---|---|---|---|---|
 | **B1** | La tarjeta rotula el legacy como "I_Grupo (Minciencias 2024)" | **Alto**: es el número que ve el evaluador. 36,00 (legacy) vs 0,854 (oficial) conviven y el que se muestra es el que el modelo no define | Chico | ✅ **Cerrada** (Fase 1): titular = oficial; legacy = "referencia legacy, no oficial" |
 | **B2** | La UI no tiene lectura del modelo oficial | Alto: se pierde el 100 % del payload oficial (ranking, percentil, 9 términos, subtipos λ/peso, exclusiones, supuestos) | Mediano | ✅ **Cerrada** (Fase 2): `OfficialIndicatorPanel` consume todo el bloque |
-| **B3** | No hay modelo oficial a nivel de investigador | Medio-alto: el rótulo "Minciencias 2024, sección 10.6" sobre una fórmula de conteos crudos | Grande (requiere decisión de modelo) | ⚠️ **Mitigada**: rótulo honesto ("adaptación §10.6, no oficial"); el modelo oficial sigue pendiente de D5 |
+| **B3** | No hay modelo oficial a nivel de investigador | Medio-alto: el rótulo "Minciencias 2024, sección 10.6" sobre una fórmula de conteos crudos | Grande (requiere decisión de modelo) | ✅ **Cerrada como adaptación declarada** (Fase 5): el modelo de medición 2024 **no define** un indicador por persona, así que la lectura individual es una **adaptación declarada** del mismo pipeline, rotulada "NO oficial" en el payload, en la API, en la UI y en el CLI; el legacy queda como referencia (`i_investigador_legacy`) |
 | **B4** | La población de normalización no se expone | Alto: con 2 grupos el percentil no significa nada; el usuario no puede saber si el 0,854 es comparable | Chico-mediano | ✅ **Cerrada en la UI**: tarjeta muestra puesto/percentil, cierre, "N grupos" y avisa si < 10; el panel muestra el ranking completo de §3.9 |
 | **B5** | Tres implementaciones del cálculo (oficial Python, oficial C++, legacy Python) + 2 copias en los entregables | Alto: ya se demostró una divergencia histórica (py 10,2 vs cpp 13,5) | Mediano (deprecación, no borrado) | ✅ **Cerrada** (Fase 6): `i_grupo` → `i_grupo_legacy` (una sola implementación legacy, la de la API, que alimenta el semáforo); el CLI ya no calcula un segundo legacy |
-| **B6** | Cobertura de tests incompleta en el lado nuevo | Medio: el modelo oficial C++ no tiene test unitario (solo el script de paridad, que exige binario); el front no tiene test que verifique qué número ni qué rótulo se muestra | Mediano | ✅ **Cerrada** (Fases 2, 3 y 4): front cubierto (12 casos: 5 de la tarjeta + 7 del panel), contrato cubierto por 12 tests de Python y C++ cubierto por 8 casos / 151 aserciones (`pea_tests_indicador.exe`) |
+| **B6** | Cobertura de tests incompleta en el lado nuevo | Medio: el modelo oficial C++ no tiene test unitario (solo el script de paridad, que exige binario); el front no tiene test que verifique qué número ni qué rótulo se muestra | Mediano | ✅ **Cerrada** (Fases 2, 3, 4 y 5): front cubierto (12 casos: 5 de la tarjeta + 7 del panel), contrato cubierto por 12 tests de Python y C++ cubierto por 12 casos / 281 aserciones (`pea_tests_indicador.exe`: 8 del grupo + 4 de la adaptación individual) |
 | **B7** | El contrato JSON oficial está triplicado a mano (`resultado_a_json` C++, dict Python, tipo TS) | Medio: un campo nuevo se puede añadir en un lado y romperse en otro en silencio | Chico-mediano | ✅ **Cerrada** (Fase 3): un `CONTRATO` declarado del que se derivan el golden, el tipo TS y el fixture del panel |
 | **B8** | Los datos no activan las clases TOP/A/B | Medio (contexto, no bug): la fuente GrupLAC no trae Publindex/Scimago, así que `Nc.Top = Nc.A = Nc.B = 0` y el indicador oficial solo mueve DPC, Fr.B, Cohe y Coop | Datos (+visibilidad) | ⚠️ **Visibilidad cerrada** (el panel muestra TOP/A/B en 0 y su máximo de población); **el dato no llega** y no depende del código |
 
@@ -238,9 +244,9 @@ sobre el caso sintético.
 | **D2** | El legacy sobrevive como **"referencia (no oficial)"**, explícitamente rotulado, y nunca como titular del indicador | ✅ **Cumplida en la UI** (Fase 1); falta el renombrado de la clave y unificar los dos legacies (Fase 6) |
 | **D3** | La UI oficial **muestra la población y el cierre** junto al número (puesto, percentil, "N grupos medidos") | ✅ **Cumplida** (Fases 1–2) |
 | **D4** | **Contrato único**: golden JSON compartido por CLI C++ / API Python / tipado TS, validado por test | ✅ **Cumplida** (Fase 3): `CONTRATO` en `backend/app/evaluator/contrato_oficial.py` es la fuente; el golden, el tipo TS y el fixture del panel se derivan de él |
-| **D5** | **Investigador**: (a) definir y documentar un I_Investigador oficial e implementarlo en py+cpp, o (b) bajar el rótulo a "adaptación §3.10 sobre conteos del grupo" y dejar el oficial solo en grupo | 🟡 **Provisionalmente (b)** en la Fase 1 (rótulo honesto + valor marcado como no oficial); falta la confirmación explícita del usuario |
+| **D5** | **Investigador**: (a) definir y documentar un I_Investigador oficial e implementarlo en py+cpp, o (b) bajar el rótulo a "adaptación §3.10 sobre conteos del grupo" y dejar el oficial solo en grupo | ✅ **Resuelta: (a) como adaptación DECLARADA** (Fase 5). El usuario eligió (a); como el archivo normativo **no define** un indicador por persona, la opción (a) solo es admisible como *adaptación*: se implementó el mismo pipeline (§2.2.9 → §3.10) con tres adaptaciones **declaradas y visibles** (unidad, período, Cohe/Coop) y rótulo "NO oficial" en todas partes |
 | **D6** | El **catálogo** (`database/catalog_2024.json`) es la única fuente de subtipos/pesos/ventanas; el C++ lo genera, nunca lo reimplementa (ya cumplido con `gen_catalogo_cpp.py --check`) | ✅ Cumplido; falta el gate en CI |
-| **D7** | El modelo oficial es **de grupo**; el de investigador es una adaptación declarada y separada | Pendiente de D5 |
+| **D7** | El modelo oficial es **de grupo**; el de investigador es una adaptación declarada y separada | ✅ **Cumplida** (Fase 5): la adaptación individual vive en su propio bloque (`adaptacion_individual_2024`), con su propio contrato (`CONTRATO_INDIVIDUAL`), su propio golden y su rótulo "NO oficial"; no se mezcla con el bloque oficial de grupo |
 
 ---
 
@@ -268,7 +274,7 @@ Un día. **Empieza aquí**: es pequeño y elimina el riesgo de evaluación.
 |---|---|
 | Titular = `modelo_oficial_2024.ind_grupo` (3 decimales) + "/ 10 rango teórico", línea de puesto/percentil y cierre, y aviso cuando la población < 10 grupos | `frontend/web-react/src/components/charts/minciencias-diagnosis-card.tsx` |
 | El legacy pasa a línea secundaria rotulada **"I_Grupo (referencia legacy, no oficial)"**; si no llega la lectura oficial, se dice **"Lectura oficial no disponible para este grupo"** y no se muestra ninguna cifra rotulada como oficial | idem |
-| Rótulo del investigador honesto: **"I_Investigador — adaptación §10.6 sobre conteos (no oficial)"** (interino, mientras se diseña el modelo oficial de investigador, decisión D5) | `frontend/web-react/src/features/researchers/components/tabs/researcher-analytics-tab.tsx` |
+| Rótulo del investigador honesto: **"I_Investigador — adaptación §10.6 sobre conteos (no oficial)"** — rótulo **interino** de esta Fase 1; desde la Fase 5 se sustituye por el de la adaptación declarada (§6) | `frontend/web-react/src/features/researchers/components/tabs/researcher-analytics-tab.tsx` |
 | Test nuevo que fija la regla (titular oficial, legacy como referencia, aviso de población, y que sin modelo oficial no hay cifra oficial) | `frontend/web-react/src/components/charts/minciencias-diagnosis-card.test.tsx` (5 casos) |
 | Se quitó un import de tipo sin uso (`ResearcherIndicator`) que **ya rompía el build** (`TS6133`) en HEAD, verificado con la versión original del archivo | idem (investigador) |
 
@@ -448,7 +454,7 @@ en producción).
 > (p. ej. `ind_grupo = 0,8152872176748235` con el pct. de población 50 y el
 > máximo DPC 405,4651081081644).
 
-### Fase 5 — Investigador (B3, D5) — ⏸️ En espera de decisión
+### Fase 5 — Investigador (B3, D5) — ✅ Implementada y verificada
 Grande. Opciones:
 
 - **(a) Modelo oficial de investigador**: extender `official_indicator.py` con
@@ -460,9 +466,86 @@ Grande. Opciones:
 - **(b) Rótulo honesto y cierre**: se documenta que el modelo oficial del
   Parcial 2 es **de grupo**, se baja el rótulo del investigador y se deja el
   valor como apoyo descriptivo.
-- **Estado**: la Fase 1 ya aplicó la parte urgente de (b) (el rótulo del
-  investigador dejó de decir "Minciencias 2024"); falta que el usuario confirme
-  si (b) es la decisión final o si entra (a).
+- **Estado**: la Fase 1 aplicó la parte urgente de (b) (el rótulo del
+  investigador dejó de decir "Minciencias 2024"); el usuario confirmó (a).
+
+#### Resultado de la Fase 5 (2026-10-23)
+
+**Decisión de alcance aplicada: (a), pero como ADAPTACIÓN DECLARADA, no como
+indicador oficial.** El archivo normativo (`docs/modelo-medicion-2024.md`,
+Anexo 1 M601PR04G01 v02) define **un único** indicador de producción y es de
+**GRUPO** (§3.10 Ind.Grupo); §3.11 (IT), §3.12 (EPInv) y §3.13 (EProd) son
+índices de grupo y además informativos. **No existe un indicador oficial de
+producción por persona.** Por eso la lectura individual:
+
+- **no** se rotula "oficial" en ningún lado (payload, API, UI y CLI llevan el
+  rótulo explícito **"NO oficial"**),
+- **no** reclama un § del modelo: la parte que **sí** se aplica (§2.2.9 →
+  §3.10) queda declarada aparte, en `base_normativa`,
+- declara sus **TRES adaptaciones** en el payload, para que la diferencia con
+  el modelo sea auditable y no una frase de marketing.
+
+**La decisión de diseño que evita duplicar el modelo: el investigador entra al
+pipeline del GRUPO** con su **antigüedad** en el lugar de la "edad del grupo"
+(§2.2.9) y se evalúa con **el mismo código** (`evaluar_poblacion`). Así el
+número individual no puede divergir del oficial: solo cambian el nombre de las
+claves y las tres adaptaciones declaradas. No hay una segunda fórmula.
+
+Las tres adaptaciones (idénticas en Python y C++, y visibles en la UI):
+
+| # | Adaptación | Qué cambia respecto del grupo |
+|---|---|---|
+| 1 | **Unidad de medición** | La población de normalización §3.9 es la de **investigadores** del repositorio, no la de grupos |
+| 2 | **Período de observación** | En vez de la edad del grupo, usa la **antigüedad** del investigador: años desde su primera vinculación (fecha de inicio de la membresía; si no hay dato, desde su primer producto; si no hay ninguno, 1 año). Período = min(antigüedad, ventana del subtipo) |
+| 3 | **Cohe / Coop (§2.2.10)** | Cohe cuenta los **firmantes registrados de cada producto** del investigador (incluido él mismo: 0 = autoría sola); Coop cuenta los **grupos de su red** (sus grupos ∪ los de sus coautores: 0 = sin cooperación entre grupos) |
+
+| Cambio | Archivo |
+|---|---|
+| Evaluador puro de la adaptación (reusa `evaluar_poblacion` del grupo) + textos `ADAPTACIONES`/`SUPUESTOS` | `backend/app/evaluator/official_researcher.py` (nuevo) |
+| Adaptador del repositorio → población de investigadores (antigüedad, productos, red) y payload `adaptacion_individual_2024` | `backend/app/evaluator/official_researcher_population.py` (nuevo) |
+| **Contrato único de la adaptación** (22 claves raíz) + `AdaptadorIndividual` (el caso sintético leído como repositorio en RAM) + generadores del golden, del tipo TS y del fixture | `backend/app/evaluator/contrato_individual.py` (nuevo) |
+| Generador/verificador del golden, del tipo TS y del fixture | `scripts/gen_contrato_individual.py` (nuevo) |
+| **Espejo C++**: `construir_poblacion_investigadores`, `evaluar_poblacion_investigadores`, `evaluar_modelo_individual`, `resultado_individual_a_json` (22 claves) y los rótulos | `core_cpp/include/services/official_indicator.h` + `core_cpp/src/services/official_indicator.cpp` |
+| CLI: `pea_cli indicator researcher <id> [--data] [--year] [--json]` imprime la adaptación (y **ya no** calcula un segundo legacy, como el grupo en la Fase 6) | `core_cpp/src/cli/researcher_commands.cpp` |
+| API: clave aditiva `adaptacion_individual_2024` + `i_investigador_legacy` | `backend/app/repositories/analytics.py`, `backend/app/evaluator/__init__.py`, `backend/app/api/routers/researchers.py` |
+| UI: panel de la adaptación individual (rótulo "NO oficial", los 9 términos, clases frente al máximo, subtipos, exclusiones, ranking, adaptaciones y supuestos) | `frontend/web-react/src/components/charts/researcher-official-adaptation-panel.tsx` (nuevo) + `researcher-analytics-tab.tsx` |
+| Tipo TS y fixture del frontend **generados** desde `CONTRATO_INDIVIDUAL` | `frontend/web-react/src/lib/api/contrato-individual-2024.generated.ts`, `frontend/web-react/src/components/charts/__fixtures__/modelo-individual-2024.generated.ts` |
+| Verificador de paridad C++ ↔ Python ↔ golden de la adaptación | `scripts/pea_paridad_individual.py` (nuevo) |
+
+**Sobre el caso sintético** (`indicador_oficial_caso.json`, el mismo del grupo:
+3 investigadores con membresías desde 2018/2019/2024):
+
+| Investigador | Antigüedad | Ind.Investigador | Puesto | Cohe | Coop |
+|---|---|---|---|---|---|
+| Ana Perez (#101) | 8 años | 0,7385491756756803 | 2 de 3 (percentil 66,7) | 7/3 − 1 = 1,3333 | 5/3 − 1 = 0,6667 |
+| Luis Gomez (#102) | 7 años | 0,5447772991157855 | 3 de 3 (percentil 33,3) | 5/2 − 1 = 1,5 | 3/2 − 1 = 0,5 |
+| Sara Diaz (#103) | 2 años | 1,0666666666666667 | 1 de 3 (percentil 100,0) | 2/1 − 1 = 1,0 | 2/1 − 1 = 1,0 |
+
+El caso cubre a propósito las dos reglas que se confunden: en Ana **manda la
+ventana** del subtipo (5 < 8) y en Sara **manda la antigüedad** (2 < 5).
+
+Verificaciones (2026-10-23): build C++ ✅ ·
+`pea_tests_indicador.exe` **281 OK / 0 fallas** (12 tests: 8 del grupo + 4 de
+la adaptación) ✅ · `ctest -C Release` **2/2** ✅ ·
+`pea_paridad_individual.py --golden` **CONTRATO CONFIRMADO** (CLI C++ = backend
+Python = golden) ✅ · `gen_contrato_individual.py --check` **CONTRATO INDIVIDUAL
+AL DIA** ✅ · `pytest backend/tests` **229 passed / 19 skipped** ✅ · vitest
+**12 archivos / 90 pruebas** ✅ · `npm run build` ✅.
+
+⚠ **Lo que la adaptación NO resuelve (y no pretende):**
+
+- **No es un indicador oficial**: el modelo de medición 2024 no lo define. Si
+  una convocatoria exige un indicador por persona, hay que decirlo: el rótulo
+  "NO oficial" viaja en el payload justamente para eso.
+- **La antigüedad es una aproximación**: GrupLAC no publica la fecha de
+  vinculación de cada integrante; se usa la fecha de inicio de la membresía en
+  el repositorio y, si no hay, el primer año de producción registrada. Un
+  investigador con historia larga fuera del repositorio queda subvalorado.
+- **La población de normalización son los investigadores cargados**: con pocos
+  investigadores el percentil no es interpretable (el mismo caveat que B4
+  para grupos).
+- **Cohe/Coop de la red** no es el del modelo (que es "del grupo"): la
+  adaptación lo declara explícitamente en lugar de dejarlo implícito.
 
 ### Fase 6 — Deprecación del legacy (B5) — ✅ Implementada y verificada
 Media. **Desbloqueada**: las Fases 1–4 están verdes y verificadas (2026-10-23).
@@ -554,16 +637,17 @@ cd frontend/web-react && npm run build && npm run test
 
 ## 8. Decisiones que necesito antes de atacar
 
-> **Actualizado (2026-10-23):** las preguntas 2–5 ya están resueltas y aplicadas
-> (ver "Resultado de la Fase 1" y "Resultado de la Fase 2"). **Solo queda
-> viva la 1.**
+> **Actualizado (2026-10-23):** las preguntas 1–5 ya están resueltas y aplicadas
+> (ver "Resultado de la Fase 1", "Resultado de la Fase 5" y §6).
 
 1. **D5 — investigador**: ¿modelo oficial nuevo o rótulo honesto? (define si
    la Fase 5 entra en este sprint o se documenta como deuda)
-   → **Pendiente de tu confirmación.** La Fase 1 aplicó mientras tanto la
-   opción (b) de forma interina ("I_Investigador — adaptación §10.6 sobre
-   conteos (no oficial)"). Si confirmas (b), la Fase 5 se cierra como
-   *documentada*; si eliges (a), arranca el diseño del modelo de investigador.
+   → **Resuelto: opción (a)**, pero con una precisión que el modelo obliga: el
+   modelo de medición 2024 **no define** un indicador de producción por
+   persona, así que la Fase 5 entrega una **adaptación declarada** del mismo
+   pipeline (rótulo "NO oficial"), no un "indicador oficial de investigador".
+   El rótulo interino de la Fase 1 ("I_Investigador — adaptación §10.6 sobre
+   conteos (no oficial)") quedó sustituido por el de la adaptación.
 2. ~~**Fase 1 primero**~~ → **Resuelto: se hizo la Fase 1 primero** (chica,
    elimina el riesgo de evaluación y no toca el modelo).
 3. ~~**Alcance de la Fase 2**~~ → **Resuelto: tarjeta nueva** (`OfficialIndicatorPanel`)

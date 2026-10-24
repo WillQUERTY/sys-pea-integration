@@ -334,10 +334,18 @@ def _validar_valor(valor: Any, tipo: Any, ruta: str, errores: List[str]) -> None
     errores.append(f"{ruta}: tipo de contrato desconocido {tipo!r}")
 
 
-def validar_contra_contrato(payload: Dict[str, Any], contrato: Dict[str, Any]) -> List[str]:
-    """Valida que el payload respete el contrato (claves y tipos)."""
+def validar_contra_contrato(
+    payload: Dict[str, Any],
+    contrato: Dict[str, Any],
+    raiz: str = "modelo_oficial_2024",
+) -> List[str]:
+    """Valida que el payload respete el contrato (claves y tipos).
+
+    `raiz` es solo la etiqueta del camino en los mensajes de error (el bloque
+    de grupo es `modelo_oficial_2024`; el de la adaptación individual es
+    `adaptacion_individual_2024`)."""
     errores: List[str] = []
-    _validar_valor(payload, contrato, "modelo_oficial_2024", errores)
+    _validar_valor(payload, contrato, raiz, errores)
     return errores
 
 
@@ -367,17 +375,24 @@ def _ts_tipo(tipo: Any, sangria: str = "  ") -> str:
     return "unknown"
 
 
-def contrato_a_ts(contrato: Dict[str, Any], interfaz: str = "MincienciasOfficialModel2024") -> str:
+def contrato_a_ts(
+    contrato: Dict[str, Any],
+    interfaz: str = "MincienciasOfficialModel2024",
+    fuente: str = "backend/app/evaluator/contrato_oficial.py (CONTRATO)",
+    comando: str = "scripts/gen_contrato_oficial.py",
+) -> str:
     """Genera el archivo TypeScript con el tipo del contrato.
 
     El archivo generado es la ÚNICA declaración del tipo: si el contrato
     cambia, `scripts/gen_contrato_oficial.py --check` falla.
-    """
+
+    `fuente` y `comando` solo cambian el encabezado del archivo generado
+    (el contrato individual usa su propio módulo y su propio generador)."""
     lineas = [
         "// ARCHIVO GENERADO — NO EDITAR A MANO.",
-        "// Fuente: backend/app/evaluator/contrato_oficial.py (CONTRATO).",
-        "// Regenerar: python -X utf8 scripts/gen_contrato_oficial.py --regenerar",
-        "// Verificar:  python -X utf8 scripts/gen_contrato_oficial.py --check",
+        f"// Fuente: {fuente}.",
+        f"// Regenerar: python -X utf8 {comando} --regenerar",
+        f"// Verificar:  python -X utf8 {comando} --check",
         "",
         f"export interface {interfaz} {{",
     ]

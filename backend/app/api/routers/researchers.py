@@ -2,7 +2,6 @@ from typing import List, Optional
 from fastapi import APIRouter, HTTPException, Query
 
 from ... import repository
-from ...evaluator import evaluate_researcher_minciencias
 from ...models import Group, Researcher, Product, PagedResponse
 from ..common import _normalize_text
 
@@ -138,11 +137,21 @@ async def get_researcher_stats_endpoint(res_id: int):
 
 @router.get("/researchers/{res_id}/indicator", tags=["Researchers"])
 async def get_researcher_indicator_endpoint(res_id: int):
-    """Retorna el indicador de produccion científica individual (I_Investigador)
-    según el Modelo Minciencias 2024, aplicando la fórmula ponderada adaptada
-    a nivel de investigador."""
+    """Retorna la lectura individual de producción científica.
+
+    OJO con el rótulo: el Modelo Minciencias 2024 NO define un indicador de
+    producción por persona (su único indicador de producción, §3.10, es de
+    grupo). Por eso la respuesta trae DOS cosas, bien separadas:
+
+    - `adaptacion_individual_2024`: ADAPTACIÓN DECLARADA del pipeline
+      §2.2.9 → §3.10 aplicado a la unidad "investigador" (NO oficial), con su
+      desglose auditable (índices §3.9, términos §3.10, población, exclusiones,
+      adaptaciones y supuestos);
+    - `i_investigador_legacy`: la aproximación legacy (conteos crudos
+      ponderados), que queda solo como referencia.
+    """
     try:
-        return evaluate_researcher_minciencias(res_id, repository)
+        return repository.get_researcher_minciencias_indicator(res_id)
     except KeyError:
         raise HTTPException(status_code=404, detail="Investigador no encontrado")
     except Exception as e:

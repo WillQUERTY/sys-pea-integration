@@ -104,6 +104,58 @@ void imprimir_modelo_oficial(const official::ResultadoOficial& r) {
     std::cout << "Supuestos documentados en docs/indicador-oficial-2024.md\n";
 }
 
+// Impresión legible de la ADAPTACIÓN INDIVIDUAL (§2.2.9 → §3.10).
+// OJO con el rótulo: el modelo de medición 2024 define UN solo indicador de
+// producción y es DE GRUPO (§3.10). Lo que se muestra aquí es una adaptación
+// declarada del mismo pipeline a la unidad "investigador": NO es un
+// indicador oficial del modelo.
+void imprimir_modelo_individual(const official::ResultadoOficial& r) {
+    std::cout << "=== Adaptación individual del modelo Minciencias 2024 (NO OFICIAL) ===\n";
+    std::cout << "Investigador: " << r.grupo << "  (antigüedad: " << r.edad_grupo
+              << " anios, cierre: " << r.anio_cierre << ")\n";
+    std::cout << std::fixed << std::setprecision(6);
+    std::cout << "Ind.Investigador = " << r.ind_grupo() << "  (rango teorico "
+              << official::rango_teorico() << ")\n";
+    std::cout << "Posicion en la poblacion de investigadores: " << r.puesto << " de " << r.de
+              << "  (percentil " << r.percentil << ")\n";
+    std::cout << "--- Terminos §3.10 (indice §3.9 x coeficiente) ---\n";
+    for (size_t i = 0; i < r.indices.size(); ++i) {
+        std::cout << "  " << std::setw(8) << std::left << r.indices[i]
+                  << " indice " << std::setw(10) << std::right << r.valores_indice[i]
+                  << "  coef " << std::setw(4) << official::COEFICIENTES[i]
+                  << "  ->  " << r.terminos[i] << "\n";
+    }
+    std::cout << "--- Ind_Clase por clase (§3.7 / §3.8.1) ---\n";
+    for (size_t i = 0; i < r.clases.size(); ++i) {
+        std::cout << "  " << std::setw(8) << std::left << r.clases[i]
+                  << " valor " << std::setw(12) << std::right << r.valores_clase[i]
+                  << "  maximo poblacion " << r.maximos_clase[i] << "\n";
+    }
+    std::cout << "--- Cohe (§2.2.10.1) / Coop (§2.2.10.2) de la RED ---\n";
+    std::cout << "  Cohe = " << r.cohe.valor << "  (" << r.cohe.suma_autores
+              << " firmantes registrados / " << r.cohe.productos << " productos)\n";
+    std::cout << "  Coop = " << r.coop.valor << "  (" << r.coop.suma_grupos
+              << " grupos de la red / " << r.coop.productos << " productos)\n";
+    if (!r.subtipos.empty()) {
+        std::cout << "--- Desglose por subtipo ---\n";
+        for (const official::DetalleSubtipo& d : r.subtipos) {
+            std::cout << "  " << std::setw(12) << std::left << d.codigo
+                      << " n=" << d.n << " periodo=" << d.periodo
+                      << " lambda=" << d.lambda
+                      << " peso_global=" << d.peso_global
+                      << " termino=" << d.termino << "\n";
+        }
+    }
+    if (!r.excluidos.empty()) {
+        std::cout << "--- Exclusiones (lo que la fuente no permite verificar) ---\n";
+        for (const auto& par : r.excluidos) {
+            std::cout << "  [" << par.second << "] " << par.first << "\n";
+        }
+    }
+    std::cout << "Las TRES adaptaciones declaradas y los supuestos estan en el JSON (--json)\n";
+    std::cout << "y en docs/indicador-oficial-2024.md\n";
+}
+
 } // namespace
 
 int handle_researchers(int argc, char* argv[]) {
@@ -179,8 +231,8 @@ int handle_researchers(int argc, char* argv[]) {
 
 int handle_indicator(int argc, char* argv[]) {
     if (argc < 3) {
-        std::cerr << "Usage: pea_cli indicator researcher <id>\n";
-        std::cerr << "       pea_cli indicator group <id>\n";
+        std::cerr << "Usage: pea_cli indicator researcher <id> [--data <archivo.json>] [--year <anio>] [--json]\n";
+        std::cerr << "       pea_cli indicator group <id> [--data <archivo.json>] [--year <anio>] [--json]\n";
         return 1;
     }
     std::string sub = argv[2];
@@ -195,76 +247,55 @@ int handle_indicator(int argc, char* argv[]) {
         if (!opt) { std::cerr << "Researcher " << id << " not found\n"; return 1; }
         const auto& r = *opt;
 
-        // Productos vinculados al investigador (memoria RAM del core C++)
-        std::vector<int> pids = products_of_researcher_ram(id);
-
-        int total = 0, top = 0, type_a = 0, type_b = 0;
-        int asc = 0, dpc = 0, frh_a = 0, frh_b = 0, coop = 0;
-        int in_window = 0;
-        int current = current_year();
-
-        for (int pid : pids) {
-            auto popt = get_product(pid);
-            if (!popt) continue;
-            const auto& p = *popt;
-            if (p.status != "active") continue;
-
-            int py = product_year(p);
-            if (py <= 0) py = current;
-            int age = current - py;
-            if (age < 0) age = 0;
-
-            // Ventana simplificada: 5 años por defecto, 10 para patentes (DTI)
-            int window = (p.family_id == 2) ? 10 : 5;
-            if (age > window) continue;
-
-            in_window++;
-            total++;
-
-            switch (p.family_id) {
-                case 3: asc++; break;  // ASC
-                case 4: dpc++; break;  // DPC
-                case 5: {
-                    // FRH: sin distincion doctoral/maestria en C++, se cuenta como Fr.B por defecto
-                    frh_b++;
-                    break;
-                }
-                default: break;
-            }
-
-            // Calidad aproximada por categoria
-            switch (p.quality_category_id) {
-                case 1: top++; break;   // TOP
-                case 2: type_a++; break; // Tipo A
-                case 3: type_b++; break; // Tipo B
-                default: break;
-            }
-
-            // Cooperacion: si el producto tiene mas de un autor vinculado
-            auto authors = authors_of_product(pid);
-            int others = 0;
-            for (const auto& pa : authors) if (pa.researcherId != id) others++;
-            if (others > 0) coop++;
+        if (list_researchers().empty()) {
+            std::cerr << "The repository is empty: load data with --data <archivo.json>\n";
+            return 1;
         }
 
-        // Formula I_Investigador (Minciencias 2024, seccion 10.6, adaptada a individual)
-        double ap = asc + dpc;
-        double i_investigador = 3.7 * top + 2.3 * type_a + 0.4 * type_b
-                              + 1.5 * ap + 0.5 * dpc
-                              + 1.0 * frh_a + 0.2 * frh_b
-                              + 0.3 * coop;
+        // --- Adaptación individual del modelo 2024 (§2.2.9 → §3.10) ------------
+        // Es el MISMO cálculo que hace la API (`adaptacion_individual_2024`) y
+        // que verifica scripts/pea_paridad_individual.py contra Python.
+        //
+        // OJO CON EL RÓTULO: el modelo de medición 2024 define UN solo
+        // indicador de producción y es DE GRUPO (§3.10): no existe un
+        // indicador oficial por persona. Esto es una ADAPTACIÓN DECLARADA.
+        int anio = op.anio > 0 ? op.anio : current_year();
+        std::string error;
+        official::ResultadoOficial individual =
+            official::evaluar_modelo_individual(id, anio, &error);
+        if (!error.empty()) { std::cerr << error << "\n"; return 1; }
 
-        std::cout << "=== I_Investigador (aproximación legacy, NO oficial) — Investigador " << id << " ===\n";
+        if (op.json) {
+            std::vector<official::ResultadoOficial> poblacion =
+                official::evaluar_poblacion_investigadores(
+                    official::construir_poblacion_investigadores(anio), anio);
+            std::cout << official::resultado_individual_a_json(individual, poblacion);
+            return 0;
+        }
+
+        imprimir_modelo_individual(individual);
+
+        // --- Datos de contexto (lectura directa del repositorio) --------------
+        std::cout << "\n--- Contexto del investigador ---\n";
         std::cout << "Nombre: " << r.first_names << " " << r.last_names << "\n";
         std::cout << "Codigo externo: " << r.external_code << "\n";
         std::cout << "Nivel formacion: " << r.highest_education_level << "\n";
-        std::cout << "Productos totales: " << total << "\n";
-        std::cout << "Productos en ventana: " << in_window << "\n";
-        std::cout << "  TOP: " << top << " | Tipo A: " << type_a << " | Tipo B: " << type_b << "\n";
-        std::cout << "  ASC: " << asc << " | DPC: " << dpc << " | FRH-A: " << frh_a << " | FRH-B: " << frh_b << "\n";
-        std::cout << "  Productos coautorizados: " << coop << "\n";
-        std::cout << "-------------------------------\n";
-        std::cout << "I_Investigador (legacy, no oficial) = " << i_investigador << "\n";
+        std::cout << "Productos vinculados: " << products_of_researcher_ram(id).size() << "\n";
+
+        // --- El legacy NO se calcula en el CLI (brecha B5, Fase 6) -------------
+        // Aquí vivía una SEGUNDA fórmula de I_Investigador (conteos crudos
+        // clasificados por `quality_category_id` y con una ventana propia)
+        // que divergía de la de la API: para el mismo investigador el CLI y la
+        // API daban números distintos porque cada una clasificaba los
+        // productos con reglas diferentes. Dos "referencias legacy" para la
+        // misma cifra es exactamente lo que la auditoría marcó como B5.
+        // Ahora el legacy tiene UNA sola implementación, la de la API, que lo
+        // expone como `i_investigador_legacy` (aproximación legacy, no
+        // oficial) porque es insumo descriptivo, no un indicador del modelo.
+        std::cout << "\nNota: el indicador legacy (conteos crudos) no se calcula aquí.\n"
+                  << "La API lo expone como `i_investigador_legacy` (aproximación legacy, no oficial):\n"
+                  << "es una suma de conteos SIN λ (§2.2.9), SIN pesos por clase (§3.6) y SIN\n"
+                  << "normalización contra la población (§3.9); no es un indicador del modelo 2024.\n";
         return 0;
     }
 
@@ -322,7 +353,7 @@ int handle_indicator(int argc, char* argv[]) {
     }
 
     std::cerr << "Unknown subcommand: " << sub << "\n";
-    std::cerr << "Usage: pea_cli indicator researcher <id> [--data <archivo.json>] [--year <anio>]\n";
+    std::cerr << "Usage: pea_cli indicator researcher <id> [--data <archivo.json>] [--year <anio>] [--json]\n";
     std::cerr << "       pea_cli indicator group <id> [--data <archivo.json>] [--year <anio>] [--json]\n";
     return 1;
 }

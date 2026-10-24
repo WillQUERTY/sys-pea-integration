@@ -127,7 +127,7 @@ def edad_grupo(
 # --- Adaptador RAM ------------------------------------------------------------
 
 
-def _descripcion(producto: Any) -> str:
+def descripcion_producto(producto: Any) -> str:
     return (_valor(producto, "description") or "").strip()
 
 
@@ -166,9 +166,12 @@ def familia_relacional(producto: Any, descripcion: Optional[str] = None) -> Opti
     return familia if familia in ("GNC", "DTI") else None
 
 
-def _resolver_autores(repository_module: Any):
+def resolver_autores(repository_module: Any):
     """Devuelve un callable (product_id) -> [researcher_id] o None si el
-    repositorio no expone los autores del producto en RAM."""
+    repositorio no expone los autores del producto en RAM.
+
+    Es público porque la adaptación individual (`official_researcher_population`)
+    lee los mismos autores para el Cohe/Coop de la red del investigador."""
     fn = getattr(repository_module, "authors_of_product_ram", None)
     if callable(fn):
         def _por_fachada(pid):
@@ -186,8 +189,11 @@ def _resolver_autores(repository_module: Any):
     return _por_nucleo
 
 
-def _membresias(repository_module: Any, grupos: Sequence[Any]) -> Dict[int, Set[int]]:
-    """mapa investigador -> grupos donde está vinculado."""
+def mapa_membresias(repository_module: Any, grupos: Sequence[Any]) -> Dict[int, Set[int]]:
+    """mapa investigador -> grupos donde está vinculado.
+
+    Es público porque la adaptación individual (`official_researcher_population`)
+    necesita el mismo mapa para el Coop de la red del investigador."""
     membresias: Dict[int, Set[int]] = defaultdict(set)
     for grupo in grupos:
         try:
@@ -210,8 +216,8 @@ def construir_poblacion(
     modelo oficial (productos clasificados, años y datos relacionales)."""
     catalogo = catalogo if catalogo is not None else cargar_catalogo()
     grupos_ram = list(repository_module.list_groups() or [])
-    membresias = _membresias(repository_module, grupos_ram)
-    autores_de = _resolver_autores(repository_module)
+    membresias = mapa_membresias(repository_module, grupos_ram)
+    autores_de = resolver_autores(repository_module)
 
     grupos: List[GrupoOficial] = []
     for grupo in grupos_ram:
@@ -230,7 +236,7 @@ def construir_poblacion(
                 continue
             if producto is None:
                 continue
-            descripcion = _descripcion(producto)
+            descripcion = descripcion_producto(producto)
             anio = extraer_anio(producto)
             if anio:
                 anios.append(anio)
@@ -382,9 +388,12 @@ __all__ = [
     "CLASES",
     "COEFICIENTES",
     "construir_poblacion",
+    "descripcion_producto",
     "edad_grupo",
     "evaluar_modelo_oficial",
     "extraer_anio",
     "familia_relacional",
     "grupos_relacionados",
+    "mapa_membresias",
+    "resolver_autores",
 ]

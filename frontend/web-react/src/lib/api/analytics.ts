@@ -1,5 +1,6 @@
 import { api } from './client'
 import type { MincienciasOfficialModel2024 } from './contrato-oficial-2024.generated'
+import type { MincienciasIndividualAdaptation2024 } from './contrato-individual-2024.generated'
 
 // --- Dashboard ---
 export interface Modelo2024Stats {
@@ -123,6 +124,14 @@ export interface MincienciasTierDiagnosis {
  *  (backend/app/evaluator/contrato_oficial.py): no editar aquí. */
 export type { MincienciasOfficialModel2024 }
 
+/** ADAPTACIÓN INDIVIDUAL del modelo de medición 2024 (NO oficial).
+ *  El modelo 2024 define un único indicador de producción y es DE GRUPO
+ *  (§3.10): no existe un indicador oficial por persona. Este bloque es la
+ *  adaptación declarada del mismo pipeline a la unidad "investigador".
+ *  La forma está GENERADA desde el contrato único
+ *  (backend/app/evaluator/contrato_individual.py): no editar aquí. */
+export type { MincienciasIndividualAdaptation2024 }
+
 export interface MincienciasGroupDiagnosis {
   group_id: number
   group_name: string
@@ -216,7 +225,13 @@ export async function getResearcherStats(researcherId: number) {
 export interface ResearcherIndicator {
   researcher_id: number
   researcher_name: string
-  i_investigador: number
+  /** Aproximación legacy (conteos crudos ponderados): NO es un indicador del
+   *  modelo 2024 — ese modelo no define producción por persona. */
+  i_investigador_legacy?: number
+  /** ADAPTACIÓN INDIVIDUAL declarada del modelo 2024 (NO oficial). La forma
+   *  está GENERADA desde el contrato único
+   *  (backend/app/evaluator/contrato_individual.py): no editar aquí. */
+  adaptacion_individual_2024?: MincienciasIndividualAdaptation2024
 }
 
 export async function getResearcherIndicator(researcherId: number) {

@@ -165,6 +165,59 @@ std::string resultado_a_json(const ResultadoOficial& r,
 /// Supuestos documentados (los mismos del backend).
 std::vector<std::string> supuestos();
 
+// ============================================================================
+//  ADAPTACIÓN INDIVIDUAL (NO OFICIAL)
+// ============================================================================
+// El archivo normativo `docs/modelo-medicion-2024.md` (Anexo 1 M601PR04G01
+// v02) define UN solo indicador de producción y es DE GRUPO (§3.10): no
+// existe un indicador oficial de producción POR PERSONA. Lo que sigue es una
+// ADAPTACIÓN DECLARADA del mismo pipeline (§2.2.9 → §3.10) a la unidad
+// "investigador", y por eso se rotula SIEMPRE como NO oficial.
+//
+// Para que no pueda divergir del modelo, la adaptación REUSA el pipeline del
+// grupo: el investigador entra con su antigüedad en el lugar de la "edad del
+// grupo" (§2.2.9) y el cálculo es el MISMO código.
+
+/// Rótulo honesto del bloque: dice qué es (adaptación) y qué NO es (oficial).
+extern const char* const MODELO_INDIVIDUAL;
+
+/// Base normativa que sí se aplica (la parte del modelo que es oficial).
+extern const char* const BASE_NORMATIVA_INDIVIDUAL;
+
+/// Las TRES adaptaciones declaradas, en texto auditable. Van en el payload.
+std::vector<std::string> adaptaciones();
+
+/// Supuestos del lado del dato (lo que NO se inventa).
+std::vector<std::string> supuestos_individual();
+
+struct InvestigadorOficial {
+    std::string identificacion;
+    int         antiguedad_anos = 1;
+    std::vector<ProductoOficial> productos;
+    int         id_investigador = 0;
+};
+
+/// Construye la población de investigadores del repositorio (RAM).
+/// Antigüedad = años desde su primera vinculación; si no hay membresía con
+/// fecha, desde su primer producto; si no hay ninguno, 1 año (supuesto).
+std::vector<InvestigadorOficial> construir_poblacion_investigadores(int ano_cierre);
+
+/// Evalúa la población de investigadores con el MISMO pipeline del grupo.
+/// Los resultados traen las claves del grupo; `grupo` es la identificación
+/// del investigador, `grupo_id` su id y `edad_grupo` su antigüedad.
+std::vector<ResultadoOficial> evaluar_poblacion_investigadores(
+    const std::vector<InvestigadorOficial>& investigadores, int ano_cierre);
+
+/// Evalúa un investigador concreto. `error` recibe el motivo si no se puede
+/// evaluar.
+ResultadoOficial evaluar_modelo_individual(int researcher_id, int ano_cierre,
+                                           std::string* error);
+
+/// Serializa el bloque individual (mismo contrato que
+/// `adaptacion_individual_2024` de la API).
+std::string resultado_individual_a_json(const ResultadoOficial& r,
+                                        const std::vector<ResultadoOficial>& poblacion);
+
 } // namespace peai::official
 
 #endif // PEAI_SERVICES_OFFICIAL_INDICATOR_H

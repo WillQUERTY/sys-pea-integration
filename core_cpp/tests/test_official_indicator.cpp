@@ -370,6 +370,170 @@ static void test_json_cumple_el_contrato() {
     CHECK(official::supuestos().size() == 6, "los supuestos documentados son seis");
 }
 
+// =====================================================================
+//  ADAPTACIÓN INDIVIDUAL (Fase 5, brecha B3)
+// =====================================================================
+//
+// El modelo de medición 2024 define UN solo indicador de producción y es de
+// GRUPO (§3.10): no existe un indicador oficial por persona. Lo que se prueba
+// aquí es la ADAPTACIÓN DECLARADA del mismo pipeline a la unidad
+// "investigador" (mismo código, mismas reglas), sobre el MISMO caso sintético
+// que fija el golden versionado del contrato individual.
+
+static void test_adaptacion_individual_del_caso_sintetico() {
+    CHECK(load_from_file(ruta_caso()), "el caso sintetico se carga en la RAM");
+
+    std::vector<official::InvestigadorOficial> pueblo =
+        official::construir_poblacion_investigadores(2026);
+    CHECK(pueblo.size() == 3, "la poblacion tiene tres investigadores");
+
+    // La antigüedad sale de la PRIMERA vinculación (membresía con fecha).
+    for (const official::InvestigadorOficial& inv : pueblo) {
+        if (inv.id_investigador == 101) {
+            CHECK(inv.identificacion == "Ana Perez (#101)", "Ana Perez (#101)");
+            CHECK(inv.antiguedad_anos == 8, "Ana: antiguedad 8 anos (desde 2018)");
+        }
+        if (inv.id_investigador == 102)
+            CHECK(inv.antiguedad_anos == 7, "Luis: antiguedad 7 anos (desde 2019)");
+        if (inv.id_investigador == 103)
+            CHECK(inv.antiguedad_anos == 2, "Sara: antiguedad 2 anos (desde 2024)");
+    }
+
+    std::string error;
+    official::ResultadoOficial ana = official::evaluar_modelo_individual(101, 2026, &error);
+    CHECK(error.empty(), "el investigador 101 se evalua sin error");
+
+    // Los mismos números que fija el golden individual.
+    CHECK_NEAR(ana.ind_grupo(), 0.7385491756756803, "Ind.Investigador de Ana");
+    CHECK(ana.puesto == 2 && ana.de == 3, "Ana va segunda de tres");
+    CHECK_NEAR(ana.percentil, 66.7, "percentil de Ana");
+
+    // §3.9: la normalización es contra la población de INVESTIGADORES.
+    CHECK_NEAR(ana.maximo_clase("DPC"), 405.4651081081644, "maximo de la poblacion en DPC");
+    CHECK_NEAR(ana.maximo_clase("FRH-B"), 182.45929864867398, "maximo de la poblacion en FRH-B");
+    CHECK_NEAR(ana.indice("DPC"), 0.8993205735735829, "indice DPC de Ana");
+    CHECK_NEAR(ana.indice("Cohe"), 0.888888888888889, "indice Cohe de Ana");
+    CHECK_NEAR(ana.indice("Coop"), 0.6666666666666667, "indice Coop de Ana");
+
+    // §2.2.10: Cohe = firmantes registrados − 1; Coop = grupos de la red − 1.
+    CHECK(ana.cohe.suma_autores == 7 && ana.cohe.productos == 3, "Cohe: 7 firmantes / 3 productos");
+    CHECK_NEAR(ana.cohe.valor, 7.0 / 3.0 - 1.0, "Cohe = 7/3 - 1");
+    CHECK(ana.coop.suma_grupos == 5 && ana.coop.productos == 3, "Coop: 5 grupos / 3 productos");
+    CHECK_NEAR(ana.coop.valor, 5.0 / 3.0 - 1.0, "Coop = 5/3 - 1");
+
+    // La ventana (5) manda sobre la antigüedad (8) de Ana.
+    const official::DetalleSubtipo* lib = buscar_subtipo(ana, "LIB_DIV");
+    CHECK(lib != nullptr, "LIB_DIV aporta en Ana");
+    if (lib) {
+        CHECK(lib->periodo == 5, "LIB_DIV: periodo = min(antiguedad 8, ventana 5) = 5");
+        CHECK_NEAR(lib->lambda, 0.1823215567939546, "LIB_DIV: lambda");
+        CHECK_NEAR(lib->termino, 182.32155679395458, "LIB_DIV: termino");
+    }
+
+    // Sara: la ANTIGÜEDAD (2) manda sobre la ventana (5).
+    official::ResultadoOficial sara = official::evaluar_modelo_individual(103, 2026, &error);
+    CHECK(error.empty(), "el investigador 103 se evalua sin error");
+    CHECK_NEAR(sara.ind_grupo(), 1.0666666666666667, "Ind.Investigador de Sara");
+    CHECK(sara.puesto == 1 && sara.de == 3, "Sara va primera de tres");
+    const official::DetalleSubtipo* wp = buscar_subtipo(sara, "WP");
+    CHECK(wp != nullptr, "WP aporta en Sara");
+    if (wp) {
+        CHECK(wp->periodo == 2, "WP: periodo = min(antiguedad 2, ventana 5) = 2");
+        CHECK_NEAR(wp->lambda, 0.4054651081081644, "WP: lambda");
+    }
+    CHECK_NEAR(sara.coop.valor, 1.0, "Coop de Sara = 1 (cooperacion entre grupos)");
+}
+
+// La adaptación es el MISMO pipeline del grupo: con la antigüedad en el lugar
+// de la edad, el número no puede divergir del modelo.
+static void test_la_adaptacion_es_el_mismo_pipeline_del_grupo() {
+    official::GrupoOficial como_grupo;
+    como_grupo.identificacion = "Prueba (#1)";
+    como_grupo.edad_grupo = 4;
+    official::ProductoOficial p;
+    p.identificacion = "1";
+    p.categoria = "WP";
+    p.motivo = "documento de trabajo (working paper)";
+    p.anio = 2025;
+    como_grupo.productos.push_back(p);
+
+    official::InvestigadorOficial como_investigador;
+    como_investigador.identificacion = "Prueba (#1)";
+    como_investigador.antiguedad_anos = 4;
+    como_investigador.id_investigador = 1;
+    como_investigador.productos.push_back(p);
+
+    std::vector<official::ResultadoOficial> grupo =
+        official::evaluar_poblacion({como_grupo}, 2026);
+    std::vector<official::ResultadoOficial> investigador =
+        official::evaluar_poblacion_investigadores({como_investigador}, 2026);
+
+    CHECK(grupo.size() == 1 && investigador.size() == 1, "las dos poblaciones se evaluan");
+    if (!grupo.empty() && !investigador.empty()) {
+        CHECK_NEAR(investigador[0].ind_grupo(), grupo[0].ind_grupo(),
+                   "el indicador individual es el del grupo con la misma antigüedad");
+        CHECK(investigador[0].grupo_id == 1, "el resultado individual trae el id del investigador");
+        CHECK(investigador[0].edad_grupo == 4, "la antigüedad ocupa el lugar de la edad del grupo");
+    }
+}
+
+// §3.10 y §3.9 se cumplen también en la lectura individual.
+static void test_formula_y_normalizacion_individual() {
+    CHECK(load_from_file(ruta_caso()), "el caso sintetico se carga en la RAM");
+    std::vector<official::ResultadoOficial> res =
+        official::evaluar_poblacion_investigadores(
+            official::construir_poblacion_investigadores(2026), 2026);
+    CHECK(res.size() == 3, "se evaluan los tres investigadores");
+
+    for (const official::ResultadoOficial& r : res) {
+        CHECK(r.indices.size() == 9, "el bloque individual tiene los 9 terminos de §3.10");
+        double suma = 0.0;
+        for (double t : r.terminos) suma += t;
+        CHECK_NEAR(suma, r.ind_grupo(), "Ind.Investigador es la suma de los 9 terminos");
+        for (size_t i = 0; i < r.indices.size(); ++i) {
+            CHECK(r.valores_indice[i] >= -1e-12 && r.valores_indice[i] <= 1.0 + 1e-12,
+                  "el indice normalizado esta entre 0 y 1");
+            CHECK_NEAR(r.terminos[i], official::COEFICIENTES[i] * r.valores_indice[i],
+                       "el termino es el coeficiente por el indice");
+        }
+        CHECK_NEAR(r.ind_grupo(), r.ind_grupo(), "el valor es finito");
+        CHECK(r.ind_grupo() <= official::rango_teorico() + 1e-9,
+              "el valor no supera el rango teorico");
+    }
+}
+
+// El JSON individual debe traer las 22 claves raíz del contrato individual y
+// el rótulo honesto.
+static void test_json_individual_cumple_el_contrato() {
+    CHECK(load_from_file(ruta_caso()), "el caso sintetico se carga en la RAM");
+    std::string error;
+    official::ResultadoOficial r = official::evaluar_modelo_individual(101, 2026, &error);
+    std::vector<official::ResultadoOficial> poblacion =
+        official::evaluar_poblacion_investigadores(
+            official::construir_poblacion_investigadores(2026), 2026);
+    std::string json = official::resultado_individual_a_json(r, poblacion);
+
+    const char* claves[] = {
+        "modelo", "base_normativa", "anio_cierre", "investigador",
+        "ind_investigador", "rango_teorico", "posicion_poblacion", "poblacion",
+        "indices", "terminos_ponderados", "ind_clase", "maximos_poblacion",
+        "maximo_cohe_poblacion", "maximo_coop_poblacion", "subtipos", "cohe",
+        "coop", "excluidos", "sin_ano", "fuera_de_periodo", "adaptaciones",
+        "supuestos",
+    };
+    for (const char* clave : claves) {
+        CHECK(tiene_clave_raiz(json, clave), std::string("el JSON trae la clave ") + clave);
+    }
+    CHECK(json.find("NO oficial") != std::string::npos,
+          "el JSON se rotula como NO oficial");
+    CHECK(json.find("\"ind_investigador\":") != std::string::npos,
+          "el JSON trae el Ind.Investigador");
+    CHECK(json.find("\"adaptaciones\":") != std::string::npos,
+          "el JSON declara las TRES adaptaciones");
+    CHECK(official::adaptaciones().size() == 3, "hay TRES adaptaciones declaradas");
+    CHECK(official::supuestos_individual().size() == 4, "hay cuatro supuestos del dato");
+}
+
 int main() {
     std::cout << "===== Pruebas del indicador oficial 2024 (Fase 4) =====\n\n";
 
@@ -383,6 +547,12 @@ int main() {
     RUN_TEST(test_evaluacion_del_caso_sintetico);
     RUN_TEST(test_normalizacion_sobre_la_poblacion);
     RUN_TEST(test_formula_310_y_rango);
+
+    std::cout << "\n--- Adaptacion individual (Fase 5) ---\n";
+    RUN_TEST(test_adaptacion_individual_del_caso_sintetico);
+    RUN_TEST(test_la_adaptacion_es_el_mismo_pipeline_del_grupo);
+    RUN_TEST(test_formula_y_normalizacion_individual);
+    RUN_TEST(test_json_individual_cumple_el_contrato);
 
     std::cout << "\n--- Contrato ---\n";
     RUN_TEST(test_json_cumple_el_contrato);

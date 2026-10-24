@@ -64,11 +64,21 @@ def evaluate_group_minciencias(group_id: int, repository_module: Any) -> Dict[st
 
 
 def evaluate_researcher_minciencias(researcher_id: int, repository_module: Any) -> Dict[str, Any]:
-    """Evalúa la producción científica individual de un investigador según el
-    Modelo Minciencias 2024, aplicando la fórmula ponderada I_Investigador
-    (adaptación de I_Grupo a nivel individual).
+    """Evalúa la producción científica individual de un investigador con la
+    APROXIMACIÓN LEGACY (conteos crudos ponderados con los coeficientes del
+    modelo, aplicados al investigador).
 
-    Retorna el valor del indicador y el desglose por clase de producto.
+    OJO: el modelo de medición Minciencias 2024 **no define** un indicador de
+    producción por persona (su único indicador de producción, §3.10, es de
+    GRUPO). Esta suma ponderada de conteos NO es el indicador del modelo: por
+    eso el número sale en `i_investigador_legacy` (Fase 5, brecha B3).
+
+    La lectura con la escala del modelo —una ADAPTACIÓN DECLARADA del pipeline
+    §2.2.9 → §3.10 aplicada a la unidad "investigador"— llega aparte, en la
+    clave aditiva `adaptacion_individual_2024`, que agrega la capa de
+    repositorio (`repositories.analytics.get_researcher_minciencias_indicator`).
+
+    Retorna el valor de referencia y el desglose por clase de producto.
     """
     metrics = collect_researcher_metrics(researcher_id, repository_module)
     researcher = metrics["researcher"]
@@ -79,7 +89,10 @@ def evaluate_researcher_minciencias(researcher_id: int, repository_module: Any) 
         "external_code": researcher.external_code or "",
         "classification_records": researcher.classification_records or "",
         "highest_education_level": researcher.highest_education_level or "",
-        "i_investigador": metrics["i_investigador"],
+        # Aproximación legacy (conteos crudos): NO es el indicador del modelo
+        # 2024 — a nivel individual ese modelo no define ninguno. La lectura
+        # con la escala del modelo va en `adaptacion_individual_2024`.
+        "i_investigador_legacy": metrics["i_investigador_legacy"],
         "summary": {
             "total_products": metrics["total_products"],
             "products_in_window": metrics["products_in_window"],

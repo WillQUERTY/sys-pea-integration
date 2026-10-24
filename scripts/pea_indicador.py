@@ -2,9 +2,13 @@
 # scripts/pea_indicador.py
 """
 Programa standalone en Python para el Parcial 2 EdD.
-Calcula el Indicador de Produccion Científica:
-  - I_Grupo   (nivel de grupo, fórmula Minciencias 2024 seccion 10.6)
-  - I_Investigador (nivel individual, misma fórmula adaptada)
+Calcula el diagnóstico de producción científica:
+  - Grupo: semáforo de categorización (referencia legacy, NO oficial).
+    El indicador oficial 2024 es de grupo (§3.10) y se calcula aparte en
+    `scripts/pea_indicador_oficial.py`.
+  - Investigador: la ADAPTACIÓN INDIVIDUAL declarada del modelo 2024
+    (NO oficial: el modelo 2024 no define producción por persona) más, como
+    referencia, la aproximación legacy de conteos crudos.
 
 Uso:
     python scripts/pea_indicador.py [--archivo pea_data.json] [--grupo ID] [--investigador ID]
@@ -70,7 +74,7 @@ def imprimir_indicador_grupo(grupo_id: int) -> None:
         print(f"[Error] No se pudo evaluar grupo {grupo_id}: {exc}")
         return
 
-    print(f"\n=== I_Grupo — Grupo {grupo_id} ===")
+    print(f"\n=== Diagnostico de grupo (semáforo legacy, no oficial) — Grupo {grupo_id} ===")
     print(f"Nombre: {resultado.get('group_name', '')}")
     print(f"Clasificacion actual: {resultado.get('current_classification', '')}")
     print(f"Tier alcanzado: {resultado.get('max_qualified_tier', '')}")
@@ -95,7 +99,7 @@ def imprimir_indicador_investigador(researcher_id: int) -> None:
         print(f"[Error] No se pudo evaluar investigador {researcher_id}: {exc}")
         return
 
-    print(f"\n=== I_Investigador — Investigador {researcher_id} ===")
+    print(f"\n=== Produccion individual — Investigador {researcher_id} ===")
     print(f"Nombre: {resultado.get('researcher_name', '')}")
     print(f"Codigo externo: {resultado.get('external_code', '')}")
     print(f"Nivel formacion: {resultado.get('highest_education_level', '')}")
@@ -106,7 +110,25 @@ def imprimir_indicador_investigador(researcher_id: int) -> None:
     print(f"  ASC: {s.get('asc_count', '-')} | DPC: {s.get('dpc_count', '-')}")
     print(f"  FRH-A: {s.get('frh_a_count', '-')} | FRH-B: {s.get('frh_b_count', '-')}")
     print(f"  Productos coautorizados: {s.get('coauthored_products_count', '-')}")
-    print(f"  I_Investigador = {resultado.get('i_investigador', '-')}")
+    # Referencia legacy (conteos crudos): NO es un indicador del modelo 2024
+    # (ese modelo no define produccion por persona).
+    print(f"  I_Investigador (referencia legacy, no oficial) = {resultado.get('i_investigador_legacy', '-')}")
+
+    # Adaptación individual declarada del modelo 2024 (con la escala del
+    # modelo): llega como clave aditiva del endpoint /investigator/indicator.
+    try:
+        from backend.app.evaluator.official_researcher_population import evaluar_modelo_individual
+
+        adaptacion = evaluar_modelo_individual(repository, researcher_id)
+        print(f"  Adaptación individual 2024 (NO oficial) = {adaptacion['ind_investigador']}")
+        posicion = adaptacion["posicion_poblacion"]
+        print(
+            f"    Puesto {posicion['puesto']} de {posicion['de']} "
+            f"(percentil {posicion['percentil']}%) — antigüedad "
+            f"{adaptacion['investigador']['antiguedad_anos']} años"
+        )
+    except Exception as exc:
+        print(f"  [Aviso] No se pudo calcular la adaptación individual 2024: {exc}")
 
 
 def listar_primeros() -> tuple[int | None, int | None]:

@@ -18,6 +18,7 @@
 #include "services/catalog_2024_generated.h"
 #include "services/group_service.h"
 #include "services/product_service.h"
+#include "services/researcher_service.h"
 
 #include <algorithm>
 #include <cmath>
@@ -919,6 +920,330 @@ std::string resultado_a_json(const ResultadoOficial& r, const std::vector<Result
 
     o << "  \"supuestos\": [";
     std::vector<std::string> sup = supuestos();
+    for (size_t i = 0; i < sup.size(); ++i) {
+        if (i) o << ", ";
+        o << json_cadena(sup[i]);
+    }
+    o << "]\n";
+    o << "}\n";
+    return o.str();
+}
+
+// ============================================================================
+//  ADAPTACIÓN INDIVIDUAL (NO OFICIAL)
+// ============================================================================
+// El modelo de medición 2024 define UN solo indicador de producción y es de
+// GRUPO (§3.10): no existe un indicador oficial de producción POR PERSONA.
+// Esto es una ADAPTACIÓN DECLARADA del mismo pipeline a la unidad
+// "investigador" y por eso se rotula SIEMPRE como NO oficial.
+//
+// Para que no pueda divergir del modelo, la adaptación REUSA el pipeline del
+// grupo: el investigador entra con su antigüedad en el lugar de la "edad del
+// grupo" (§2.2.9) y el cálculo es el MISMO código.
+
+const char* const MODELO_INDIVIDUAL =
+    "Minciencias 2024 — adaptación a nivel de investigador (NO oficial)";
+
+const char* const BASE_NORMATIVA_INDIVIDUAL =
+    "Modelo de medición 2024 §2.2.9 → §3.10, aplicado a la unidad "
+    "'investigador' (adaptación declarada, no oficial)";
+
+std::vector<std::string> adaptaciones() {
+    return {
+        "Unidad de medición: la población es la de investigadores del "
+        "repositorio (§3.9 se normaliza contra el máximo de esa población), no "
+        "la de grupos.",
+        "Período de observación (§2.2.9): en vez de la edad del grupo se usa la "
+        "antigüedad del investigador (años desde su primera vinculación como "
+        "integrante; si no hay dato, desde su primer producto). "
+        "período = min(antigüedad, ventana del subtipo).",
+        "Cohe/Coop (§2.2.10): Cohe cuenta los firmantes registrados de cada "
+        "producto del investigador (incluido él mismo: 0 significa autoría sola) "
+        "y Coop cuenta los grupos de la red del investigador (los grupos donde "
+        "está vinculado y los grupos de sus coautores: 0 significa que no hay "
+        "cooperación entre grupos).",
+    };
+}
+
+std::vector<std::string> supuestos_individual() {
+    return {
+        "Antigüedad del investigador: años desde su primera vinculación "
+        "(fecha de inicio de la membresía); si no hay membresía con fecha, se "
+        "aproxima al primer año plausible de producción registrada; si no hay "
+        "ninguno, se cuenta 1 año.",
+        "Los artículos en 'revista especializada' quedan fuera de los indicadores "
+        "de producción (su calidad A1–D depende de Publindex/Scimago, que la "
+        "fuente no trae), pero §2.2.10 es relacional: sí cuentan para Cohe/Coop.",
+        "Cohe y Coop solo cuentan firmantes registrados en el repositorio: los "
+        "autores externos (sin investigador vinculado) no aportan coautores ni "
+        "grupos.",
+        "Normalización §3.9: contra la población de investigadores cargada en el "
+        "repositorio; una convocatoria real mediría a todos los investigadores "
+        "reconocidos del área.",
+    };
+}
+
+namespace {
+
+std::string recortar(const std::string& s) {
+    size_t ini = 0, fin = s.size();
+    while (ini < fin && std::isspace(static_cast<unsigned char>(s[ini]))) ++ini;
+    while (fin > ini && std::isspace(static_cast<unsigned char>(s[fin - 1]))) --fin;
+    return s.substr(ini, fin - ini);
+}
+
+/// 'Nombre Apellido (#id)' — el mismo formato que usa el grupo.
+std::string identificacion_investigador(const Researcher& r) {
+    std::string nombres = recortar(r.first_names);
+    std::string apellidos = recortar(r.last_names);
+    std::string completo;
+    if (!nombres.empty()) completo = nombres;
+    if (!apellidos.empty()) {
+        if (!completo.empty()) completo += " ";
+        completo += apellidos;
+    }
+    if (completo.empty()) return "investigador #" + std::to_string(r.id);
+    return completo + " (#" + std::to_string(r.id) + ")";
+}
+
+} // namespace
+
+std::vector<InvestigadorOficial> construir_poblacion_investigadores(int ano_cierre) {
+    // mapa investigador -> grupos donde está vinculado (membresías activas:
+    // `members_of_group` ya excluye las desactivadas por soft delete).
+    std::map<int, std::set<int>> membresias;
+    std::vector<Group> grupos_ram = list_groups();
+    for (const Group& grupo : grupos_ram) {
+        for (int rid : members_of_group(grupo.id)) {
+            if (rid > 0) membresias[rid].insert(grupo.id);
+        }
+    }
+
+    // Primera vinculación con fecha de inicio (la antigüedad del investigador).
+    std::map<int, int> inicios;
+    for (const Group& grupo : grupos_ram) {
+        for (int rid : members_of_group(grupo.id)) {
+            std::optional<Membership> det = membership_details(grupo.id, rid);
+            if (!det) continue;
+            int anio = extraer_anio_fecha(det->start_date);
+            if (anio == 0) continue;
+            auto it = inicios.find(rid);
+            if (it == inicios.end() || anio < it->second) inicios[rid] = anio;
+        }
+    }
+
+    std::vector<InvestigadorOficial> investigadores;
+    for (const Researcher& inv : list_researchers()) {
+        int rid = inv.id;
+        if (rid <= 0) continue;
+
+        std::set<int> grupos_propios;
+        auto it_grupos = membresias.find(rid);
+        if (it_grupos != membresias.end()) grupos_propios = it_grupos->second;
+
+        std::vector<ProductoOficial> productos;
+        std::vector<int> anios;
+        for (int pid : products_of_researcher_ram(rid)) {
+            auto popt = get_product(pid);
+            if (!popt) continue;                       // enlace colgante
+            const Product& producto = *popt;
+
+            std::string descripcion = recortar(producto.description);
+            int anio = extraer_anio(producto.year, producto.obtained_date,
+                                    producto.publication_date, producto.description);
+            if (anio != 0) anios.push_back(anio);
+
+            auto clasificacion = inferir_categoria(descripcion);
+            const std::string& cat = clasificacion.first;
+
+            // Cohe individual: firmantes REGISTRADOS del producto, incluido el
+            // propio investigador (0 = autoría sola, igual que en el grupo).
+            std::set<int> autores_red;
+            autores_red.insert(rid);
+            // Coop individual: los grupos del investigador + los de sus coautores
+            // (0 = sin cooperación entre grupos).
+            std::set<int> relacionados = grupos_propios;
+            for (const ProductAuthor& autor : authors_of_product(pid)) {
+                if (autor.researcherId <= 0) continue;
+                autores_red.insert(autor.researcherId);
+                auto it = membresias.find(autor.researcherId);
+                if (it != membresias.end())
+                    relacionados.insert(it->second.begin(), it->second.end());
+            }
+
+            ProductoOficial p;
+            p.identificacion = std::to_string(pid);
+            p.categoria = cat;
+            p.motivo = clasificacion.second;
+            p.anio = (anio != 0) ? anio : -1;
+            p.autores_del_grupo = std::max(1, static_cast<int>(autores_red.size()));
+            p.grupos_relacionados = std::max(1, static_cast<int>(relacionados.size()));
+            p.familia_medicion = cat.empty() ? familia_relacional(producto.family_id, descripcion)
+                                             : std::string();
+            productos.push_back(p);
+        }
+
+        auto it_inicio = inicios.find(rid);
+        int anio_inicio = (it_inicio != inicios.end()) ? it_inicio->second : 0;
+        if (anio_inicio == 0 && !anios.empty())
+            anio_inicio = *std::min_element(anios.begin(), anios.end());
+
+        int antiguedad = 1;
+        if (anio_inicio > 0 && anio_inicio <= ano_cierre)
+            antiguedad = std::max(1, ano_cierre - anio_inicio);
+
+        InvestigadorOficial unidad;
+        unidad.identificacion = identificacion_investigador(inv);
+        unidad.antiguedad_anos = antiguedad;
+        unidad.productos = std::move(productos);
+        unidad.id_investigador = rid;
+        investigadores.push_back(std::move(unidad));
+    }
+    return investigadores;
+}
+
+std::vector<ResultadoOficial> evaluar_poblacion_investigadores(
+    const std::vector<InvestigadorOficial>& investigadores, int ano_cierre) {
+    // El investigador entra al pipeline del grupo con su antigüedad en el lugar
+    // de la "edad del grupo" (§2.2.9): es el MISMO cálculo.
+    std::vector<GrupoOficial> unidades;
+    unidades.reserve(investigadores.size());
+    for (const InvestigadorOficial& inv : investigadores) {
+        GrupoOficial g;
+        g.identificacion = inv.identificacion;
+        g.edad_grupo = inv.antiguedad_anos;
+        g.productos = inv.productos;
+        unidades.push_back(std::move(g));
+    }
+
+    std::vector<ResultadoOficial> resultados = evaluar_poblacion(unidades, ano_cierre);
+    for (size_t i = 0; i < resultados.size() && i < investigadores.size(); ++i) {
+        // `grupo` es la identificación del investigador y `grupo_id` su id: se
+        // reusan los campos del grupo para no duplicar la estructura.
+        resultados[i].grupo_id = investigadores[i].id_investigador;
+    }
+    return resultados;
+}
+
+ResultadoOficial evaluar_modelo_individual(int researcher_id, int ano_cierre,
+                                           std::string* error) {
+    if (error) error->clear();
+    std::vector<InvestigadorOficial> investigadores =
+        construir_poblacion_investigadores(ano_cierre);
+    if (investigadores.empty()) {
+        if (error) *error = "El repositorio no tiene investigadores para medir";
+        return ResultadoOficial();
+    }
+
+    std::vector<ResultadoOficial> resultados =
+        evaluar_poblacion_investigadores(investigadores, ano_cierre);
+
+    for (ResultadoOficial& res : resultados) {
+        if (res.grupo_id == researcher_id) return res;
+    }
+    if (error)
+        *error = "Investigador " + std::to_string(researcher_id) +
+                 " no está en la población medida";
+    return ResultadoOficial();
+}
+
+std::string resultado_individual_a_json(const ResultadoOficial& r,
+                                        const std::vector<ResultadoOficial>& poblacion) {
+    std::ostringstream o;
+    o << "{\n";
+    o << "  \"modelo\": " << json_cadena(MODELO_INDIVIDUAL) << ",\n";
+    o << "  \"base_normativa\": " << json_cadena(BASE_NORMATIVA_INDIVIDUAL) << ",\n";
+    o << "  \"anio_cierre\": " << r.anio_cierre << ",\n";
+    o << "  \"investigador\": {\"id\": " << r.grupo_id << ", \"identificacion\": "
+      << json_cadena(r.grupo) << ", \"antiguedad_anos\": " << r.edad_grupo << "},\n";
+    o << "  \"ind_investigador\": " << json_numero(r.ind_grupo()) << ",\n";
+    o << "  \"rango_teorico\": " << json_numero(rango_teorico()) << ",\n";
+    o << "  \"posicion_poblacion\": {\"puesto\": " << r.puesto << ", \"de\": " << r.de
+      << ", \"percentil\": " << json_numero(r.percentil) << "},\n";
+
+    o << "  \"indices\": {";
+    for (size_t i = 0; i < r.indices.size(); ++i) {
+        if (i) o << ", ";
+        o << json_cadena(r.indices[i]) << ": " << json_numero(r.valores_indice[i]);
+    }
+    o << "},\n";
+
+    o << "  \"terminos_ponderados\": {";
+    for (size_t i = 0; i < r.indices.size(); ++i) {
+        if (i) o << ", ";
+        o << json_cadena(r.indices[i]) << ": " << json_numero(r.terminos[i]);
+    }
+    o << "},\n";
+
+    o << "  \"ind_clase\": {";
+    for (size_t i = 0; i < r.clases.size(); ++i) {
+        if (i) o << ", ";
+        o << json_cadena(r.clases[i]) << ": " << json_numero(r.valores_clase[i]);
+    }
+    o << "},\n";
+
+    o << "  \"maximos_poblacion\": {";
+    for (size_t i = 0; i < r.clases.size(); ++i) {
+        if (i) o << ", ";
+        o << json_cadena(r.clases[i]) << ": " << json_numero(r.maximos_clase[i]);
+    }
+    o << "},\n";
+
+    o << "  \"maximo_cohe_poblacion\": " << json_numero(r.maximo_cohe) << ",\n";
+    o << "  \"maximo_coop_poblacion\": " << json_numero(r.maximo_coop) << ",\n";
+
+    o << "  \"poblacion\": [";
+    std::vector<const ResultadoOficial*> orden;
+    orden.reserve(poblacion.size());
+    for (const ResultadoOficial& p : poblacion) orden.push_back(&p);
+    std::stable_sort(orden.begin(), orden.end(), [](const ResultadoOficial* a, const ResultadoOficial* b) {
+        return a->ind_grupo() > b->ind_grupo();
+    });
+    for (size_t i = 0; i < orden.size(); ++i) {
+        if (i) o << ", ";
+        o << "{\"id\": " << orden[i]->grupo_id << ", \"investigador\": "
+          << json_cadena(orden[i]->grupo) << ", \"ind_investigador\": "
+          << json_numero(orden[i]->ind_grupo()) << "}";
+    }
+    o << "],\n";
+
+    o << "  \"subtipos\": [";
+    for (size_t i = 0; i < r.subtipos.size(); ++i) {
+        const DetalleSubtipo& d = r.subtipos[i];
+        if (i) o << ", ";
+        o << "{\"codigo\": " << json_cadena(d.codigo)
+          << ", \"clase\": " << json_cadena(d.clase)
+          << ", \"familia\": " << json_cadena(d.familia)
+          << ", \"n\": " << d.n
+          << ", \"periodo\": " << d.periodo
+          << ", \"lambda\": " << json_numero(d.lambda)
+          << ", \"ancla_subtipo\": " << (d.ancla_subtipo < 0 ? std::string("null") : json_numero(d.ancla_subtipo))
+          << ", \"peso_relativo\": " << json_numero(d.peso_relativo)
+          << ", \"peso_global\": " << json_numero(d.peso_global)
+          << ", \"termino\": " << json_numero(d.termino)
+          << "}";
+    }
+    o << "],\n";
+
+    o << "  \"cohe\": {\"suma_autores\": " << r.cohe.suma_autores << ", \"productos\": " << r.cohe.productos
+      << ", \"valor\": " << json_numero(r.cohe.valor) << "},\n";
+    o << "  \"coop\": {\"suma_grupos\": " << r.coop.suma_grupos << ", \"productos\": " << r.coop.productos
+      << ", \"valor\": " << json_numero(r.coop.valor) << "},\n";
+
+    o << "  \"excluidos\": " << json_histograma(r.excluidos) << ",\n";
+    o << "  \"sin_ano\": " << json_histograma(r.sin_ano) << ",\n";
+    o << "  \"fuera_de_periodo\": " << json_histograma(r.fuera_de_periodo) << ",\n";
+
+    o << "  \"adaptaciones\": [";
+    std::vector<std::string> adapt = adaptaciones();
+    for (size_t i = 0; i < adapt.size(); ++i) {
+        if (i) o << ", ";
+        o << json_cadena(adapt[i]);
+    }
+    o << "],\n";
+
+    o << "  \"supuestos\": [";
+    std::vector<std::string> sup = supuestos_individual();
     for (size_t i = 0; i < sup.size(); ++i) {
         if (i) o << ", ";
         o << json_cadena(sup[i]);
