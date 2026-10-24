@@ -38,5 +38,5 @@ INFORMACIÓN DE ENTREGA Y ENLACES OFICIALES
 - Documento de Especificación Oficial: docs/word/Parcial2_WP-DN-EO.docx
 - Copia de Base de Datos SQL Server: docs/peai.bak (Backup físico oficial)
 - Archivo de Persistencia JSON: pea_data.json (12 colecciones completas)
-- Guion de Sustentación Técnica en Video: docs/guion_de_sustentaci_n_en_video_taller_2_edd.pdf
+- Guion de Sustentación Técnica en Video: docs/guion_sustentacion_video_parcial2.md
 - Análisis Comparativo Arquitectural: docs/ANALISIS_COMPARATIVO_PEA_I.md

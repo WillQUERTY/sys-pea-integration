@@ -16,8 +16,7 @@ Para facilitar la calificación inmediata del Taller 2 sin requerir configuraci�
 |---|---|---|
 | 🌐 **Despliegue Web en Vivo** | **[http://155.133.22.12/](http://155.133.22.12/)** | Aplicación completa en servidor de producción (React + FastAPI + SQL Server). |
 | 🎥 **Video de Sustentación** | **[PRESENTACIÓN KHEMIA (YouTube)](https://www.youtube.com/watch?v=eezB3oZ3n2w&t=12s)** | Video demostrativo oficial de 10 minutos sustentando cada requisito. |
-| 📄 **Documento Maestro Word** | [`docs/word/Taller2_WP-DN-EO.docx`](file:///c:/repos/sys_pea_integration/docs/word/Taller2_WP-DN-EO.docx) | Especificación técnica formal, diagramas retina y matrices de cumplimiento. |
-| 📦 **Paquete Comprimido ZIP** | [`Taller2_WP-DN-EO.zip`](file:///c:/repos/sys_pea_integration/Taller2_WP-DN-EO.zip) | Paquete único de entrega (10.6 MB) con entregables, respaldos y código fuente limpio. |
+| 📄 **Documento Maestro Word** | [`docs/word/Parcial2_WP-DN-EO.docx`](file:///c:/repos/sys_pea_integration/docs/word/Parcial2_WP-DN-EO.docx) | Especificación técnica formal, diagramas retina y matrices de cumplimiento. |
 | 💾 **Backup de Base de Datos** | [`docs/peai.bak`](file:///c:/repos/sys_pea_integration/docs/peai.bak) | Respaldo nativo de SQL Server con datos precargados para restauración en 1 clic. |
 
 ---
@@ -220,12 +219,12 @@ sys_pea_integration/
 ├── docs/                           # Documentación oficial y artefactos de entrega
 │   ├── peai.bak                    # Copia de seguridad física de la BD SQL Server
 │   ├── PEA-i_Especificacion_...md  # Documento técnico maestro integral (2.600+ líneas)
-│   ├── guion_de_sustentacion_...pdf# Guion técnico y minutero del video
+│   ├── guion_sustentacion_video...# Guion técnico y minutero del video
 │   ├── ANALISIS_COMPARATIVO_...md  # Análisis técnico comparativo
 │   └── word/
 │       ├── build_word_doc.py       # Generador del documento Word oficial
 │       ├── doc_formatter.py        # Motor de estilos enriquecidos y tablas Word
-│       └── Taller2_WP-DN-EO.docx   # Documento oficial entregable en formato Word
+│       └── Parcial2_WP-DN-EO.docx  # Documento oficial entregable en formato Word
 │
 ├── frontend/web-react/             # Interfaz web de usuario (React + TypeScript)
 │   ├── src/                        # Vistas, componentes shadcn y stores TanStack
@@ -233,14 +232,15 @@ sys_pea_integration/
 │
 ├── scripts/                        # Utilidades organizadas de mantenimiento y pruebas
 │   ├── check_counts.py             # Verificación de conteo de registros en BD
-│   ├── recreate_database.py        # Recreación y siembra integral por script
-│   └── clean_existing_dois.py      # Saneamiento de DOIs y códigos externos
+│   └── recreate_database.py        # Recreación y siembra integral por script
 │
 ├── INTEGRANTES.txt                 # Ficha formal de identificación del grupo
 ├── pea_data.json                   # Archivo de persistencia serializada del sistema
-├── README.md                       # Esta guía técnica de evaluación
-└── Taller2_WP-DN-EO.zip            # Paquete comprimido completo para entrega (10.6 MB)
+└── README.md                       # Esta guía técnica de evaluación
 ```
+
+> Los adjuntos de la entrega (Word, fuentes `Taller2.cpp` / `Taller2.py`, `pea_data.json` e
+> `INTEGRANTES.txt`) están listados en [`docs/correo_entrega_parcial2.md`](docs/correo_entrega_parcial2.md).
 
 ---
 
@@ -250,5 +250,5 @@ sys_pea_integration/
 |---|---|---|
 | `SSL Provider: The certificate chain was issued by an authority that is not trusted` | sqlcmd con ODBC Driver 18 | Agregar el parámetro `-C` para confiar en el certificado local. |
 | `CREATE INDEX failed ... QUOTED_IDENTIFIER` | sqlcmd apaga QUOTED_IDENTIFIER por defecto | Usar el flag `-I` en sqlcmd. |
-| `PermissionError: [Errno 13] ... Taller2_WP-DN-EO.docx` | El archivo Word está abierto en Microsoft Word | Cerrar Microsoft Word antes de regenerar el documento, o revisar la copia automática de respaldo. |
+| `PermissionError: [Errno 13] ... Parcial2_WP-DN-EO.docx` | El archivo Word está abierto en Microsoft Word | Cerrar Microsoft Word antes de regenerar el documento, o revisar la copia automática de respaldo. |
 | El puerto 8000 ya está en uso | Proceso uvicorn huérfano | Terminar el proceso con `Get-Process python \| Stop-Process` y reiniciar. |

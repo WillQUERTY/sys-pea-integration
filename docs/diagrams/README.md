@@ -1,6 +1,6 @@
 # PEA-i: Directorio Oficial de Diagramas del Sistema
 
-Este directorio contiene los diagramas técnicos y de modelado formal requeridos para el Taller 2 de Estructura de Datos (Universidad Popular del Cesar) y el documento de entrega `Taller2_WP-DN-EO.docx`.
+Este directorio contiene los diagramas técnicos y de modelado formal requeridos para el Taller 2 de Estructura de Datos (Universidad Popular del Cesar) y el documento de entrega `Parcial2_WP-DN-EO.docx`.
 
 ## Contenido del directorio
 

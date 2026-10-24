@@ -374,7 +374,7 @@ Calculado puramente recorriendo los nodos enlazados en memoria:
 
 El proyecto satisface la totalidad de entregables estipulados para el Taller 2:
 1. **Código Fuente Completo:** Estructurado en repositorio Git con historial limpio y trazable: [GitHub - WillQUERTY/sys-pea-integration](https://github.com/WillQUERTY/sys-pea-integration).
-2. **Documento Técnico en Word (`docs/word/Taller2_WP-DN-EO.docx`):** Documento formal generado a partir de esta especificación integral maestra, que incluye arquitectura, diagramas, casos de uso, historias de usuario y matriz de trazabilidad.
+2. **Documento Técnico en Word (`docs/word/Parcial2_WP-DN-EO.docx`):** Documento formal generado a partir de esta especificación integral maestra, que incluye arquitectura, diagramas, casos de uso, historias de usuario y matriz de trazabilidad.
 3. **Archivo de Persistencia (`pea_data.json`):** Archivo JSON generado con la producción completa, integrantes, productos enriquecidos y autores listo para prueba de carga independiente.
 4. **Archivo de Identificación (`INTEGRANTES.txt`):** Ficha institucional con datos del grupo de estudiantes (William Andrés Peñaranda Oñate, Donaldo David Noriega Palomino, Edinson José Olivero Rojas).
 5. **Video Demostrativo de 10 minutos (Sustentación):** Grabación en alta definición sustentando los requisitos del taller, el funcionamiento independiente de `pea_cli`, la API FastAPI, la interfaz React y la reversión de operaciones con la pila: [PRESENTACIÓN KHEMIA (YouTube)](https://www.youtube.com/watch?v=eezB3oZ3n2w&t=12s).
@@ -494,7 +494,7 @@ sys_pea_integration/
 │   │                         #   routes, stores, styles, test-utils)
 │   └── package.json
 ├── docs/                     # Especificaciones y documentos de entrega
-│   ├── word/                 # Taller2_WP-DN-EO.docx (generado desde esta SPEC)
+│   ├── word/                 # Parcial2_WP-DN-EO.docx (generado desde esta SPEC)
 │   ├── guion_de_sustentacion_en_video_taller_2_edd.md/.pdf  # Guion del video (10-12 min)
 │   ├── diagrams/             # 11 diagramas Mermaid + PNG + SVG + galería web
 │   ├── modelo-medicion-2024.md y catálogo oficial de pesos  # Referencia normativa
@@ -1265,7 +1265,7 @@ Guion recomendado:
 09:40 Decisiones de alcance (26.1) y conclusiones
 ```
 
-El guion definitivo de grabación está disponible en `docs/guion_de_sustentaci_n_en_video_taller_2_edd.md`: escenas cronometradas de 10 a 12 minutos, checklist técnico previo a la grabación, distribución de presentadores por escena y requisitos de la rúbrica (identidad institucional e integrantes visibles en cámara); también se encuentra exportado en PDF (`docs/guion_de_sustentaci_n_en_video_taller_2_edd.pdf`).
+El guion definitivo de grabación está disponible en `docs/guion_sustentacion_video_parcial2.md`: escenas cronometradas de 10 a 12 minutos, checklist técnico previo a la grabación, distribución de presentadores por escena y requisitos de la rúbrica (identidad institucional e integrantes visibles en cámara).
 
 ### 37.6 Correo de entrega
 
@@ -2522,11 +2522,11 @@ sys_pea_integration/
     ├── Taller 2 EdD (2026-09-24) - G 5.md                      (enunciado original)
     ├── ANALISIS_COMPARATIVO_PEA_I.md                           (análisis técnico frente a alternativa)
     ├── modelo-medicion-2024.md                                 (marco normativo MinCiencias — Punto 5)
-    ├── guion_de_sustentaci_n_en_video_taller_2_edd.md          (guion del video — 37.5; también en .pdf)
+    ├── guion_sustentacion_video_parcial2.md                    (guion del video — 37.5)
     ├── word/
     │   ├── build_word_doc.py                    (generador del Word desde esta especificación)
     │   ├── doc_formatter.py                     (módulo de formateo y estilos enriquecidos)
-    │   └── Taller2_WP-DN-EO.docx               (especificación técnica oficial — entregable)
+    │   └── Parcial2_WP-DN-EO.docx               (especificación técnica oficial — entregable)
     ├── peai.bak                                 (copia de respaldo física de SQL Server)
     └── diagrams/                                (11 diagramas Mermaid, PNG alta resolución, SVG y visor web)
 ```
@@ -2577,7 +2577,7 @@ sys_pea_integration/
 
 ### Documentación
 
-- [x] Word final (`docs/word/Taller2_WP-DN-EO.docx`, regenerado desde esta especificación con `build_word_doc.py`).
+- [x] Word final (`docs/word/Parcial2_WP-DN-EO.docx`, regenerado desde esta especificación con `build_word_doc.py`).
 - [x] Arquitectura (diagrama y descripción detallada en §38.5).
 - [x] Modelo relacional (modelo físico de 22 tablas en §8.1; diagrama ER de las 17 tablas principales en §38.2).
 - [x] Hipercubo (diagrama y operaciones OLAP en §4, §29 y §38.6).
@@ -2595,8 +2595,8 @@ sys_pea_integration/
 ### Entrega
 
 - [ ] `INTEGRANTES.txt` con los datos personales completos de los tres integrantes (nombre, código, correo y programa).
-- [ ] Archivos con iniciales correctas — sustituido por entrega modular (D-01): Word `Taller2_WP-DN-EO.docx` y núcleo compilado `abpoxx_pybind.pyd`.
-- [ ] Video aproximado de 10 minutos, grabado siguiendo el guion cronometrado de `docs/guion_de_sustentaci_n_en_video_taller_2_edd.md`.
+- [ ] Archivos con iniciales correctas — sustituido por entrega modular (D-01): Word `Parcial2_WP-DN-EO.docx` y núcleo compilado `abpoxx_pybind.pyd`.
+- [ ] Video aproximado de 10 minutos, grabado siguiendo el guion cronometrado de `docs/guion_sustentacion_video_parcial2.md`.
 - [ ] Identidad institucional de la UPC en el video.
 - [ ] Integrantes visibles en cámara durante toda la grabación.
 - [ ] Repositorio Git/GitHub publicado con la versión final.
@@ -2624,7 +2624,7 @@ Alcance ajustado por las decisiones del equipo (sección 26.1): D-01 entrega amb
 
 La afirmación de cumplimiento total dependerá de completar la implementación y reunir las evidencias enumeradas en la matriz de trazabilidad y en la lista de comprobación.
 
-> **Estado de documentación (2026-10-18, corte de entrega):** Esta especificación quedó sincronizada con el estado real del repositorio tras la modularización de finales de la fase de desarrollo: el backend se organiza en los paquetes `api/` (86 rutas REST en routers por recurso), `repositories/`, `scraping/`, `pdf_import/`, `evaluator/` y `reporting/` con fachadas de compatibilidad; la consola C++ se estructura en `core_cpp/src/cli/` y su persistencia en `persistence/db/` y `persistence/json/`; y `database/init_schema.sql` define 22 tablas físicas (17 detalladas en el diagrama ER de la sección 38.2 y cinco de enlace/soporte). La verificación de esta fecha deja 18 suites de `pytest` con 160 pruebas recolectadas — 141 aprobadas y 19 saltadas por el gate de base de datos (`PEAI_TEST_DB`), con salida exitosa — y el ejecutable de estructuras C++ se mantiene en 159/159 aserciones. El guion del video (37.5) y el análisis comparativo técnico quedaron integrados en `docs/`, y el documento Word `docs/word/Taller2_WP-DN-EO.docx` se regenera desde esta especificación con `docs/word/build_word_doc.py`.
+> **Estado de documentación (2026-10-18, corte de entrega):** Esta especificación quedó sincronizada con el estado real del repositorio tras la modularización de finales de la fase de desarrollo: el backend se organiza en los paquetes `api/` (86 rutas REST en routers por recurso), `repositories/`, `scraping/`, `pdf_import/`, `evaluator/` y `reporting/` con fachadas de compatibilidad; la consola C++ se estructura en `core_cpp/src/cli/` y su persistencia en `persistence/db/` y `persistence/json/`; y `database/init_schema.sql` define 22 tablas físicas (17 detalladas en el diagrama ER de la sección 38.2 y cinco de enlace/soporte). La verificación de esta fecha deja 18 suites de `pytest` con 160 pruebas recolectadas — 141 aprobadas y 19 saltadas por el gate de base de datos (`PEAI_TEST_DB`), con salida exitosa — y el ejecutable de estructuras C++ se mantiene en 159/159 aserciones. El guion del video (37.5) y el análisis comparativo técnico quedaron integrados en `docs/`, y el documento Word `docs/word/Parcial2_WP-DN-EO.docx` se regenera desde esta especificación con `docs/word/build_word_doc.py`.
 
 > **Estado de implementación y verificación integral (2026-10-09, T-12/T-13):** Los importadores por archivo quedaron implementados de punta a punta. **CSV (T-12):** `backend/app/import_csv.py` parsea el dataset oficial de MinCiencias en datos.gov.co (Socrata `hrhc-c4wu`; tolera BOM, fechas ISO con milisegundos, "No registra" y numéricos "16.0"), deduplica por código COL conservando la convocatoria más reciente, aplica un tope de 200 grupos distintos por importación (HTTP 400 con orientación de filtrado) y permite enriquecer cada grupo con su GrupLAC completo resolviendo COL→nro únicamente por el buscador oficial (con fallback a los datos del archivo si la resolución o el scrapeo fallan); cada fila es una transacción independiente y la RAM se recarga una sola vez al final. **PDF (T-13):** `backend/app/import_pdf.py` extrae el texto con PyMuPDF y ataca la estructura de secciones/etiquetas compartida por el reporte que genera el propio sistema y una impresión del visor de Scienti; exige código COL válido (un nro pelado se rechaza con HTTP 400, trampa de identidad) y resuelve el subtipo de producto por nombre contra el catálogo 2024 sin requerir BD. Ambos exponen `/groups/import/csv(/preview)` y `/groups/import/pdf(/preview)` con flujo de vista previa→confirmación, registran `ImportJob.source_type` de `csv`/`pdf`, son idempotentes ante doble importación y tienen UI en React (pestañas "CSV (datos.gov.co)" y "PDF (GrupLAC)" en `/admin/import`). La suite backend cuenta con 13 archivos de prueba: 147 pruebas en verde con SQL Server local activado (`PEAI_TEST_DB=1`; 128 aprobadas y 19 saltadas por el gate sin BD). El build de React (`tsc -b && vite build`) pasa en limpio.
 

@@ -124,5 +124,5 @@
 - Cada integrante debe aparecer y hablar frente a cámara al menos una vez (identidad UPC y estudiantes visibles).
 - Mostrar el código en pantalla: `Taller2.cpp`, `Taller2.py`, `scripts/pea_dashboard.py`, `backend/app/evaluator/metrics_collector.py`.
 - Abrir el dashboard de React y ejecutar el CLI en vivo.
-- Subir el video a YouTube (enlace tipo youtu.be/...) y ponerlo en `INTEGRANTENES.txt` junto al guion.
+- Subir el video a YouTube (enlace tipo youtu.be/...) y ponerlo en `INTEGRANTES.txt` junto al guion.
 - Enviar el correo a adithperez@unicesar.edu.co con asunto exacto: `Estructura de datos Parcial 2 Grupo # 2026` y adjuntos: `Taller2.cpp`, `Taller2.py`, `docs/word/Parcial2_WP-DN-EO.docx`, `pea_data.json`, `INTEGRANTES.txt`.

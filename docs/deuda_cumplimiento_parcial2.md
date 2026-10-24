@@ -49,11 +49,11 @@ Un requisito con un solo gap funcional es `parcial`, no `cumple`. Por eso varios
 | R13 | Indicador del INVESTIGADOR (I_Investigador) | `cumple` | `metrics_collector.py:360-371` aplica `1.5·asc_count + 0.5·dpc_count` separados (pesos oficiales); `i_investigador` retornado (`__init__.py:78`); endpoint `/researchers/{res_id}/indicator` (`researchers.py:139-149`); C++ y Python demos ya usan AP y DPC separados | Cohe=0 hardcodeado para individuo (aceptable, no aplica a nivel individual) |
 | R14 | 2 archivos de texto con respuestas | `cumple` | `Taller2_WP-DN-EO.cpp` (Ejercicio 1 ll.300-396, Ejercicio 2 ll.399-462) y `Taller2_WP-DN-EO.py` (ll.162-267, 272-362) con fórmula y ejecución real | Ambos usan datos embebidos en `main()`, no leen `pea_data.json`; ya **no divergen numéricamente** (paridad exacta py↔cpp) |
 | R15 | Especificación Word + UML | `cumple` | `docs/word/Parcial2_WP-DN-EO.docx` existe (372250 bytes, regenerado en esta sesión); diagramas UML en `docs/diagrams/`; `build_word_doc.py` lee `docs/Parcial 2 EdD (2026-10-19).md` y cuerpo incluye sección de `I_Grupo`/`I_Investigador` con pesos oficiales (3,7/2,3/0,4/1,5/0,5/1,0/0,2/0,1/0,3) | Puede quedar alguna mención residual de "Taller 2" dentro del .docx (binario, no auditable por texto); verificar visual antes de entregar |
-| R16 | Video YouTube ~10 min, UPC, estudiantes | `parcial` | Enlace vivo en `INTEGRANTENES.txt:37`; oEmbed HTTP 200 "PRESENTACION KHEMIA" | Duración ~10 min no verificable; identidad UPC y estudiantes visibles no auditables desde repo; guion de sustentación del Parcial 2 **borrado** (`docs/guion_de_sustentaci_n_en_video_taller_2_edd.*`, estado 'D') |
-| R17 | Archivo identificación estudiantes | `cumple` | `INTEGRANTENES.txt` con 3 integrantes WP-DN-EO (ll.12-26); ll.38 apunta a `Parcial2_WP-DN-EO.docx`; ll.41 registra guion del Parcial 2 como pendiente (creado en `docs/guion_sustentacion_video_parcial2.md`) | Ninguna relevante |
-| R18 | Correo a adithperez@unicesar.edu.co | `cumple` | Borrador `docs/correo_entrega_parcial2.md`: destinatario ll.3, asunto ll.4 y 12, cuerpo ll.27-31 | Envío real no verificable; ll.28-29 menciona adjuntos `WPDE.cpp/WPDE.py` que **no existen** (solo `Taller2.cpp/py`) |
+| R16 | Video YouTube ~10 min, UPC, estudiantes | `parcial` | Enlace vivo en `INTEGRANTES.txt:37`; oEmbed HTTP 200 "PRESENTACION KHEMIA" | Duración ~10 min no verificable; identidad UPC y estudiantes visibles no auditables desde repo; el guion antiguo (`docs/guion_de_sustentaci_n_en_video_taller_2_edd.*`, estado 'D') fue reemplazado por `docs/guion_sustentacion_video_parcial2.md` |
+| R17 | Archivo identificación estudiantes | `cumple` | `INTEGRANTES.txt` con 3 integrantes WP-DN-EO (ll.12-26); ll.38 apunta a `Parcial2_WP-DN-EO.docx`; ll.41 apunta a `docs/guion_sustentacion_video_parcial2.md` | Ninguna relevante |
+| R18 | Correo a adithperez@unicesar.edu.co | `cumple` | Borrador `docs/correo_entrega_parcial2.md`: destinatario ll.3, asunto ll.4 y 12, cuerpo ll.27-31, adjuntos ll.27-31 | Envío real no verificable; los adjuntos `Taller2.cpp` / `Taller2.py` son copias generadas desde las fuentes `Taller2_WP-DN-EO.*` (sin versionar) |
 | R19 | Fechas 23/26 oct 11:59 am | `cumple` | `correo_entrega_parcial2.md:41-42` (preliminar 23 oct, definitiva 26 oct) | Solo declaradas en borrador; sin evidencia de envío anticipado |
-| R20 | Subject byte-exacto | `cumple` | `INTEGRANTENES.txt:33` y `correo_entrega_parcial2.md:4,12`: "Estructura de datos Parcial 2 Grupo # 2026" | Solo resta usarlo en el envío real |
+| R20 | Subject byte-exacto | `cumple` | `INTEGRANTES.txt:33` y `correo_entrega_parcial2.md:4,12`: "Estructura de datos Parcial 2 Grupo # 2026" | Solo resta usarlo en el envío real |
 | R21 | Nombres de archivo con iniciales | `cumple` | `Taller2_WP-DN-EO.cpp` y `Taller2_WP-DN-EO.py` creados (copias exactas de los fuentes del ejercicio con iniciales WP-DN-EO en el nombre); `INTEGRANTENENES.txt` declara las iniciales | Ninguna relevante |
 | R22 | Archivo de persistencia | `cumple` | `pea_data.json` válido: 12 claves top-level, 8898 items (groups:2, researchers:166, memberships:179, products:1778, authors:2368, groupProductLinks:1896, projects:604, groupProjectLinks:125, workPlans:2, validationQueue:1778, undoOperations:0) | Ninguna |
 | R23 | Cargar datos o ejecutar sin datos | `cumple` | `pea_indicador.py` llama a `repository.load_from_file` (líneas 55-56) y acepta `--archivo/--grupo/--investigador` con modo vacío y default `pea_data.json` | Ninguna relevante |
@@ -137,13 +137,13 @@ Un requisito con un solo gap funcional es `parcial`, no `cumple`. Por eso varios
 
 ### R16 — Video YouTube ~10 min, identidad UPC, estudiantes visibles — parcial
 
-**Gap:** Enlace vivo (`INTEGRANTENES.txt:37`, oEmbed HTTP 200 "PRESENTACION KHEMIA"), pero:
+**Gap:** Enlace vivo (`INTEGRANTES.txt:37`, oEmbed HTTP 200 "PRESENTACION KHEMIA"), pero:
 - Duración ~10 min no verificable desde oEmbed.
 - Identidad UPC y estudiantes visibles no auditables desde el repo.
-- Guion de sustentación del Parcial 2 **borrado** (`docs/guion_de_sustentaci_n_en_video_taller_2_edd.pdf` y `.md`, estado 'D' en git).
+- Guion de sustentación del Parcial 2: los archivos antiguos (`docs/guion_de_sustentaci_n_en_video_taller_2_edd.pdf` y `.md`) están borrados (estado 'D' en git); el vigente es `docs/guion_sustentacion_video_parcial2.md`.
 
 **Acción recomendada (equipo externo):**
-1. Crear guion de sustentación técnica del Parcial 2.
+1. Grabar el video siguiendo `docs/guion_sustentacion_video_parcial2.md`.
 2. Documentar duración ~10 min del video, identidad UPC y visibilidad de estudiantes.
 3. Enviar evidencia del video antes del 23 oct.
 
@@ -152,8 +152,8 @@ Un requisito con un solo gap funcional es `parcial`, no `cumple`. Por eso varios
 **Estado:** Referencias corregidas y guion creado.
 
 **Evidencia:**
-- `INTEGRANTENES.txt:38` — apunta a `docs/word/Parcial2_WP-DN-EO.docx`.
-- `INTEGRANTENES.txt:41` — registra "Guion de Sustentación Técnica en Video: pendiente (crear guion del Parcial 2)".
+- `INTEGRANTES.txt:38` — apunta a `docs/word/Parcial2_WP-DN-EO.docx`.
+- `INTEGRANTES.txt:41` — apunta a `docs/guion_sustentacion_video_parcial2.md`.
 - `docs/guion_sustentacion_video_parcial2.md` — guion completo (~10 min) creado, listo para grabación.
 
 ### R18 — Correo a adithperez@unicesar.edu.co — cumple (borrador)
@@ -196,7 +196,7 @@ Todos los items de código de la Fase 1 están resueltos y commiteados (R17, R18
 | Prioridad | Req | Acción | Archivo | Estado |
 |-----------|-----|--------|---------|--------|
 | 5 | R18 | Enviar correo real con subject byte-exacto `"Estructura de datos Parcial 2 Grupo # 2026"`; dejar evidencia del envío | (externo) | Pendiente (equipo) |
-| 6 | R16 | Grabar el video (~10 min) siguiendo `docs/guion_sustentacion_video_parcial2.md`, subir a YouTube, poner enlace en `INTEGRANTENES.txt` | (externo) | Pendiente (equipo) |
+| 6 | R16 | Grabar el video (~10 min) siguiendo `docs/guion_sustentacion_video_parcial2.md`, subir a YouTube, poner enlace en `INTEGRANTES.txt` | (externo) | Pendiente (equipo) |
 
 ### Antes del 26 oct 2026, 11:59 a. m. (entrega definitiva) — COMPLETA
 
