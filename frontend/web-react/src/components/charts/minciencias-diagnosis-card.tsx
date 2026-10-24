@@ -60,10 +60,10 @@ export function MincienciasDiagnosisCard({ data, className }: MincienciasDiagnos
       : '0.000'
 
   // Lectura OFICIAL del modelo de medición Minciencias 2024 (§2.2.9 → §3.10):
-  // es la única cifra que puede rotularse como oficial. `i_grupo` es el
-  // indicador legacy (conteos crudos, sin λ ni pesos globales ni
+  // es la única cifra que puede rotularse como oficial. `i_grupo_legacy` es la
+  // aproximación legacy (conteos crudos, sin λ ni pesos globales ni
   // normalización §3.9) y por eso queda solo como referencia rotulada.
-  // Ver docs/plan-integracion-modelo-oficial.md (brecha B1).
+  // Ver docs/plan-integracion-modelo-oficial.md (brechas B1 y B5).
   const oficial = data.modelo_oficial_2024
   const tamanoPoblacion = oficial?.posicion_poblacion.de ?? oficial?.poblacion.length ?? 0
   const poblacionReducida =
@@ -130,19 +130,19 @@ export function MincienciasDiagnosisCard({ data, className }: MincienciasDiagnos
                 </div>
               )}
 
-              {data.i_grupo !== undefined && (
+              {data.i_grupo_legacy !== undefined && (
                 <div className='mt-1'>
                   <div
                     className='text-[10px] text-muted-foreground uppercase font-medium'
                     data-testid='ind-grupo-legacy-label'
                   >
-                    I_Grupo (referencia legacy, no oficial)
+                    I_Grupo (aproximación legacy, no oficial)
                   </div>
                   <div
                     className='text-xs font-bold font-mono text-muted-foreground'
                     data-testid='ind-grupo-legacy'
                   >
-                    {data.i_grupo.toLocaleString('es-CO', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                    {data.i_grupo_legacy.toLocaleString('es-CO', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                   </div>
                 </div>
               )}

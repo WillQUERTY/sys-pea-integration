@@ -151,7 +151,9 @@ def test_endpoint_agrega_el_modelo_oficial_sin_romper_el_contrato():
 
     # Claves legacy intactas (las usa el frontend).
     assert diagnostico["group_id"] == 10
-    assert "i_grupo" in diagnostico
+    assert "i_grupo_legacy" in diagnostico
+    # El nombre viejo desapareció: el legacy se rotula como aproximación (Fase 6).
+    assert "i_grupo" not in diagnostico
     assert "max_qualified_tier" in diagnostico
     assert "summary" in diagnostico
 

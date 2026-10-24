@@ -174,12 +174,16 @@ def collect_group_metrics(group_id: int, repository_module: Any) -> Dict[str, An
 
     projects_count = len(projects)
 
-    # --- Formula ponderada I_Grupo (Minciencias 2024, seccion 10.6) ---
+    # --- Formula ponderada legacy (APROXIMACION, no es el indicador oficial) ---
     # AP (apropiacion social) y DPC (divulgacion publica) son terminos separados.
+    # Este valor NO es el Ind.Grupo oficial (§3.10): no aplica λ (§2.2.9), ni los
+    # pesos por clase (§3.6), ni la normalizacion contra la poblacion (§3.9).
+    # Vive solo como insumo del semaforo de categorizacion, por eso se expone
+    # como `i_grupo_legacy` (Fase 6, brecha B5).
     cohe = icoh  # cohesion interna aplica al colectivo
     coop = coauthored_products_count  # coautoria con otros investigadores del grupo
 
-    i_grupo = round(
+    i_grupo_legacy = round(
         3.7 * top_count
         + 2.3 * type_a_count
         + 0.4 * type_b_count
@@ -218,7 +222,7 @@ def collect_group_metrics(group_id: int, repository_module: Any) -> Dict[str, An
         "coauthored_products_count": coauthored_products_count,
         "gnc_dti_in_window": gnc_dti_in_window,
         "asc_dpc_frh_in_window": asc_dpc_frh_in_window,
-        "i_grupo": i_grupo,
+        "i_grupo_legacy": i_grupo_legacy,
     }
 
 

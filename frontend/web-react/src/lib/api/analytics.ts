@@ -126,8 +126,10 @@ export type { MincienciasOfficialModel2024 }
 export interface MincienciasGroupDiagnosis {
   group_id: number
   group_name: string
-  /** Indicador de produccion scientifica del grupo (I_Grupo, Modelo Minciencias 2024 seccion 10.6) */
-  i_grupo?: number
+  /** Aproximacion legacy (conteos crudos) del indicador de produccion del
+   *  grupo: NO es el indicador oficial 2024 (§3.10, que llega en
+   *  `modelo_oficial_2024`). Solo alimenta el semaforo de categorizacion. */
+  i_grupo_legacy?: number
   /** Lectura aditiva del modelo oficial 2024 (misma forma que devuelve la API). */
   modelo_oficial_2024?: MincienciasOfficialModel2024
   current_classification: string

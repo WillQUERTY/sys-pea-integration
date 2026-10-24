@@ -4,13 +4,15 @@ Implementación **completa** del modelo de medición del modelo oficial
 (`docs/modelo-medicion-2024.md`, Anexo 1 M601PR04G01 v02) para la evaluación
 de grupos de investigación.
 
-> La entrega del Parcial 2 ya tenía un indicador (`i_grupo`) que sums **conteos
-> crudos** con los pesos oficiales: `3,7·Top + 2,3·A + 0,4·B + 1,5·AP + 0,5·DPC +
-> 1,0·Fr.A + 0,2·Fr.B + 0,1·Cohe + 0,3·Coop`. Eso **no** es el indicador del
-> modelo: el modelo normaliza cada indicador contra el máximo de la población
-> (§3.9) y aplica λ (§2.2.9) y pesos globales (§3.6) por subtipo. Con los datos
-> reales, el indicador legacy da **491,7** (sin escala) y el oficial da **0,85**
-> sobre un rango teórico de 10. Ambos conviven en el mismo endpoint.
+> La entrega del Parcial 2 ya tenía un indicador (`i_grupo`, renombrado
+> `i_grupo_legacy` en la Fase 6) que suma **conteos crudos** con los pesos
+> oficiales: `3,7·Top + 2,3·A + 0,4·B + 1,5·AP + 0,5·DPC + 1,0·Fr.A + 0,2·Fr.B +
+> 0,1·Cohe + 0,3·Coop`. Eso **no** es el indicador del modelo: el modelo
+> normaliza cada indicador contra el máximo de la población (§3.9) y aplica λ
+> (§2.2.9) y pesos globales (§3.6) por subtipo. Con los datos reales, el legacy
+> da **491,7** (sin escala) y el oficial da **0,85** sobre un rango teórico de
+> 10. Ambos conviven en el mismo endpoint, pero el legacy solo se rotula como
+> *aproximación* y vive como insumo del semáforo (§8).
 
 ## Dónde vive
 
@@ -21,7 +23,7 @@ de grupos de investigación.
 | Reporte | `scripts/pea_indicador_oficial.py` | Corre el modelo sobre `pea_data.json` e imprime el desglose de las tres etapas. |
 | **Núcleo C++** | `core_cpp/src/services/official_indicator.cpp` (+ `core_cpp/include/services/official_indicator.h`) | **El mismo modelo en C++**: λ §2.2.9, pesos §3.6, clases §3.7, Ind_Clase §3.8.1, Cohe/Coop §2.2.10, normalización §3.9 y fórmula §3.10, sobre la RAM de grupos/productos. |
 | Catálogo para C++ | `scripts/gen_catalogo_cpp.py` → `core_cpp/include/services/catalog_2024_generated.h` | Genera la tabla del catálogo (ancla §3.6, peso relativo, ventana §2.2.5) **con el mismo código Python del backend**, para que C++ no pueda divergir. `--check` detecta drift. |
-| CLI | `pea_cli indicator group <id> --data <repo.json> [--year <año>] [--json]` | Imprime el modelo oficial (encabezado) y, debajo, el `I_Grupo` legacy rotulado como referencia. `--json` emite el mismo contrato que la API. |
+| CLI | `pea_cli indicator group <id> --data <repo.json> [--year <año>] [--json]` | Imprime el modelo oficial con su desglose. Desde la **Fase 6** el CLI ya **no** calcula un segundo indicador legacy (la API lo expone como `i_grupo_legacy`, aproximación rotulada): el legacy tiene una sola implementación. `--json` emite el mismo contrato que la API. |
 | **Contrato único** | `backend/app/evaluator/contrato_oficial.py` | Declara la forma del bloque oficial **una sola vez** (`CONTRATO`: 20 claves raíz con sus tipos) y de ahí se derivan el golden, el tipo TS y el fixture del frontend. Trae además el comparador (`comparar_indicadores`), el validador (`validar_contra_contrato`) y el adaptador que replica el mapeo del cargador JSON de C++. |
 | Golden | `backend/tests/fixtures/indicador_oficial_golden.json` (+ `indicador_oficial_caso.json`) | El caso sintético de entrada y el resultado esperado, versionados. `scripts/gen_contrato_oficial.py --regenerar` los escribe y `--check` falla si hay drift. |
 | Verificador de paridad | `scripts/pea_paridad_indicador.py` | Compara **campo por campo** el JSON del CLI contra el del evaluador Python sobre el mismo repositorio. Con `--golden` compara **los tres** (CLI C++, backend Python y contrato versionado) contra el golden. |
@@ -150,8 +152,8 @@ dataset tiene calidad oficial verificable** (A1–A3, B, C de Publindex, cuartil
 Q1–Q3 o categoría A de una dirección): la fuente GrupLAC no la trae. Los
 términos que sobreviven son DPC, Fr.B y los relacionales Cohe/Coop.
 
-Corolario: el `i_grupo` legacy **no es comparable con el oficial** ni con otras
-convocatorias; el oficial sí tiene escala (0–10) y es el que §3.9 define.
+Corolario: el `i_grupo_legacy` legacy **no es comparable con el oficial** ni con
+otras convocatorias; el oficial sí tiene escala (0–10) y es el que §3.9 define.
 
 ## Supuestos documentados (lo que NO se inventa)
 

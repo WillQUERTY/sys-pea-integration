@@ -73,7 +73,7 @@
 > - **I_Grupo** se calcula a nivel de grupo con todos los productos activos en ventana temporal (5, 7 u 10 años según tipología) e incluye el índice de cohesión interna.  
 > - **I_Investigador** aplica la misma fórmula a nivel individual; el índice de cohesión vale cero porque no aplica a una persona sola.  
 >  
-> Ambos indicadores están implementados en el núcleo C++ (`Taller2.cpp`), en Python (`Taller2.py`) y expuestos por el backend FastAPI en el endpoint de diagnóstico Minciencias, que devuelve `i_grupo` numérico para cada grupo.
+> Ambos indicadores están implementados en el núcleo C++ (`Taller2.cpp`), en Python (`Taller2.py`) y expuestos por el backend FastAPI en el endpoint de diagnóstico Minciencias, que devuelve `i_grupo_legacy` (aproximación legacy, no oficial) para cada grupo. El indicador oficial 2024 (§3.10) llega aparte en `modelo_oficial_2024.ind_grupo`.
 
 ---
 
@@ -103,7 +103,7 @@
 
 **Guion:**
 
-> Para cerrar, veamos el sistema en ejecución. El comando `summary` muestra las tablas descriptivas del estado. `products by-year last 3` lista detalle de productos de los últimos tres años, registro por registro, no solo conteos. `indicator group 1` devuelve el I_Grupo numérico del grupo consultado, aplicando la fórmula ponderada de Minciencias. Todo esto corre sobre el núcleo C++ con estructuras de punteros que diseñamos.
+> Para cerrar, veamos el sistema en ejecución. El comando `summary` muestra las tablas descriptivas del estado. `products by-year last 3` lista detalle de productos de los últimos tres años, registro por registro, no solo conteos. `indicator group 1` devuelve el indicador oficial del grupo consultado, con su desglose: λ por subtipo, cada clase frente al máximo de la población, los nueve términos de §3.10 y el resultado normalizado. Todo esto corre sobre el núcleo C++ con estructuras de punteros que diseñamos.
 
 ---
 

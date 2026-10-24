@@ -320,7 +320,7 @@ def get_group_minciencias_diagnosis(group_id: int) -> dict:
     repository.get_group(group_id)
     diagnostico = evaluate_group_minciencias(group_id, repository)
     # Lectura ADITIVA del modelo oficial 2024 (§2.2.9 → §3.10): no cambia
-    # ninguna clave que consume el frontend (i_grupo, tiers, semáforo).
+    # ninguna clave que consume el frontend (i_grupo_legacy, tiers, semáforo).
     try:
         from ..evaluator.official_population import evaluar_modelo_oficial
         diagnostico["modelo_oficial_2024"] = evaluar_modelo_oficial(repository, group_id)

@@ -28,7 +28,10 @@ def evaluate_group_minciencias(group_id: int, repository_module: Any) -> Dict[st
         "current_classification": clean_classification(group.classification),
         "raw_classification": group.classification or "",
         "max_qualified_tier": max_qualified_tier,
-        "i_grupo": metrics["i_grupo"],
+        # Aproximación legacy (conteos crudos): NO es el indicador oficial
+        # 2024 (§3.10), que llega aparte en `modelo_oficial_2024`. El legacy
+        # existe solo como insumo del semáforo (Fase 6, brecha B5).
+        "i_grupo_legacy": metrics["i_grupo_legacy"],
         "next_tier": next_tier,
         "next_tier_progress": next_tier_progress,
         "next_tier_gap": next_tier_gap,

@@ -4,10 +4,10 @@ import type { MincienciasGroupDiagnosis } from '@/lib/api'
 import { MincienciasDiagnosisCard } from './minciencias-diagnosis-card'
 
 /**
- * Fija la regla de la brecha B1 (docs/plan-integracion-modelo-oficial.md):
+ * Fija la regla de las brechas B1 y B5 (docs/plan-integracion-modelo-oficial.md):
  * la única cifra que puede rotularse como "modelo oficial" es
- * `modelo_oficial_2024.ind_grupo`; el `i_grupo` legacy es un indicador de
- * conteos crudos y debe aparecer SIEMPRE rotulado como referencia no oficial.
+ * `modelo_oficial_2024.ind_grupo`; el `i_grupo_legacy` es una aproximación de
+ * conteos crudos y debe aparecer SIEMPRE rotulada como no oficial.
  */
 function diagnostico(
   oficial: boolean,
@@ -16,7 +16,7 @@ function diagnostico(
   const base: MincienciasGroupDiagnosis = {
     group_id: 10,
     group_name: 'AITICE',
-    i_grupo: 36,
+    i_grupo_legacy: 36,
     current_classification: 'B',
     raw_classification: 'B',
     max_qualified_tier: 'B',
@@ -118,14 +118,14 @@ describe('MincienciasDiagnosisCard — lectura del indicador', () => {
       .toHaveTextContent('cierre 2026')
   })
 
-  it('deja el i_grupo legacy como referencia no oficial, nunca como titular', async () => {
+  it('deja el i_grupo_legacy como aproximación no oficial, nunca como titular', async () => {
     const { getByTestId } = await render(
       <MincienciasDiagnosisCard data={diagnostico(true)} />
     )
 
     await expect
       .element(getByTestId('ind-grupo-legacy-label'))
-      .toHaveTextContent('I_Grupo (referencia legacy, no oficial)')
+      .toHaveTextContent('I_Grupo (aproximación legacy, no oficial)')
     await expect
       .element(getByTestId('ind-grupo-legacy'))
       .toHaveTextContent('36,00')
@@ -159,7 +159,7 @@ describe('MincienciasDiagnosisCard — lectura del indicador', () => {
       .toHaveTextContent('Lectura oficial no disponible')
     await expect
       .element(getByTestId('ind-grupo-legacy-label'))
-      .toHaveTextContent('referencia legacy, no oficial')
+      .toHaveTextContent('aproximación legacy, no oficial')
     await expect
       .element(getByTestId('ind-grupo-oficial'))
       .not.toBeInTheDocument()

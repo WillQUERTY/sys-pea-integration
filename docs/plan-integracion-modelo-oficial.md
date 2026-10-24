@@ -49,12 +49,13 @@ define, mientras el oficial (0,854) quedaba invisible detrás de él.
 | Capa | Estado oficial | Nota |
 |---|---|---|
 | Core C++ (`official_indicator.cpp`) | ✅ Completo | §2.2.9 → §3.10, catálogo generado desde el backend |
-| CLI C++ (`indicator group`) | ✅ Completo | Imprime el oficial y el legacy como "referencia no oficial" |
+| CLI C++ (`indicator group`) | ✅ Completo | Imprime **solo** el oficial (Fase 6: el legacy ya no se calcula en el CLI) |
 | Backend Python | ✅ Completo (grupo) | `official_indicator.py` + `official_population.py` |
 | API (`/groups/{id}/minciencias-diagnosis`) | ✅ Expone el bloque | Clave aditiva `modelo_oficial_2024`, sin romper lo legacy |
 | **Frontend React** | **✅ Integrado (Fases 1–3)** | Titular oficial + panel de desglose; el legacy queda como referencia rotulada; el tipo y el fixture del panel son **generados** desde el contrato |
 | **Contrato único (B7)** | **✅ Implementado (Fase 3)** | `CONTRATO` declarado en `backend/app/evaluator/contrato_oficial.py`: de ahí salen el golden, el tipo TS y el fixture del panel |
 | **Test C++ del modelo (B6)** | **✅ Implementado (Fase 4)** | `core_cpp/tests/test_official_indicator.cpp`, registrado en `ctest` como `indicador_oficial` |
+| **Contrato HTTP (Fase 6)** | **✅ Implementado** | `backend/tests/test_indicador_oficial_http.py`: el payload que sale por HTTP cumple el golden del contrato |
 | Nivel investigador | ⚠️ Rótulo honesto (provisional) | `I_Investigador` legacy, rotulado "adaptación §10.6 sobre conteos (no oficial)"; falta decidir el modelo (D5) |
 | Datos que alimentan §3.7/§3.8 | ⚠️ Parcial | GrupLAC no trae calidad A1–D → `Nc.Top/A/B = 0` siempre (ahora **visible** en el panel) |
 
@@ -67,7 +68,7 @@ define, mientras el oficial (0,854) quedaba invisible detrás de él.
 | **Fase 3** | Contrato único / golden JSON (B7) | ✅ **Implementada y verificada** (2026-10-23) |
 | **Fase 4** | Test unitario del modelo oficial en C++ (B6) | ✅ **Implementada y verificada** (2026-10-23) |
 | **Fase 5** | Investigador (B3, D5) | ⏸️ En espera de la decisión D5 (aplicado solo el rótulo interino de la Fase 1) |
-| **Fase 6** | Deprecación del legacy (B5) | ❌ No iniciada (**ya desbloqueada**: 1–4 están verdes) |
+| **Fase 6** | Deprecación del legacy (B5) | ✅ **Implementada y verificada** (2026-10-23) |
 
 ---
 
@@ -112,14 +113,16 @@ con `USE_DATABASE=false`, 2026-10-23):
 | Lectura | Valor | Escala | Dónde |
 |---|---|---|---|
 | **Oficial** | **0,8541030927835052** | Rango teórico 0–10, normalizado contra la población | `modelo_oficial_2024.ind_grupo` (API) / `official::evaluar_modelo_oficial` (CLI) |
-| Legacy (API) | 491,704 | Sin escala (conteos crudos) | `i_grupo` del diagnóstico → **lo que veía el usuario en React** |
-| Legacy (CLI) | 36,00 | Sin escala | Bloque "Referencia legacy" del CLI |
+| Legacy (API) | 491,704 | Sin escala (conteos crudos) | `i_grupo_legacy` del diagnóstico → **lo que veía el usuario en React** |
 
-⚠ **El legacy del CLI (36,00) NO es el legacy de la API (491,704)**: el CLI
-aproxima la calidad por `quality_category_id` y el backend la deduce del texto
-de la descripción con ventanas propias. **Dos "referencias legacy" distintas
-para el mismo grupo** — es la brecha B5 (tres implementaciones del cálculo)
-hecha visible. El oficial sí coincide exactamente en ambos lados (0,8541030927835052).
+⚠ **Antes de la Fase 6 había DOS legacies distintos**: el CLI calculaba
+36,00 y la API 491,704 para el mismo grupo, porque el CLI aproximaba la
+calidad por `quality_category_id` y el backend la deduce del texto de la
+descripción con ventanas propias. Dos "referencias legacy" para la misma cifra
+es la brecha B5 (tres implementaciones del cálculo) hecha visible.
+**Resuelto en la Fase 6:** el CLI ya **no** calcula el legacy (solo el oficial)
+y la API lo expone como `i_grupo_legacy`, rotulado como aproximación. Hoy hay
+**una sola** implementación legacy, la que alimenta el semáforo.
 
 Además, **el número depende del dataset y de la población cargados**: con la
 BD real completa el legacy da 491,7 y con `pea_data.json` (2 grupos) el
@@ -157,7 +160,7 @@ grupo:
 
 | Superficie | ¿Muestra el indicador? |
 |---|---|
-| Tarjeta de diagnóstico (React) | **Sí — el oficial como titular**; el legacy como "referencia legacy, no oficial" ([minciencias-diagnosis-card.tsx](frontend/web-react/src/components/charts/minciencias-diagnosis-card.tsx)) |
+| Tarjeta de diagnóstico (React) | **Sí — el oficial como titular**; el legacy como "aproximación legacy, no oficial" ([minciencias-diagnosis-card.tsx](frontend/web-react/src/components/charts/minciencias-diagnosis-card.tsx)) |
 | Panel de desglose (React) | **Sí — el oficial, término a término** (§3.10 → §3.9 → §3.8.1 → §2.2.9) ([official-indicator-panel.tsx](frontend/web-react/src/components/charts/official-indicator-panel.tsx)) |
 | Pestaña de investigador (React) | Sí — `i_investigador` legacy, rotulado "adaptación §10.6 sobre conteos (no oficial)" ([researcher-analytics-tab.tsx:130](frontend/web-react/src/features/researchers/components/tabs/researcher-analytics-tab.tsx#L130)) |
 | KPI banners / radar de grupos | No usan el indicador (usan conteos y perfiles) |
@@ -178,7 +181,7 @@ problema y también su arreglo.
 | **B2** | La UI no tiene lectura del modelo oficial | Alto: se pierde el 100 % del payload oficial (ranking, percentil, 9 términos, subtipos λ/peso, exclusiones, supuestos) | Mediano | ✅ **Cerrada** (Fase 2): `OfficialIndicatorPanel` consume todo el bloque |
 | **B3** | No hay modelo oficial a nivel de investigador | Medio-alto: el rótulo "Minciencias 2024, sección 10.6" sobre una fórmula de conteos crudos | Grande (requiere decisión de modelo) | ⚠️ **Mitigada**: rótulo honesto ("adaptación §10.6, no oficial"); el modelo oficial sigue pendiente de D5 |
 | **B4** | La población de normalización no se expone | Alto: con 2 grupos el percentil no significa nada; el usuario no puede saber si el 0,854 es comparable | Chico-mediano | ✅ **Cerrada en la UI**: tarjeta muestra puesto/percentil, cierre, "N grupos" y avisa si < 10; el panel muestra el ranking completo de §3.9 |
-| **B5** | Tres implementaciones del cálculo (oficial Python, oficial C++, legacy Python) + 2 copias en los entregables | Alto: ya se demostró una divergencia histórica (py 10,2 vs cpp 13,5) | Mediano (deprecación, no borrado) | ❌ **Abierta** → Fase 6 |
+| **B5** | Tres implementaciones del cálculo (oficial Python, oficial C++, legacy Python) + 2 copias en los entregables | Alto: ya se demostró una divergencia histórica (py 10,2 vs cpp 13,5) | Mediano (deprecación, no borrado) | ✅ **Cerrada** (Fase 6): `i_grupo` → `i_grupo_legacy` (una sola implementación legacy, la de la API, que alimenta el semáforo); el CLI ya no calcula un segundo legacy |
 | **B6** | Cobertura de tests incompleta en el lado nuevo | Medio: el modelo oficial C++ no tiene test unitario (solo el script de paridad, que exige binario); el front no tiene test que verifique qué número ni qué rótulo se muestra | Mediano | ✅ **Cerrada** (Fases 2, 3 y 4): front cubierto (12 casos: 5 de la tarjeta + 7 del panel), contrato cubierto por 12 tests de Python y C++ cubierto por 8 casos / 151 aserciones (`pea_tests_indicador.exe`) |
 | **B7** | El contrato JSON oficial está triplicado a mano (`resultado_a_json` C++, dict Python, tipo TS) | Medio: un campo nuevo se puede añadir en un lado y romperse en otro en silencio | Chico-mediano | ✅ **Cerrada** (Fase 3): un `CONTRATO` declarado del que se derivan el golden, el tipo TS y el fixture del panel |
 | **B8** | Los datos no activan las clases TOP/A/B | Medio (contexto, no bug): la fuente GrupLAC no trae Publindex/Scimago, así que `Nc.Top = Nc.A = Nc.B = 0` y el indicador oficial solo mueve DPC, Fr.B, Cohe y Coop | Datos (+visibilidad) | ⚠️ **Visibilidad cerrada** (el panel muestra TOP/A/B en 0 y su máximo de población); **el dato no llega** y no depende del código |
@@ -198,16 +201,19 @@ UI sino de proceso: publicar capturas y luego importar más grupos cambia el
 número (§9).
 
 **B5 — por qué deprecar y no borrar el legacy.** §3.9 y los tests actuales
-dependen de su forma (`i_grupo`, `tiers`, semáforo), y el semáforo de
+dependen de su forma (`i_grupo_legacy`, `tiers`, semáforo), y el semáforo de
 categorización es una funcionalidad aparte, valiosa y bien probada. Lo que se
-debe **matar** es su adjetivo: "Minciencias 2024". La deprecación debe ser
-explícita y visible (`legacy_i_grupo`, etiqueta "referencia, no oficial"), no
-un borrado que rompa el semáforo. **Hoy hay dos legacies distintos** (CLI 36,00
-vs API 491,704 para el mismo grupo, ver §3.2): mientras ambos existan, cada uno
-debería rotularse como "aproximación legacy" y no como un número comparable.
-→ El rótulo del legacy de la API ya se corrigió en la Fase 1; **lo que falta
-es renombrar la clave** (`i_grupo` → `i_grupo_legacy`) y unificar las dos
-implementaciones legacy, que es la Fase 6.
+debía **matar** era su adjetivo: "Minciencias 2024". La deprecación debía ser
+explícita y visible (`i_grupo_legacy`, etiqueta "aproximación legacy, no
+oficial"), no un borrado que rompiera el semáforo. Además había **dos legacies
+distintos** (CLI 36,00 vs API 491,704 para el mismo grupo, ver §3.2).
+→ **Resuelto en la Fase 6 (2026-10-23):** la clave se renombró
+`i_grupo` → `i_grupo_legacy` en backend, frontend y tests; el rótulo de la UI
+es "I_Grupo (aproximación legacy, no oficial)"; y el CLI **dejó de calcular su
+propia versión** del legacy (que era la que divergía), de modo que hoy existe
+una sola implementación legacy: la que alimenta el semáforo. Lo que quedó
+intacto a propósito: el código del semáforo (`tier_rules.py`) y las dos copias
+en los entregables (`Taller2_WP-DN-EO.*`), que son el entregable del parcial.
 
 **B7 — un solo contrato.** Antes existía un verificador de paridad C++↔Python
 (fuerte) pero no había contrato verificable contra la UI: el tipo TS era una
@@ -458,16 +464,40 @@ Grande. Opciones:
   investigador dejó de decir "Minciencias 2024"); falta que el usuario confirme
   si (b) es la decisión final o si entra (a).
 
-### Fase 6 — Deprecación del legacy (B5) — ❌ No iniciada
+### Fase 6 — Deprecación del legacy (B5) — ✅ Implementada y verificada
 Media. **Desbloqueada**: las Fases 1–4 están verdes y verificadas (2026-10-23).
-Se aplica cuando se decida:
+**Aplicada el 2026-10-23.**
 
-- `i_grupo` → `i_grupo_legacy` (con alias temporal si hay consumidores
-  externos), rótulo "no oficial" en todos lados, y el legacy queda solo como
-  insumo del semáforo, nunca como indicador.
-- Extra pendiente de la auditoría: **unificar los dos legacies** (CLI 36,00
-  vs API 491,704 para el mismo grupo, §3.2) o, si no se pueden unificar,
-  rotular cada uno como "aproximación legacy" con su origen explícito.
+Qué se hizo:
+
+- `i_grupo` → `i_grupo_legacy` en backend (`metrics_collector.py`,
+  `evaluator/__init__.py`), frontend (tipo TS, tarjeta y su test) y tests.
+  **Sin alias**: no hay consumidores externos de la clave (se comprobó con
+  barrido de todo el repo, incluido el módulo de datos abiertos), y el nombre
+  viejo no debe volver: `i_grupo_legacy` es una aproximación, no un indicador.
+- Rótulo "no oficial" en todos lados: la tarjeta pasó de "referencia legacy,
+  no oficial" a **"I_Grupo (aproximación legacy, no oficial)"**, que describe
+  qué es (conteos crudos) sin insinuar que sea un indicador del modelo.
+- **Unificación de los dos legacies por eliminación**: el CLI **ya no calcula**
+  el legacy (que era el que divergía: 36,00 vs 491,704). Ahora imprime solo el
+  modelo oficial + el contexto del grupo (nombre, ID, clasificación, miembros)
+  + una nota que remite a `i_grupo_legacy` de la API. Queda **una sola**
+  implementación legacy: la del backend, que alimenta el semáforo.
+- **No se tocó** el semáforo (`tier_rules.py`) ni las copias de los entregables
+  (`Taller2_WP-DN-EO.*`), que son el entregable del parcial.
+- **Extra de la auditoría**: se añadió el test de contrato **HTTP**
+  (`backend/tests/test_indicador_oficial_http.py`), que faltaba: carga el caso
+  sintético en la RAM, pide `GET /api/v1/groups/{id}/minciencias-diagnosis` con
+  `TestClient` y comprueba que el bloque `modelo_oficial_2024` que sale por
+  HTTP cumple el CONTRATO y **iguala el golden** versionado. Así el golden
+  queda validado en las tres capas: evaluador = HTTP = CLI C++.
+
+Verificaciones (2026-10-23): build C++ ✅ · `pea_tests_indicador.exe`
+**151 OK / 0 fallas** ✅ · `ctest -C Release` **2/2** ✅ ·
+`pea_paridad_indicador.py --golden` **CONTRATO CONFIRMADO** ✅ ·
+`gen_contrato_oficial.py --check` **CONTRATO AL DIA** ✅ ·
+`pytest backend/tests` **197 passed / 19 skipped** ✅ (los 19 skip son los que
+requieren la BD) · vitest **11 archivos / 80 pruebas** ✅ · `npm run build` ✅.
 
 ---
 
@@ -505,10 +535,10 @@ cd core_cpp/build2 && ctest -C Release --output-on-failure
 cd frontend/web-react && npm run build && npm run test
 ```
 
-> **Último resultado verificado (2026-10-23, Fases 1–4):** build C++ ✅ ·
+> **Último resultado verificado (2026-10-23, Fases 1–6):** build C++ ✅ ·
 > `pea_tests_indicador.exe` **151 OK / 0 fallas** ✅ · `ctest -C Release`
 > **2/2 passed** ✅ · vitest **11 archivos / 80 pruebas** ✅ · `npm run build` ✅
-> · `pytest backend/tests` **192 passed / 19 skipped** ✅ (los 19 skip son los
+> · `pytest backend/tests` **197 passed / 19 skipped** ✅ (los 19 skip son los
 > que requieren la BD) · `gen_contrato_oficial.py --check` **CONTRATO AL DIA** ✅
 > · `pea_paridad_indicador.py --golden` **CONTRATO CONFIRMADO** ✅ ·
 > `npx eslint` **de los 6 archivos de las Fases 1–2** → 0 errores nuevos.
@@ -516,6 +546,9 @@ cd frontend/web-react && npm run build && npm run test
 > archivos ajenos a esta línea (p. ej. `src/features/validation-queue/index.tsx`
 > y `src/lib/utils.ts`): por eso la verificación de esta línea es el lint
 > **por archivo tocado**, no el global.
+>
+> **Control nuevo de la Fase 6** (el payload de HTTP atado al golden):
+> `python -X utf8 -m pytest backend/tests/test_indicador_oficial_http.py -q` → **5 passed**.
 
 ---
 
@@ -537,7 +570,9 @@ cd frontend/web-react && npm run build && npm run test
    debajo de la tarjeta de diagnóstico en la pestaña de analítica del grupo.
 4. ~~**Población mínima**~~ → **Resuelto: `N = 10` grupos**
    (`POBLACION_MINIMA_NORMALIZACION` en `minciencias-diagnosis-card.tsx`).
-5. ~~**Rótulo del legacy**~~ → **Resuelto: "I_Grupo (referencia legacy, no oficial)"**.
+5. ~~**Rótulo del legacy**~~ → **Resuelto: "I_Grupo (referencia legacy, no oficial)"**
+   → **actualizado en la Fase 6** a "I_Grupo (aproximación legacy, no oficial)",
+   con la clave `i_grupo_legacy`.
 
 ---
 
@@ -547,7 +582,9 @@ cd frontend/web-react && npm run build && npm run test
   son reproducibles con `pea_data.json` como población y cierre 2026. Si el
   material vigente cita el legacy, y la UI pasa a mostrar el oficial, los dos
   documentos se contradicen: conviene fijar en el material qué dataset y qué
-  cierre se usaron.
+  cierre se usaron. **Ojo (Fase 6):** el 36,00 venía del legacy del CLI, que
+  **ya no se calcula** (era una segunda fórmula con reglas distintas); ese 36,00
+  solo es reproducible con el código de los entregables (`Taller2_WP-DN-EO.*`).
 - **Rotular el oficial como titular** puede "bajar" el número (0,85 frente a
   36) y generar la percepción de regresión. Es exactamente lo que exige §3.9
   (escala 0–10); el material de sustentación debe explicarlo, y por eso la
@@ -565,11 +602,14 @@ cd frontend/web-react && npm run build && npm run test
   contra el backend (pytest) y contra el CLI C++ (`--golden`), y **el fixture
   del panel ES el golden**, tipado contra el tipo generado: un campo que se
   desvíe del contrato rompe el build del frontend o el pytest, no la pantalla.
-- **Lo que la Fase 3 no ata es la API en vivo.** El payload del backend Python
-  y el del CLI C++ están verificados contra el contrato; la serialización HTTP
-  de `/groups/{id}/minciencias-diagnosis` todavía no tiene un test que la
-  compare contra el golden. Es la brecha que debe cerrarse cuando la Fase 6
-  renombre claves del legacy.
+- ~~**Lo que la Fase 3 no ata es la API en vivo.**~~ → **Resuelto en la Fase 6.**
+  El payload del backend Python y el del CLI C++ ya estaban verificados contra
+  el contrato; faltaba la serialización HTTP de
+  `/groups/{id}/minciencias-diagnosis`. `backend/tests/test_indicador_oficial_http.py`
+  la ata: carga el caso sintético en la RAM, pide el endpoint con `TestClient` y
+  comprueba que lo que sale por HTTP cumple el CONTRATO y **iguala el golden**
+  versionado. Las tres capas (evaluador = HTTP = CLI C++) están contra el mismo
+  golden.
 - **Sin el gate en CI (D6)**, `gen_catalogo_cpp.py --check` puede dejar de
   correr y el catálogo C++ puede divergir del backend sin que nadie lo note.
   Hoy la paridad C++↔Python lo detecta en cada ejecución del script, pero
