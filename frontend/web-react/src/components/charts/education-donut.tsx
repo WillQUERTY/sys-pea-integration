@@ -3,9 +3,10 @@ import { PieChart, Pie, Cell, Tooltip, ResponsiveContainer } from 'recharts'
 import { GraduationCap } from 'lucide-react'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
-import { ResearcherEducationItem } from '@/lib/api'
+import type { ResearcherEducationItem } from '@/lib/api'
 import { cn } from '@/lib/utils'
 import { EDUCATION_COLORS, DEFAULT_CHART_COLOR } from './chart-tokens'
+import { EmptyState } from './analytics-kit'
 
 export interface EducationDonutProps {
   data?: ResearcherEducationItem[]
@@ -35,7 +36,7 @@ export function EducationDonut({
             <GraduationCap className='h-4 w-4 text-amber-500' />
             <CardTitle className='text-sm sm:text-base font-bold'>{title}</CardTitle>
           </div>
-          <Badge variant='outline' className='text-[10px] font-normal'>
+          <Badge variant='outline' className='text-[11px] font-normal'>
             {displayTotal} Investigadores
           </Badge>
         </div>
@@ -44,9 +45,7 @@ export function EducationDonut({
 
       <CardContent className='pb-4 pt-1'>
         {data.length === 0 ? (
-          <div className='flex h-[220px] items-center justify-center text-xs text-muted-foreground'>
-            No hay datos de formación registrados
-          </div>
+          <EmptyState icon={GraduationCap}>No hay datos de formación registrados</EmptyState>
         ) : (
           <div className='space-y-4'>
             <div className='relative w-full' style={{ height: `${height}px` }}>
@@ -60,7 +59,7 @@ export function EducationDonut({
                 <span className='text-xl font-extrabold text-foreground tracking-tight'>
                   {displayTotal}
                 </span>
-                <span className='text-[10px] text-muted-foreground uppercase font-medium'>
+                <span className='text-[11px] text-muted-foreground uppercase font-medium'>
                   Investigadores
                 </span>
               </div>
@@ -107,19 +106,22 @@ export function EducationDonut({
               </ResponsiveContainer>
             </div>
 
-            <div className='grid grid-cols-2 gap-2 text-xs pt-1 border-t border-border/50'>
+            <div className='grid grid-cols-[repeat(auto-fit,minmax(11rem,1fr))] gap-2 border-t border-border/50 pt-3'>
               {data.map((e) => (
-                <div key={e.level} className='flex items-center justify-between gap-1.5 p-1 rounded-md hover:bg-muted/40'>
-                  <div className='flex items-center gap-1.5 min-w-0'>
+                <div
+                  key={e.level}
+                  className='flex min-w-0 items-center justify-between gap-2 rounded-lg border border-border/40 bg-muted/20 px-2.5 py-1.5 transition-colors hover:bg-muted/50'
+                >
+                  <div className='flex min-w-0 items-center gap-2'>
                     <span
-                      className='size-2.5 rounded-full shrink-0'
+                      className='size-2.5 shrink-0 rounded-full'
                       style={{ backgroundColor: EDUCATION_COLORS[e.level] || DEFAULT_CHART_COLOR }}
                     />
-                    <span className='truncate text-[11px] font-medium text-foreground' title={e.level}>
+                    <span className='line-clamp-2 text-xs font-semibold leading-tight text-foreground' title={e.level}>
                       {e.level}
                     </span>
                   </div>
-                  <span className='text-[11px] font-bold text-muted-foreground tabular-nums shrink-0'>
+                  <span className='shrink-0 text-xs font-bold tabular-nums text-muted-foreground'>
                     {e.count} ({e.percentage}%)
                   </span>
                 </div>

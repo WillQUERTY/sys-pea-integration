@@ -12,6 +12,7 @@ import { BookOpen } from 'lucide-react'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { cn } from '@/lib/utils'
+import { EmptyState } from './analytics-kit'
 
 export interface ProductionHistogramProps {
   data: Array<{ year: string; count: number }>
@@ -80,41 +81,35 @@ export function ProductionHistogram({
             <CardDescription className='text-xs mt-0.5'>{resolvedDescription}</CardDescription>
           </div>
 
-          <div className='flex items-center gap-2 shrink-0 self-start sm:self-center'>
-            <div className='flex items-center rounded-lg bg-muted p-0.5 text-xs'>
-              <button
-                type='button'
-                onClick={() => setTimeWindow('5y')}
-                className={`px-2 py-1 rounded-md font-medium text-[11px] transition-all ${
-                  timeWindow === '5y'
-                    ? 'bg-background text-foreground shadow-xs'
-                    : 'text-muted-foreground hover:text-foreground'
-                }`}
-              >
-                5 Años (Minciencias)
-              </button>
-              <button
-                type='button'
-                onClick={() => setTimeWindow('10y')}
-                className={`px-2 py-1 rounded-md font-medium text-[11px] transition-all ${
-                  timeWindow === '10y'
-                    ? 'bg-background text-foreground shadow-xs'
-                    : 'text-muted-foreground hover:text-foreground'
-                }`}
-              >
-                10 Años
-              </button>
-              <button
-                type='button'
-                onClick={() => setTimeWindow('all')}
-                className={`px-2 py-1 rounded-md font-medium text-[11px] transition-all ${
-                  timeWindow === 'all'
-                    ? 'bg-background text-foreground shadow-xs'
-                    : 'text-muted-foreground hover:text-foreground'
-                }`}
-              >
-                Histórico
-              </button>
+          <div className='flex w-full items-center gap-2 sm:w-auto sm:shrink-0 sm:self-center'>
+            <div
+              role='group'
+              aria-label='Ventana de tiempo'
+              className='flex flex-1 items-center rounded-lg bg-muted p-0.5 sm:flex-none'
+            >
+              {(
+                [
+                  { value: '5y', label: '5 años', extra: ' (Minciencias)' },
+                  { value: '10y', label: '10 años', extra: '' },
+                  { value: 'all', label: 'Histórico', extra: '' },
+                ] as const
+              ).map((opt) => (
+                <button
+                  key={opt.value}
+                  type='button'
+                  aria-pressed={timeWindow === opt.value}
+                  onClick={() => setTimeWindow(opt.value)}
+                  className={cn(
+                    'min-h-8 flex-1 whitespace-nowrap rounded-md px-2.5 py-1 text-xs font-medium transition-all sm:flex-none',
+                    timeWindow === opt.value
+                      ? 'bg-background text-foreground shadow-xs'
+                      : 'text-muted-foreground hover:text-foreground'
+                  )}
+                >
+                  {opt.label}
+                  {opt.extra && <span className='hidden md:inline'>{opt.extra}</span>}
+                </button>
+              ))}
             </div>
 
             {showTotalBadge && totalProducts !== undefined && (
@@ -125,14 +120,14 @@ export function ProductionHistogram({
           </div>
         </div>
 
-        <div className='flex items-center justify-between text-xs text-muted-foreground pt-2 border-t border-border/40 mt-2'>
+        <div className='mt-2 flex flex-wrap items-center justify-between gap-x-4 gap-y-1.5 border-t border-border/40 pt-2 text-xs text-muted-foreground'>
           <span>
             Total en periodo: <strong className='text-foreground'>{totalInPeriod.toLocaleString('es-CO')}</strong> obras
           </span>
           {peakYear && (
             <span className='flex items-center gap-1.5'>
               Pico de producción:{' '}
-              <Badge variant='secondary' className='text-[10px] font-semibold py-0'>
+              <Badge variant='secondary' className='text-[11px] font-semibold py-0'>
                 {peakYear.year} ({peakYear.count} obras)
               </Badge>
             </span>
@@ -142,9 +137,9 @@ export function ProductionHistogram({
 
       <CardContent className='ps-0 pe-2 pb-3'>
         {filteredData.length === 0 ? (
-          <div className='flex h-[260px] items-center justify-center text-xs text-muted-foreground'>
+          <EmptyState icon={BookOpen} className='mx-2 min-h-[240px]'>
             Sin registros de producción para el rango seleccionado
-          </div>
+          </EmptyState>
         ) : (
           <ResponsiveContainer width='100%' height={height}>
             <BarChart data={filteredData} margin={{ top: 10, right: 10, left: -15, bottom: 0 }}>

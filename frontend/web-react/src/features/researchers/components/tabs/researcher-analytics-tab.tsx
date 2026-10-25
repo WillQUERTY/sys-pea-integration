@@ -5,9 +5,13 @@ import {
   CheckCircle2,
   Award,
   TrendingUp,
+  LayoutDashboard,
+  ShieldCheck,
+  Network,
 } from 'lucide-react'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Badge } from '@/components/ui/badge'
+import { KpiCard, KpiGrid, AnalyticsSections, TwoColumn } from '@/components/charts/analytics-kit'
 import {
   ProductionHistogram,
   FamiliesDonut,
@@ -49,13 +53,13 @@ export function ResearcherAnalyticsTab({
   const isLoadingIndicator = isFetchingIndicator
 
   /**
-   * Fase 5 (brecha B3): el modelo de medición 2024 NO define un indicador de
-   * producción por persona — su único indicador (§3.10) es de GRUPO. Por eso
-   * lo que se muestra como titular es la ADAPTACIÓN INDIVIDUAL declarada
+   * Fase 5 (brecha B3): el modelo de mediciÃ³n 2024 NO define un indicador de
+   * producciÃ³n por persona â€” su Ãºnico indicador (Â§3.10) es de GRUPO. Por eso
+   * lo que se muestra como titular es la ADAPTACIÃ“N INDIVIDUAL declarada
    * (`adaptacion_individual_2024`), siempre rotulada como NO oficial. El
    * conteo ponderado legacy ya NO se muestra en la interfaz: desde el
-   * 2026-10-24 se eliminó del payload de la API; los conteos crudos que
-   * sí interesan aparecen como ENTRADAS del modelo dentro del panel de
+   * 2026-10-24 se eliminÃ³ del payload de la API; los conteos crudos que
+   * sÃ­ interesan aparecen como ENTRADAS del modelo dentro del panel de
    * desglose.
    */
   const adaptacion = indicator?.adaptacion_individual_2024
@@ -80,155 +84,146 @@ export function ResearcherAnalyticsTab({
   const posPoblacion = adaptacion?.posicion_poblacion
 
   return (
-    <div className="space-y-6">
-      {/* Métricas y KPIs Estratégicos del Docente */}
-      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4">
-        <div className="rounded-xl border border-border/50 bg-card p-4 shadow-xs">
-          <div className="flex items-center justify-between text-muted-foreground">
-            <span className="text-xs font-medium uppercase tracking-wider">Producción Total</span>
-            <BookOpen className="h-4 w-4 text-primary" />
-          </div>
-          <div className="mt-2 flex items-baseline gap-2">
-            <span className="text-2xl font-bold font-mono tracking-tight text-foreground">
-              {stats?.total_products ?? 0}
-            </span>
-            <span className="text-xs text-muted-foreground">obras registradas</span>
-          </div>
-        </div>
-
-        <div className="rounded-xl border border-border/50 bg-card p-4 shadow-xs">
-          <div className="flex items-center justify-between text-muted-foreground">
-            <span className="text-xs font-medium uppercase tracking-wider">Tasa de Aval</span>
-            <CheckCircle2 className="h-4 w-4 text-emerald-500" />
-          </div>
-          <div className="mt-2 flex items-baseline gap-2">
-            <span className="text-2xl font-bold font-mono tracking-tight text-emerald-600 dark:text-emerald-400">
-              {stats?.strategic_ratios?.endorsement_rate ?? 0}%
-            </span>
-            <span className="text-xs text-muted-foreground">
-              ({stats?.strategic_ratios?.endorsed_count ?? 0} avalados)
-            </span>
-          </div>
-        </div>
-
-        <div className="rounded-xl border border-border/50 bg-card p-4 shadow-xs">
-          <div className="flex items-center justify-between text-muted-foreground">
-            <span className="text-xs font-medium uppercase tracking-wider">Red de Coautoría</span>
-            <Users className="h-4 w-4 text-violet-500" />
-          </div>
-          <div className="mt-2 flex items-baseline gap-2">
-            <span className="text-2xl font-bold font-mono tracking-tight text-violet-600 dark:text-violet-400">
-              {stats?.strategic_ratios?.total_coauthors ?? 0}
-            </span>
-            <span className="text-xs text-muted-foreground">pares coautores</span>
-          </div>
-        </div>
-
-        <div className="rounded-xl border border-border/50 bg-card p-4 shadow-xs">
-          <div className="flex items-center justify-between text-muted-foreground">
-            <span className="text-xs font-medium uppercase tracking-wider">Grupos Vinculados</span>
-            <Award className="h-4 w-4 text-amber-500" />
-          </div>
-          <div className="mt-2 flex items-baseline gap-2">
-            <span className="text-2xl font-bold font-mono tracking-tight text-amber-600 dark:text-amber-400">
-              {stats?.groups_contribution?.length ?? 0}
-            </span>
-            <span className="text-xs text-muted-foreground">colectivos UPC</span>
-          </div>
-        </div>
-
-        <div className="rounded-xl border border-border/50 bg-card p-4 shadow-xs">
-          <div className="flex items-center justify-between gap-1 text-muted-foreground">
-            <div className="flex items-center gap-1.5 min-w-0">
-              <span className="text-xs font-medium uppercase tracking-wider truncate">
-                Ind. Investigador
-              </span>
-              <Badge
-                variant="outline"
-                className="border-amber-500/40 bg-amber-500/10 text-[9px] font-semibold text-amber-700 dark:text-amber-300 px-1 py-0 uppercase shrink-0"
-              >
-                No oficial
-              </Badge>
-            </div>
-            <TrendingUp className="h-4 w-4 text-amber-500 shrink-0" />
-          </div>
-          <div className="mt-2 flex flex-col gap-0.5">
-            <div className="flex items-baseline gap-1.5">
-              <span className="text-2xl font-bold font-mono tracking-tight text-foreground">
-                {valorTitular !== undefined
-                  ? valorTitular.toLocaleString('es-CO', {
-                      minimumFractionDigits: 3,
-                      maximumFractionDigits: 3,
-                    })
-                  : '—'}
-              </span>
-              {adaptacion?.rango_teorico != null && (
-                <span className="text-[11px] font-mono text-muted-foreground">
-                  / {adaptacion.rango_teorico.toLocaleString('es-CO', { maximumFractionDigits: 0 })}
-                </span>
-              )}
-            </div>
-            <span
-              className="text-xs text-muted-foreground truncate"
-              title={
-                posPoblacion
-                  ? `Puesto ${posPoblacion.puesto} de ${posPoblacion.de} (percentil ${posPoblacion.percentil?.toFixed(1)}%)`
-                  : undefined
-              }
+    <div className="space-y-4 sm:space-y-6">
+      {/* MÃ©tricas y KPIs EstratÃ©gicos del Docente: siempre visibles */}
+      <KpiGrid desktop={5}>
+        <KpiCard
+          label="ProducciÃ³n Total"
+          icon={BookOpen}
+          value={stats?.total_products ?? 0}
+          hint="obras registradas"
+        />
+        <KpiCard
+          label="Tasa de Aval"
+          icon={CheckCircle2}
+          iconClassName="text-emerald-500"
+          valueClassName="text-emerald-600 dark:text-emerald-400"
+          value={`${stats?.strategic_ratios?.endorsement_rate ?? 0}%`}
+          hint={`${stats?.strategic_ratios?.endorsed_count ?? 0} avalados`}
+        />
+        <KpiCard
+          label="Red de CoautorÃ­a"
+          icon={Users}
+          iconClassName="text-violet-500"
+          valueClassName="text-violet-600 dark:text-violet-400"
+          value={stats?.strategic_ratios?.total_coauthors ?? 0}
+          hint="pares coautores"
+        />
+        <KpiCard
+          label="Grupos Vinculados"
+          icon={Award}
+          iconClassName="text-amber-500"
+          valueClassName="text-amber-600 dark:text-amber-400"
+          value={stats?.groups_contribution?.length ?? 0}
+          hint="colectivos UPC"
+        />
+        <KpiCard
+          className="col-span-2 md:col-span-1"
+          label="Ind. Investigador"
+          icon={TrendingUp}
+          iconClassName="text-amber-500"
+          badge={
+            <Badge
+              variant="outline"
+              className="border-amber-500/40 bg-amber-500/10 text-[10px] font-semibold text-amber-700 dark:text-amber-300 px-1.5 py-0 uppercase shrink-0"
             >
-              {posPoblacion
-                ? `Puesto ${posPoblacion.puesto} de ${posPoblacion.de} · pctl ${posPoblacion.percentil?.toFixed(1)}%`
-                : adaptacion
-                  ? 'Adaptación Minciencias 2024'
-                  : 'No disponible'}
-            </span>
-          </div>
-        </div>
-      </div>
+              No oficial
+            </Badge>
+          }
+          value={
+            valorTitular !== undefined
+              ? valorTitular.toLocaleString('es-CO', {
+                  minimumFractionDigits: 3,
+                  maximumFractionDigits: 3,
+                })
+              : 'â€”'
+          }
+          valueSuffix={
+            adaptacion?.rango_teorico != null
+              ? `/ ${adaptacion.rango_teorico.toLocaleString('es-CO', { maximumFractionDigits: 0 })}`
+              : undefined
+          }
+          hintTitle={
+            posPoblacion
+              ? `Puesto ${posPoblacion.puesto} de ${posPoblacion.de} (percentil ${posPoblacion.percentil?.toFixed(1)}%)`
+              : undefined
+          }
+          hint={
+            posPoblacion
+              ? `Puesto ${posPoblacion.puesto} de ${posPoblacion.de} Â· pctl ${posPoblacion.percentil?.toFixed(1)}%`
+              : adaptacion
+                ? 'AdaptaciÃ³n Minciencias 2024'
+                : 'No disponible'
+          }
+        />
+      </KpiGrid>
 
-      {/* Desglose auditable de la adaptación individual (§2.2.9 → §3.10) */}
-      {adaptacion && (
-        <ResearcherOfficialAdaptationPanel
-          adaptacion={adaptacion}
-          summary={indicator?.summary}
-        />
-      )}
-
-      {/* Grid 1: Histograma Temporal y Familias Minciencias */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <ProductionHistogram
-          data={stats?.by_year ?? []}
-          totalProducts={stats?.total_products ?? 0}
-          title="Evolución de Producción Científica"
-          description="Trayectoria temporal de publicaciones y productos del investigador."
-        />
-        <FamiliesDonut
-          data={stats?.families_distribution ?? []}
-          title="Balance por Familias Minciencias"
-          description="Distribución de su producción en GNC, DTI, ASC y FRH."
-        />
-      </div>
-
-      {/* Grid 2: Aporte por Grupos y Red de Coautoría Frecuente */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <ResearcherGroupsContribution
-          data={stats?.groups_contribution ?? []}
-          isAdmin={isAdmin}
-        />
-        <ResearcherTopCoauthors
-          data={stats?.top_coauthors ?? []}
-          isAdmin={isAdmin}
-        />
-      </div>
-
-      {/* Grid 3: Top Tipologías Minciencias */}
-      {stats?.top_subtypes && stats.top_subtypes.length > 0 && (
-        <TopSubtypesRanking
-          data={stats.top_subtypes}
-          title="Top Tipologías Minciencias del Investigador"
-          description="Subtipos con mayor número de productos registrados (artículos, libros, software, etc.)."
-        />
-      )}
+      <AnalyticsSections
+        sections={[
+          {
+            value: 'resumen',
+            label: 'Resumen',
+            icon: LayoutDashboard,
+            content: (
+              <>
+                <TwoColumn>
+                  <ProductionHistogram
+                    data={stats?.by_year ?? []}
+                    totalProducts={stats?.total_products ?? 0}
+                    title="EvoluciÃ³n de ProducciÃ³n CientÃ­fica"
+                    description="Trayectoria temporal de publicaciones y productos del investigador."
+                  />
+                  <FamiliesDonut
+                    data={stats?.families_distribution ?? []}
+                    title="Balance por Familias Minciencias"
+                    description="DistribuciÃ³n de su producciÃ³n en GNC, DTI, ASC y FRH."
+                  />
+                </TwoColumn>
+                {stats?.top_subtypes && stats.top_subtypes.length > 0 && (
+                  <TopSubtypesRanking
+                    data={stats.top_subtypes}
+                    title="Top TipologÃ­as Minciencias del Investigador"
+                    description="Subtipos con mayor nÃºmero de productos registrados (artÃ­culos, libros, software, etc.)."
+                  />
+                )}
+              </>
+            ),
+          },
+          ...(adaptacion
+            ? [
+                {
+                  value: 'indicador',
+                  label: 'Indicador',
+                  icon: ShieldCheck,
+                  content: (
+                    /* Desglose auditable de la adaptaciÃ³n individual (Â§2.2.9 â†’ Â§3.10) */
+                    <ResearcherOfficialAdaptationPanel
+                      adaptacion={adaptacion}
+                      summary={indicator?.summary}
+                    />
+                  ),
+                },
+              ]
+            : []),
+          {
+            value: 'red',
+            label: 'Grupos y red',
+            icon: Network,
+            content: (
+              <TwoColumn>
+                <ResearcherGroupsContribution
+                  data={stats?.groups_contribution ?? []}
+                  isAdmin={isAdmin}
+                />
+                <ResearcherTopCoauthors
+                  data={stats?.top_coauthors ?? []}
+                  isAdmin={isAdmin}
+                />
+              </TwoColumn>
+            ),
+          },
+        ]}
+      />
     </div>
   )
 }

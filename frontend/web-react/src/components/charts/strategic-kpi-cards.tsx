@@ -1,7 +1,7 @@
 import { ShieldCheck, GraduationCap, TrendingUp, Fingerprint } from 'lucide-react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
-import { StrategicRatios } from '@/lib/api'
+import type { StrategicRatios } from '@/lib/api'
 
 export interface StrategicKpiCardsProps {
   ratios?: StrategicRatios

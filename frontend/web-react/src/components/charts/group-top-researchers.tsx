@@ -1,14 +1,18 @@
+import { useState } from 'react'
 import { Link } from '@tanstack/react-router'
-import { Trophy, Award, Sparkles } from 'lucide-react'
+import { Trophy, Award, Sparkles, ChevronDown, ChevronUp } from 'lucide-react'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
+import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
 import type { GroupTopResearcherItem } from '@/lib/api'
 import { EDUCATION_COLORS } from './chart-tokens'
+import { EmptyState } from './analytics-kit'
 
 export interface GroupTopResearchersProps {
   data?: GroupTopResearcherItem[]
   totalGroupProducts?: number
+  limit?: number
   className?: string
   title?: string
   description?: string
@@ -17,10 +21,13 @@ export interface GroupTopResearchersProps {
 export function GroupTopResearchers({
   data = [],
   totalGroupProducts: _totalGroupProducts,
+  limit = 5,
   className,
   title = 'Investigadores Pilares y Mayor Impacto',
   description = 'Liderazgo y distribución del aporte a la producción acumulada del colectivo.',
 }: GroupTopResearchersProps) {
+  const [showAll, setShowAll] = useState(false)
+
   if (!data?.length) {
     return (
       <Card className={cn('border-border/60 shadow-xs', className)}>
@@ -28,8 +35,8 @@ export function GroupTopResearchers({
           <CardTitle className='text-sm sm:text-base font-bold'>{title}</CardTitle>
           <CardDescription className='text-xs'>{description}</CardDescription>
         </CardHeader>
-        <CardContent className='flex h-[200px] items-center justify-center text-xs text-muted-foreground'>
-          Sin registros de autoría de integrantes vinculados aún
+        <CardContent>
+          <EmptyState icon={Trophy}>Sin registros de autoría de integrantes vinculados aún</EmptyState>
         </CardContent>
       </Card>
     )
@@ -41,8 +48,11 @@ export function GroupTopResearchers({
     .reduce((acc, curr) => acc + curr.percentage_of_group, 0)
     .toFixed(1)
 
+  const displayedData = showAll ? data : data.slice(0, limit)
+  const hasMore = data.length > limit
+
   return (
-    <Card className={cn('border-border/60 shadow-xs flex flex-col justify-between', className)}>
+    <Card className={cn('border-border/60 shadow-xs flex flex-col', className)}>
       <CardHeader className='pb-3'>
         <div className='flex items-center justify-between gap-2'>
           <div className='flex items-center gap-2 min-w-0'>
@@ -54,14 +64,15 @@ export function GroupTopResearchers({
               <CardDescription className='text-xs mt-0.5'>{description}</CardDescription>
             </div>
           </div>
-          <Badge variant='outline' className='text-[10px] font-normal shrink-0 hidden sm:inline-flex'>
-            Top {data.length} Autores
+          <Badge variant='outline' className='text-[11px] font-normal shrink-0 hidden sm:inline-flex'>
+            {hasMore && !showAll ? `Top ${limit} de ${data.length} Autores` : `${data.length} Autores`}
           </Badge>
         </div>
       </CardHeader>
 
-      <CardContent className='space-y-3.5 pb-4 pt-1 flex-1'>
-        {data.map((res, index) => {
+      <CardContent className='space-y-3 pb-4 pt-1'>
+        <div className={cn('space-y-2.5', showAll && data.length > 7 && 'max-h-[460px] overflow-y-auto pr-1')}>
+          {displayedData.map((res, index) => {
           const rank = index + 1
           const relativeWidth = Math.max((res.products_count / maxCount) * 100, 4)
           const eduColor = EDUCATION_COLORS[res.highest_education] || '#64748b'
@@ -100,7 +111,7 @@ export function GroupTopResearchers({
                       </Link>
 
                       {rank === 1 && (
-                        <span className='inline-flex items-center gap-1 text-[10px] font-bold text-amber-600 dark:text-amber-400 bg-amber-500/10 px-1.5 py-0.2 rounded-full shrink-0'>
+                        <span className='inline-flex items-center gap-1 text-[11px] font-bold text-amber-600 dark:text-amber-400 bg-amber-500/10 px-1.5 py-0.2 rounded-full shrink-0'>
                           <Sparkles className='h-2.5 w-2.5' /> Liderazgo
                         </span>
                       )}
@@ -116,7 +127,7 @@ export function GroupTopResearchers({
                       {res.orcid && (
                         <>
                           <span>·</span>
-                          <span className='text-[10px] font-mono text-emerald-600 dark:text-emerald-400'>
+                          <span className='text-[11px] font-mono text-emerald-600 dark:text-emerald-400'>
                             ORCID ✓
                           </span>
                         </>
@@ -129,9 +140,9 @@ export function GroupTopResearchers({
                 <div className='text-right shrink-0'>
                   <div className='text-xs sm:text-sm font-extrabold text-foreground tabular-nums'>
                     {res.products_count}{' '}
-                    <span className='text-[10px] font-normal text-muted-foreground'>obras</span>
+                    <span className='text-[11px] font-normal text-muted-foreground'>obras</span>
                   </div>
-                  <div className='text-[10px] font-bold text-primary tabular-nums'>
+                  <div className='text-[11px] font-bold text-primary tabular-nums'>
                     {res.percentage_of_group}% del grupo
                   </div>
                 </div>
@@ -150,10 +161,33 @@ export function GroupTopResearchers({
             </div>
           )
         })}
+        </div>
+
+        {hasMore && (
+          <Button
+            type='button'
+            variant='ghost'
+            size='sm'
+            onClick={() => setShowAll((prev) => !prev)}
+            className='h-8 w-full rounded-xl border border-border/60 bg-muted/20 text-xs font-semibold text-foreground hover:bg-muted/50 gap-1.5'
+          >
+            {showAll ? (
+              <>
+                <ChevronUp className='h-3.5 w-3.5' />
+                Mostrar solo el Top {limit}
+              </>
+            ) : (
+              <>
+                <ChevronDown className='h-3.5 w-3.5' />
+                Ver todos los autores ({data.length - limit} más)
+              </>
+            )}
+          </Button>
+        )}
 
         {/* Analytical Insight */}
         {Number(top3Contribution) > 0 && (
-          <div className='flex items-center gap-2 rounded-lg bg-primary/5 border border-primary/15 p-2.5 text-xs text-muted-foreground mt-3'>
+          <div className='flex items-center gap-2 rounded-lg bg-primary/5 border border-primary/15 p-2.5 text-xs text-muted-foreground'>
             <Award className='h-4 w-4 text-primary shrink-0' />
             <span>
               <strong>Concentración científica:</strong> Los 3 investigadores principales aportan el{' '}

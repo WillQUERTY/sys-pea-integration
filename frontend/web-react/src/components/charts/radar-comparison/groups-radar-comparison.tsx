@@ -172,7 +172,7 @@ export function GroupsRadarComparison({
         } else {
           authorMap.set(r.id, {
             name: r.name,
-            education: (r as any).highest_education || 'Investigador',
+            education: (r as { highest_education?: string }).highest_education || 'Investigador',
             groups: [g.acronym],
           })
         }
