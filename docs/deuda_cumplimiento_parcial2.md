@@ -155,8 +155,16 @@ Un requisito con un solo gap funcional es `parcial`, no `cumple`. Por eso varios
 
 **Acción recomendada (equipo externo):**
 1. Verificar visualmente la identidad UPC y la visibilidad de los tres integrantes.
+2. **Regrabar con el guion v2** (25 de octubre de 2026): el guion vigente se reescribió para recorrer **ejercicio por ejercicio** los 12 ejercicios del enunciado más los 2 del PARCIAL, con un mapa de trazabilidad escena→ejercicio y un tiempo objetivo de 10:00–11:00. El v1 dedicó la mayor parte del metraje a presentar la herramienta completa y entregaba los ejercicios en ~2 minutos.
 
 **Decisión del equipo (2026-10-24):** **no se menciona la duración en el correo**. La diferencia queda registrada solo en este documento (R16) y en la línea de estado de `docs/guion_sustentacion_video_parcial2.md`, como referencia interna para quienes presenten. El correo (`docs/correo_entrega_parcial2.md`) queda sin cambios al respecto.
+
+**Guion v2 (25 de octubre de 2026):** la NOTA 3 pide explicar la solución a *todos y cada uno* de los ejercicios, así que el guion se reorganizó desde "presentar el programa" hacia "demostrar cada ejercicio". Cambios verificados contra el repositorio antes de escribirlo:
+- La sección 2 dice **§3.10** del Modelo de Medición 2024 (la fórmula está en esa sección del documento; el entregable decía "sección 10.6", que no existe en el documento original).
+- Las escenas 3 y 5 se graban en `pea_cli interactive` con `load pea_data.json`: el CLI es un proceso por comando, `load` no persiste entre invocaciones y solo `indicator` acepta `--data`.
+- Los IDs que se escriben en cámara (`products update`) son los reales del catálogo SQL Server: familia **6 = GNC**, subtipo **57 = ART**, categoría **9 = ART_A1**.
+- Cifras verificadas contra `pea_data.json`: 2 grupos, 166 investigadores, 179 membresías, 1 778 productos, 2 368 autores, 1 896 enlaces grupo-producto, 604 proyectos, 125 enlaces grupo-proyecto, 2 planes, 1 778 en cola, 12 colecciones y **8 898 ítems** en total.
+- Paridad de los entregables re-verificada ejecutando ambos: `Taller2_WP-DN-EO.py` y `Taller2_WP-DN-EO.cpp` compilado con MSVC (`cl /std:c++20`) imprimen **I_Grupo = 12,667** e **I_Investigador = 11,700**.
 
 ### R17 — Archivo identificación estudiantes — cumple
 
