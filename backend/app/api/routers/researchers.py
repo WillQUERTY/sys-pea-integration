@@ -146,9 +146,7 @@ async def get_researcher_indicator_endpoint(res_id: int):
     - `adaptacion_individual_2024`: ADAPTACIÓN DECLARADA del pipeline
       §2.2.9 → §3.10 aplicado a la unidad "investigador" (NO oficial), con su
       desglose auditable (índices §3.9, términos §3.10, población, exclusiones,
-      adaptaciones y supuestos);
-    - `i_investigador_legacy`: la aproximación legacy (conteos crudos
-      ponderados), que queda solo como referencia.
+      adaptaciones y supuestos).
     """
     try:
         return repository.get_researcher_minciencias_indicator(res_id)

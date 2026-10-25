@@ -68,10 +68,11 @@ export function GroupCollaborationNetwork({
       return { k, x: c.x - (c.x - v.x) * r, y: c.y - (c.y - v.y) * r }
     })
 
+  const edges = data?.edges
   const filteredEdges = useMemo(() => {
-    if (!data?.edges) return []
-    return data.edges.filter((e) => e.weight >= minWeightFilter)
-  }, [data?.edges, minWeightFilter])
+    if (!edges) return []
+    return edges.filter((e) => e.weight >= minWeightFilter)
+  }, [edges, minWeightFilter])
 
   // Con el filtro actual: nodos con al menos un lazo van al lienzo; el resto, al panel de aislados
   const { canvasNodes, isolatedNodes } = useMemo(() => {
@@ -116,6 +117,7 @@ export function GroupCollaborationNetwork({
 
   // Cada vez que cambia el layout (datos o filtro) se re-encuadra la vista
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setView(fit)
   }, [fit])
 

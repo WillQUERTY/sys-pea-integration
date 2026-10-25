@@ -11,4 +11,5 @@ export * from './official-indicator-panel'
 export * from './researcher-official-adaptation-panel'
 export * from './group-collaboration-network'
 export * from './groups-radar-comparison'
+export * from './analytics-kit'
 

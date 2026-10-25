@@ -384,6 +384,6 @@ salida** (cero diff).
   `contrato_individual.py` (ni sus goldens, tipos TS o fixtures).
 - **No** tocar `core_cpp/` (paridad ya intacta).
 - **No** tocar `Taller2_WP-DN-EO.py` / `.cpp` (entregable del Parcial 2).
-- **No** tocar `i_grupo_legacy` / `i_investigador_legacy` (deprecados pero
-  vigentes; la deuda vive en `docs/plan-integracion-modelo-oficial.md`).
+- **No** tocar `i_grupo_legacy` / `i_investigador_legacy` (eliminados del
+  payload de la API el 2026-10-24; solo quedan en historial del repo).
 - **No** automatizar el cruce ISSN→Publindex (B8: pendiente de validación humana).

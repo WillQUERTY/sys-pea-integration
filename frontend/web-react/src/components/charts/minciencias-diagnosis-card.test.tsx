@@ -6,8 +6,9 @@ import { MincienciasDiagnosisCard } from './minciencias-diagnosis-card'
 /**
  * Fija la regla de las brechas B1 y B5 (docs/plan-integracion-modelo-oficial.md):
  * la única cifra que puede rotularse como "modelo oficial" es
- * `modelo_oficial_2024.ind_grupo`; el `i_grupo_legacy` es una aproximación de
- * conteos crudos y debe aparecer SIEMPRE rotulada como no oficial.
+ * `modelo_oficial_2024.ind_grupo`; no existe indicador legacy en la respuesta
+ * de la API (se eliminó el 2026-10-24): solo queda el cálculo real del
+ * modelo 2024.
  */
 function diagnostico(
   oficial: boolean,
@@ -16,7 +17,6 @@ function diagnostico(
   const base: MincienciasGroupDiagnosis = {
     group_id: 10,
     group_name: 'AITICE',
-    i_grupo_legacy: 36,
     current_classification: 'B',
     raw_classification: 'B',
     max_qualified_tier: 'B',
@@ -118,13 +118,13 @@ describe('MincienciasDiagnosisCard — lectura del indicador', () => {
       .toHaveTextContent('cierre 2026')
   })
 
-  it('no muestra el i_grupo_legacy: la interfaz solo exhibe la lectura oficial', async () => {
+  it('no muestra indicador legacy (eliminado de la API): solo lectura oficial', async () => {
     const { getByTestId } = await render(
       <MincienciasDiagnosisCard data={diagnostico(true)} />
     )
 
-    // Desde 2026-10-24 el conteo ponderado legacy vive solo en el payload de
-    // la API (trazabilidad); la tarjeta muestra únicamente la lectura oficial.
+    // La respuesta de la API ya no incluye indicador legacy: solo el cálculo
+    // real del modelo 2024. La tarjeta muestra únicamente la lectura oficial.
     await expect
       .element(getByTestId('ind-grupo-legacy-label'))
       .not.toBeInTheDocument()

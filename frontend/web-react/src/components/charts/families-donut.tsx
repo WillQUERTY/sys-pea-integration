@@ -3,9 +3,10 @@ import { PieChart, Pie, Cell, Tooltip, ResponsiveContainer } from 'recharts'
 import { Award } from 'lucide-react'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
-import { FamilyDistributionItem } from '@/lib/api'
+import type { FamilyDistributionItem } from '@/lib/api'
 import { cn } from '@/lib/utils'
 import { FAMILY_COLORS, DEFAULT_CHART_COLOR } from './chart-tokens'
+import { EmptyState } from './analytics-kit'
 
 export interface FamiliesDonutProps {
   data?: FamilyDistributionItem[]
@@ -35,7 +36,7 @@ export function FamiliesDonut({
             <Award className='h-4 w-4 text-emerald-600' />
             <CardTitle className='text-sm sm:text-base font-bold'>{title}</CardTitle>
           </div>
-          <Badge variant='outline' className='text-[10px] font-normal'>
+          <Badge variant='outline' className='text-[11px] font-normal'>
             {totalClassified.toLocaleString('es-CO')} clasificadas
           </Badge>
         </div>
@@ -44,9 +45,7 @@ export function FamiliesDonut({
 
       <CardContent className='pb-4 pt-1'>
         {data.length === 0 ? (
-          <div className='flex h-[220px] items-center justify-center text-xs text-muted-foreground'>
-            No hay familias catalogadas
-          </div>
+          <EmptyState icon={Award}>No hay familias catalogadas</EmptyState>
         ) : (
           <div className='space-y-4'>
             <div className='relative w-full' style={{ height: `${height}px` }}>
@@ -60,7 +59,7 @@ export function FamiliesDonut({
                 <span className='text-xl font-extrabold text-foreground tracking-tight'>
                   {totalClassified.toLocaleString()}
                 </span>
-                <span className='text-[10px] text-muted-foreground uppercase font-medium'>
+                <span className='text-[11px] text-muted-foreground uppercase font-medium'>
                   Catalogadas
                 </span>
               </div>
@@ -107,19 +106,22 @@ export function FamiliesDonut({
               </ResponsiveContainer>
             </div>
 
-            <div className='grid grid-cols-2 gap-2 text-xs pt-1 border-t border-border/50'>
+            <div className='grid grid-cols-[repeat(auto-fit,minmax(9rem,1fr))] gap-2 border-t border-border/50 pt-3'>
               {data.map((f) => (
-                <div key={f.code} className='flex items-center justify-between gap-1.5 p-1 rounded-md hover:bg-muted/40'>
-                  <div className='flex items-center gap-1.5 min-w-0'>
+                <div
+                  key={f.code}
+                  className='flex min-w-0 items-center justify-between gap-2 rounded-lg border border-border/40 bg-muted/20 px-2.5 py-1.5 transition-colors hover:bg-muted/50'
+                >
+                  <div className='flex min-w-0 items-center gap-2'>
                     <span
-                      className='size-2.5 rounded-full shrink-0'
+                      className='size-2.5 shrink-0 rounded-full'
                       style={{ backgroundColor: FAMILY_COLORS[f.code] || DEFAULT_CHART_COLOR }}
                     />
-                    <span className='truncate text-[11px] font-medium text-foreground' title={f.name}>
+                    <span className='truncate text-xs font-semibold text-foreground' title={f.name}>
                       {f.code}
                     </span>
                   </div>
-                  <span className='text-[11px] font-bold text-muted-foreground tabular-nums shrink-0'>
+                  <span className='shrink-0 text-xs font-bold tabular-nums text-muted-foreground'>
                     {f.percentage}%
                   </span>
                 </div>

@@ -135,12 +135,6 @@ export type { MincienciasIndividualAdaptation2024 }
 export interface MincienciasGroupDiagnosis {
   group_id: number
   group_name: string
-  /** Aproximacion legacy (conteos crudos) del indicador de produccion del
-   *  grupo: NO es el indicador oficial 2024 (§3.10, que llega en
-   *  `modelo_oficial_2024`). Solo alimenta el semaforo de categorizacion.
-   *  **La interfaz ya no lo muestra** (desde 2026-10-24): se conserva en el
-   *  payload de la API solo para trazabilidad. */
-  i_grupo_legacy?: number
   /** Lectura aditiva del modelo oficial 2024 (misma forma que devuelve la API). */
   modelo_oficial_2024?: MincienciasOfficialModel2024
   current_classification: string
@@ -257,11 +251,6 @@ export interface ResearcherIndicatorSummary {
 export interface ResearcherIndicator {
   researcher_id: number
   researcher_name: string
-  /** Aproximación legacy (conteos crudos ponderados): NO es un indicador del
-   *  modelo 2024 — ese modelo no define producción por persona.
-   *  **La interfaz ya no lo muestra** (desde 2026-10-24): se conserva en el
-   *  payload de la API solo para trazabilidad. */
-  i_investigador_legacy?: number
   /** Conteos crudos de la clasificación previa: son ENTRADAS del modelo
    *  (conteos crudos por clase), nunca puntos del indicador oficial. */
   summary?: ResearcherIndicatorSummary

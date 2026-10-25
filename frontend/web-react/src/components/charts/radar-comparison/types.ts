@@ -1,4 +1,4 @@
-import React from 'react'
+import type React from 'react'
 import {
   BookOpen,
   Cpu,
@@ -102,6 +102,7 @@ export interface CustomTooltipProps {
     value: number
     color: string
     dataKey?: string
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     payload: any
   }>
 }

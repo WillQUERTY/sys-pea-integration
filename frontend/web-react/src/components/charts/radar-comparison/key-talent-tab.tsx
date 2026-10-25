@@ -63,15 +63,15 @@ export function KeyTalentTab({
                           <p className='font-semibold text-foreground truncate' title={auth.name}>
                             {auth.name}
                           </p>
-                          <span className='text-[10px] text-muted-foreground'>
-                            {(auth as any).highest_education || 'Investigador'}
+                          <span className='text-[11px] text-muted-foreground'>
+                            {(auth as { highest_education?: string }).highest_education || 'Investigador'}
                           </span>
                         </div>
                         <div className='text-right shrink-0'>
                           <span className='font-mono font-bold text-foreground'>
                             {auth.products_count} obras
                           </span>
-                          <p className='text-[10px] text-muted-foreground'>
+                          <p className='text-[11px] text-muted-foreground'>
                             {auth.percentage_of_group}% del grupo
                           </p>
                         </div>

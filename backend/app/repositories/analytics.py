@@ -320,7 +320,7 @@ def get_group_minciencias_diagnosis(group_id: int) -> dict:
     repository.get_group(group_id)
     diagnostico = evaluate_group_minciencias(group_id, repository)
     # Lectura ADITIVA del modelo oficial 2024 (§2.2.9 → §3.10): no cambia
-    # ninguna clave que consume el frontend (i_grupo_legacy, tiers, semáforo).
+    # ninguna clave que consume el frontend (tiers, semáforo).
     try:
         from ..evaluator.official_population import evaluar_modelo_oficial
         diagnostico["modelo_oficial_2024"] = evaluar_modelo_oficial(repository, group_id)
@@ -330,14 +330,13 @@ def get_group_minciencias_diagnosis(group_id: int) -> dict:
 
 
 def get_researcher_minciencias_indicator(researcher_id: int) -> dict:
-    """Indicador individual: referencia legacy + ADAPTACIÓN DECLARADA del modelo 2024.
+    """Indicador individual: ADAPTACIÓN DECLARADA del modelo 2024.
 
     El modelo de medición Minciencias 2024 no define un indicador de
     producción por persona (su único indicador, §3.10, es de grupo). Por eso
     la lectura con la escala del modelo se entrega como una **adaptación
-    declarada** en la clave aditiva `adaptacion_individual_2024`, y la
-    aproximación legacy (conteos crudos) queda como referencia rotulada
-    `i_investigador_legacy`.
+    declarada** en la clave aditiva `adaptacion_individual_2024`. No hay
+    indicador legacy: solo los conteos crudos por clase y la adaptación.
 
     Es el gemelo de `get_group_minciencias_diagnosis` para el investigador:
     ninguna clave existente cambia de nombre y, si la adaptación falla, el

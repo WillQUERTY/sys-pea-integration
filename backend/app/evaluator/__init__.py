@@ -28,10 +28,6 @@ def evaluate_group_minciencias(group_id: int, repository_module: Any) -> Dict[st
         "current_classification": clean_classification(group.classification),
         "raw_classification": group.classification or "",
         "max_qualified_tier": max_qualified_tier,
-        # Aproximación legacy (conteos crudos): NO es el indicador oficial
-        # 2024 (§3.10), que llega aparte en `modelo_oficial_2024`. El legacy
-        # existe solo como insumo del semáforo (Fase 6, brecha B5).
-        "i_grupo_legacy": metrics["i_grupo_legacy"],
         "next_tier": next_tier,
         "next_tier_progress": next_tier_progress,
         "next_tier_gap": next_tier_gap,
@@ -64,21 +60,17 @@ def evaluate_group_minciencias(group_id: int, repository_module: Any) -> Dict[st
 
 
 def evaluate_researcher_minciencias(researcher_id: int, repository_module: Any) -> Dict[str, Any]:
-    """Evalúa la producción científica individual de un investigador con la
-    APROXIMACIÓN LEGACY (conteos crudos ponderados con los coeficientes del
-    modelo, aplicados al investigador).
+    """Evalúa la producción científica individual de un investigador.
 
     OJO: el modelo de medición Minciencias 2024 **no define** un indicador de
     producción por persona (su único indicador de producción, §3.10, es de
-    GRUPO). Esta suma ponderada de conteos NO es el indicador del modelo: por
-    eso el número sale en `i_investigador_legacy` (Fase 5, brecha B3).
+    GRUPO). No hay indicador legacy: solo se entrega el desglose de conteos
+    crudos por clase y, aparte, la ADAPTACIÓN DECLARADA del pipeline
+    §2.2.9 → §3.10 aplicada a la unidad "investigador", en la clave
+    `adaptacion_individual_2024` (repositorio:
+    `repositories.analytics.get_researcher_minciencias_indicator`).
 
-    La lectura con la escala del modelo —una ADAPTACIÓN DECLARADA del pipeline
-    §2.2.9 → §3.10 aplicada a la unidad "investigador"— llega aparte, en la
-    clave aditiva `adaptacion_individual_2024`, que agrega la capa de
-    repositorio (`repositories.analytics.get_researcher_minciencias_indicator`).
-
-    Retorna el valor de referencia y el desglose por clase de producto.
+    Retorna el desglose por clase de producto.
     """
     metrics = collect_researcher_metrics(researcher_id, repository_module)
     researcher = metrics["researcher"]
@@ -89,10 +81,6 @@ def evaluate_researcher_minciencias(researcher_id: int, repository_module: Any) 
         "external_code": researcher.external_code or "",
         "classification_records": researcher.classification_records or "",
         "highest_education_level": researcher.highest_education_level or "",
-        # Aproximación legacy (conteos crudos): NO es el indicador del modelo
-        # 2024 — a nivel individual ese modelo no define ninguno. La lectura
-        # con la escala del modelo va en `adaptacion_individual_2024`.
-        "i_investigador_legacy": metrics["i_investigador_legacy"],
         "summary": {
             "total_products": metrics["total_products"],
             "products_in_window": metrics["products_in_window"],

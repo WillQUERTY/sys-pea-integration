@@ -2702,14 +2702,14 @@ El valor de Cohe del grupo se obtiene como (autores coincidentes / productos GNC
 
 La §3.10 pondera **índices**, no conteos crudos: la §3.9 normaliza cada índice frente al máximo alcanzado por la población de la convocatoria. Los dos archivos entregables (`Taller2_WP-DN-EO.py` y `Taller2_WP-DN-EO.cpp`) resuelven el ejercicio con el **conteo** de los productos de la URL del enunciado, y esa es la lectura correcta para el alcance del Parcial 2: el enunciado entrega una sola URL (un grupo y un investigador), de modo que no existe población contra la cual normalizar y las §3.9 y §3.8.3 son incalculables por diseño en ese escenario.
 
-PEA-i implementa y distingue ambas lecturas, con rótulo explícito en el payload, la API y la consola. En la interfaz se exhibe **exclusivamente la lectura oficial** (grupo) o la adaptación individual declarada, siempre rotulada "NO oficial"; el conteo ponderado legacy **no se muestra en ninguna pantalla** desde el 2026-10-24 y queda únicamente en el payload de la API, para trazabilidad:
+PEA-i implementa y distingue ambas lecturas, con rótulo explícito en el payload, la API y la consola. En la interfaz se exhibe **exclusivamente la lectura oficial** (grupo) o la adaptación individual declarada, siempre rotulada "NO oficial"; El conteo ponderado legacy **no se muestra en ninguna pantalla** desde el 2026-10-24 y se eliminó del payload de la API (queda únicamente en el historial del repo y en los archivos entregables `Taller2_WP-DN-EO.*`):
 
 | Artefacto | Ubicación en el repositorio | Magnitud que produce | Rótulo |
 |---|---|---|---|
 | Archivos entregables del Parcial 2 | `Taller2_WP-DN-EO.py`, `Taller2_WP-DN-EO.cpp` | Suma ponderada de **conteos** sobre la URL del enunciado | Respuesta del ejercicio |
 | Evaluador oficial de la API | `backend/app/evaluator/official_indicator.py` (grupo) y `official_researcher.py` (investigador) | Índice **normalizado** (§3.9) sobre la población de la convocatoria | `modelo_oficial_2024` / `adaptacion_individual_2024` |
 | Espejo C++ del evaluador oficial | `core_cpp/src/services/official_indicator.cpp`, comando `pea_cli indicator` | Idéntico al anterior (paridad verificada por `scripts/pea_paridad_indicador.py` y `scripts/pea_paridad_individual.py`) | Salida de consola |
-| Conteo ponderado conservado | Payload de la API (no en la interfaz) | Suma ponderada de conteos crudos | `i_grupo_legacy` / `i_investigador_legacy` — **NO es un indicador del modelo 2024**, se conserva solo por trazabilidad |
+| Conteo ponderado legacy (eliminado) | Payload de la API (antes, no ahora) | Suma ponderada de conteos crudos | `i_grupo_legacy` / `i_investigador_legacy` — **se eliminaron del payload el 2026-10-24**, solo quedan en historial del repo |
 
 La adaptación individual se declara como **no oficial** de forma explícita: el modelo 2024 define el indicador de producción a nivel de grupo, de modo que la lectura individual se construye con el mismo pipeline del grupo, sustituyendo la edad del grupo por la antigüedad del investigador y rotulando las tres adaptaciones en la interfaz.
 

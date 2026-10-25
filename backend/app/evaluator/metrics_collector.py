@@ -174,28 +174,6 @@ def collect_group_metrics(group_id: int, repository_module: Any) -> Dict[str, An
 
     projects_count = len(projects)
 
-    # --- Formula ponderada legacy (APROXIMACION, no es el indicador oficial) ---
-    # AP (apropiacion social) y DPC (divulgacion publica) son terminos separados.
-    # Este valor NO es el Ind.Grupo oficial (§3.10): no aplica λ (§2.2.9), ni los
-    # pesos por clase (§3.6), ni la normalizacion contra la poblacion (§3.9).
-    # Vive solo como insumo del semaforo de categorizacion, por eso se expone
-    # como `i_grupo_legacy` (Fase 6, brecha B5).
-    cohe = icoh  # cohesion interna aplica al colectivo
-    coop = coauthored_products_count  # coautoria con otros investigadores del grupo
-
-    i_grupo_legacy = round(
-        3.7 * top_count
-        + 2.3 * type_a_count
-        + 0.4 * type_b_count
-        + 1.5 * asc_count
-        + 0.5 * dpc_count
-        + 1.0 * frh_a_count
-        + 0.2 * frh_b_count
-        + 0.1 * cohe
-        + 0.3 * coop,
-        3,
-    )
-
     return {
         "group": group,
         "years_active": years_active,
@@ -222,34 +200,17 @@ def collect_group_metrics(group_id: int, repository_module: Any) -> Dict[str, An
         "coauthored_products_count": coauthored_products_count,
         "gnc_dti_in_window": gnc_dti_in_window,
         "asc_dpc_frh_in_window": asc_dpc_frh_in_window,
-        "i_grupo_legacy": i_grupo_legacy,
     }
 
 
 def collect_researcher_metrics(researcher_id: int, repository_module: Any) -> Dict[str, Any]:
     """Obtiene y calcula todas las métricas individuales del investigador.
 
-    IMPORTANTE (Fase 5, brecha B3): esto NO es el indicador del modelo de
-    medición Minciencias 2024. Ese modelo define UN solo indicador de
-    producción y es de GRUPO (§3.10): no hay indicador de producción por
-    persona. Este cálculo es una APROXIMACIÓN LEGACY —conteos CRUDOS
-    ponderados con los coeficientes del modelo— que se conserva como
-    referencia (`i_investigador_legacy`).
-
-    La lectura con la escala del modelo es la ADAPTACIÓN INDIVIDUAL
-    declarada (`official_researcher.py` + `official_researcher_population.py`),
-    que llega en la clave aditiva `adaptacion_individual_2024`.
-
-    Reutiliza las funciones de clasificacion de product_classifier.py para determinar
-    familia, ventana, calidad y formacion de cada producto vinculado al investigador.
-    La suma ponderada legacy es:
-
-        I_Investigador(legacy) ≡ 3,7·Nc.Top + 2,3·Nc.A + 0,4·Nc.B + 1,5·AP
-                                 + 0,5·DPC + 1,0·Fr.A + 0,2·Fr.B + 0,1·Cohe
-                                 + 0,3·Coop
-
-    Donde Cohe (cohesion) es 0 para un investigador individual y Coop (coautoría)
-    cuenta los productos con al menos otro autor vinculado.
+    IMPORTANTE: esto NO es el indicador del modelo de medición Minciencias 2024.
+    Ese modelo define UN solo indicador de producción y es de GRUPO (§3.10):
+    no hay indicador de producción por persona. Solo se entregan los conteos
+    crudos por clase; la lectura con la escala del modelo llega en
+    `adaptacion_individual_2024`.
     """
     researcher = repository_module.get_researcher(researcher_id)
 
@@ -367,28 +328,6 @@ def collect_researcher_metrics(researcher_id: int, repository_module: Any) -> Di
         gnc_dti_in_window = max(1, total_products // 2)
         asc_dpc_frh_in_window = max(1, total_products // 3)
 
-    # --- APROXIMACIÓN LEGACY del indicador individual ---
-    # No es el indicador del modelo Minciencias 2024: ese modelo NO define un
-    # indicador de producción por persona (§3.10 es de grupo). Es una suma
-    # ponderada de CONTEO CRUDOS que solo sirve como referencia (Fase 5,
-    # brecha B3); la lectura con la escala del modelo llega en
-    # `adaptacion_individual_2024`.
-    cohe = 0.0  # Cohesion interna no aplica a investigador individual
-    coop = coauthored_products_count  # Coautoría con otros investigadores
-
-    i_investigador_legacy = round(
-        3.7 * top_count
-        + 2.3 * type_a_count
-        + 0.4 * type_b_count
-        + 1.5 * asc_count     # AP = apropiacion social (termino separado de DPC)
-        + 0.5 * dpc_count     # DPC = divulgacion publica (termino separado de AP)
-        + 1.0 * frh_a_count
-        + 0.2 * frh_b_count
-        + 0.1 * cohe
-        + 0.3 * coop,
-        3,
-    )
-
     return {
         "researcher": researcher,
         "researcher_id": researcher_id,
@@ -408,5 +347,4 @@ def collect_researcher_metrics(researcher_id: int, repository_module: Any) -> Di
         "coauthored_products_count": coauthored_products_count,
         "gnc_dti_in_window": gnc_dti_in_window,
         "asc_dpc_frh_in_window": asc_dpc_frh_in_window,
-        "i_investigador_legacy": i_investigador_legacy,
     }

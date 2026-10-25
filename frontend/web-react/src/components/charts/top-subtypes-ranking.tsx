@@ -1,7 +1,8 @@
 import { Layers } from 'lucide-react'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
-import { TopSubtypeItem } from '@/lib/api'
+import type { TopSubtypeItem } from '@/lib/api'
+import { EmptyState } from './analytics-kit'
 
 export interface TopSubtypesRankingProps {
   data?: TopSubtypeItem[]
@@ -27,7 +28,7 @@ export function TopSubtypesRanking({
             <Layers className='h-4 w-4 text-primary' />
             <CardTitle className='text-sm sm:text-base font-bold'>{title}</CardTitle>
           </div>
-          <Badge variant='outline' className='text-[10px] font-normal'>
+          <Badge variant='outline' className='text-[11px] font-normal'>
             Ranking Institucional
           </Badge>
         </div>
@@ -36,9 +37,7 @@ export function TopSubtypesRanking({
 
       <CardContent className='pb-4 pt-1'>
         {displayedSubtypes.length === 0 ? (
-          <div className='flex h-[220px] items-center justify-center text-xs text-muted-foreground'>
-            No hay tipologías disponibles
-          </div>
+          <EmptyState icon={Layers}>No hay tipologías disponibles</EmptyState>
         ) : (
           <div className='space-y-3 pt-1'>
             {displayedSubtypes.map((sub, idx) => {
@@ -56,7 +55,7 @@ export function TopSubtypesRanking({
                       {sub.code && (
                         <Badge
                           variant='outline'
-                          className='text-[9px] px-1.5 py-0 font-mono text-muted-foreground border-border/70 bg-muted/40'
+                          className='text-[11px] px-1.5 py-0 font-mono text-muted-foreground border-border/70 bg-muted/40'
                         >
                           {sub.code}
                         </Badge>

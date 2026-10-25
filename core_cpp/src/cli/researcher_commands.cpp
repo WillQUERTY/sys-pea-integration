@@ -289,13 +289,9 @@ int handle_indicator(int argc, char* argv[]) {
         // API daban números distintos porque cada una clasificaba los
         // productos con reglas diferentes. Dos "referencias legacy" para la
         // misma cifra es exactamente lo que la auditoría marcó como B5.
-        // Ahora el legacy tiene UNA sola implementación, la de la API, que lo
-        // expone como `i_investigador_legacy` (aproximación legacy, no
-        // oficial) porque es insumo descriptivo, no un indicador del modelo.
-        std::cout << "\nNota: el indicador legacy (conteos crudos) no se calcula aquí.\n"
-                  << "La API lo expone como `i_investigador_legacy` (aproximación legacy, no oficial):\n"
-                  << "es una suma de conteos SIN λ (§2.2.9), SIN pesos por clase (§3.6) y SIN\n"
-                  << "normalización contra la población (§3.9); no es un indicador del modelo 2024.\n";
+        // El indicador legacy se eliminó del payload de la API.
+        std::cout << "\nNota: el indicador legacy (conteos crudos) ya no se expone en la API.\n"
+                  << "Solo se entrega el cálculo oficial del modelo 2024 (§3.10).\n";
         return 0;
     }
 
@@ -343,12 +339,9 @@ int handle_indicator(int argc, char* argv[]) {
         // API 491,704, porque cada una clasificaba los productos con reglas
         // distintas. Dos "referencias legacy" para la misma cifra es
         // exactamente lo que la auditoría marcó como B5.
-        // Ahora el legacy tiene UNA sola implementación, la de la API, que lo
-        // expone como `i_grupo_legacy` (aproximación, no oficial) porque es
-        // insumo del semáforo de categorización y no un indicador del modelo.
-        std::cout << "\nNota: el indicador legacy (conteos crudos) no se calcula aquí.\n"
-                  << "La API lo expone como `i_grupo_legacy` (aproximación legacy, no oficial):\n"
-                  << "es insumo del semáforo de categorización, no un indicador del modelo 2024.\n";
+        // El indicador legacy se eliminó del payload de la API.
+        std::cout << "\nNota: el indicador legacy (conteos crudos) ya no se expone en la API.\n"
+                  << "Solo se entrega el cálculo oficial del modelo 2024 (§3.10).\n";
         return 0;
     }
 
