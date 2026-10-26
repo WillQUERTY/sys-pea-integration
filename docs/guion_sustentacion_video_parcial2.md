@@ -10,6 +10,7 @@
 
 **Programa:** PEA-i / Khemia — Programa Estadístico de Análisis de Investigación  
 **Duración objetivo:** **10:00 – 11:00** (NOTA 6.i: "alrededor de 10 minutos")  
+**Video Oficial Publicado (YouTube):** **[Parcial extructura de datos](https://www.youtube.com/watch?v=nUsndPIdwRM)**  
 
 **Propósito de esta versión (v3):**  
 Unificar la resolución rigurosa de **cada uno de los 12 ejercicios y los 2 cálculos del parcial** utilizando como vehículo principal la aplicación integral **Khemia (Frontend React + Backend FastAPI)**, demostrando en vivo la interoperabilidad con el **núcleo en C++ (estructuras de listas en RAM)** y la paridad numérica con los archivos entregables ([`Taller2_WP-DN-EO.py`](../Taller2_WP-DN-EO.py) y [`Taller2_WP-DN-EO.cpp`](../Taller2_WP-DN-EO.cpp)).
@@ -22,6 +23,7 @@ Para facilitar la navegación y ensayo del equipo, a continuación se listan tod
 
 | Módulo / Entregable | Enlace Directo al Archivo | Rol en la Sustentación |
 |---|---|---|
+| 🎥 **Video Publicado** | **[YouTube: Parcial extructura de datos](https://www.youtube.com/watch?v=nUsndPIdwRM)** | Video oficial de sustentación del Parcial 2 para evaluación docente. |
 | **Entregable Python** | [`Taller2_WP-DN-EO.py`](../Taller2_WP-DN-EO.py) | Script de respuestas, variables de entrada/salida y fórmulas ($12.667$ y $11.700$). |
 | **Entregable C++** | [`Taller2_WP-DN-EO.cpp`](../Taller2_WP-DN-EO.cpp) | Fuente en C++ con estructuras y salida numérica idéntica. |
 | **Persistencia Oficial** | [`pea_data.json`](../pea_data.json) | Base de datos serializada (8.898 registros en 12 colecciones estructuradas). |

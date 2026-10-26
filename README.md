@@ -15,7 +15,7 @@ Para facilitar la calificación inmediata del Taller 2 sin requerir configuraci�
 | Recurso | Enlace de Acceso Directo | Descripción |
 |---|---|---|
 | 🌐 **Despliegue Web en Vivo** | **[http://155.133.22.12/](http://155.133.22.12/)** | Aplicación completa en servidor de producción (React + FastAPI + SQL Server). |
-| 🎥 **Video de Sustentación** | **[PRESENTACIÓN KHEMIA (YouTube)](https://www.youtube.com/watch?v=eezB3oZ3n2w&t=12s)** | Video demostrativo oficial de 10 minutos sustentando cada requisito. |
+| 🎥 **Video de Sustentación** | **[PARCIAL ESTRUCTURA DE DATOS (YouTube)](https://www.youtube.com/watch?v=nUsndPIdwRM)** | Video demostrativo oficial de sustentación de los requisitos y ejercicios del Parcial 2. |
 | 📄 **Documento Maestro Word** | [`docs/word/Parcial2_WP-DN-EO.docx`](file:///c:/repos/sys_pea_integration/docs/word/Parcial2_WP-DN-EO.docx) | Especificación técnica formal, diagramas retina y matrices de cumplimiento. |
 | 💾 **Backup de Base de Datos** | [`docs/peai.bak`](file:///c:/repos/sys_pea_integration/docs/peai.bak) | Respaldo nativo de SQL Server con datos precargados para restauración en 1 clic. |
 
