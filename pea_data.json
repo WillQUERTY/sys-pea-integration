@@ -2122,7 +2122,6 @@
     {"id": 1999, "external_code": "PRD_44dc5ae083a88e52249e", "title": "CARACTERIZACIÓN DEL ALCOHOL ETILICO CARBURANTE OBTENIDO A PARTIR DEL ALMIDON DE YUCA TRADICIONAL", "description": "", "family_id": 6, "subtype_id": 57, "quality_category_id": 0, "obtained_date": "", "publication_date": "", "year": 0, "language": "", "country": "", "doi": "", "isbn": "", "issn": "", "url": "", "evidence": "Avalado y validado para la Convocatoria Nacional Minciencias (marca ? en CvLAC)", "specialized_attributes": "{\"minciencias_endorsed\": true}", "validation_status": "pending", "status": "active"},
     {"id": 2000, "external_code": "PRD_96c0bbd1529161fba0ed", "title": "Estudio del Grado de Predicción de un modelo Matematico y su Simulación para el Proceso de Producción de Vapor en la Caldera de La Universidad Popular del Cesar", "description": "", "family_id": 6, "subtype_id": 57, "quality_category_id": 0, "obtained_date": "", "publication_date": "", "year": 0, "language": "", "country": "", "doi": "", "isbn": "", "issn": "", "url": "", "evidence": "", "specialized_attributes": "", "validation_status": "pending", "status": "active"},
     {"id": 2009, "external_code": "PRD_b24844c73711f3be6cfe", "title": "Software (Autor: APLICACION MOVIL TU RUTA)", "description": "", "family_id": 7, "subtype_id": 69, "quality_category_id": 0, "obtained_date": "", "publication_date": "", "year": 0, "language": "", "country": "", "doi": "", "isbn": "", "issn": "", "url": "", "evidence": "Avalado y validado para la Convocatoria Nacional Minciencias (marca ? en CvLAC)", "specialized_attributes": "{\"minciencias_endorsed\": true}", "validation_status": "pending", "status": "active"},
-    {"id": 2010, "external_code": "PRD_DOI_8746a15c5982191715c8", "title": "Green stem-extract synthesis of gold nanoparticles for pyridoxine SERS: morphology, extract-dependent behavior, and DFT/CPHF analysis", "description": "", "family_id": 6, "subtype_id": 57, "quality_category_id": 0, "obtained_date": "", "publication_date": "", "year": 0, "language": "", "country": "", "doi": "10.1007/s00339-026-09669-x", "isbn": "", "issn": "", "url": "", "evidence": "", "specialized_attributes": "", "validation_status": "pending", "status": "active"},
     {"id": 2011, "external_code": "PRD_7785bded51d2f452989f", "title": "RECUBRIMIENTO METÁLICO EN FIBRAS TÁPER PARA APLICACIONES EN SENSORES ÓPTICOS", "description": "", "family_id": 6, "subtype_id": 60, "quality_category_id": 0, "obtained_date": "", "publication_date": "", "year": 0, "language": "", "country": "", "doi": "", "isbn": "", "issn": "", "url": "", "evidence": "", "specialized_attributes": "", "validation_status": "pending", "status": "active"},
     {"id": 2012, "external_code": "PRD_fd35a00b06009e49ed14", "title": "Análisis de la sensibilidad de un sensor óptico basado en una fibra óptica curvada con y sin recubrimiento de grafeno oxidado", "description": "", "family_id": 9, "subtype_id": 97, "quality_category_id": 0, "obtained_date": "", "publication_date": "", "year": 0, "language": "", "country": "", "doi": "", "isbn": "", "issn": "", "url": "", "evidence": "", "specialized_attributes": "", "validation_status": "pending", "status": "active"},
     {"id": 2013, "external_code": "PRD_0a8ce9255e7f11116bc9", "title": "Optical sensor based on a Mach-Zehnder interferometric curved optical fiber for measuring refractive index", "description": "", "family_id": 9, "subtype_id": 97, "quality_category_id": 0, "obtained_date": "", "publication_date": "", "year": 0, "language": "", "country": "", "doi": "", "isbn": "", "issn": "", "url": "", "evidence": "", "specialized_attributes": "", "validation_status": "pending", "status": "active"},
@@ -2131,7 +2130,8 @@
     {"id": 2016, "external_code": "PRD_ef73f8ae8c0049a19f03", "title": "SENSORES BASADOS EN FIBRAS ÓPTICAS ACOPLADAS EN LA PUNTA CON UNA MICROESFERA RECUBIERTA CON GRAFENO OXIDADO", "description": "", "family_id": 9, "subtype_id": 97, "quality_category_id": 0, "obtained_date": "", "publication_date": "", "year": 0, "language": "", "country": "", "doi": "", "isbn": "", "issn": "", "url": "", "evidence": "", "specialized_attributes": "", "validation_status": "pending", "status": "active"},
     {"id": 2017, "external_code": "PRD_7fbea774ddbb0df0d9d8", "title": "Desarrollo de un sensor óptico basado en una fibra óptica en forma de nudo recubierta con grafeno oxidado.", "description": "", "family_id": 9, "subtype_id": 97, "quality_category_id": 0, "obtained_date": "", "publication_date": "", "year": 0, "language": "", "country": "", "doi": "", "isbn": "", "issn": "", "url": "", "evidence": "", "specialized_attributes": "", "validation_status": "pending", "status": "active"},
     {"id": 2018, "external_code": "PRD_adf498336cbc0a03caff", "title": "Fiber optic sensor based on surface plasmon resonances: A theoretical study", "description": "", "family_id": 9, "subtype_id": 97, "quality_category_id": 0, "obtained_date": "", "publication_date": "", "year": 0, "language": "", "country": "", "doi": "", "isbn": "", "issn": "", "url": "", "evidence": "", "specialized_attributes": "", "validation_status": "pending", "status": "active"},
-    {"id": 2019, "external_code": "PRD_ce6c916f3c718ebe6896", "title": "Surface plasmon resonance in optical fibers for temperature measurement. A theoretical study", "description": "", "family_id": 9, "subtype_id": 97, "quality_category_id": 0, "obtained_date": "", "publication_date": "", "year": 0, "language": "", "country": "", "doi": "", "isbn": "", "issn": "", "url": "", "evidence": "", "specialized_attributes": "", "validation_status": "pending", "status": "active"}
+    {"id": 2019, "external_code": "PRD_ce6c916f3c718ebe6896", "title": "Surface plasmon resonance in optical fibers for temperature measurement. A theoretical study", "description": "", "family_id": 9, "subtype_id": 97, "quality_category_id": 0, "obtained_date": "", "publication_date": "", "year": 0, "language": "", "country": "", "doi": "", "isbn": "", "issn": "", "url": "", "evidence": "", "specialized_attributes": "", "validation_status": "pending", "status": "active"},
+    {"id": 2073, "external_code": "PRD_DOI_8746a15c5982191715c8", "title": "Green stem-extract synthesis of gold nanoparticles for pyridoxine SERS: morphology, extract-dependent behavior, and DFT/CPHF analysis", "description": "", "family_id": 6, "subtype_id": 57, "quality_category_id": 0, "obtained_date": "", "publication_date": "", "year": 0, "language": "", "country": "", "doi": "10.1007/s00339-026-09669-x", "isbn": "", "issn": "", "url": "", "evidence": "", "specialized_attributes": "", "validation_status": "pending", "status": "active"}
   ],
   "authors": [
     {"id": 35, "productId": 25, "researcherId": 0, "authorOrder": 1, "externalAuthorName": "JOSE LUIS ZABALETA FERNANDEZ", "externalAuthorIdentifier": "EXT_126cd046180c8665", "matchStatus": "unverified"},
@@ -4486,13 +4486,6 @@
     {"id": 2735, "productId": 2009, "researcherId": 218, "authorOrder": 3, "externalAuthorName": "", "externalAuthorIdentifier": "", "matchStatus": "verified"},
     {"id": 2736, "productId": 2009, "researcherId": 236, "authorOrder": 4, "externalAuthorName": "", "externalAuthorIdentifier": "", "matchStatus": "verified"},
     {"id": 2737, "productId": 2009, "researcherId": 0, "authorOrder": 5, "externalAuthorName": "RICARDO DURAN BARON", "externalAuthorIdentifier": "", "matchStatus": "unverified"},
-    {"id": 2738, "productId": 2010, "researcherId": 284, "authorOrder": 1, "externalAuthorName": "", "externalAuthorIdentifier": "", "matchStatus": "verified"},
-    {"id": 2739, "productId": 2010, "researcherId": 0, "authorOrder": 2, "externalAuthorName": "CLAUDIA ASENATH VILLARRUEL MOLINA", "externalAuthorIdentifier": "", "matchStatus": "unverified"},
-    {"id": 2740, "productId": 2010, "researcherId": 0, "authorOrder": 3, "externalAuthorName": "YEINER YASSHIN MOLINA FRAGOZO", "externalAuthorIdentifier": "", "matchStatus": "unverified"},
-    {"id": 2741, "productId": 2010, "researcherId": 0, "authorOrder": 4, "externalAuthorName": "REINALDO ENRIQUE RUIZ DUARTE", "externalAuthorIdentifier": "", "matchStatus": "unverified"},
-    {"id": 2742, "productId": 2010, "researcherId": 0, "authorOrder": 5, "externalAuthorName": "JUAN PABLO MOLINA ALVAREZ", "externalAuthorIdentifier": "", "matchStatus": "unverified"},
-    {"id": 2743, "productId": 2010, "researcherId": 0, "authorOrder": 6, "externalAuthorName": "DUBER ALEXANDER AVILA PADILLA", "externalAuthorIdentifier": "", "matchStatus": "unverified"},
-    {"id": 2744, "productId": 2010, "researcherId": 0, "authorOrder": 7, "externalAuthorName": "SINDI DAYANA HORTA PINERES", "externalAuthorIdentifier": "", "matchStatus": "unverified"},
     {"id": 2745, "productId": 2011, "researcherId": 284, "authorOrder": 1, "externalAuthorName": "", "externalAuthorIdentifier": "", "matchStatus": "verified"},
     {"id": 2746, "productId": 2012, "researcherId": 284, "authorOrder": 1, "externalAuthorName": "", "externalAuthorIdentifier": "", "matchStatus": "verified"},
     {"id": 2747, "productId": 2013, "researcherId": 284, "authorOrder": 1, "externalAuthorName": "", "externalAuthorIdentifier": "", "matchStatus": "verified"},
@@ -4501,7 +4494,14 @@
     {"id": 2750, "productId": 2016, "researcherId": 284, "authorOrder": 1, "externalAuthorName": "", "externalAuthorIdentifier": "", "matchStatus": "verified"},
     {"id": 2751, "productId": 2017, "researcherId": 284, "authorOrder": 1, "externalAuthorName": "", "externalAuthorIdentifier": "", "matchStatus": "verified"},
     {"id": 2752, "productId": 2018, "researcherId": 284, "authorOrder": 1, "externalAuthorName": "", "externalAuthorIdentifier": "", "matchStatus": "verified"},
-    {"id": 2753, "productId": 2019, "researcherId": 284, "authorOrder": 1, "externalAuthorName": "", "externalAuthorIdentifier": "", "matchStatus": "verified"}
+    {"id": 2753, "productId": 2019, "researcherId": 284, "authorOrder": 1, "externalAuthorName": "", "externalAuthorIdentifier": "", "matchStatus": "verified"},
+    {"id": 2804, "productId": 2073, "researcherId": 284, "authorOrder": 1, "externalAuthorName": "", "externalAuthorIdentifier": "", "matchStatus": "verified"},
+    {"id": 2805, "productId": 2073, "researcherId": 0, "authorOrder": 2, "externalAuthorName": "CLAUDIA ASENATH VILLARRUEL MOLINA", "externalAuthorIdentifier": "", "matchStatus": "unverified"},
+    {"id": 2806, "productId": 2073, "researcherId": 0, "authorOrder": 3, "externalAuthorName": "YEINER YASSHIN MOLINA FRAGOZO", "externalAuthorIdentifier": "", "matchStatus": "unverified"},
+    {"id": 2807, "productId": 2073, "researcherId": 0, "authorOrder": 4, "externalAuthorName": "REINALDO ENRIQUE RUIZ DUARTE", "externalAuthorIdentifier": "", "matchStatus": "unverified"},
+    {"id": 2808, "productId": 2073, "researcherId": 0, "authorOrder": 5, "externalAuthorName": "JUAN PABLO MOLINA ALVAREZ", "externalAuthorIdentifier": "", "matchStatus": "unverified"},
+    {"id": 2809, "productId": 2073, "researcherId": 0, "authorOrder": 6, "externalAuthorName": "DUBER ALEXANDER AVILA PADILLA", "externalAuthorIdentifier": "", "matchStatus": "unverified"},
+    {"id": 2810, "productId": 2073, "researcherId": 0, "authorOrder": 7, "externalAuthorName": "SINDI DAYANA HORTA PINERES", "externalAuthorIdentifier": "", "matchStatus": "unverified"}
   ],
   "groupProductLinks": [
     {"groupId": 10, "productId": 1671},
@@ -8907,7 +8907,6 @@
     {"product_id": 1999, "status": "pending", "attempts": 0, "assigned_to": ""},
     {"product_id": 2000, "status": "pending", "attempts": 0, "assigned_to": ""},
     {"product_id": 2009, "status": "pending", "attempts": 0, "assigned_to": ""},
-    {"product_id": 2010, "status": "pending", "attempts": 0, "assigned_to": ""},
     {"product_id": 2011, "status": "pending", "attempts": 0, "assigned_to": ""},
     {"product_id": 2012, "status": "pending", "attempts": 0, "assigned_to": ""},
     {"product_id": 2013, "status": "pending", "attempts": 0, "assigned_to": ""},
@@ -8916,7 +8915,8 @@
     {"product_id": 2016, "status": "pending", "attempts": 0, "assigned_to": ""},
     {"product_id": 2017, "status": "pending", "attempts": 0, "assigned_to": ""},
     {"product_id": 2018, "status": "pending", "attempts": 0, "assigned_to": ""},
-    {"product_id": 2019, "status": "pending", "attempts": 0, "assigned_to": ""}
+    {"product_id": 2019, "status": "pending", "attempts": 0, "assigned_to": ""},
+    {"product_id": 2073, "status": "pending", "attempts": 0, "assigned_to": ""}
   ],
   "undoOperations": [
 
