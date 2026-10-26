@@ -1,0 +1,11 @@
+{
+  "generado": "2026-10-25",
+  "fuente": "https://backend.adaggio.unicesar.edu.co/api/v3/schema/",
+  "sha256esquema": "6249bbb10f5f02ca",
+  "bytesesquema": 1521805,
+  "rutas": 666,
+  "operaciones": 908,
+  "publicas": 161,
+  "documentadas": 570,
+  "modulos": 39
+}

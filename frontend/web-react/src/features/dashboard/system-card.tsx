@@ -22,9 +22,9 @@ import { Label } from '@/components/ui/label'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
 import { ConfirmDialog } from '@/components/confirm-dialog'
 
-// Mismo connection string con el que arranca el backend (app/main.py).
+// Mismo connection string con el que arranca el backend (app/main.py y backend/.env).
 const DEFAULT_CONN =
-  'Driver={ODBC Driver 17 for SQL Server};Server=localhost;Database=peai;Trusted_Connection=yes;'
+  'Driver={ODBC Driver 18 for SQL Server};Server=localhost;Database=peai;Trusted_Connection=yes;TrustServerCertificate=yes;'
 
 type PendingInit = 'empty' | 'file' | 'database' | null
 

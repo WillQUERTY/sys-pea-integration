@@ -1,9 +1,11 @@
 import json
+import pathlib
 from typing import List, Optional
 from fastapi import APIRouter, HTTPException, Query
 from pydantic import BaseModel
 
 from ... import repository
+from ...config import settings, ROOT_DIR, BACKEND_DIR
 from ...models import ValidationQueueItem, ValidationQueueResponse
 
 router = APIRouter()
@@ -12,6 +14,29 @@ router = APIRouter()
 # System Initialization and Export
 # -------------------------------------------------------------------
 
+def _resolve_data_path(path_str: Optional[str]) -> str:
+    """
+    Resuelve la ruta del archivo JSON a una ruta absoluta existente o por defecto.
+    Soporta rutas relativas desde ROOT_DIR o BACKEND_DIR.
+    """
+    if not path_str or not path_str.strip():
+        return str(settings.DATA_JSON_PATH)
+    p = pathlib.Path(path_str.strip())
+    if p.is_absolute() and p.exists():
+        return str(p)
+    # 1. Probar relativa a la raíz del repositorio
+    if (ROOT_DIR / p).exists():
+        return str(ROOT_DIR / p)
+    # 2. Probar relativa al directorio backend
+    if (BACKEND_DIR / p).exists():
+        return str(BACKEND_DIR / p)
+    # 3. Si coincide con el nombre del JSON configurado y este existe
+    if p.name == settings.DATA_JSON_PATH.name and settings.DATA_JSON_PATH.exists():
+        return str(settings.DATA_JSON_PATH)
+    # 4. Fallback: ruta absoluta anclada a ROOT_DIR
+    return str(ROOT_DIR / p)
+
+
 @router.get("/dashboard/stats", tags=["System"])
 async def get_dashboard_stats():
     """Retrieve aggregated dashboard stats using SQL directly."""
@@ -19,12 +44,12 @@ async def get_dashboard_stats():
 
 
 class InitDatabaseRequest(BaseModel):
-    connection_string: str
+    connection_string: Optional[str] = None
     replace_existing: bool = False
 
 
 class InitFileRequest(BaseModel):
-    path: str
+    path: Optional[str] = "pea_data.json"
     replace_existing: bool = False
 
 
@@ -34,34 +59,69 @@ class InitEmptyRequest(BaseModel):
 
 @router.post("/system/initialize/database", tags=["System"])
 async def initialize_database(req: InitDatabaseRequest):
-    if not req.connection_string:
-        raise HTTPException(status_code=400, detail="Connection string required")
-    success = repository.initialize(repository.InitMode.Database, req.connection_string)
+    # Usar cadena provista o fallback a la configuración activa del servidor
+    conn_str = req.connection_string.strip() if (req.connection_string and req.connection_string.strip()) else settings.connection_string
+    success = False
+    try:
+        success = repository.initialize(repository.InitMode.Database, conn_str)
+    except Exception as e:
+        print(f"[System Router] Error en initialize database: {e}")
+
+    # Fallback automático: si la cadena del cliente falló y es distinta a settings, reintentar con la del servidor
+    if not success and conn_str != settings.connection_string:
+        print("[System Router] Cadena del cliente falló; reintentando con settings.connection_string del servidor...")
+        try:
+            success = repository.initialize(repository.InitMode.Database, settings.connection_string)
+            if success:
+                conn_str = settings.connection_string
+        except Exception as e:
+            print(f"[System Router] Fallback de settings.connection_string también falló: {e}")
+
     if not success:
-        raise HTTPException(status_code=500, detail="Failed to initialize from database")
-    return {"status": "success", "method": "database", "connection": req.connection_string}
+        raise HTTPException(
+            status_code=500,
+            detail="Failed to initialize from database (verifique la conectividad con SQL Server)"
+        )
+    return {"status": "success", "method": "database", "connection": conn_str}
 
 
 class SaveDatabaseRequest(BaseModel):
-    connection_string: str
+    connection_string: Optional[str] = None
 
 
 @router.post("/system/save/database", tags=["System"])
 async def save_database(req: SaveDatabaseRequest):
-    if not req.connection_string:
-        raise HTTPException(status_code=400, detail="Connection string required")
-    success = repository.save_to_db(req.connection_string)
+    conn_str = req.connection_string.strip() if (req.connection_string and req.connection_string.strip()) else settings.connection_string
+    success = False
+    try:
+        success = repository.save_to_db(conn_str)
+    except Exception as e:
+        print(f"[System Router] Error en save database: {e}")
+
+    if not success and conn_str != settings.connection_string:
+        print("[System Router] Cadena del cliente falló al guardar; reintentando con settings.connection_string...")
+        try:
+            success = repository.save_to_db(settings.connection_string)
+            if success:
+                conn_str = settings.connection_string
+        except Exception as e:
+            print(f"[System Router] Fallback de guardado también falló: {e}")
+
     if not success:
         raise HTTPException(status_code=500, detail="Failed to save to database")
-    return {"status": "success", "method": "database", "connection": req.connection_string}
+    return {"status": "success", "method": "database", "connection": conn_str}
 
 
 @router.post("/system/initialize/file", tags=["System"])
 async def initialize_file(req: InitFileRequest):
-    success = repository.initialize(repository.InitMode.File, req.path)
+    target_path = _resolve_data_path(req.path)
+    success = repository.initialize(repository.InitMode.File, target_path)
     if not success:
-        raise HTTPException(status_code=500, detail="Failed to initialize from file")
-    return {"status": "success", "method": "file", "path": req.path}
+        raise HTTPException(
+            status_code=500,
+            detail=f"Failed to initialize from file: {target_path} (archivo no encontrado o no legible por el núcleo C++)"
+        )
+    return {"status": "success", "method": "file", "path": target_path}
 
 
 @router.post("/system/initialize/empty", tags=["System"])
@@ -74,10 +134,13 @@ async def initialize_empty(_: InitEmptyRequest):
 
 @router.get("/system/export", tags=["System"])
 async def export_data(path: str = "pea_data.json"):
-    success = repository.export_to_file(path)
+    p = pathlib.Path(path.strip()) if path else pathlib.Path("pea_data.json")
+    target_path = str(p if p.is_absolute() else (ROOT_DIR / p))
+    success = repository.export_to_file(target_path)
     if not success:
-        raise HTTPException(status_code=500, detail="Failed to export data")
-    return {"status": "success", "export": path}
+        raise HTTPException(status_code=500, detail=f"Failed to export data to {target_path}")
+    return {"status": "success", "export": target_path}
+
 
 
 # -------------------------------------------------------------------

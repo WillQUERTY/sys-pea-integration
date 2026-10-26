@@ -54,6 +54,9 @@ docs/_uvicorn*.log
 Taller2.cpp
 Taller2.py
 
+# Corte previo de la superficie de Adaggio (solo para el delta del script)
+docs/adagio-superficie.csv.prev
+
 # Agent & IDE local state
 .agents/
 .claude/settings.json

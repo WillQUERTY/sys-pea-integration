@@ -23,21 +23,21 @@ export async function initializeEmpty() {
   return data
 }
 
-export async function initializeFromFile(path: string) {
+export async function initializeFromFile(path: string = 'pea_data.json') {
   const { data } = await api.post('/system/initialize/file', { path })
   return data
 }
 
-export async function initializeFromDatabase(connectionString: string) {
+export async function initializeFromDatabase(connectionString?: string) {
   const { data } = await api.post('/system/initialize/database', {
-    connection_string: connectionString,
+    connection_string: connectionString?.trim() || undefined,
   })
   return data
 }
 
-export async function saveToDatabase(connectionString: string) {
+export async function saveToDatabase(connectionString?: string) {
   const { data } = await api.post('/system/save/database', {
-    connection_string: connectionString,
+    connection_string: connectionString?.trim() || undefined,
   })
   return data
 }
