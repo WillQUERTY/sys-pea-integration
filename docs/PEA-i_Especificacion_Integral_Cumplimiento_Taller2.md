@@ -377,7 +377,7 @@ El proyecto satisface la totalidad de entregables estipulados para el Parcial 2:
 2. **Documento Técnico en Word (`docs/word/Parcial2_WP-DN-EO.docx`):** Documento formal generado a partir de esta especificación integral maestra, que incluye arquitectura, diagramas, casos de uso, historias de usuario y matriz de trazabilidad.
 3. **Archivo de Persistencia (`pea_data.json`):** Archivo JSON generado con la producción completa, integrantes, productos enriquecidos y autores listo para prueba de carga independiente.
 4. **Archivo de Identificación (`INTEGRANTES.txt`):** Ficha institucional con datos del grupo de estudiantes (William Andrés Peñaranda Oñate, Donaldo David Noriega Palomino, Edinson José Olivero Rojas).
-5. **Video Demostrativo (Sustentación):** Grabación en alta definición sustentando los requisitos del taller, el funcionamiento independiente de `pea_cli`, la API FastAPI, la interfaz React y la reversión de operaciones con la pila: [PRESENTACIÓN KHEMIA (YouTube)](https://www.youtube.com/watch?v=eezB3oZ3n2w&t=12s).
+5. **Video Demostrativo (Sustentación):** Grabación en alta definición sustentando los requisitos del taller, el funcionamiento independiente de `pea_cli`, la API FastAPI, la interfaz React y la resolución de los ejercicios del Parcial: [PARCIAL ESTRUCTURA DE DATOS (YouTube)](https://www.youtube.com/watch?v=nUsndPIdwRM).
 6. **Versión en Vivo en Internet (Despliegue Web):** Acceso público web operativo en [http://155.133.22.12/](http://155.133.22.12/).
 7. **Copia de Seguridad de la Base de Datos (`docs/peai.bak`):** Archivo de respaldo físico de Microsoft SQL Server para restauración directa.
 8. **Correo de entrega institucional:** Remisión formal a la coordinación docente (`adithperez@unicesar.edu.co`).

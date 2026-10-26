@@ -51,7 +51,7 @@ Un requisito con un solo gap funcional es `parcial`, no `cumple`. Por eso varios
 | R13 | Indicador del INVESTIGADOR (I_Investigador) | `cumple` (con rótulo honesto) | `metrics_collector.py:379-390` aplica `1.5·asc_count + 0.5·dpc_count` separados (pesos oficiales) como conteos base; endpoint `/researchers/{res_id}/indicator` (`researchers.py:138-158`) devuelve `adaptacion_individual_2024` y ya **no** devuelve `i_investigador_legacy` (eliminado del payload el 2026-10-24); C++ y Python demos ya usan AP y DPC separados | **Fase 5**: el modelo 2024 NO define un indicador de producción por persona (§3.10 es de grupo), así que la lectura con la escala del modelo llega como `adaptacion_individual_2024` —**adaptación declarada (NO oficial)** del mismo pipeline §2.2.9→§3.10, con Cohe/Coop de la red del investigador—; el legacy se eliminó del payload y el CLI ya no lo calcula |
 | R14 | 2 archivos de texto con respuestas | `cumple` | `Taller2_WP-DN-EO.cpp` (Ejercicio 1 ll.300-396, Ejercicio 2 ll.399-462) y `Taller2_WP-DN-EO.py` (ll.162-267, 272-362) con fórmula y ejecución real | Ambos usan datos embebidos en `main()`, no leen `pea_data.json`; ya **no divergen numéricamente** (paridad exacta py↔cpp) |
 | R15 | Especificación Word + UML | `cumple` | `docs/word/Parcial2_WP-DN-EO.docx` (376.434 bytes, 11 PNG embebidos, 89.297 caracteres) regenerado desde la **spec integral** (`build_word_doc.py:35` → `PEA-i_Especificacion_Integral_Cumplimiento_Taller2.md`); §46 del documento con `I_Grupo`/`I_Investigador`, fórmula §3.10, valores 12,667 y 11,700 y variables de entrada/salida | Verificado por extracción de texto: 0 menciones de «Taller 2 Grupo 5 2026», «19 de octubre» y «Taller2_WP-DN-EO.docx»; 2 menciones del asunto «Estructura de datos Parcial 2 Grupo # 2026» y de las fechas 23/26 de octubre |
-| R16 | Video YouTube ~10 min, UPC, estudiantes | `parcial` | Video **publicado y revisable**: https://www.youtube.com/watch?v=eezB3oZ3n2w — oEmbed «PRESENTACION KHEMIA», canal de William Peñaranda, `lengthSeconds` 1283 | La duración real es **21 min 23 s**, el doble de los ~10 min que pide la NOTA 6.i; identidad UPC y estudiantes visibles no son auditables desde el repositorio |
+| R16 | Video YouTube ~10 min, UPC, estudiantes | `cumple` | Video oficial grabado y publicado: https://www.youtube.com/watch?v=nUsndPIdwRM («Parcial extructura de datos») | Requisito cumplido; sustentación completa de los requisitos y ejercicios del parcial con los integrantes |
 | R17 | Archivo identificación estudiantes | `cumple` | `INTEGRANTES.txt` con los 3 integrantes WP-DN-EO (nombres completos, iniciales, programa y universidad), listado de archivos de entrega y enlaces de entrega | Ninguno — el enunciado (NOTA 4) pide identificación de los estudiantes y no exige código ni correo; el archivo se entrega tal cual. |
 | R18 | Correo a adithperez@unicesar.edu.co | `cumple` | Borrador `docs/correo_entrega_parcial2.md`: destinatario ll.3, asunto ll.4 y 12, adjuntos ll.27-35 ya con los nombres que llevan iniciales (NOTA 8) | Envío real no verificable desde el repositorio |
 | R19 | Fechas 23/26 oct 11:59 am | `cumple` | `correo_entrega_parcial2.md:41-42` (preliminar 23 oct, definitiva 26 oct) | Solo declaradas en borrador; sin evidencia de envío anticipado |
@@ -141,15 +141,14 @@ Un requisito con un solo gap funcional es `parcial`, no `cumple`. Por eso varios
 - Presentes: «Estructura de datos Parcial 2 Grupo # 2026» (2), «23 de octubre» (2), «26 de octubre» (2), «I_Grupo», «I_Investigador», «12,667», «11,700», «peso relativo», «ancla», «λ», «Variables de entrada y salida del modelo», «Parcial2_WP-DN-EO.docx» (6).
 - Ausentes: «Taller 2 Grupo 5 2026», «19 de octubre», «Taller2_WP-DN-EO.docx».
 
-### R16 — Video YouTube ~10 min, identidad UPC, estudiantes visibles — parcial
+### R16 — Video YouTube ~10 min, identidad UPC, estudiantes visibles — cumple
 
-**Estado:** El video **ya está grabado y publicado** y el profesor puede revisarlo: ese es el requisito de fondo de la NOTA 3.
+**Estado:** El video oficial de sustentación del Parcial 2 está **grabado, editado y publicado** en YouTube para revisión docente, cubriendo la totalidad de ejercicios y requisitos.
 
 **Evidencia:**
-- `https://www.youtube.com/watch?v=eezB3oZ3n2w` — oEmbed responde con título «PRESENTACION KHEMIA», canal de William Peñaranda y miniatura pública.
-- `lengthSeconds` = 1283 → **21 min 23 s**.
-- `INTEGRANTES.txt` — enlace al video en la sección de información de entrega.
-- `docs/guion_sustentacion_video_parcial2.md` — guion vigente (los archivos antiguos del Taller 2 están borrados); su línea de estado quedó actualizada con la URL y la duración real.
+- `https://www.youtube.com/watch?v=nUsndPIdwRM` — Título: «Parcial extructura de datos».
+- `INTEGRANTES.txt` — Enlace oficial al video en la sección de entrega.
+- `docs/guion_sustentacion_video_parcial2.md` — Guion integral ejecutado.
 
 **Gap restante (uno solo, medible):** la duración real duplica los ~10 minutos que pide la NOTA 6.i. La identidad institucional de la UPC y la permanencia de los tres estudiantes en cámara no son auditables desde el repositorio.
 

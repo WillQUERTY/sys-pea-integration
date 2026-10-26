@@ -2,7 +2,7 @@
 
 **Destinatario:** adithperez@unicesar.edu.co  
 **Asunto:** Estructura de datos Parcial 2 Grupo # 2026  
-**Fecha:** 24 de octubre de 2026  
+**Fecha:** 26 de octubre de 2026  
 **Grupo:** WP - DN - EO (Universidad Popular del Cesar)
 
 ---
@@ -35,7 +35,7 @@ Integrantes del grupo:
 ## Enlaces de referencia
 
 - Repositorio GitHub: https://github.com/WillQUERTY/sys-pea-integration
-- Video demostrativo (YouTube): https://www.youtube.com/watch?v=eezB3oZ3n2w&t=12s
+- Video demostrativo (YouTube): https://www.youtube.com/watch?v=nUsndPIdwRM
 - Versión en vivo (despliegue web): http://155.133.22.12/
 
 ## Plazos de entrega

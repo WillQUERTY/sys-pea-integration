@@ -45,7 +45,7 @@ INFORMACIÓN DE ENTREGA Y ENLACES OFICIALES
 - Entrega definitiva: lunes 26 de octubre de 2026, 11:59 a. m.
 - Repositorio GitHub: https://github.com/WillQUERTY/sys-pea-integration
 - Versión en Vivo (Despliegue Web HTTP): http://155.133.22.12/
-- Video Demostrativo (YouTube): https://www.youtube.com/watch?v=eezB3oZ3n2w
+- Video Demostrativo (YouTube): https://www.youtube.com/watch?v=nUsndPIdwRM
 - Documento de Especificación Oficial: docs/word/Parcial2_WP-DN-EO.docx
 - Especificación Integral en Markdown (fuente del Word): docs/PEA-i_Especificacion_Integral_Cumplimiento_Taller2.md
 - Copia de Base de Datos SQL Server: docs/peai.bak (Backup físico oficial)
